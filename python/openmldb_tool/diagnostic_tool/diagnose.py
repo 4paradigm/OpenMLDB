@@ -39,7 +39,7 @@ from absl import flags
 from absl.flags import argparse_flags
 from absl import logging  # --verbosity --log_dir
 
-# only some sub cmd needs dist file
+# only some sub cmd needs dist file TODO(hw): better to move then to other py file, to avoid -h show them
 flags.DEFINE_string(
     "conf_file",
     "",
@@ -126,26 +126,22 @@ def inspect(args):
 
 
 def insepct_online(args):
-    """show table status"""
-    conn = Connector()
+    """inspect online"""
+    connect = Connector()
     # scan all db include system db
-    fails = []
-    rs = conn.execfetch("show table status like '%';")
-    rs.sort(key=lambda x: x[0])
-    print(f"inspect {len(rs)} online tables(including system tables)")
-    for t in rs:
+    fails = table_ins(connect)
+    for t in fails:
         if t[13]:
             print(f"unhealthy table {t[2]}.{t[1]}:\n {t[:13]}")
             # sqlalchemy truncated ref https://github.com/sqlalchemy/sqlalchemy/commit/591e0cf08a798fb16e0ee9b56df5c3141aa48959
             # so we print warnings alone
             print(f"full warnings:\n{t[13]}")
-            fails.append(f"{t[2]}.{t[1]}")
-
-    assert not fails, f"unhealthy tables: {fails}"
-    print(f"all tables are healthy")
+    # if has fails, summary will print in table_ins
+    if not fails:
+        print(f"all tables are healthy")
 
     if getattr(args, "dist", False):
-        table_checker = TableChecker(conn)
+        table_checker = TableChecker(connect)
         dbs = flags.FLAGS.db
         db_list = dbs.split(",") if dbs else None
         table_checker.check_distribution(dbs=db_list)
@@ -341,18 +337,19 @@ def parse_arg(argv):
         "inspect",
         help="Get full inspect report, --nocolor for batch mode, --table_width for partition tables display",
     )
-    # TODO
     inspect_parser.set_defaults(command=inspect)
 
     inspect_sub = inspect_parser.add_subparsers()
-    # inspect online TODO
+    # inspect online
     online = inspect_sub.add_parser("online", help="only inspect online table.")
     online.set_defaults(command=insepct_online)
     online.add_argument(
         "--dist", action="store_true", help="Inspect online distribution."
     )
-    # inspect offline TODO
-    offline = inspect_sub.add_parser("offline", help="only inspect offline jobs.")
+    # inspect offline
+    offline = inspect_sub.add_parser(
+        "offline", help="only inspect offline jobs, show failed jobs."
+    )
     offline.set_defaults(command=inspect_offline)
     # inspect job
     ins_job = inspect_sub.add_parser(

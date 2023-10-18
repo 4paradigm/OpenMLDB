@@ -111,7 +111,7 @@ class TableChecker:
         print("tablet server load distribution")
         print("tablet2partition")
         self._show_dist(tablet2partition)
-        print("tablet2count")
+        print("tablet2count(row)")
         self._show_dist(tablet2count)
         print("tablet2mem(MB)")
         self._byte2mb(tablet2mem)

@@ -241,9 +241,10 @@ def table_ins(connect):
     for t in rs:
         # any warning means unhealthy, partition_unalive may be 0 but already unhealthy, warnings is accurate?
         if t[13]:
-            warn_tables.append(f"{t[2]}.{t[1]}")
+            warn_tables.append(t)
     if warn_tables:
-        s = "\n".join(warn_tables)
+        # only show tables name
+        s = "\n".join([f"{t[2]}.{t[1]}" for t in warn_tables])
         cr_print(RED, f"unhealthy tables:\n{s}")
     else:
         cr_print(GREEN, "all tables are healthy")

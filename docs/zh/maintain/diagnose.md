@@ -77,7 +77,9 @@ Table:
 
 - 部署好集群后，可以使用`test`测试集群是否能正常工作，不需要用户手动测试。如果发现问题，再使用`inspect`诊断。
 - 离线job如果出现问题，`SHOW JOBLOG id`可以查看日志，但经验较少的用户可能会被日志中的无关信息干扰，可以使用`inspect job`来提取job日志中的关键信息。
+- 离线job太多时，CLI中的展示会不容易读，可以使用`inspect offline`筛选所有failed的job，或者`inspect job --state <state>`来筛选出特定状态的job。
 - 在一些棘手的问题中，可能需要用户通过RPC来获得一些信息，帮助定位问题。`openmldb_tool rpc`可以帮助用户简单快速地调用RPC，降低运维门槛。
+- 没有Prometheus监控时，可以通过`inspect online --dist`获得数据分布信息。
 - 如果你的操作节点到各个组件的机器是ssh免密的，那么，可以使用`static-check`检查配置文件是否正确，版本是否统一，避免部署失败。还可以一键收集整个集群的日志，方便打包并提供给开发人员分析。
 
 ## 子命令详情
