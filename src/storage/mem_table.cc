@@ -157,6 +157,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         }
         inner_index_key_map.emplace(inner_pos, iter->key());
     }
+    uint32_t real_ref_cnt = 0;
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
     std::string uncompress_data;
     if (GetCompressType() == openmldb::type::kSnappy) {
@@ -180,6 +181,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
             if (!index_def->IsReady()) {
                 continue;
             }
+            real_ref_cnt++;
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
                 int64_t ts = 0;
@@ -200,7 +202,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     if (ts_map.empty()) {
         return false;
     }
-    auto* block = new DataBlock(ts_map.size(), value.c_str(), value.length());
+    auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
         bool need_put = false;
