@@ -210,7 +210,7 @@ class BatchQueryFutureImpl : public QueryFuture {
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(std::make_shared<SQLRouterOptions>(options)),
       is_cluster_mode_(true),
-      interactive_(false),
+      interactive_validator_(),
       cluster_sdk_(nullptr),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
@@ -218,7 +218,7 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
 SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
     : options_(std::make_shared<StandaloneOptions>(options)),
       is_cluster_mode_(false),
-      interactive_(false),
+      interactive_validator_(),
       cluster_sdk_(nullptr),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
@@ -226,7 +226,7 @@ SQLClusterRouter::SQLClusterRouter(const StandaloneOptions& options)
 SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
     : options_(),
       is_cluster_mode_(sdk->IsClusterMode()),
-      interactive_(false),
+      interactive_validator_(),
       cluster_sdk_(sdk),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {
@@ -1752,7 +1752,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
-            if (!CheckAnswerIfInteractive("function", name)) {
+            if (!interactive_validator_.Check(CmdType::kDrop, TargetType::kFunction, name)) {
                 return {};
             }
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
@@ -1808,7 +1808,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
             std::string sp_name = cmd_node->GetArgs()[0];
-            if (!CheckAnswerIfInteractive("procedure", sp_name)) {
+            if (!interactive_validator_.Check(CmdType::kDrop, TargetType::kProcedure, sp_name)) {
                 return {};
             }
             if (ns_ptr->DropProcedure(db, sp_name, msg)) {
@@ -1878,7 +1878,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {StatusCode::kCmdError, sp ? "not a deployment" : "deployment not found"};
                 return {};
             }
-            if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
+            if (!interactive_validator_.Check(CmdType::kDrop, TargetType::kDeployment, deploy_name)) {
                 return {};
             }
             if (ns_ptr->DropProcedure(db_name, deploy_name, msg)) {
@@ -1959,7 +1959,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {StatusCode::kCmdError, msg};
                 return {};
             }
-            if (!CheckAnswerIfInteractive("table", table_name)) {
+            if (!interactive_validator_.Check(CmdType::kDrop, TargetType::kTable, table_name)) {
                 return {};
             }
             if (DropTable(db_name, table_name, cmd_node->IsIfExists(), status)) {
@@ -1975,7 +1975,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {StatusCode::kCmdError, msg};
                 return {};
             }
-            if (!CheckAnswerIfInteractive("truncate", table_name)) {
+            if (!interactive_validator_.Check(CmdType::kTruncate, TargetType::kTable, table_name)) {
                 return {};
             }
             auto base_status = ns_ptr->TruncateTable(db_name, table_name);
@@ -1999,7 +1999,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {StatusCode::kCmdError, "Invalid Cmd Args size"};
                 return {};
             }
-            if (!CheckAnswerIfInteractive("index", index_name + " on " + table_name)) {
+            if (!interactive_validator_.Check(CmdType::kDrop, TargetType::kIndex, index_name + " on " + table_name)) {
                 return {};
             }
             ret = ns_ptr->DeleteIndex(db_name, table_name, index_name, msg);
@@ -2061,7 +2061,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
-        if (interactive_ && table_info.column_key_size() == 0) {
+        if (interactive_validator_.Interactive() && table_info.column_key_size() == 0) {
             return base::Status{base::ReturnCode::kOk,
                   "As there is no index specified, a default index type `absolute 0` will be created. "
                   "The data attached to the index will never expire to be deleted. "
@@ -3041,44 +3041,6 @@ int SQLClusterRouter::GetJobTimeout() {
     return {};
 }
 
-bool SQLClusterRouter::CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
-    if (interactive_) {
-        std::string msg;
-        if (drop_type == "table") {
-            msg = "DROP TABLE is a dangerous operation. Once deleted, it is very difficult to recover. \n"
-                  "You may also note that: \n"
-                  "- If a snapshot of a partition is being generated while dropping a table, "
-                  "the partition will not be deleted successfully.\n"
-                  "- By default, the deleted data is moved to the folder `recycle`.\n"
-                  "Please refer to this link for more details: " + base::NOTICE_URL;
-        } else if (drop_type == "deployment") {
-            msg = "- DROP DEPLOYMENT will not delete the index that is created automatically.\n"
-                  "- DROP DEPLOYMENT will not delete data in the pre-aggregation table in the long window setting.";
-        } else if (drop_type == "index") {
-            msg = "DROP INDEX is a dangerous operation. Once deleted, it is very difficult to recover.\n"
-                  "You may also note that: \n"
-                  "- You have to wait for 2 garbage collection intervals (gc_interval) to create the same index.\n"
-                  "- The index will not be deleted immediately, "
-                    "it remains until after 2 garbage collection intervals.\n"
-                  "Please refer to the doc for more details: " + base::NOTICE_URL;
-        } else if (drop_type == "function") {
-           msg = "This will lead to execution failure or system crash if any active deployment is using the function.";
-        }
-        if (!msg.empty()) {
-            printf("%s\n", msg.c_str());
-        }
-        printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
-        std::string input;
-        std::cin >> input;
-        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-        if (input != "yes") {
-            printf("'Drop %s' cmd is canceled!\n", name.c_str());
-            return false;
-        }
-    }
-    return true;
-}
-
 std::string SQLClusterRouter::GetDatabase() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     return db_;
@@ -3089,7 +3051,7 @@ void SQLClusterRouter::SetDatabase(const std::string& db) {
     db_ = db;
 }
 
-void SQLClusterRouter::SetInteractive(bool value) { interactive_ = value; }
+void SQLClusterRouter::SetInteractive(bool value) { interactive_validator_.SetInteractive(value); }
 
 ::openmldb::base::Status SQLClusterRouter::SaveResultSet(const std::string& file_path,
                                                          const std::shared_ptr<hybridse::node::OptionsMap>& options_map,
