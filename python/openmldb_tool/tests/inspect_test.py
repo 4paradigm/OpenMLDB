@@ -49,7 +49,7 @@ def test_show():
                 tablets[0]: {
                     "tid": 0,  # actually not used in show_table_info
                     "pid": 0,  # not used in show_table_info
-                    # "offset": 5,
+                    "offset": 5, # check offset on tablet, not ns
                     "mode": "kTableLeader",
                     "state": "kTableNormal",
                     # "is_expire": True,
@@ -71,6 +71,7 @@ def test_show():
                 tablets[1]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[1],
                 },
             }
@@ -112,16 +113,19 @@ def test_show():
                 tablets[0]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[0],
                 },
                 tablets[1]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[1],
                 },
                 tablets[2]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[2],
                 },
             }
@@ -162,16 +166,19 @@ def test_show():
                 tablets[0]: {
                     "mode": "kTableLeader",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[0],
                 },
                 tablets[1]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[1],
                 },
                 tablets[2]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[2],
                 },
             }
@@ -212,11 +219,13 @@ def test_show():
                 tablets[1]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[1],
                 },
                 tablets[2]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                     "tablet": tablets[2],
                 },
             }
@@ -274,16 +283,19 @@ def test_show():
                 tablets[0]: {
                     "mode": "kTableFollower",
                     "state": "kTableLoading",
+                    "offset": 0,
                     "tablet": tablets[0],
                 },
                 tablets[1]: {
                     "mode": "kTableFollower",
                     "state": "kMakingSnapshot",
+                    "offset": 0,
                     "tablet": tablets[1],
                 },
                 tablets[2]: {
                     "mode": "kTableFollower",
                     "state": "kSnapshotPaused",
+                    "offset": 0,
                     "tablet": tablets[2],
                 },
             },
@@ -291,10 +303,12 @@ def test_show():
                 tablets[1]: {
                     "mode": "kTableFollower",
                     "state": "kTableUndefined",
+                    "offset": 0,
                 },
                 tablets[2]: {
                     "mode": "kTableFollower",
                     "state": "kTableNormal",
+                    "offset": 0,
                 },
             },
         }
@@ -329,6 +343,7 @@ def test_show():
             tablets[0]: {
                 "mode": "kTableLeader",
                 "state": "kTableNormal",
+                "offset": 0,
                 "tablet": tablets[0],
             }
         }
