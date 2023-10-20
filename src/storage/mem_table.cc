@@ -182,7 +182,6 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
             if (!index_def->IsReady()) {
                 continue;
             }
-            real_ref_cnt++;
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
                 int64_t ts = 0;
@@ -197,6 +196,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                     return false;
                 }
                 ts_map.emplace(ts_col->GetId(), ts);
+                real_ref_cnt++;
             }
         }
         if (!ts_map.empty()) {
@@ -208,25 +208,16 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     }
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
-        auto inner_index = table_index_.GetInnerIndex(kv.first);
-        bool need_put = false;
-        for (const auto& index_def : inner_index->GetIndex()) {
-            if (index_def->IsReady()) {
-                // TODO(hw): if we don't find this ts(has_found_ts==false), but it's ready, will put too?
-                need_put = true;
-                break;
-            }
+        auto iter = ts_value_map.find(kv.first);
+        if (iter == ts_value_map.end()) {
+            continue;
         }
-        if (need_put) {
-            uint32_t seg_idx = 0;
-            if (seg_cnt_ > 1) {
-                seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
-            }
-            if (auto iter = ts_value_map.find(kv.first); iter != ts_value_map.end()) {
-                Segment* segment = segments_[kv.first][seg_idx];
-                segment->Put(::openmldb::base::Slice(kv.second), iter->second, block);
-            }
+        uint32_t seg_idx = 0;
+        if (seg_cnt_ > 1) {
+            seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
         }
+        Segment* segment = segments_[kv.first][seg_idx];
+        segment->Put(::openmldb::base::Slice(kv.second), iter->second, block);
     }
     record_byte_size_.fetch_add(GetRecordSize(value.length()));
     return true;
