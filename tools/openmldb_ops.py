@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-
+# for Python 2, don't use f-string
 log = logging.getLogger(__name__)
 import os
 import sys
@@ -204,8 +204,9 @@ def RecoverData(executor):
             log.error("get all table failed")
             return
         for name in tables:
+            # if recover failed, continue to recover next table
             if not RecoverTable(executor, db, name).OK():
-                log.error(f"recover table failed. db {db} name {name}, check log for detail")
+                log.error("recover table failed. db {db} name {name}, check log for detail".format(db=db, name=name))
 
 def ChangeLeader(db, partition, src_endpoint, desc_endpoint, one_replica, restore = True):
     log.info(
