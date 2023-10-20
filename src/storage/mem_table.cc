@@ -174,14 +174,19 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
         return false;
     }
-    std::map<int32_t, uint64_t> ts_map;
+    std::map<uint32_t, std::map<int32_t, uint64_t>> ts_value_map;
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
         if (!inner_index) {
             PDLOG(WARNING, "invalid inner index pos %d. tid %u pid %u", kv.first, id_, pid_);
             return false;
         }
+        std::map<int32_t, uint64_t> ts_map;
         for (const auto& index_def : inner_index->GetIndex()) {
+            if (!index_def->IsReady()) {
+                continue;
+            }
+            real_ref_cnt++;
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
                 int64_t ts = 0;
@@ -193,12 +198,12 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                 }
                 ts_map.emplace(ts_col->GetId(), ts);
             }
-            if (index_def->IsReady()) {
-                real_ref_cnt++;
-            }
+        }
+        if (!ts_map.empty()) {
+            ts_value_map.emplace(kv.first, std::move(ts_map));
         }
     }
-    if (ts_map.empty()) {
+    if (ts_value_map.empty()) {
         return false;
     }
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
@@ -217,8 +222,10 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
             if (seg_cnt_ > 1) {
                 seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
-            Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block);
+            if (auto iter = ts_value_map.find(kv.first); iter != ts_value_map.end()) {
+                Segment* segment = segments_[kv.first][seg_idx];
+                segment->Put(::openmldb::base::Slice(kv.second), iter->second, block);
+            }
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
