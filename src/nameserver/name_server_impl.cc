@@ -4996,6 +4996,8 @@ void NameServerImpl::SchedMakeSnapshot() {
 
 void NameServerImpl::UpdateTableStatus() {
     std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
+    std::unordered_map<std::string, ::openmldb::api::TableStatus> pos_response;
+    pos_response.reserve(16);
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
@@ -5004,19 +5006,21 @@ void NameServerImpl::UpdateTableStatus() {
             }
             tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
         }
-    }
-    std::unordered_map<std::string, ::openmldb::api::TableStatus> pos_response;
-    pos_response.reserve(16);
-    for (const auto& kv : tablet_ptr_map) {
-        ::openmldb::api::GetTableStatusResponse tablet_status_response;
-        if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
-            PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
-            continue;
-        }
-        for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
-            std::string key = absl::StrCat(tablet_status_response.all_table_status(pos).tid(), "_",
-                              tablet_status_response.all_table_status(pos).pid(), "_", kv.first);
-            pos_response.emplace(key, tablet_status_response.all_table_status(pos));
+
+        for (const auto& kv : tablet_ptr_map) {
+            ::openmldb::api::GetTableStatusResponse tablet_status_response;
+            if(!kv.second->client_){
+                LOG(WARNING) << "invalid tablet client??";
+            }
+            if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
+                PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
+                continue;
+            }
+            for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
+                std::string key = absl::StrCat(tablet_status_response.all_table_status(pos).tid(), "_",
+                        tablet_status_response.all_table_status(pos).pid(), "_", kv.first);
+                pos_response.emplace(key, tablet_status_response.all_table_status(pos));
+            }
         }
     }
     if (pos_response.empty()) {
