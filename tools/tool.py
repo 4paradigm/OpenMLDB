@@ -293,7 +293,7 @@ class Executor:
                     elif table_stat == "kTableLoading" or table_stat == "kTableUndefined":
                         log.info("table is loading... tid {tid} pid {pid}".format(tid = tid, pid = pid))
                     else:
-                        return Status(-1, f"table stat is {table_stat}")
+                        return Status(-1, "table stat is {table_stat}".format(table_stat = table_stat))
                 time.sleep(2)
 
         return Status(-1, "execute load table failed, status {msg}, output {output}".format(msg = status.GetMsg(), output = output))
