@@ -1,5 +1,7 @@
 # Python SDK
 
+Python SDK默认执行模式为在线。
+
 ## Python SDK 包安装
 
 执行以下命令安装 Python SDK 包：

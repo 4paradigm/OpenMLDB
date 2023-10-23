@@ -50,11 +50,14 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
             col_set.insert(column_name);
             has_iter = true;
             auto iter = column_map.find(column_name);
-            if ((iter != column_map.end() &&
-                 ((iter->second.data_type() == ::openmldb::type::kFloat)
-                  || (iter->second.data_type() == ::openmldb::type::kDouble)))) {
-                return {base::ReturnCode::kError,
-                    "float or double type column can not be index, column is: " + column_key.index_name()};
+            if (iter != column_map.end()) {
+                if (iter->second.data_type() == ::openmldb::type::kFloat
+                        || iter->second.data_type() == ::openmldb::type::kDouble) {
+                    return {base::ReturnCode::kError,
+                        "float or double type column can not be index, column is: " + column_key.index_name()};
+                }
+            } else {
+                return {base::ReturnCode::kError, "can not find col in schema. col: " + column_name};
             }
         }
         if (!has_iter) {
@@ -67,20 +70,31 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
                 return {base::ReturnCode::kError, "float or double column can not be index"};
             }
         }
+        if (column_key.has_ts_name()) {
+            if (auto iter = column_map.find(column_key.ts_name()); iter == column_map.end()) {
+                return {base::ReturnCode::kError, "can not find col in schema. col: " + column_key.ts_name()};
+            } else if (iter->second.data_type() != ::openmldb::type::kBigInt
+                  && iter->second.data_type() != ::openmldb::type::kTimestamp) {
+                return {base::ReturnCode::kError,
+                    "ts column type should be bigint or timestamp, column is: " + column_key.ts_name()};
+            }
+        }
         if (column_key.has_ttl()) {
-            if (!CheckTTL(column_key.ttl())) {
-                return {base::ReturnCode::kError, "ttl check failed"};
+            if (auto status = CheckTTL(column_key.ttl()); !status.OK()) {
+                return status;
             }
         }
     }
     return CheckUnique(index);
 }
 
-bool IndexUtil::CheckTTL(const ::openmldb::common::TTLSt& ttl) {
-    if (ttl.abs_ttl() > FLAGS_absolute_ttl_max || ttl.lat_ttl() > FLAGS_latest_ttl_max) {
-        return false;
+base::Status IndexUtil::CheckTTL(const ::openmldb::common::TTLSt& ttl) {
+    if (ttl.abs_ttl() > FLAGS_absolute_ttl_max) {
+        return {base::ReturnCode::kError, absl::StrCat("absolute ttl cannot be greater than ", FLAGS_absolute_ttl_max)};
+    } else if (ttl.lat_ttl() > FLAGS_latest_ttl_max) {
+        return {base::ReturnCode::kError, absl::StrCat("latest ttl cannot be greater than ", FLAGS_latest_ttl_max)};
     }
-    return true;
+    return {};
 }
 
 bool IndexUtil::AddDefaultIndex(openmldb::nameserver::TableInfo* table_info) {
@@ -175,6 +189,14 @@ std::vector<::openmldb::common::ColumnKey> IndexUtil::Convert2Vector(const PBInd
         vec.push_back(column_key);
     }
     return vec;
+}
+
+PBIndex IndexUtil::Convert2PB(const std::vector<::openmldb::common::ColumnKey>& index) {
+    PBIndex pb_index;
+    for (const auto& column_key : index) {
+        pb_index.Add()->CopyFrom(column_key);
+    }
+    return pb_index;
 }
 
 std::string IndexUtil::GetIDStr(const ::openmldb::common::ColumnKey& column_key) {

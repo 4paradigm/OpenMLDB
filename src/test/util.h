@@ -100,6 +100,14 @@ std::string GetExeDir();
 
 std::string GetParentDir(const std::string& path);
 
+api::TableMeta CreateTableMeta(const std::string& name, uint32_t tid, uint32_t pid,
+            uint64_t abs_ttl, uint64_t lat_ttl,
+            bool leader, const std::vector<std::string>& endpoints,
+            const ::openmldb::type::TTLType& type, uint32_t seg_cnt, uint64_t term,
+            ::openmldb::type::CompressType compress_type,
+            common::StorageMode storage_mode = ::openmldb::common::kMemory);
+
+
 }  // namespace test
 }  // namespace openmldb
 #endif  // SRC_TEST_UTIL_H_

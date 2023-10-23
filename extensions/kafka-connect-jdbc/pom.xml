@@ -172,7 +172,7 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commons-io.version}</version>
-            <scope>test</scope>
+            <!-- <scope>test</scope> openmldb-jdbc needs -->
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

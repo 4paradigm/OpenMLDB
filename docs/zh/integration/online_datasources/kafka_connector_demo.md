@@ -21,8 +21,14 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 
 我们推荐你将下载的三个文件包都绑定到文件目录`kafka`。当然，也可以在启动容器后，再进行文件包的下载。我们假设文件包都在`/work/kafka`目录中。
 ```
-docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.2 bash
+docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.3 bash
 ```
+
+### 注意事项
+
+Timestamp列精度为ms，value配置为JsonConvertor，仅支持整型。根据消息的不同，可选配其他Convertor。
+
+Connector可用于较早版本的Kafka Server，例如1.1.1，但注意旧版本的Kafka Broker可能并未默认开启“自动创建topic”，需要开启[此选项](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable)。
 
 ### 流程
 

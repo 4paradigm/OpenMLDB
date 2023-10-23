@@ -20,11 +20,13 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "sdk/job_table_helper.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_router.h"
@@ -98,6 +100,92 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::string db;
 };
 
+
+TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
+    std::string db2 = "db" + GenRand();
+    std::string table_name = "tb" + GenRand();
+    std::string deploy_name = "dp" + GenRand();
+    ::hybridse::sdk::Status status;
+
+    std::string ddl;
+    ddl = "create table " + table_name +
+          "("
+          "col1 int, col2 bigint, col3 string, "
+          "index(key = col3, ts = col2));";
+
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+
+    ASSERT_TRUE(router->RefreshCatalog());
+    SetOnlineMode(router);
+
+    router->ExecuteSQL(db, "deploy " + deploy_name + " select col1 from " + table_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "drop deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + table_name + ";", &status));
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+
+TEST_F(SQLClusterDDLTest, TestShowSortedJobs) {
+    std::string name = "job_info" + GenRand();
+    ::hybridse::sdk::Status status;
+
+    std::string sql;
+    sql = "create table " + name +
+          "("
+          "id int, job_type string, state string, start_time timestamp, end_time timestamp, "
+          "parameter string, cluster string, application_id string, error string, "
+          "index(key=id));";
+    ASSERT_TRUE(router->ExecuteDDL(db, sql, &status)) << "ddl: " << sql;
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    std::vector<int> randint;
+    for (int i = 1; i < 100; i++) {
+        randint.push_back(i);
+    }
+    std::random_shuffle(randint.begin(), randint.end());
+    for (uint64_t i = 0; i < randint.size(); i++) {
+        std::string id = std::to_string(randint[i]);
+        sql = "insert into " + name +
+          " values(" + id + ", \"Type\", \"State\", 0, " + id + ", "
+          "\"/tmp/sql-000000000000000000" + id + "\", \"local[*]\", \"local-0000000000000" + id + "\", \"\");";
+        router->ExecuteSQL(db, sql, &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+
+    auto rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    rs = JobTableHelper::MakeResultSet(rs, "", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    int id_current = 0, id_next;
+    while (rs->Next()) {
+        ASSERT_TRUE(rs->GetInt32(0, &id_next));
+        ASSERT_LT(id_current, id_next);
+        id_current = id_next;
+    }
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+}
+
 TEST_F(SQLClusterDDLTest, TestCreateTableLike) {
     ::hybridse::sdk::Status status;
 
@@ -169,26 +257,70 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     ASSERT_TRUE(router->DropDB(db2, &status));
 }
 
+TEST_F(SQLClusterDDLTest, ShowCreateTable) {
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists t1;", &status));
+    std::string ddl = "CREATE TABLE `t1` (\n"
+        "`col1` varchar,\n"
+        "`col2` int,\n"
+        "`col3` bigInt NOT NULL,\n"
+        "INDEX (KEY=`col1`, TTL_TYPE=ABSOLUTE, TTL=100m)\n"
+        ") OPTIONS (PARTITIONNUM=1, REPLICANUM=1, STORAGE_MODE='Memory');";
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->RefreshCatalog());
+    auto rs = router->ExecuteSQL(db, "show create table t1;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(ddl, rs->GetStringUnsafe(1));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
-    std::string ddl;
+    std::string db = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db, &status));
 
     // create table db2.name when db2 not exist
+    std::string ddl;
     ddl = "create table db2." + name +
-          "("
-          "col1 int, col2 bigint, col3 string,"
+          "(col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
 
     // create table db2.name when db2 not exit
     ddl = "create table db2." + name +
-          "("
-          "col1 int, col2 bigint, col3 string,"
+          "(col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL("", "drop table " + name + ";", &status));
+    ddl = "create table t1 (col1 string, col2 string, col3 string, index(key=col1, ts=col2));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ddl = "create table t1 (col1 string, col2 string, col3 string, index(key=col4));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ddl = "create table t1 (col1 string, col2 string, col3 int, index(key=col4, ts=col3));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->DropDB(db, &status));
+}
+
+TEST_F(SQLClusterDDLTest, CreateIndexCheck) {
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->CreateDB(db, &status));
+    std::string ddl = absl::StrCat("create table ", name, "(col1 string, col2 string, col3 string, col4 int);");
+    ASSERT_TRUE(router->RefreshCatalog());
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col3);"), &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col5);"), &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col4);"), &status);
+    ASSERT_FALSE(status.IsOK());
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+    ASSERT_TRUE(router->DropDB(db, &status));
 }
 
 TEST_F(SQLClusterDDLTest, TestDelete) {
@@ -883,10 +1015,10 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionT
 /* TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport") ||
-        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+    if (absl::StrContains(sql_case.mode(), "rtidb-unsupport") ||
+        absl::StrContains(sql_case.mode(), "rtidb-request-unsupport") ||
+        absl::StrContains(sql_case.mode(), "request-unsupport") ||
+        absl::StrContains(sql_case.mode(), "cluster-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -898,7 +1030,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionT
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -916,7 +1048,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -927,7 +1059,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -945,7 +1077,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTe
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -956,15 +1088,9 @@ TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
 }
 
 TEST_F(SQLClusterTest, CreateTable) {
-    SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
-    auto router = NewClusterSQLRouter(sql_opt);
-    ASSERT_TRUE(router != nullptr);
-    SetOnlineMode(router);
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
-    bool ok = router->CreateDB(db, &status);
+    bool ok = router_->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     for (int i = 0; i < 2; i++) {
         std::string name = "test" + std::to_string(i);
@@ -973,10 +1099,10 @@ TEST_F(SQLClusterTest, CreateTable) {
                           "col1 string, col2 bigint,"
                           "index(key=col1, ts=col2)) "
                           "options(partitionnum=3);";
-        ok = router->ExecuteDDL(db, ddl, &status);
+        ok = router_->ExecuteDDL(db, ddl, &status);
         ASSERT_TRUE(ok);
     }
-    ASSERT_TRUE(router->RefreshCatalog());
+    ASSERT_TRUE(router_->RefreshCatalog());
     auto ns_client = mc_->GetNsClient();
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
@@ -995,9 +1121,9 @@ TEST_F(SQLClusterTest, CreateTable) {
     }
     ASSERT_EQ(pid_map.size(), 3u);
     ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
-    ASSERT_TRUE(router->DropDB(db, &status));
+    ASSERT_TRUE(router_->ExecuteDDL(db, "drop table test0;", &status));
+    ASSERT_TRUE(router_->ExecuteDDL(db, "drop table test1;", &status));
+    ASSERT_TRUE(router_->DropDB(db, &status));
 }
 
 TEST_F(SQLClusterTest, GetTableSchema) {

@@ -62,8 +62,8 @@ do
     upgrade_docker "$file"
 done
 
-upgrade_java_sdk "docs/en/quickstart/java_sdk.md"
 upgrade_java_sdk "docs/zh/quickstart/sdk/java_sdk.md"
+upgrade_java_sdk "docs/en/quickstart/sdk/java_sdk.md"
 cd demo/java_quickstart/demo || exit
 mvn versions:use-dep-version -Dincludes=com.4paradigm.openmldb:openmldb-jdbc -DdepVersion="${VERSION}" -DforceVersion=true
 cd - || exit

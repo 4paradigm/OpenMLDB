@@ -71,7 +71,7 @@ struct Status {
         cm.append("] ");
         cm.append(msg);
         return cm;
-    };
+    }
 
     int code;
     // msg use prepend and append, it's better to use absl::Cord, but we may directly use msg
@@ -134,6 +134,7 @@ class ProcedureInfo {
     virtual ProcedureType GetType() const = 0;
     virtual const std::string* GetOption(const std::string& key) const = 0;
     virtual const std::unordered_map<std::string, std::string>* GetOption() const = 0;
+    virtual int GetRouterCol() const = 0;
 };
 
 }  // namespace sdk

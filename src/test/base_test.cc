@@ -215,7 +215,7 @@ void SQLCaseTest::PrintRows(const hybridse::vm::Schema &schema, const std::vecto
         }
     }
     oss << t << std::endl;
-    LOG(INFO) << "\n" << oss.str() << "\n";
+    DLOG(INFO) << "\n" << oss.str() << "\n";
 }
 
 const std::vector<hybridse::codec::Row> SQLCaseTest::SortRows(const hybridse::vm::Schema &schema,

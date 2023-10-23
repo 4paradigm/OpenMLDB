@@ -1078,14 +1078,21 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 44924, "2022-12-31", "1900-01-01");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 50, "20220620",
                                                                           "2022-05-01 11:11:11");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 0, "2022-05-01", "20220501");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 0,
+                                                                          "2022-05-01", "20220501");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2022-02-29", "20220501");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1899-05-20",
-                                                                          "2020-05-20");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 9, "1899-05-20", "1899-05-11");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2022-05-40",
                                                                           "2020-05-20");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2020-05-20",
-                                                                          "1899-05-20");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, -30, "1199-10-12", "1199-11-11");
+    // rfc3399 full format
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
+        func_name, 20, "2000-01-01t00:12:00.1+08:00", "1999-12-12T12:12:12+08:00");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
+        func_name, 19, "2000-01-01t00:12:00.1+08:00", "1999-12-12T20:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
+        func_name, 20, "2000-01-01t06:12:00.1+08:00", "1999-12-12T12:12:12Z");
+
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, nullptr, "20220501");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2022-05-01", nullptr);
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, nullptr, nullptr);
@@ -1093,6 +1100,8 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     // mix types
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, -19, "2022-05-01", Date(2022, 5, 20));
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, 19, Date(2022, 5, 20), "2022-05-01");
+    CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, 3, Date(1900, 1, 1), "1899-12-29");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, -3, "1899-12-29", Date(1900, 1, 1));
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, nullptr, nullptr, "2022-05-01");
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, nullptr, Date(2022, 5, 20), nullptr);
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, nullptr, nullptr, nullptr);
@@ -1101,6 +1110,29 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, nullptr, nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, DateDiffNull) {
+    auto func_name = "datediff";
+
+    // out-of-range format
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1900-01-00",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1977-13-01",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "19771232",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T25:12:12Z",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:66:12Z",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:00:61Z",
+                                                                          "1999-12-12T12:12:12Z");
+
+    // invalid format
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:12:12Z",
+                                                                          "202 2-12-2 9");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:12:12Z",
+                                                                          "12:30:30");
+}
 
 class UdfIRCastTest : public ::testing::TestWithParam<std::pair<absl::string_view, Nullable<int64_t>>> {};
 
@@ -1461,6 +1493,86 @@ TEST_F(UdfIRBuilderTest, AddMonths) {
     CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 2, 28), Date(2011, 1, 31), 1);
     CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2010, 11, 30), Date(2012, 1, 31), -14);
     CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2013, 3, 31), Date(2012, 1, 31), 14);
+}
+
+// ========================================================================= //
+//              JSON functions
+// ========================================================================= //
+TEST_F(UdfIRBuilderTest, JsonArrayLength) {
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 0, "[]");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 3, "[1,2,3]");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 5, R"([1,2,3,{"f1":1,"f2":[5,6]},4])");
+
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, R"({})");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, "[1,2,3");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, nullptr);
+}
+
+TEST_F(UdfIRBuilderTest, GetJsonObject) {
+    std::string_view json = R"(
+        {
+          "foo": ["bar", "baz"],
+          "": 0,
+          "a/b": 1,
+          "c%d": 2,
+          "e^f": 3,
+          "g|h": 4,
+          "i\\j": 5,
+          "k\"l": 6,
+          " ": 7,
+          "m~n": 8,
+          "o\p": 9,
+        })";
+    std::initializer_list<std::vector<Nullable<StringRef>>> cases = {
+        // empty json path evaluate to whole document
+        {"[]", "[]", ""},
+        {R"({"k": "val"})", R"({"k": "val"})", ""},
+
+        {absl::StripAsciiWhitespace(json), json, ""},
+        {R"(["bar", "baz"])", json, "/foo"},
+        {"bar", json, "/foo/0"},
+        {"baz", json, "/foo/1"},
+        {nullptr, json, "/foo/2"},
+        {"0", json, "/"},
+        {"1", json, "/a~1b"},  // '/' encoded as '~1'
+        {"2", json, "/c%d"},
+        {"3", json, "/e^f"},
+        {"4", json, "/g|h"},
+        {"5", json, R"(/i\\j)"},
+        {"6", json, R"(/k\"l)"},
+        {"7", json, "/ "},
+        {"8", json, "/m~0n"},  // '~' encoded as '~0'
+        {"9", json, R"(/o\p)"},  // any character can be escaped
+        {nullptr, json, "/bar"},
+        {nullptr, json, "/bar/0"},
+
+        {"", R"({"a": ""})", "/a"},
+        {"str", R"({"a": "str"})", "/a"},
+        {"1", R"({"a": 1})", "/a"},
+        {"null", R"({"a": null})", "/a"},
+        {"true", R"({"a": true})", "/a"},
+        {"false", R"({"a": false})", "/a"},
+        {R"({"c": "d"})", R"({"a": {"c": "d"}})", "/a"},
+
+        {nullptr, "{", ""},
+        {nullptr, R"({"a"})", "/a"},
+
+        // get_json_object do not fully valid the querying object
+        {"flase", R"({"a": flase})", "/a"},
+        {"ni", R"({"a": ni})", "/a"},
+        {"9n", R"({"a": 9n})", "/a"},
+        {"-x", R"({"a": -x})", "/a"},
+        {"[nx]", R"({"a": [nx]})", "/a"},
+        {R"({"g": trx})", R"({"a": {"g": trx}})", "/a"},
+
+        // invalid array/object part result in strange behavior, won't assert in tests
+        // {R"({"g":}})", R"({"a": {"g":}})", "/a"},
+        // {"[xxy}", R"({"a": [xxy})", "/a"},
+    };
+
+    for (auto cs : cases) {
+        CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>("get_json_object", cs[0], cs[1], cs[2]);
+    }
 }
 
 }  // namespace codegen

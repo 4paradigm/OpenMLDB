@@ -105,7 +105,7 @@ public class JobResultSaver {
             return true;
         }
         // save to <log path>/tmp_result/<result_id>/<unique file name>
-        String savePath = String.format("%s/tmp_result/%d", TaskManagerConfig.JOB_LOG_PATH, resultId);
+        String savePath = String.format("%s/tmp_result/%d", TaskManagerConfig.getJobLogPath(), resultId);
         synchronized (this) {
             File saveP = new File(savePath);
             if (!saveP.exists()) {
@@ -151,7 +151,7 @@ public class JobResultSaver {
         }
         String output = "";
         // all finished, read csv from savePath
-        String savePath = String.format("%s/tmp_result/%d", TaskManagerConfig.JOB_LOG_PATH, resultId);
+        String savePath = String.format("%s/tmp_result/%d", TaskManagerConfig.getJobLogPath(), resultId);
         File saveP = new File(savePath);
         // If saveP not exists, means no real result saved. But it may use a uncleaned
         // path, whether read result succeed or not, we should delete it.
@@ -225,7 +225,7 @@ public class JobResultSaver {
         synchronized (idStatus) {
             Collections.fill(idStatus, 0);
         }
-        String tmpResultDir = String.format("%s/tmp_result", TaskManagerConfig.JOB_LOG_PATH);
+        String tmpResultDir = String.format("%s/tmp_result", TaskManagerConfig.getJobLogPath());
         // delete anyway
         FileUtils.forceDelete(new File(tmpResultDir));
     }

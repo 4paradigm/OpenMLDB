@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.common.codec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.nio.ByteBuffer;
 import java.sql.Date;
 
 public class TestCodecUtil {
@@ -79,5 +80,14 @@ public class TestCodecUtil {
         Assert.assertEquals(actualDays, expectDays);
     }
 
+    @Test
+    public void testSetStrOffset() {
+        for (int i = 1; i < 1000000; i++) {
+            int addLen = CodecUtil.getAddrLength(i);
+            ByteBuffer buf = ByteBuffer.allocate(addLen);
+            CodecUtil.setStrOffset(buf, 0, i, addLen);
+            Assert.assertEquals(i, CodecUtil.getStrOffset(buf, 0, addLen));
+        }
+    }
 }
 

@@ -306,8 +306,8 @@ class NameServerImpl : public NameServer {
                        const ::openmldb::nameserver::TableInfo& table_info_local, uint32_t pid, int& code,  // NOLINT
                        std::string& msg);                                                                   // NOLINT
 
-    int CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, bool is_leader,
-                            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);  // NOLINT
+    base::Status CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
+            bool is_leader, uint64_t term, std::map<uint32_t, std::vector<std::string>>* endpoint_map);
 
     void CheckZkClient();
 
@@ -681,6 +681,8 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<api::ProcedureInfo> GetProcedure(const std::string& db, const std::string& name);
 
     bool IsExistDataBase(const std::string& db);
+
+    bool IsExistActiveOp(const std::string& db, const std::string& name, api::OPType op_type);
 
  private:
     std::mutex mu_;

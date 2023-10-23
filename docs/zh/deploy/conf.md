@@ -138,6 +138,8 @@
 --ssd_root_path=./db_ssd
 # 配置数据回收站目录，drop表的数据就会放在这里
 --recycle_bin_ssd_root_path=./recycle_ssd
+# 配置是否开启回收站, 如果开启drop table后的数据会放到recycle目录里
+#--recycle_bin_enabled=true
 
 # snapshot conf
 # 配置做snapshot的时间，配置为一天中的几点。如23就表示每天23点做snapshot
@@ -270,6 +272,15 @@ hadoop.conf.dir=
 ### Spark Config详解
 
 Spark Config中重点关注的配置如下：
+
+```{note}
+理解配置项与环境变量的关系。
+
+TaskManager会通过SparkSubmit创建Spark进程，因此环境变量不会简单的直接继承。举例说明：在0.8.2及以前的版本中，为了Spark进程可以读写HADOOP，可以连接YARN集群，需要配置环境变量`HADOOP_CONF_DIR`。在以后的版本中，可以通过配置项`hadoop.conf.dir`指定Hadoop配置文件所在目录，TaskManager会将此项作为环境变量传递给Spark进程。但最优先的是Spark自身的spark-env.sh，如果此处已经配置好了，TaskManager无法覆盖此项。
+所以，优先级为：spark-env.sh > TaskManager配置 > 当前环境变量HADOOP_CONF_DIR。
+
+其中，`spark.home`仅用于TaskManager来识别Spark安装目录，不会传递给Spark进程。`hadoop.conf.dir`, `hadoop.user.name` 将会传递给Spark进程。如果有其他的变量需要传递，需要修改代码。
+```
 
 #### spark.home
 

@@ -233,6 +233,7 @@ object HybridseUtil {
       updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
       updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
     }
+
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
     val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase
@@ -250,6 +251,8 @@ object HybridseUtil {
 
     // only for select into, "" means N/A
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
+    extraOptions += ("sql" -> parseOption(getOptionFromNode(node, "sql"), "", getStringOrDefault))
+    extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single", getStringOrDefault)
 
     (format, options.toMap, mode, extraOptions.toMap)
   }
@@ -313,7 +316,12 @@ object HybridseUtil {
 
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
                columns: util.List[Common.ColumnDesc]): DataFrame = {
-    autoLoad(openmldbSession, file, List.empty[String], format, options, columns)
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, "")
+  }
+
+  def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
+               columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, loadDataSql)
   }
 
   // Load df from file **and** symbol paths, they should in the same format and options.
@@ -326,7 +334,8 @@ object HybridseUtil {
   // We use OpenmldbSession for running sparksql in hiveLoad. If in 4pd Spark distribution, SparkSession.sql
   // will do openmldbSql first, and if DISABLE_OPENMLDB_FALLBACK, we can't use sparksql.
   def autoLoad(openmldbSession: OpenmldbSession, file: String, symbolPaths: List[String], format: String,
-               options: Map[String, String], columns: util.List[Common.ColumnDesc]): DataFrame = {
+               options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String = "")
+    : DataFrame = {
     val fmt = format.toLowerCase
     if (fmt.equals("hive")) {
       logger.info(s"load data from hive table $file & $symbolPaths")
@@ -334,16 +343,16 @@ object HybridseUtil {
         var outputDf: DataFrame = null
         symbolPaths.zipWithIndex.foreach { case (path, index) =>
           if (index == 0) {
-            outputDf = HybridseUtil.hiveLoad(openmldbSession, path, columns);
+            outputDf = HybridseUtil.hiveLoad(openmldbSession, path, columns, loadDataSql)
           } else {
-            outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns))
+            outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns, loadDataSql))
           }
         }
         outputDf
       } else {
-        var outputDf = HybridseUtil.hiveLoad(openmldbSession, file, columns)
+        var outputDf = HybridseUtil.hiveLoad(openmldbSession, file, columns, loadDataSql)
         for (path: String <- symbolPaths) {
-          outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns))
+          outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns, loadDataSql))
         }
         outputDf
       }
@@ -354,16 +363,18 @@ object HybridseUtil {
         var outputDf: DataFrame = null
         symbolPaths.zipWithIndex.foreach { case (path, index) =>
           if (index == 0) {
-            outputDf = HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns);
+            outputDf = HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
           } else {
-            outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns))
+            outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns,
+              loadDataSql))
           }
         }
         outputDf
       } else {
-        var outputDf = HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
+        var outputDf = HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns, loadDataSql)
         for (path: String <- symbolPaths) {
-          outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns))
+          outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns,
+            loadDataSql))
         }
         outputDf
       }
@@ -375,7 +386,7 @@ object HybridseUtil {
   // 2. spark read may change the df schema to all nullable
   // So we should fix it.
   private def autoFileLoad(openmldbSession: OpenmldbSession, file: String, format: String,
-    options: Map[String, String], columns: util.List[Common.ColumnDesc]): DataFrame = {
+    options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
     require(format.equals("csv") || format.equals("parquet"))
     val reader = openmldbSession.getSparkSession.read.options(options)
 
@@ -383,7 +394,13 @@ object HybridseUtil {
     var df = if (format.equals("parquet")) {
       // When reading Parquet files, all columns are automatically converted to be nullable for compatibility reasons.
       // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
-      val df = reader.format(format).load(file)
+      val df = if (loadDataSql != null && loadDataSql.nonEmpty) {
+        reader.format(format).load(file).createOrReplaceTempView("file")
+        openmldbSession.sparksql(loadDataSql)
+      } else {
+        reader.format(format).load(file)
+      }
+
       require(checkSchemaIgnoreNullable(df.schema, oriSchema),
         s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
       // reset nullable property
@@ -401,6 +418,11 @@ object HybridseUtil {
           logger.debug(s"cast $tsCol to timestamp")
           df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
         }
+      }
+
+      if (loadDataSql != null && loadDataSql.nonEmpty) {
+        df.createOrReplaceTempView("file")
+        df = openmldbSession.sparksql(loadDataSql)
       }
 
       if (logger.isDebugEnabled()) {
@@ -429,14 +451,19 @@ object HybridseUtil {
     path.substring(tableStartPos)
   }
 
-  private def hiveLoad(openmldbSession: OpenmldbSession, file: String, columns: util.List[Common.ColumnDesc]):
-    DataFrame = {
+  private def hiveLoad(openmldbSession: OpenmldbSession, file: String, columns: util.List[Common.ColumnDesc],
+                       loadDataSql: String = ""): DataFrame = {
     if (logger.isDebugEnabled()) {
       logger.debug("session catalog {}", openmldbSession.getSparkSession.sessionState.catalog)
       openmldbSession.sparksql("show tables").show()
     }
     // use sparksql to read hive, no need to try openmldbsql and then fallback to sparksql
-    val df = openmldbSession.sparksql(s"SELECT * FROM ${hiveDest(file)}")
+    val df = if (loadDataSql != null && loadDataSql.nonEmpty) {
+      logger.debug("Try to execute custom SQL for hive: " + loadDataSql)
+      openmldbSession.sparksql(loadDataSql)
+    } else {
+      openmldbSession.sparksql(s"SELECT * FROM ${hiveDest(file)}")
+    }
     if (logger.isDebugEnabled()) {
       logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
       df.show(10)

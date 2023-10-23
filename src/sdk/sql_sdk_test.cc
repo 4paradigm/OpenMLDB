@@ -141,7 +141,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -153,7 +153,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -193,7 +193,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -209,7 +209,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureAsynTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }

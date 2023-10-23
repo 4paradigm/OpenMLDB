@@ -857,8 +857,7 @@ class ProxyRequestRunner : public Runner {
         const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
     std::shared_ptr<DataHandlerList> BatchRequestRun(
         RunnerContext& ctx) override;  // NOLINT
-    virtual void PrintRunnerInfo(std::ostream& output,
-                                 const std::string& tab) const {
+    void PrintRunnerInfo(std::ostream& output, const std::string& tab) const override {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
                << "(TASK_ID=" << task_id_ << ")";
         if (is_lazy_) {
@@ -947,6 +946,9 @@ class RouteInfo {
     const std::string ToString() const {
         if (IsCompleted()) {
             std::ostringstream oss;
+            if (lazy_route_) {
+                oss << "[LAZY]";
+            }
             oss << ", routing index = " << table_handler_->GetDatabase() << "."
                 << table_handler_->GetName() << "." << index_ << ", "
                 << index_key_.ToString();
@@ -960,6 +962,9 @@ class RouteInfo {
     Runner* index_key_input_runner_;
     std::shared_ptr<ClusterTask> input_;
     std::shared_ptr<TableHandler> table_handler_;
+
+    // if true: generate the complete ClusterTask only when requires
+    bool lazy_route_ = false;
 };
 
 // task info of cluster job
@@ -968,9 +973,12 @@ class RouteInfo {
 // request generator
 class ClusterTask {
  public:
+    // common tasks
     ClusterTask() : root_(nullptr), input_runners_(), route_info_() {}
     explicit ClusterTask(Runner* root)
         : root_(root), input_runners_(), route_info_() {}
+
+    // cluster task with explicit routeinfo
     ClusterTask(Runner* root, const std::shared_ptr<TableHandler> table_handler,
                 std::string index)
         : root_(root), input_runners_(), route_info_(index, table_handler) {}
@@ -978,6 +986,7 @@ class ClusterTask {
                 const RouteInfo& route_info)
         : root_(root), input_runners_(input_runners), route_info_(route_info) {}
     ~ClusterTask() {}
+
     void Print(std::ostream& output, const std::string& tab) const {
         output << route_info_.ToString() << "\n";
         if (nullptr == root_) {
@@ -986,6 +995,11 @@ class ClusterTask {
             std::set<int32_t> visited_ids;
             root_->Print(output, tab, &visited_ids);
         }
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const ClusterTask& output) {
+        output.Print(os, "");
+        return os;
     }
 
     void ResetInputs(std::shared_ptr<ClusterTask> input) {
@@ -1180,8 +1194,7 @@ class RunnerBuilder {
                                Status& status) {  // NOLINT
         id_ = 0;
         cluster_job_.Reset();
-        auto task =  // NOLINT whitespace/braces
-            Build(node, status);
+        auto task = Build(node, status);
         if (!status.isOK()) {
             return cluster_job_;
         }
@@ -1215,6 +1228,7 @@ class RunnerBuilder {
 
  private:
     node::NodeManager* nm_;
+    // only set for request mode
     bool support_cluster_optimized_;
     int32_t id_;
     ClusterJob cluster_job_;

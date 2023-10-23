@@ -153,72 +153,18 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     return true;
 }
 
-bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
-                               bool leader, const std::vector<std::string>& endpoints,
-                               const ::openmldb::type::TTLType& type, uint32_t seg_cnt, uint64_t term,
-                               const ::openmldb::type::CompressType compress_type,
-                               ::openmldb::common::StorageMode storage_mode) {
-    ::openmldb::api::CreateTableRequest request;
-    if (type == ::openmldb::type::kLatestTime) {
-        if (lat_ttl > FLAGS_latest_ttl_max) {
-            return false;
-        }
-    } else if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-        if (abs_ttl > FLAGS_absolute_ttl_max) {
-            return false;
-        }
-    } else {
-        if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
-            return false;
-        }
-    }
-    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name(name);
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    table_meta->set_compress_type(compress_type);
-    table_meta->set_seg_cnt(seg_cnt);
-    table_meta->set_storage_mode(storage_mode);
-    if (leader) {
-        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
-        table_meta->set_term(term);
-    } else {
-        table_meta->set_mode(::openmldb::api::TableMode::kTableFollower);
-    }
-    for (size_t i = 0; i < endpoints.size(); i++) {
-        table_meta->add_replicas(endpoints[i]);
-    }
-    ::openmldb::common::ColumnDesc* column_desc = table_meta->add_column_desc();
-    column_desc->set_name("idx0");
-    column_desc->set_data_type(::openmldb::type::kString);
-    ::openmldb::common::ColumnKey* index = table_meta->add_column_key();
-    index->set_index_name("idx0");
-    index->add_col_name("idx0");
-    ::openmldb::common::TTLSt* ttl = index->mutable_ttl();
-    ttl->set_abs_ttl(abs_ttl);
-    ttl->set_lat_ttl(lat_ttl);
-    ttl->set_ttl_type(type);
-    // table_meta->set_ttl_type(type);
-    ::openmldb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
-                                  FLAGS_request_timeout_ms * 2, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
-}
-
-bool TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_meta) {
+base::Status TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_meta) {
     ::openmldb::api::CreateTableRequest request;
     ::openmldb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
     table_meta_ptr->CopyFrom(table_meta);
     ::openmldb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
-                                  FLAGS_request_timeout_ms * 2, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
+                                  FLAGS_request_timeout_ms * 2, 1)) {
+        return {base::ReturnCode::kRPCError, "send request failed!"};
+    } else if (response.code() == 0) {
+        return {};
     }
-    return false;
+    return {response.code(), response.msg()};
 }
 
 bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<openmldb::common::ColumnDesc>& cols,
@@ -635,7 +581,7 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo
     ::openmldb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::DropTable, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    if (!ok || response.code() != 0) {
+    if (!ok || (response.code() != 0 && response.code() != base::ReturnCode::kTableIsNotExist)) {
         return false;
     }
     return true;
@@ -1165,7 +1111,7 @@ bool TabletClient::Scan(const ::openmldb::api::ScanRequest& request, brpc::Contr
     return true;
 }
 
-bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                                  brpc::Controller* cntl, openmldb::api::QueryResponse* response, bool is_debug,
                                  uint64_t timeout_ms) {
     if (cntl == NULL || response == NULL) return false;
@@ -1236,6 +1182,87 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
     return true;
 }
 
+bool static ParseBatchRequestMeta(const base::Slice& meta, const base::Slice& data,
+        ::openmldb::api::SQLBatchRequestQueryRequest* request) {
+    uint64_t total_len = 0;
+    const int32_t* buf = reinterpret_cast<const int32_t*>(meta.data());
+    int32_t cnt = meta.size() / sizeof(int32_t);
+    for (int32_t idx = 0; idx < cnt; idx++) {
+        // the first field is for common_slice
+        if (idx == 0) {
+            if (buf[idx] == 0) {
+                request->set_common_slices(0);
+            } else {
+                request->set_common_slices(1);
+                request->add_row_sizes(buf[idx]);
+            }
+        } else {
+            request->add_row_sizes(buf[idx]);
+        }
+        total_len += buf[idx];
+    }
+    if (total_len != data.size()) {
+        return false;
+    }
+    return true;
+}
+
+base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+        const base::Slice& meta, const base::Slice& data,
+        bool is_debug, uint64_t timeout_ms,
+        brpc::Controller* cntl, openmldb::api::SQLBatchRequestQueryResponse* response) {
+    ::openmldb::api::SQLBatchRequestQueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_is_procedure(true);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_common_slices(0);
+    request.set_non_common_slices(1);
+    cntl->set_timeout_ms(timeout_ms);
+    if (!ParseBatchRequestMeta(meta, data, &request)) {
+        return {base::ReturnCode::kError, "parse meta data failed"};
+    }
+    auto& io_buf = cntl->request_attachment();
+    if (io_buf.append(data.data(), data.size()) != 0) {
+        return {base::ReturnCode::kError, "append to iobuf error"};
+    }
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery, cntl, &request, response);
+    if (!ok || response->code() != ::openmldb::base::kOk) {
+        LOG(WARNING) << "fail to query tablet";
+        return {base::ReturnCode::kError, "fail to query tablet. " + response->msg()};
+    }
+    return {};
+}
+
+base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+        const base::Slice& meta, const base::Slice& data,
+        bool is_debug, uint64_t timeout_ms,
+        openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback) {
+    if (callback == nullptr) {
+        return {base::ReturnCode::kError, "callback is null"};
+    }
+    ::openmldb::api::SQLBatchRequestQueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_is_procedure(true);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_common_slices(0);
+    request.set_non_common_slices(1);
+    if (!ParseBatchRequestMeta(meta, data, &request)) {
+        return {base::ReturnCode::kError, "parse meta data failed"};
+    }
+    auto& io_buf = callback->GetController()->request_attachment();
+    if (io_buf.append(data.data(), data.size()) != 0) {
+        return {base::ReturnCode::kError, "append to iobuf error"};
+    }
+    callback->GetController()->set_timeout_ms(timeout_ms);
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                               callback->GetController().get(), &request, callback->GetResponse().get(), callback)) {
+        return {base::ReturnCode::kError, "stub is null"};
+    }
+    return {};
+}
+
 bool TabletClient::DropProcedure(const std::string& db_name, const std::string& sp_name) {
     ::openmldb::api::DropProcedureRequest request;
     ::openmldb::api::GeneralResponse response;
@@ -1249,7 +1276,7 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
     return true;
 }
 
-bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                                  uint64_t timeout_ms, bool is_debug,
                                  openmldb::RpcCallback<openmldb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
