@@ -15,6 +15,7 @@
  */
 
 #include "codegen/type_ir_builder.h"
+
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"

@@ -26,10 +26,6 @@
 #include "absl/strings/ascii.h"
 #include "base/string_ref.h"
 #include "base/type.h"
-#include "codec/list_iterator_codec.h"
-#include "codec/type_codec.h"
-#include "node/node_manager.h"
-#include "proto/fe_type.pb.h"
 #include "udf/literal_traits.h"
 #include "udf/openmldb_udf.h"
 

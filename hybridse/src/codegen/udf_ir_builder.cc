@@ -15,19 +15,17 @@
  */
 
 #include "codegen/udf_ir_builder.h"
-#include <iostream>
-#include <utility>
+
 #include <vector>
+
 #include "codegen/context.h"
-#include "codegen/date_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
 #include "codegen/null_ir_builder.h"
-#include "codegen/timestamp_ir_builder.h"
+#include "codegen/type_ir_builder.h"
 #include "llvm/IR/Attributes.h"
-#include "node/node_manager.h"
 #include "node/sql_node.h"
-#include "udf/udf.h"
 #include "udf/udf_registry.h"
 
 using ::hybridse::common::kCodegenError;
@@ -162,7 +160,7 @@ Status UdfIRBuilder::BuildLambdaCall(
 Status UdfIRBuilder::BuildCodeGenUdfCall(
     const node::UdfByCodeGenDefNode* fn,
     const std::vector<NativeValue>& args, NativeValue* output) {
-    auto gen_impl = fn->GetGenImpl();
+    std::shared_ptr<udf::LlvmUdfGenBase> gen_impl = fn->GetGenImpl();
 
     ::llvm::Value* ret_null = nullptr;
     for (size_t i = 0; i < fn->GetArgSize(); ++i) {
