@@ -16,7 +16,7 @@ The following diagram illustrates the typical process of using OpenMLDB for feat
 6. Online Data Preview (optional): Preview and check online data using supported SQL commands. This step is not mandatory.
 7. Real-time Feature Calculation: After the feature scheme is deployed and the data is correctly accessed, a real-time feature calculation service that can respond to online requests will be obtained.
 
-## Overview of execution mode
+## Overview of Execution Mode
 
 As the data objects for offline and online scenarios are different, their underlying storage and computing nodes are also different. Therefore, OpenMLDB provides several built-in execution modes to support the above steps. The following table summarizes the execution modes and development tools used for each step, and three execution modes will be discussed in detail later.
 
@@ -37,35 +37,33 @@ After starting OpenMLDB CLI, the **default mode is offline mode**. Offline data 
 Offline mode has the following main features:
 
 - The offline mode supports most of the SQL syntax provided by OpenMLDB, including complex SQL syntax such as `LAST JOIN` and `WINDOW UNION`.
-
 - In offline mode, some SQL commands are executed asynchronously, such as `LOAD DATA`, `SELECT`, and `SELECT INTO`. Other SQL commands are executed synchronously.
-
 - The asynchronous SQL is managed by the internal TaskManager and can be viewed and managed through commands such as `SHOW JOBS`, `SHOW JOB`, and `STOP JOB`.
 
 :::{tip}
 Unlike many relational database systems, the `SELECT` command in offline mode is executed asynchronously by default. If you need to set it to synchronous execution, refer to setting the command to run synchronously in offline mode. During offline feature development, if asynchronous execution is used, it is strongly recommended to use the `SELECT INTO` statement for development and debugging, which can export the results to a file for easy viewing.
 :::
-```
 
-The `DEPLOY` command for feature deployment is also executed in offline mode. Its specification can refer to the OpenMLDB SQL online specification and requirements.
+
+The `DEPLOY` command for feature deployment is also executed in offline mode. Its specification can refer to the [OpenMLDB SQL online specification and requirements](../../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md).
 
 Offline mode setting command (OpenMLDB CLI): `SET @@execute_mode='offline'`.
 
-### Online preview mode
+### Online Preview Mode
 
 Cold start online data import, real-time data access, and online data preview are executed in online preview mode. The purpose of the online preview mode is to manage and preview online data. Storage and computation of online data are supported by the tablet component.
 
 The main features of the online preview mode are:
 
 - `LOAD DATA`, used for online data import, can be done either locally (load_mode='local') or on the cluster (load_mode='cluster'). Local import is synchronous, while cluster import is asynchronous (same as in offline mode). Other operations are synchronous.
-- Online preview mode is mainly used for previewing limited data. Selecting and viewing data directly through SELECT in OpenMLDB CLI or SDKs may result in data truncation. If the data volume is large, it is recommended to use an [export tool](https://openmldb.ai/docs/zh/main/tutorial/data_export.html) to view the complete data.
-- SELECT statements in online preview mode currently do not support more complex queries such as `LAST JOIN` and `ORDER BY`. Refer to [SELECT](https://openmldb.ai/docs/zh/main/openmldb_sql/dql/SELECT_STATEMENT.html).
+- Online preview mode is mainly used for previewing limited data. Selecting and viewing data directly through SELECT in OpenMLDB CLI or SDKs may result in data truncation. If the data volume is large, it is recommended to use an [export tool](../../tutorial/data_export.html) to view the complete data.
+- SELECT statements in online preview mode currently do not support more complex queries such as `LAST JOIN` and `ORDER BY`. Refer to [SELECT](../../openmldb_sql/dql/SELECT_STATEMENT.html).
 - The server in the online preview mode executes SQL statements on a single thread. For large data processing, it may be slow and may trigger a timeout. To increase the timeout period, the `--request_timeout` can be configured on the client.
-- To prevent impact on online services, online preview mode limits the maximum number of accessed records and the number of different keys. This can be configured using `--max_traverse_cnt` and `--max_traverse_key_cnt`. Similarly, the maximum result size can be set using `--scan_max_bytes_size`. For detailed configuration, refer to the configuration file.
+- To prevent impact on online services, online preview mode limits the maximum number of accessed records and the number of different keys. This can be configured using `--max_traverse_cnt` and `--max_traverse_key_cnt`. Similarly, the maximum result size can be set using `--scan_max_bytes_size`. For detailed configuration, refer to the [configuration file](../../deploy/conf.md).
 
 The command for setting online preview mode in OpenMLDB CLI: `SET @@execute_mode='online'`
 
-### Online request mode
+### Online Request Mode
 
 After deploying feature scripts and accessing online data, the real-time feature computing service is ready to use, and real-time feature extraction can be performed through the online request mode. REST APIs and SDKs support the online request mode. The online request mode is a unique mode in OpenMLDB that supports real-time online computing and is very different from common SQL queries in databases.
 
