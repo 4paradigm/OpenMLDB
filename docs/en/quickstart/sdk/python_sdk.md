@@ -233,7 +233,7 @@ openmldb.sql_magic.register(db)
 
 Then you can use line magic function `%sql` and block magic function `%%sql` in Notebook.
 
-![img](https://openmldb.ai/docs/zh/main/_images/openmldb_magic_function.png)
+![img](../images/openmldb_magic_function.png)
 
 ## A Complete Example
 
