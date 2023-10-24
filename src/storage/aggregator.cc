@@ -228,11 +228,11 @@ bool Aggregator::DeleteData(const std::string& key, const std::optional<uint64_t
     }
     // delete the entries from the pre-aggr table
     if (!aggr_table_->Delete(entry)) {
-        PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
+        PDLOG(ERROR, "Delete key %s from aggr table %s failed", key.c_str(), aggr_table_->GetName().c_str());
         return false;
     }
     if (!aggr_replicator_->AppendEntry(entry)) {
-        PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());
+        PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key.c_str(), aggr_table_->GetName().c_str());
         return false;
     }
     if (FLAGS_binlog_notify_on_put) {
@@ -243,10 +243,6 @@ bool Aggregator::DeleteData(const std::string& key, const std::optional<uint64_t
 
 bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& start_ts,
         const std::optional<uint64_t>& end_ts) {
-    if (GetStat() != AggrStat::kInited) {
-        PDLOG(WARNING, "Aggregator status is not kInited");
-        return false;
-    }
     if (!start_ts.has_value() && !end_ts.has_value()) {
         return DeleteData(key, start_ts, end_ts);
     }
@@ -427,7 +423,7 @@ bool Aggregator::FlushAll() {
 
 bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     if (GetStat() != AggrStat::kUnInit) {
-        PDLOG(INFO, "aggregator status is %s", AggrStatToString(GetStat()));
+        PDLOG(INFO, "aggregator status is %s", AggrStatToString(GetStat()).c_str());
         return true;
     }
     if (!base_replicator) {
@@ -1313,11 +1309,11 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
 
     // _where variant
     if (filter_col.empty()) {
-        PDLOG(ERROR, "no filter column specified for %s", aggr_type);
+        PDLOG(ERROR, "no filter column specified for %s", aggr_type.c_str());
         return {};
     }
     if (!agg->SetFilter(filter_col)) {
-        PDLOG(ERROR, "can not find filter column '%s' for %s", filter_col, aggr_type);
+        PDLOG(ERROR, "can not find filter column '%s' for %s", filter_col.c_str(), aggr_type.c_str());
         return {};
     }
     return agg;

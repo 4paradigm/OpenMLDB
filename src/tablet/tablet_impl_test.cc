@@ -5827,7 +5827,7 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
                 ::openmldb::api::PutRequest prequest;
                 ::openmldb::test::SetDimension(0, key, prequest.add_dimensions());
                 prequest.set_time(i);
-                prequest.set_value(EncodeAggrRow("id1", i, i));
+                prequest.set_value(EncodeAggrRow(key, i, i));
                 prequest.set_tid(base_table_id);
                 prequest.set_pid(1);
                 ::openmldb::api::PutResponse presponse;
@@ -5943,7 +5943,7 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
             auto aggr = aggrs->at(0);
             ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
             if (k == 1) {
-                ASSERT_EQ(0, result.second);
+                ASSERT_EQ(0, result.second) << "scan key is " << key << " tid " << aggr_table_id;
                 ASSERT_FALSE(aggr->GetAggrBuffer(key, &aggr_buffer));
                 ASSERT_EQ(nullptr, aggr_buffer);
             } else {
