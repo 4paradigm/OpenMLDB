@@ -1597,79 +1597,80 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         PDLOG(WARNING, "invalid args. tid %u, pid %u", tid, pid);
         return;
     }
-    if (table->Delete(entry)) {
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-        DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, request->key().c_str());
-    } else {
-        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-        response->set_msg("delete failed");
-        return;
-    }
-    auto get_aggregator = [this](uint32_t tid, uint32_t pid, uint32_t idx) -> std::shared_ptr<Aggregator> {
-        auto aggrs = GetAggregators(tid, pid);
-        if (aggrs) {
-            for (const auto& aggr : *aggrs) {
-                if (aggr->GetIndexPos() == idx) {
-                    return aggr;
-                }
-            }
-        }
-        return {};
-    };
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-    std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()} : std::nullopt;
-    std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()} : std::nullopt;
-    if (entry.dimensions_size() > 0) {
-        for (const auto& dimension : entry.dimensions()) {
-            if (!table->Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
-                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                response->set_msg("delete failed");
-                return;
-            }
-            auto aggr = get_aggregator(tid, pid, dimension.idx());
-            if (aggr) {
-                if (!aggr->Delete(dimension.key(), start_ts, end_ts)) {
-                    PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
-                            "aggr table: tid[%u]",
-                          tid, pid, idx, dimension.key().c_str(), aggr->GetAggrTid());
-                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                    response->set_msg("delete from associated pre-aggr table failed");
-                    return;
-                }
-            }
-            DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, dimension.key().c_str());
+    auto aggrs = GetAggregators(tid, pid);
+    if (!aggrs) {
+        if (table->Delete(entry)) {
+            DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, request->key().c_str());
+        } else {
+            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("delete failed");
+            return;
         }
     } else {
-        for (const auto& index_def : table->GetAllIndex()) {
-            if (!index_def || !index_def->IsReady()) {
-                continue;
+        auto get_aggregator = [this](std::shared_ptr<Aggrs> aggrs, uint32_t idx) -> std::shared_ptr<Aggregator> {
+            if (aggrs) {
+                for (const auto& aggr : *aggrs) {
+                    if (aggr->GetIndexPos() == idx) {
+                        return aggr;
+                    }
+                }
             }
-            uint32_t idx = index_def->GetId();
-            std::unique_ptr<storage::TraverseIterator> iter(table->NewTraverseIterator(idx));
-            iter->SeekToFirst();
-            while (iter->Valid()) {
-                auto pk = iter->GetPK();
-                iter->NextPK();
-                if (!table->Delete(idx, pk, start_ts, end_ts)) {
+            return {};
+        };
+        std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()} : std::nullopt;
+        std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()} : std::nullopt;
+        if (entry.dimensions_size() > 0) {
+            for (const auto& dimension : entry.dimensions()) {
+                if (!table->Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
                     response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
                     response->set_msg("delete failed");
                     return;
                 }
-                auto aggr = get_aggregator(tid, pid, idx);
+                auto aggr = get_aggregator(aggrs, dimension.idx());
                 if (aggr) {
-                    if (!aggr->Delete(pk, start_ts, end_ts)) {
+                    if (!aggr->Delete(dimension.key(), start_ts, end_ts)) {
                         PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
-                                "aggr table: tid[%u]", tid, pid, idx, pk.c_str(), aggr->GetAggrTid());
+                                "aggr table: tid[%u]",
+                              tid, pid, idx, dimension.key().c_str(), aggr->GetAggrTid());
                         response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
                         response->set_msg("delete from associated pre-aggr table failed");
                         return;
                     }
                 }
+                DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, dimension.key().c_str());
+            }
+        } else {
+            for (const auto& index_def : table->GetAllIndex()) {
+                if (!index_def || !index_def->IsReady()) {
+                    continue;
+                }
+                uint32_t idx = index_def->GetId();
+                std::unique_ptr<storage::TraverseIterator> iter(table->NewTraverseIterator(idx));
+                iter->SeekToFirst();
+                while (iter->Valid()) {
+                    auto pk = iter->GetPK();
+                    iter->NextPK();
+                    if (!table->Delete(idx, pk, start_ts, end_ts)) {
+                        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                        response->set_msg("delete failed");
+                        return;
+                    }
+                    auto aggr = get_aggregator(aggrs, idx);
+                    if (aggr) {
+                        if (!aggr->Delete(pk, start_ts, end_ts)) {
+                            PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
+                                    "aggr table: tid[%u]", tid, pid, idx, pk.c_str(), aggr->GetAggrTid());
+                            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                            response->set_msg("delete from associated pre-aggr table failed");
+                            return;
+                        }
+                    }
+                }
             }
         }
     }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 
     replicator->AppendEntry(entry);
     if (FLAGS_binlog_notify_on_put) {
