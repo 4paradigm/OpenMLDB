@@ -232,7 +232,8 @@ bool Aggregator::DeleteData(const std::string& key, const std::optional<uint64_t
         return false;
     }
     if (!aggr_replicator_->AppendEntry(entry)) {
-        PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key.c_str(), aggr_table_->GetName().c_str());
+        PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s",
+                key.c_str(), aggr_table_->GetName().c_str());
         return false;
     }
     if (FLAGS_binlog_notify_on_put) {
