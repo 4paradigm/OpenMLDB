@@ -1,8 +1,8 @@
 # REST API
 
-## Important Information
+## Important
 
-REST APIs interact with the services of APIServer and OpenMLDB, so the APIServer module must be properly deployed to be used effectively. APIServer is an optional module during installation and deployment. Refer to the APIServer deployment document.
+REST APIs interact with the services of APIServer and OpenMLDB, so the APIServer module must be properly deployed to be used effectively. APIServer is an optional module during installation and deployment. Refer to [APIServer Deployment](../../deploy/install_deploy.md).
 
 At this stage, APIServer is mainly used for functional testing, not recommended for performance testing, nor recommended for the production environment. The default deployment of APIServer does not have a high availability mechanism at present and introduces additional network and codec overhead.
 
@@ -23,7 +23,6 @@ The requestor:
 ```
 
 - Currently, it only supports inserting one piece of data.
-
 - The data should be arranged in strict accordance with the schema.
 
 Sample request data:
@@ -85,7 +84,7 @@ Requestor
 
 Example 1: Array format
 
-```plain
+```Plain
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
         "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
@@ -106,9 +105,7 @@ Response:
 Example 2: JSON format
 
 ```JSON
-curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-  "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
-    }'
+curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]}'
 ```
 
 Response:
@@ -125,7 +122,7 @@ Response:
 
 ## Query
 
-Request address: http://ip:port/dbs/ {db_name}
+Request address: http://ip:port/dbs/{db_name}
 
 Request method: POST
 
@@ -146,7 +143,7 @@ Request parameters:
 
 | Parameters | Type   | Requirement | Description                                                  |
 | ---------- | ------ | ----------- | ------------------------------------------------------------ |
-| mode       | String | Yes         | Available for `offsync` , `offasync`, `online`               |
+| mode       | String | Yes         | Set to `offsync` , `offasync`, `online`               |
 | sql        | String | Yes         |                                                              |
 | input      | Object | No          |                                                              |
 | schema     | Array  | No          | Support data types (case insensitive): `Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date and Timestamp` |
