@@ -1,18 +1,20 @@
 # Python SDK
 
-## Python SDK package installation
+The default execution mode is Online.
 
-Execute the following command to install the Python SDK package:
+## Python SDK Installation
+
+Execute the following command to install Python SDK:
 
 ```bash
 pip install openmldb
 ```
 
-## OpenMLDB DBAPI usage
+## OpenMLDB DBAPI
 
-This section demonstrates the basic use of the OpenMLDB DB API.
+This section demonstrates the basic use of the OpenMLDB DB API. For all DBAPI interfaces, if an execution fails, it will raise a `DatabaseError` exception. Users can catch this exception and handle it as needed. The return value is a `Cursor`. For DDL SQL, you do not need to handle the return value. For other SQL statements, you can refer to the specific examples below for how to handle the return value.
 
-### Create connection
+### Create Connection
 
 Parameter `db_name` name must exist, and the database must be created before the connection is created. To continue, create a connection without a database and then use the database db through the `execute ("USE<db>")` command.
 
@@ -24,11 +26,11 @@ cursor = db.cursor()
 
 #### Configuration Details
 
-Zk and zkPath configuration are required.
+Zk and zkPath configurations are required.
 
-The Python SDK can be used through OpenMLDB DBAPI/SQLAlchemy. The optional configurations are basically the same as those of the Java client. Please refer to the [Java SDK configuration](https://openmldb.ai/docs/zh/main/quickstart/sdk/java_sdk.html#sdk) for details.
+The Python SDK can be used through OpenMLDB DBAPI/SQLAlchemy. The optional configurations are basically the same as those of the Java client. Please refer to the [Java SDK configuration](./java_sdk.md#sdk-configuration-details) for details.
 
-### Create database
+### Create Database
 
 Create database `db1`:
 
@@ -37,7 +39,7 @@ cursor.execute("CREATE DATABASE db1")
 cursor.execute("USE db1")
 ```
 
-### Create table
+### Create Table
 
 Create table `t1`:
 
@@ -45,7 +47,7 @@ Create table `t1`:
 cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 ```
 
-### Insert data into the table
+### Insert Data into Table
 
 Insert one sentence of data into the table:
 
@@ -53,7 +55,7 @@ Insert one sentence of data into the table:
 cursor.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1)")
 ```
 
-### Execute SQL query
+### Execute SQL Query
 
 ```python
 result = cursor.execute("SELECT * FROM t1")
@@ -62,15 +64,30 @@ print(result.fetchmany(10))
 print(result.fetchall())
 ```
 
-### SQL batch request query
+### SQL Batch Query
 
 ```python
-#In the Batch Request mode, the input parameters of the interface are“SQL”, “Common_Columns”, “Request_Columns”
+#In the Batch Request mode, the input parameters of the interface are "SQL", "Common_Columns", "Request_Columns"
 result = cursor.batch_row_request("SELECT * FROM t1", ["col1","col2"], ({"col1": 2000, "col2": '2020-12-22', "col3": 'fujian', "col4":'xiamen', "col5": 2}))
 print(result.fetchone())
 ```
+### Execute Deployment
 
-### Delete table
+Please note that the execution of deployments is only supported by DBAPI, and there is no equivalent interface in OpenMLDB SQLAlchemy. Additionally, deployment execution supports single requests only and does not support batch requests.
+
+```python
+cursor.execute("DEPLOY d1 SELECT col1 FROM t1")
+# dict style
+result = cursor.callproc("d1", {"col1": 1000, "col2": None, "col3": None, "col4": None, "col5": None})
+print(result.fetchall())
+# tuple style
+result = cursor.callproc("d1", (1001, "2023-07-20", "abc", "def", 1))
+print(result.fetchall())
+# drop deployment before drop table
+cursor.execute("DROP DEPLOYMENT d1")
+```
+
+### Delete Table
 
 Delete table `t1`:
 
@@ -78,7 +95,7 @@ Delete table `t1`:
 cursor.execute("DROP TABLE t1")
 ```
 
-### Delete database
+### Delete Database
 
 Delete database `db1`:
 
@@ -86,17 +103,17 @@ Delete database `db1`:
 cursor.execute("DROP DATABASE db1")
 ```
 
-### Close connection
+### Close Connection
 
 ```python
 cursor.close()
 ```
 
-## OpenMLDB SQLAlchemy usage
+## OpenMLDB SQLAlchemy
 
-This section demonstrates using the Python SDK through OpenMLDB SQLAlchemy.
+This section demonstrates the use of the Python SDK through OpenMLDB SQLAlchemy. Similarly, if any of the DBAPI interfaces fail, they will raise a `DatabaseError` exception. Users can catch and handle this exception as needed. The handling of return values should follow the SQLAlchemy standard.
 
-### Create connection
+### Create Connection
 
 ```python
 create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')
@@ -110,7 +127,7 @@ engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
 ```
 
-### Create database
+### Create Database
 
 Use the `connection.execute()` interface to create database `db1`:
 
@@ -123,7 +140,7 @@ except Exception as e:
 connection.execute("USE db1")
 ```
 
-### Create table
+### Create Table
 
 Use the `connection.execute()` interface to create table `t1`:
 
@@ -134,7 +151,7 @@ except Exception as e:
     print(e)
 ```
 
-### Insert data into the table
+### Insert Data into Table
 
 Use the `connection.execute (ddl)` interface to execute the SQL insert statement, and you can insert data into the table:
 
@@ -156,7 +173,7 @@ except Exception as e:
     print(e)
 ```
 
-### Execute SQL batch query
+### Execute SQL Batch Query
 
 Use the `connection.execute (sql)` interface to execute SQL batch query statements:
 
@@ -171,7 +188,7 @@ except Exception as e:
     print(e)
 ```
 
-### Execute SQL request query
+### Execute SQL Query
 
 Use the `connection.execute (sql, request)` interface to execute the SQL request query. You can put the input data into the second parameter of the execute function:
 
@@ -182,7 +199,7 @@ except Exception as e:
     print(e)
 ```
 
-### Delete table
+### Delete Table
 
 Use the `connection.execute (ddl)` interface to delete table `t1`:
 
@@ -193,7 +210,7 @@ except Exception as e:
     print(e)
 ```
 
-### Delete database
+### Delete Database
 
 Use the connection.execute（ddl）interface to delete database `db1`:
 
@@ -204,7 +221,7 @@ except Exception as e:
     print(e)
 ```
 
-## Notebook Magic Function usage
+## Notebook Magic Function
 
 The OpenMLDB Python SDK supports the expansion of Notebook magic function. Use the following statement to register the function.
 
@@ -218,24 +235,22 @@ Then you can use line magic function `%sql` and block magic function `%%sql` in 
 
 ![img](https://openmldb.ai/docs/zh/main/_images/openmldb_magic_function.png)
 
-## The complete usage example
+## A Complete Example
 
-Refer to the [Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py), including the above DBAPI and SQLAlchemy usage.
+Refer to the [Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py), which includes the above DBAPI and SQLAlchemy usage.
 
-## common problem
+## Q&A
 
-- **What do I do when error** `ImportError：dlopen (.. _sql_router_sdk. so, 2): initializer function 0xnnnn not in mapped image for` **appears when using SQLAlchemy?**
+- **What do I do when error `ImportError：dlopen (.. _sql_router_sdk. so, 2): initializer function 0xnnnn not in mapped image for` appears when using SQLAlchemy?**
 
-In addition to import openmldb, you may also import other third-party libraries, which may cause confusion in the loading order. Due to the complexity of the system, you can try to use the virtual env environment (such as conda) to avoid interference. In addition, import openmldb before importing sqlalchemy, and ensure that the two imports are in the first place.
+In addition to importing OpenMLDB, you may also have imported other third-party libraries, which may cause confusion in the loading order. Due to the complexity of the system, you can try to use the virtual env environment (such as conda) to avoid interference. In addition, import OpenMLDB before importing SQLAlchemy, and ensure that the two imports are in the first place.
 
-If the error still occur, it is recommended to connect to OpenMLDB by using request http to connect to apiserver.
+If the error still occurs, it is recommended to connect to OpenMLDB by request http to connect to apiserver.
 
-occur
-
-- **What do I do if Python SDK encountered the following problems?**
+- **What do I do if Python SDK encounters the following problems?**
 
 ```plain
 [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
 ```
 
-This problem may be due to the introduction of other versions of protobuf in other libraries. You can try to use the virtual env environment (such as conda).
+This problem may be due to the import of other versions of protobuf from other libraries. You can try to use the virtual env environment (such as conda).
