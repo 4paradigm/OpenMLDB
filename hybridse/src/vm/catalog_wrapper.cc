@@ -28,7 +28,7 @@ std::shared_ptr<TableHandler> PartitionProjectWrapper::GetSegment(
             new TableProjectWrapper(segment, parameter_, fun_));
     }
 }
-base::ConstIterator<uint64_t, Row>* PartitionProjectWrapper::GetRawIterator() {
+codec::RowIterator* PartitionProjectWrapper::GetRawIterator() {
     auto iter = partition_handler_->GetIterator();
     if (!iter) {
         return nullptr;
@@ -47,7 +47,7 @@ std::shared_ptr<TableHandler> PartitionFilterWrapper::GetSegment(
             new TableFilterWrapper(segment, parameter_, fun_));
     }
 }
-base::ConstIterator<uint64_t, Row>* PartitionFilterWrapper::GetRawIterator() {
+codec::RowIterator* PartitionFilterWrapper::GetRawIterator() {
     auto iter = partition_handler_->GetIterator();
     if (!iter) {
         return nullptr;
@@ -110,20 +110,12 @@ std::shared_ptr<PartitionHandler> LazyLastJoinTableHandler::GetPartition(const s
         new LazyLastJoinPartitionHandler(left_->GetPartition(index_name), right_, parameter_, join_));
 }
 
-std::unique_ptr<RowIterator> LazyLastJoinTableHandler::GetIterator() {
+codec::RowIterator* LazyLastJoinPartitionHandler::GetRawIterator() {
     auto iter = left_->GetIterator();
     if (!iter) {
-        return std::unique_ptr<RowIterator>();
+        return nullptr;
     }
-
-    return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
-}
-std::unique_ptr<RowIterator> LazyLastJoinPartitionHandler::GetIterator() {
-    auto iter = left_->GetIterator();
-    if (!iter) {
-        return std::unique_ptr<RowIterator>();
-    }
-    return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
+    return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
 }
 
 std::unique_ptr<WindowIterator> LazyLastJoinPartitionHandler::GetWindowIterator() {
@@ -140,23 +132,21 @@ const Row& LazyLastJoinIterator::GetValue() {
     return value_;
 }
 
-std::unique_ptr<WindowIterator> LazyLastJoinTableHandler::GetWindowIterator(const std::string& idx_name) {
-    return nullptr;
+codec::RowIterator* LazyLastJoinTableHandler::GetRawIterator() {
+    auto iter = left_->GetIterator();
+    if (!iter) {
+        return nullptr;
+    }
+
+    return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
 }
 
 LazyLastJoinWindowIterator::LazyLastJoinWindowIterator(std::unique_ptr<WindowIterator>&& iter,
                                                        std::shared_ptr<PartitionHandler> right, const Row& param,
                                                        std::shared_ptr<JoinGenerator> join)
     : left_(std::move(iter)), right_(right), parameter_(param), join_(join) {}
-std::unique_ptr<RowIterator> LazyLastJoinWindowIterator::GetValue() {
-    auto iter = left_->GetValue();
-    if (!iter) {
-        return std::unique_ptr<RowIterator>();
-    }
 
-    return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
-}
-RowIterator* LazyLastJoinWindowIterator::GetRawValue() {
+codec::RowIterator* LazyLastJoinWindowIterator::GetRawValue() {
     auto iter = left_->GetValue();
     if (!iter) {
         return nullptr;
@@ -181,14 +171,6 @@ RowIterator* ConcatPartitionHandler::GetRawIterator() {
     return new ConcatIterator(std::move(li), left_slices_, std::move(ri), right_slices_);
 }
 
-std::unique_ptr<RowIterator> ConcatPartitionHandler::GetIterator() {
-    auto p = GetRawIterator();
-    if (p == nullptr) {
-        return {};
-    }
-    return std::unique_ptr<RowIterator>(p);
-}
-
 std::unique_ptr<WindowIterator> LazyRequestUnionPartitionHandler::GetWindowIterator() {
     auto w = left_->GetWindowIterator();
     if (!w) {
@@ -202,14 +184,12 @@ std::shared_ptr<TableHandler> LazyRequestUnionPartitionHandler::GetSegment(const
     return nullptr;
 }
 
-std::unique_ptr<RowIterator> LazyRequestUnionPartitionHandler::GetIterator() {
-    return std::unique_ptr<RowIterator>(GetRawIterator());
-}
 const IndexHint& LazyRequestUnionPartitionHandler::GetIndex() { return left_->GetIndex(); }
 
 const Types& LazyRequestUnionPartitionHandler::GetTypes() { return left_->GetTypes(); }
 
-base::ConstIterator<uint64_t, Row>* LazyRequestUnionPartitionHandler::GetRawIterator() { return nullptr; }
+codec::RowIterator* LazyRequestUnionPartitionHandler::GetRawIterator() { return nullptr; }
+
 bool LazyAggIterator::Valid() const { return it_->Valid(); }
 void LazyAggIterator::Next() { it_->Next(); }
 const uint64_t& LazyAggIterator::GetKey() const { return it_->GetKey(); }
@@ -229,22 +209,15 @@ const Row& LazyAggIterator::GetValue() {
 
 void LazyAggIterator::Seek(const uint64_t& key) { it_->Seek(key); }
 void LazyAggIterator::SeekToFirst() { it_->SeekToFirst(); }
-std::unique_ptr<RowIterator> LazyAggTableHandler::GetIterator() {
-    auto* it = GetRawIterator();
-    if (it == nullptr) {
-        return {};
-    }
-    return std::unique_ptr<RowIterator>(it);
-}
-std::unique_ptr<WindowIterator> LazyAggTableHandler::GetWindowIterator(const std::string& idx_name) { return nullptr; }
-base::ConstIterator<uint64_t, Row>* LazyAggTableHandler::GetRawIterator() {
+
+codec::RowIterator* LazyAggTableHandler::GetRawIterator() {
     auto it = left_->GetIterator();
     if (!it) {
         return nullptr;
     }
     return new LazyAggIterator(std::move(it), func_, agg_gen_, parameter_);
 }
-std::shared_ptr<PartitionHandler> LazyAggTableHandler::GetPartition(const std::string& index_name) { return nullptr; }
+
 const Types& LazyAggTableHandler::GetTypes() { return left_->GetTypes(); }
 const IndexHint& LazyAggTableHandler::GetIndex() { return left_->GetIndex(); }
 const Schema* LazyAggTableHandler::GetSchema() { return nullptr; }
@@ -255,11 +228,12 @@ std::shared_ptr<TableHandler> LazyAggPartitionHandler::GetSegment(const std::str
     return std::shared_ptr<TableHandler>(new LazyAggTableHandler(seg, input_->Func(), agg_gen_, parameter_));
 }
 const std::string LazyAggPartitionHandler::GetHandlerTypeName() { return "LazyLastJoinPartitionHandler"; }
-std::unique_ptr<RowIterator> LazyAggPartitionHandler::GetIterator() {
+
+codec::RowIterator* LazyAggPartitionHandler::GetRawIterator() {
     auto it = input_->Left()->GetIterator();
-    return std::unique_ptr<RowIterator>(new LazyAggIterator(std::move(it), input_->Func(), agg_gen_, parameter_));
+    return new LazyAggIterator(std::move(it), input_->Func(), agg_gen_, parameter_);
 }
-base::ConstIterator<uint64_t, Row>* LazyAggPartitionHandler::GetRawIterator() { return nullptr; }
+
 bool ConcatIterator::Valid() const { return left_ && left_->Valid(); }
 void ConcatIterator::Next() {
     left_->Next();
@@ -288,13 +262,6 @@ void ConcatIterator::SeekToFirst() {
         right_->SeekToFirst();
     }
 }
-std::unique_ptr<RowIterator> SimpleConcatTableHandler::GetIterator() {
-    auto p = GetRawIterator();
-    if (p == nullptr) {
-        return {};
-    }
-    return std::unique_ptr<RowIterator>(p);
-}
 RowIterator* SimpleConcatTableHandler::GetRawIterator() {
     auto li = left_->GetIterator();
     if (!li) {
@@ -303,13 +270,7 @@ RowIterator* SimpleConcatTableHandler::GetRawIterator() {
     auto ri = right_->GetIterator();
     return new ConcatIterator(std::move(li), left_slices_, std::move(ri), right_slices_);
 }
-std::unique_ptr<WindowIterator> SimpleConcatTableHandler::GetWindowIterator(const std::string& idx_name) {
-    return nullptr;
-}
 std::unique_ptr<WindowIterator> ConcatPartitionHandler::GetWindowIterator() { return nullptr; }
-std::unique_ptr<WindowIterator> ConcatPartitionHandler::GetWindowIterator(const std::string& idx_name) {
-    return nullptr;
-}
 
 std::unique_ptr<WindowIterator> LazyAggPartitionHandler::GetWindowIterator() {
     auto w = input_->Left()->GetWindowIterator();
