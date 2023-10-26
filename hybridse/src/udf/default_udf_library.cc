@@ -2190,11 +2190,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .args<StringRef>(v1::string_to_date);
 
     RegisterExternal("timestamp")
-        .args<Date>(reinterpret_cast<void*>(
-            static_cast<void (*)(Date*, Timestamp*, bool*)>(
-                v1::date_to_timestamp)))
-        .return_by_arg(true)
-        .returns<Nullable<Timestamp>>()
+        .args<Date>(v1::date_to_timestamp)
         .doc(R"(
             @brief Cast int64, date or string expression to timestamp
 
@@ -2217,11 +2213,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("timestamp")
-        .args<StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(StringRef*, Timestamp*, bool*)>(
-                v1::string_to_timestamp)))
-        .return_by_arg(true)
-        .returns<Nullable<Timestamp>>();
+        .args<StringRef>(v1::string_to_timestamp);
 }
 
 void DefaultUdfLibrary::InitTimeAndDateUdf() {
