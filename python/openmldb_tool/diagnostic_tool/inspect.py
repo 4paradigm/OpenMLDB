@@ -347,8 +347,6 @@ Red X -> NotFound/Miss/NotFollowerOnT/NotLeaderOnT"""
 
 def ops_ins(connect):
     # op sorted by id TODO: detail to show all include succ op?
-    print("\n\nOps Detail")
-    print("> failed ops do not mean cluster is unhealthy, just for reference")
     rs = connect.execfetch("show jobs from NameServer;")
     should_warn = []
     from datetime import datetime
@@ -360,21 +358,28 @@ def ops_ins(connect):
         op[4] = str(datetime.fromtimestamp(int(op[4]) / 1000)) if op[4] else "..."
         if op[2] != "FINISHED":
             should_warn.append(op)
-    # peek last one to let user know if cluster has tried to recover, or we should wait
-    print("last one op(check time): ", ops[-1])
-    if not should_warn:
-        print("all nameserver ops are finished")
-    else:
-        print("last 10 unfinished ops:")
-        print(*should_warn[-10:], sep="\n")
+
     recover_type = ["kRecoverTableOP", "kChangeLeaderOP", "kReAddReplicaOP", "kOfflineReplicaOP"]
     related_ops = [
         op
         for op in should_warn
         if op[1] in recover_type and op[2] in ["Submitted", "RUNNING"]
     ]
-    return related_ops
+    return ops[-1] if ops else None, should_warn, related_ops
 
+def ops_hint(last_one, should_warn):
+    print("\n\nOps Detail")
+    print("> failed ops do not mean cluster is unhealthy, just for reference")
+    # peek last one to let user know if cluster has tried to recover, or we should wait
+    if last_one:
+        print("last one op(check time): ", last_one)
+    else:
+        print("no ops in nameserver")
+    if not should_warn:
+        print("all nameserver ops are finished")
+    else:
+        print("last 10 ops != finished:")
+        print(*should_warn[-10:], sep="\n")
 
 def inspect_hint(server_hint, table_hints):
     print(

@@ -31,7 +31,7 @@ from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
 from diagnostic_tool.parser import LogParser
-from .inspect import server_ins, table_ins, partition_ins, ops_ins, inspect_hint
+from .inspect import server_ins, table_ins, partition_ins, ops_ins, ops_hint, inspect_hint
 from .rpc import RPC
 
 from absl import app
@@ -105,19 +105,15 @@ def inspect(args):
     server_map = status_checker._get_components()
     offlines = server_ins(server_map)
 
-    # 2. table level
-    # we use `show table status` instead of partition inspection, cuz it's simple and quick
-    warn_tables = table_ins(connect)
+    # 3. ns ops level, but show only if has unhealthy tables, so hint later
+    last_one, should_warn, related_ops = ops_ins(connect)
 
-    # if has unhealthy tables, do partition and ops check, otherwise skip
-    hints = []
-    if warn_tables:
-        # 3. ns ops
-        related_ops = ops_ins(connect)
-        # 4. partition level and get some hint about table
-        hints = partition_ins(server_map, related_ops)
-
-    # 5. hint
+    # 2. partition level: show unhealthy tables and get some hints about table
+    hints = partition_ins(server_map, related_ops)
+    if hints:
+        # show 3 here
+        ops_hint(last_one, should_warn)
+    # 4. hint
     # let user know what to do
     # 1) start offline servers
     # 2) let user know the warning table is fatal or not, related ops, warn if offset is too large

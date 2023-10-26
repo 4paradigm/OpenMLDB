@@ -35,23 +35,19 @@ Server Detail
 {server online/offline report}
 
 
-Table Healthy Detail
-summary: {total table cnt}
-{unhealthy tables db.name}
-
-
-Ops Detail
-> failed ops do not mean cluster is unhealthy, just for reference
-last one op(check time): {}
-last 10 unfinished ops:
-{op list}
-
-
 Table Partitions Detail
 tablet server order: {tablet ip -> idx}
 {partition tables of unhealthy tables}
 Example:
 {a detailed description of partition table}
+
+
+Ops Detail
+> failed ops do not mean cluster is unhealthy, just for reference
+last one op(check time): {}
+last 10 ops != finished:
+{op list}
+
 
 
 ==================
