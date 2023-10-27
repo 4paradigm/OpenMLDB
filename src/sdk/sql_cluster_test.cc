@@ -265,7 +265,7 @@ TEST_F(SQLClusterDDLTest, ShowCreateTable) {
         "`col2` int,\n"
         "`col3` bigInt NOT NULL,\n"
         "INDEX (KEY=`col1`, TTL_TYPE=ABSOLUTE, TTL=100m)\n"
-        ") OPTIONS (PARTITIONNUM=1, REPLICANUM=1, STORAGE_MODE='Memory');";
+        ") OPTIONS (PARTITIONNUM=1, REPLICANUM=1, STORAGE_MODE='Memory', COMPRESS_TYPE='NoCompress');";
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ASSERT_TRUE(router->RefreshCatalog());
     auto rs = router->ExecuteSQL(db, "show create table t1;", &status);

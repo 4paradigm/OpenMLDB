@@ -1684,9 +1684,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             ss.str("");
             std::unordered_map<std::string, std::string> options;
-            options["storage_mode"] = StorageMode_Name(table->storage_mode());
+            std::string storage_mode = StorageMode_Name(table->storage_mode());
             // remove the prefix 'k', i.e., change kMemory to Memory
-            options["storage_mode"] = options["storage_mode"].substr(1, options["storage_mode"].size() - 1);
+            options["storage_mode"] = storage_mode.substr(1, storage_mode.size() - 1);
+            std::string compress_type = CompressType_Name(table->compress_type());
+            options["compress_type"] = compress_type.substr(1, compress_type.size() -1);
             ::openmldb::cmd::PrintTableOptions(options, ss);
             result.emplace_back(std::vector{ss.str()});
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);

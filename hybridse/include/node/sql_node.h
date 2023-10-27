@@ -1896,7 +1896,7 @@ class CompressTypeNode : public SqlNode {
     CompressTypeNode() : SqlNode(kCompressType, 0, 0), compress_type_(kNoCompress) {}
 
     explicit CompressTypeNode(CompressType compress_type)
-        : SqlNode(kStorageMode, 0, 0), compress_type_(compress_type) {}
+        : SqlNode(kCompressType, 0, 0), compress_type_(compress_type) {}
 
     ~CompressTypeNode() {}
 
