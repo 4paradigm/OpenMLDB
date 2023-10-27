@@ -19,8 +19,8 @@ cases:
     mode: physical-plan-unsupport
   - id: 2
     desc: 简单SELECT LEFT JOIN
-    mode: runner-unsupport
     sql: SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 left join t2 on t1.col1 = t2.col2;
+    mode: physical-plan-unsupport
   - id: 3
     desc: 简单SELECT LAST JOIN
     sql: SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col2;
@@ -31,7 +31,6 @@ cases:
   - id: 5
     desc: LeftJoin有不等式条件
     sql: SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 left join t2 on t1.col1 = t2.col2 and t2.col5 >= t1.col5;
-    mode: runner-unsupport
   - id: 6
     desc: LastJoin有不等式条件
     sql: SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col2 and t2.col5 >= t1.col5;

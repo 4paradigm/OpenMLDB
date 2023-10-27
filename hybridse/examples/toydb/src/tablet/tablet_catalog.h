@@ -88,7 +88,7 @@ class TabletPartitionHandler final
 
     ~TabletPartitionHandler() {}
 
-    RowIterator* GetRawIterator() override { return nullptr; }
+    RowIterator* GetRawIterator() override { return table_handler_->GetRawIterator(); }
 
     const OrderType GetOrderType() const override { return OrderType::kDescOrder; }
 

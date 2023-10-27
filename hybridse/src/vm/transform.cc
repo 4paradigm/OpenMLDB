@@ -19,6 +19,7 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include <utility>
 
 #include "absl/cleanup/cleanup.h"
 #include "base/fe_status.h"

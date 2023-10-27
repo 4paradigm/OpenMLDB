@@ -18,13 +18,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/fe_strings.h"
 #include "boost/none.hpp"
-#include "boost/optional.hpp"
 #include "codec/fe_row_codec.h"
-#include "codec/fe_schema_codec.h"
-#include "codec/list_iterator_codec.h"
-#include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "udf/default_udf_library.h"
@@ -32,6 +27,7 @@
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/internal/node_helper.h"
+#include "vm/runner_ctx.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
