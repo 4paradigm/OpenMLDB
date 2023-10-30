@@ -461,11 +461,11 @@ TEST_P(DBSDKTest, Desc) {
         " --- ------- ----------- ------ --------- \n";
 
     std::string expect_options =
-        " -------------- \n"
-        "  storage_mode  \n"
-        " -------------- \n"
-        "  Memory        \n"
-        " -------------- \n\n";
+        " --------------- -------------- \n"
+        "  compress_type   storage_mode  \n"
+        " --------------- -------------- \n"
+        "  NoCompress      Memory        \n"
+        " --------------- -------------- \n\n";
 
     // index name is dynamically assigned. do not check here
     std::vector<std::string> expect = {expect_schema, "", expect_options};
