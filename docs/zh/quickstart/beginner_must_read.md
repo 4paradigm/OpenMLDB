@@ -74,7 +74,7 @@ OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期
 
 在不熟悉OpenMLDB SQL的情况下，我们建议从下到上编写SQL，确保每个子句都能通过，再逐步组合成完整的SQL。
 
-推荐使用[OpenMLDBSimulator](https://github.com/vagetablechicken/OpenMLDBSimulator)进行SQL探索，SQL完成后再去真实集群进行上线。Simulator可以不依赖真实OpenMLDB集群，在一个交互式虚拟环境中，快速创建表、校验SQL、导出当前环境等等，详情参考该项目的README。使用Simulator不需要操作集群，也就不需要测试后清理集群，还可通过少量的数据进行SQL运行测试，比较适合SQL探索时期。
+推荐使用[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator)进行SQL探索，SQL完成后再去真实集群进行上线。 Emulator 可以不依赖真实OpenMLDB集群，在一个交互式虚拟环境中，快速创建表、校验SQL、导出当前环境等等，详情参考该项目的 README 。使用 Emulator 不需要操作集群，也就不需要测试后清理集群，还可通过少量的数据进行SQL运行测试，比较适合SQL探索时期。
 
 #### SQL 语法提示
 
@@ -86,11 +86,11 @@ OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期
 
 SQL编译通过，可以结合数据进行计算。如果计算结果不符合预期，请逐步检查：
 - SQL无论是一列还是多列计算结果不符合预期，都请选择**其中一列**进行调试。
-- 如果你的表数据较多，建议使用小数据量（几行，几十行的量级）来测试，也可以使用OpenMLDBSimulator的[运行toydb](https://github.com/vagetablechicken/OpenMLDBSimulator#run-in-toydb)功能，构造case进行测试。
+- 如果你的表数据较多，建议使用小数据量（几行，几十行的量级）来测试，也可以使用OpenMLDB SQL Emulator的[运行toydb](https://github.com/vagetablechicken/OpenMLDBSQLEmulator#run-in-toydb)功能，构造case进行测试。
 - 该列是不是表示了自己想表达的意思，是否使用了不符合预期的函数，或者函数参数错误。
 - 该列如果是窗口聚合的结果，是不是WINDOW定义错误，导致窗口范围不对。参考[推断窗口](../openmldb_sql/dql/WINDOW_CLAUSE.md#如何推断窗口是什么样的)进行检查，使用小数据进行验证测试。
 
-如果你仍然无法解决问题，可以提供OpenMLDBSimulator的yaml case。如果在集群中进行的测试，请[提供复现脚本](#提供复现脚本)。
+如果你仍然无法解决问题，可以提供 OpenMLDB SQL Emulator 的 yaml case 。如果在集群中进行的测试，请[提供复现脚本](#提供复现脚本)。
 
 #### 在线请求模式
 
@@ -98,7 +98,7 @@ SQL上线，等价于`DEPLOY <name> <SQL>`成功。但`DEPLOY`操作是一个很
 
 如果你对OpenMLDB SQL较熟悉，一些场景下可以用“在线预览模式”进行测试，但“在线预览模式”不等于“在线请求模式”，不能保证一定可以上线。如果你对索引较为熟悉，可以通过`EXPLAIN <SQL>`来确认SQL是否可以上线，但`EXPLAIN`的检查较为严格，可能因为当前表没有匹配的索引，而判定SQL无法在“在线请求模式”中执行（因为无索引而无法保证实时性能，所以被拒绝）。
 
-目前只有Java SDK可以使用[validateSQLInRequest](./sdk/java_sdk.md#sql-校验)方法来检验，使用上稍麻烦。我们推荐使用OpenMLDBSimulator来测试。在Simulator中，通过简单语法创建表，再使用`valreq <SQL>`可以判断是否能上线。
+目前只有Java SDK可以使用[validateSQLInRequest](./sdk/java_sdk.md#sql-校验)方法来检验，使用上稍麻烦。我们推荐使用 OpenMLDB SQL Emulator 来测试。在 Emulator 中，通过简单语法创建表，再使用`valreq <SQL>`可以判断是否能上线。
 
 ## SQL执行
 
@@ -139,7 +139,7 @@ create table t1(c1 int;
 
 ### 提供复现脚本
 
-如果你通过自主诊断，无法解决问题，请向我们提供复现脚本。一个完整的复现脚本，如下所示：
+如果你通过自主诊断，无法解决问题，请向我们提供复现脚本。一个完整的复现脚本。仅涉及在线SQL计算或校验SQL，推荐使用[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator#run-in-toydb) 构造可复现的 yaml case。如果涉及到数据导入等必须使用 OpenMLDB集群，请提供可复现脚本，其结构如下所示：
 
 ```
 create database db;
