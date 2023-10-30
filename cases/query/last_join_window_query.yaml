@@ -321,11 +321,11 @@ cases:
         min(c3r) OVER w1 as sumb,
       from (
         select
-          {0}.c3 as c3l,
-          {0}.id as idx,
-          {1}.c3 as c3r,
-          {0}.c1 as c1a,
-          {0}.c7 as c7a
+          t0.c3 as c3l,
+          t0.id as idx,
+          t1.c3 as c3r,
+          t0.c1 as c1a,
+          t0.c7 as c7a
         from t0 last join t1 on t0.c1=t1.c1
       )
       WINDOW w1 AS (

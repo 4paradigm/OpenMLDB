@@ -91,6 +91,13 @@ TEST_P(EngineTest, TestClusterBatchRequestEngine) {
     }
 }
 
+// ====================================================== /
+// BatchRequestEngineTest
+//   test batch request mode only, with yaml:
+//   - case/function/test_batch_request.yaml
+//
+// TODO(ace): merge to EngineTest above simply
+// ====================================================== /
 TEST_P(BatchRequestEngineTest, TestBatchRequestEngine) {
     auto& sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();

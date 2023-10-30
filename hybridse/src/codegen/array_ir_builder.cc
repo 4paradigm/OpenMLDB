@@ -17,6 +17,7 @@
 #include "codegen/array_ir_builder.h"
 
 #include <string>
+#include "codegen/ir_base_builder.h"
 
 namespace hybridse {
 namespace codegen {
@@ -111,6 +112,22 @@ base::Status ArrayIRBuilder::NewEmptyArray(llvm::BasicBlock* bb, NativeValue* ou
     *output = NativeValue::Create(array_alloca);
 
     return base::Status::OK();
+}
+
+bool ArrayIRBuilder::CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) {
+    llvm::Value* array_alloca = nullptr;
+    if (!Create(block, &array_alloca)) {
+        return false;
+    }
+
+    llvm::IRBuilder<> builder(block);
+    ::llvm::Value* array_sz = builder.getInt64(0);
+    if (!Set(block, array_alloca, 2, array_sz)) {
+        return false;
+    }
+
+    *output = array_alloca;
+    return true;
 }
 
 }  // namespace codegen

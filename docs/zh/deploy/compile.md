@@ -110,7 +110,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - CMAKE_EXTRA_FLAGS: 传递给 cmake 的额外参数
 
-  默认: ‘’
+  默认: ''
 
 - BUILD_BUNDLED: 从源码编译 thirdparty 依赖，而不是下载预编译包
 
@@ -123,6 +123,9 @@ make CMAKE_BUILD_TYPE=Debug
 - OPENMLDB_BUILD_TARGET: 只需编译某些target时使用。例如，只想要编译一个测试程序ddl_parser_test，你可以设置`OPENMLDB_BUILD_TARGET=ddl_parser_test`。如果是多个target，用空格隔开。可以减少编译时间，减少编译产出文件，节约存储空间。
 
   默认: all
+
+- THIRD_PARTY_CMAKE_FLAGS: 编译thirdparty时可以配置额外参数。例如，配置每个thirdparty项目并发编译，`THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8`。thirdparty不受NPROC影响，thirdparty的多项目将会串行执行。
+  默认：''
 
 ### 并发编译Java SDK
 
@@ -185,9 +188,15 @@ docker run -it -v`pwd`:/root/OpenMLDB ghcr.io/4paradigm/centos6_gcc7_hybridsql b
 ```bash
 cd OpenMLDB
 bash steps/centos6_build.sh
+# THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8 bash steps/centos6_build.sh # run fast when build single project
 # OPENMLDB_SOURCE=true bash steps/centos6_build.sh
-# SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NRPOC=8 bash steps/centos6_build.sh
+# SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NPROC=8 bash steps/centos6_build.sh # NPROC will build openmldb in parallel, thirdparty should use THIRD_PARTY_CMAKE_FLAGS
 ```
+
+本地2.20GHz CPU，SSD硬盘，32线程编译三方库与OpenMLDB主体，耗时参考：
+`THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j32 SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NPROC=32 bash steps/centos6_build.sh`
+- thirdparty（不包括下载src时间）~40m：zetasql打patch 13m，所有thirdparty编译30m
+- OpenMLDB 本体，包括python和java native，~12min
 
 #### 云编译
 

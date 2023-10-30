@@ -16,33 +16,28 @@
 
 #include "udf/udf.h"
 
-#include <absl/time/time.h>
 #include <stdint.h>
 #include <time.h>
 
 #include <ctime>
-#include <map>
-#include <set>
 #include <utility>
 
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
 #include "absl/time/civil_time.h"
+#include "absl/time/time.h"
 #include "base/iterator.h"
-#include "boost/date_time.hpp"
+#include "boost/date_time/gregorian/conversion.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
-#include "boost/date_time/posix_time/posix_time.hpp"
 #include "bthread/types.h"
-#include "codec/list_iterator_codec.h"
 #include "codec/row.h"
 #include "codec/type_codec.h"
-#include "codegen/fn_ir_builder.h"
-#include "farmhash.h"  // NOLINT
+#include "farmhash.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "re2/re2.h"
-#include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
+#include "udf/udf_library.h"
 #include "vm/jit_runtime.h"
 
 namespace hybridse {
@@ -56,6 +51,20 @@ using hybridse::codec::Row;
 using openmldb::base::StringRef;
 using openmldb::base::Timestamp;
 using openmldb::base::Date;
+
+// strftime()-like formatting options with extensions
+// ref absl::FormatTime
+static constexpr char DATE_FMT_YMD_1[] = "%E4Y-%m-%d";
+static constexpr char DATE_FMT_YMD_2[] = "%E4Y%m%d";
+static constexpr char DATE_FMT_YMDHMS[] = "%E4Y-%m-%d %H:%M:%S";
+static constexpr char DATE_FMT_RF3399_FULL[] = "%Y-%m-%d%ET%H:%M:%E*S%Ez";
+
+// TODO(chenjing): 时区统一配置
+static constexpr int32_t TZ = 8;
+static const absl::TimeZone DEFAULT_TZ = absl::FixedTimeZone(TZ * 60 * 60);
+static constexpr time_t TZ_OFFSET = TZ * 3600000;
+static constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024;  // 2M
+bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 void hex(StringRef *str, StringRef *output) {
     std::ostringstream ss;
@@ -103,12 +112,6 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
         output->data_ = buffer;
     }
 }
-
-// TODO(chenjing): 时区统一配置
-constexpr int32_t TZ = 8;
-constexpr time_t TZ_OFFSET = TZ * 3600000;
-constexpr int MAX_ALLOC_SIZE = 2 * 1024 * 1024;  // 2M
-bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 void trivial_fun() {}
 
@@ -386,8 +389,7 @@ void bool_to_string(bool v, StringRef *output) {
     }
 }
 
-void timestamp_to_date(Timestamp *timestamp,
-                       Date *output, bool *is_null) {
+void timestamp_to_date(Timestamp *timestamp, Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     memset(&t, 0, sizeof(struct tm));
@@ -763,8 +765,7 @@ void string_to_double(StringRef *str, double *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_date(StringRef *str, Date *output,
-                    bool *is_null) {
+void string_to_date(StringRef *str, Date *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
         memset(&timeinfo, 0, sizeof(struct tm));
@@ -818,7 +819,26 @@ void string_to_date(StringRef *str, Date *output,
     return;
 }
 
-void date_diff(Date *date1, Date *date2, int *diff, bool *is_null) {
+absl::StatusOr<absl::Time> string_to_time(absl::string_view ref) {
+    absl::string_view fmt = DATE_FMT_RF3399_FULL;
+    if (19 == ref.size()) {
+        fmt = DATE_FMT_YMDHMS;
+    } else if (10 == ref.size()) {
+        fmt = DATE_FMT_YMD_1;
+    } else if (8 == ref.size()) {
+        fmt = DATE_FMT_YMD_2;
+    }
+    absl::Time tm;
+    std::string err;
+    bool ret = absl::ParseTime(fmt, ref, &tm, &err);
+
+    if (!ret) {
+        return absl::InvalidArgumentError(err);
+    }
+    return tm;
+}
+
+void date_diff(Date *date1, Date *date2, int32_t *diff, bool *is_null) {
     if (date1 == nullptr || date2 == nullptr || date1->date_ <= 0 || date2->date_ <= 0) {
         *is_null = true;
         return;
@@ -838,36 +858,61 @@ void date_diff(Date *date1, Date *date2, int *diff, bool *is_null) {
     *is_null = false;
 }
 
-void date_diff(StringRef *date1, StringRef *date2, int *diff, bool *is_null) {
-    Date d1;
-    string_to_date(date1, &d1, is_null);
-    if (*is_null) {
+void date_diff(StringRef *date1, StringRef *date2, int32_t *diff, bool *is_null) {
+    auto t1 = string_to_time(absl::string_view(date1->data_, date1->size_));
+    if (!t1.ok()) {
+        *is_null = true;
         return;
     }
-    Date d2;
-    string_to_date(date2, &d2, is_null);
-    if (*is_null) {
+    auto t2 = string_to_time(absl::string_view(date2->data_, date2->size_));
+    if (!t2.ok()) {
+        *is_null = true;
         return;
     }
-    date_diff(&d1, &d2, diff, is_null);
+
+    auto d1 = absl::ToCivilDay(t1.value(), DEFAULT_TZ);
+    auto d2 = absl::ToCivilDay(t2.value(), DEFAULT_TZ);
+
+    *diff = d1 - d2;
+    *is_null = false;
 }
 
-void date_diff(StringRef *date1, Date *date2, int *diff, bool *is_null) {
-    Date d1;
-    string_to_date(date1, &d1, is_null);
-    if (*is_null) {
+void date_diff(StringRef *date1, Date *date2, int32_t *diff, bool *is_null) {
+    auto t1 = string_to_time(absl::string_view(date1->data_, date1->size_));
+    if (!t1.ok()) {
+        *is_null = true;
         return;
     }
-    date_diff(&d1, date2, diff, is_null);
+    auto d1 = absl::ToCivilDay(t1.value(), DEFAULT_TZ);
+
+    int32_t year, month, day;
+    if (!Date::Decode(date2->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    auto d2 = absl::CivilDay(year, month, day);
+
+    *diff = d1 - d2;
+    *is_null = false;
 }
 
-void date_diff(Date *date1, StringRef *date2, int *diff, bool *is_null) {
-    Date d2;
-    string_to_date(date2, &d2, is_null);
-    if (*is_null) {
+void date_diff(Date *date1, StringRef *date2, int32_t *diff, bool *is_null) {
+    auto t2 = string_to_time(absl::string_view(date2->data_, date2->size_));
+    if (!t2.ok()) {
+        *is_null = true;
         return;
     }
-    date_diff(date1, &d2, diff, is_null);
+    auto d2 = absl::ToCivilDay(t2.value(), DEFAULT_TZ);
+
+    int32_t year, month, day;
+    if (!Date::Decode(date1->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    auto d1 = absl::CivilDay(year, month, day);
+
+    *diff = d1 - d2;
+    *is_null = false;
 }
 
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
