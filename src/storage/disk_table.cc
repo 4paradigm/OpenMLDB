@@ -543,10 +543,10 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
-            return new DiskTableIterator(db_, it, snapshot, pk, ts_col->GetId());
+            return new DiskTableIterator(db_, it, snapshot, pk, ts_col->GetId(), GetCompressType());
         }
     }
-    return new DiskTableIterator(db_, it, snapshot, pk);
+    return new DiskTableIterator(db_, it, snapshot, pk, GetCompressType());
 }
 
 TraverseIterator* DiskTable::NewTraverseIterator(uint32_t index) {
@@ -569,10 +569,10 @@ TraverseIterator* DiskTable::NewTraverseIterator(uint32_t index) {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
             return new DiskTableTraverseIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
-                                                 ts_col->GetId());
+                                                 ts_col->GetId(), GetCompressType());
         }
     }
-    return new DiskTableTraverseIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt);
+    return new DiskTableTraverseIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt, GetCompressType());
 }
 
 ::hybridse::vm::WindowIterator* DiskTable::NewWindowIterator(uint32_t idx) {
@@ -595,10 +595,11 @@ TraverseIterator* DiskTable::NewTraverseIterator(uint32_t index) {
         auto ts_col = index_def->GetTsColumn();
         if (ts_col) {
             return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
-                                                 ts_col->GetId(), cf_hs_[inner_pos + 1]);
+                    ts_col->GetId(), cf_hs_[inner_pos + 1], GetCompressType());
         }
     }
-    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt, cf_hs_[inner_pos + 1]);
+    return new DiskTableKeyIterator(db_, it, snapshot, ttl->ttl_type, expire_time, expire_cnt,
+            cf_hs_[inner_pos + 1], GetCompressType());
 }
 
 bool DiskTable::DeleteIndex(const std::string& idx_name) {

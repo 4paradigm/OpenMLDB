@@ -724,6 +724,22 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         response->set_msg("exceed max memory");
         return;
     }
+    ::openmldb::api::LogEntry entry;
+    entry.set_pk(request->pk());
+    entry.set_ts(request->time());
+    if (table->GetCompressType() == openmldb::type::CompressType::kSnappy) {
+        const auto& raw_val = request->value();
+        std::string* val = entry.mutable_value();
+        ::snappy::Compress(raw_val.c_str(), raw_val.length(), val);
+    } else {
+        entry.set_value(request->value());
+    }
+    if (request->dimensions_size() > 0) {
+        entry.mutable_dimensions()->CopyFrom(request->dimensions());
+    }
+    if (request->ts_dimensions_size() > 0) {
+        entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
+    }
     bool ok = false;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
@@ -733,7 +749,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             return;
         }
         DLOG(INFO) << "put data to tid " << tid << " pid " << pid << " with key " << request->dimensions(0).key();
-        ok = table->Put(request->time(), request->value(), request->dimensions());
+        ok = table->Put(entry.ts(), entry.value(), entry.dimensions());
     }
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);
@@ -743,23 +759,13 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
-    ::openmldb::api::LogEntry entry;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
             PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", tid, pid);
             break;
         }
-        entry.set_pk(request->pk());
-        entry.set_ts(request->time());
-        entry.set_value(request->value());
         entry.set_term(replicator->GetLeaderTerm());
-        if (request->dimensions_size() > 0) {
-            entry.mutable_dimensions()->CopyFrom(request->dimensions());
-        }
-        if (request->ts_dimensions_size() > 0) {
-            entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
-        }
 
         // Aggregator update assumes that binlog_offset is strictly increasing
         // so the update should be protected within the replicator lock
