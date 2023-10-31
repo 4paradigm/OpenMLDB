@@ -106,13 +106,14 @@ __attribute__((unused)) static void PrintColumnKey(
     t.add("ttl");
     t.add("ttl_type");
     t.end_of_row();
-
+    int index_pos = 1;
     for (int i = 0; i < column_key_field.size(); i++) {
         const auto& column_key = column_key_field.Get(i);
         if (column_key.flag() == 1) {
             continue;
         }
-        t.add(std::to_string(i + 1));
+        t.add(std::to_string(index_pos));
+        index_pos++;
         t.add(column_key.index_name());
         std::string key;
         for (const auto& name : column_key.col_name()) {
