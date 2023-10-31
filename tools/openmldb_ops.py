@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-
+# for Python 2, don't use f-string
 log = logging.getLogger(__name__)
 import os
 import sys
@@ -118,8 +118,8 @@ def RecoverPartition(executor, db, partitions, endpoint_status):
             db=db, table_name=table_name, pid=pid, leader_endpoint=leader_endpoint))
         status = executor.LoadTable(leader_endpoint, table_name, tid, pid)
         if not status.OK():
-            log.error("load table failed. db {db} name {table_name} tid {tid} pid {pid} endpoint {leader_endpoint} msg {status.GetMsg()}".format(
-                db=db, table_name=table_name, tid=tid, pid=pid, leader_endpoint=leader_endpoint, status=status))
+            log.error("load table failed. db {db} name {table_name} tid {tid} pid {pid} endpoint {leader_endpoint} msg {status}".format(
+                db=db, table_name=table_name, tid=tid, pid=pid, leader_endpoint=leader_endpoint, status=status.GetMsg()))
             return Status(-1, "recover partition failed")
     if not partitions[leader_pos].IsAlive():
         status =  executor.UpdateTableAlive(db, table_name, pid, leader_endpoint, "yes")
@@ -204,8 +204,9 @@ def RecoverData(executor):
             log.error("get all table failed")
             return
         for name in tables:
+            # if recover failed, continue to recover next table
             if not RecoverTable(executor, db, name).OK():
-                return
+                log.error("recover table failed. db {db} name {name}, check log for detail".format(db=db, name=name))
 
 def ChangeLeader(db, partition, src_endpoint, desc_endpoint, one_replica, restore = True):
     log.info(
