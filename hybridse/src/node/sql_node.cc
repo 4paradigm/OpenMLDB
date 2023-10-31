@@ -58,6 +58,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdDropTable, "drop table"},
         {CmdType::kCmdShowProcedures, "show procedures"},
         {CmdType::kCmdShowCreateSp, "show create procedure"},
+        {CmdType::kCmdShowCreateTable, "show create table"},
         {CmdType::kCmdDropSp, "drop procedure"},
         {CmdType::kCmdDropIndex, "drop index"},
         {CmdType::kCmdExit, "exit"},

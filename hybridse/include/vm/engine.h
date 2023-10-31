@@ -420,9 +420,6 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
-    // Get all dependent (db, table) info from physical plan
-    Status GetDependentTables(const PhysicalOpNode*, std::set<std::pair<std::string, std::string>>*);
-
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode);

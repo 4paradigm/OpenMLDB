@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(BRPC_URL https://github.com/4paradigm/incubator-brpc/archive/a85d1bde8df3a3e2e59a64ea5a3ee3122f9c6daa.zip)
-message(STATUS "build brpc from ${BRPC_URL}")
+set(BRPC_URL https://github.com/apache/brpc)
+set(BRPC_TAG d2b73ec955dd04b06ab55065d9f3b4de1e608bbd)
+message(STATUS "build brpc from ${BRPC_URL}@${BRPC_TAG}")
+
+find_package(Git REQUIRED)
 
 ExternalProject_Add(
   brpc
-  URL ${BRPC_URL}
-  URL_HASH SHA256=ea86d39313bed981357d2669daf1a858fcf1ec363465eda2eec60a8504a2c38e
+  GIT_REPOSITORY ${BRPC_URL}
+  GIT_TAG ${BRPC_TAG}
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/brpc
   INSTALL_DIR ${DEPS_INSTALL_DIR}
+  PATCH_COMMAND ${GIT_EXECUTABLE} checkout .
+    COMMAND ${GIT_EXECUTABLE} clean -dfx .
+    COMMAND ${GIT_EXECUTABLE} apply ${PROJECT_SOURCE_DIR}/patches/brpc-1.6.0.patch
+    COMMAND ${GIT_EXECUTABLE} apply ${PROJECT_SOURCE_DIR}/patches/brpc-1.6.0-2235.patch
   DEPENDS gflags glog protobuf snappy leveldb gperf openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B . -DWITH_GLOG=ON -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR} -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} ${CMAKE_OPTS}
   BUILD_COMMAND ${CMAKE_COMMAND} --build . --target brpc-static -- ${MAKEOPTS}

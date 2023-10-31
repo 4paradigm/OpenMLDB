@@ -25,17 +25,14 @@ StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
     : TypeIRBuilder(), m_(m), struct_type_(nullptr) {}
 StructTypeIRBuilder::~StructTypeIRBuilder() {}
 
-bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block,
-                                         ::llvm::Value* src,
-                                         ::llvm::Value* dist) {
-    StructTypeIRBuilder* struct_builder =
-        CreateStructTypeIRBuilder(block->getModule(), src->getType());
+bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) {
+    StructTypeIRBuilder* struct_builder = CreateStructTypeIRBuilder(block->getModule(), src->getType());
     bool ok = struct_builder->CopyFrom(block, src, dist);
     delete struct_builder;
     return ok;
 }
-StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(
-    ::llvm::Module* m, ::llvm::Type* type) {
+
+StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(::llvm::Module* m, ::llvm::Type* type) {
     node::DataType base_type;
     if (!GetBaseType(type, &base_type)) {
         return nullptr;
@@ -49,14 +46,24 @@ StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(
         case node::kVarchar:
             return new StringIRBuilder(m);
         default: {
-            LOG(WARNING) << "fail to create struct type ir builder for "
-                         << DataTypeName(base_type);
+            LOG(WARNING) << "fail to create struct type ir builder for " << DataTypeName(base_type);
             return nullptr;
         }
     }
     return nullptr;
 }
+
+absl::StatusOr<NativeValue> StructTypeIRBuilder::CreateNull(::llvm::BasicBlock* block) {
+    ::llvm::Value* value = nullptr;
+    if (!CreateDefault(block, &value)) {
+        return absl::InternalError(absl::StrCat("fail to construct ", GetLlvmObjectString(GetType())));
+    }
+    ::llvm::IRBuilder<> builder(block);
+    return NativeValue::CreateWithFlag(value, builder.getInt1(true));
+}
+
 ::llvm::Type* StructTypeIRBuilder::GetType() { return struct_type_; }
+
 bool StructTypeIRBuilder::Create(::llvm::BasicBlock* block,
                                  ::llvm::Value** output) const {
     if (block == NULL || output == NULL) {
