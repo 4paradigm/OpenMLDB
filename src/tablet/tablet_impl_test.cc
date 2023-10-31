@@ -128,17 +128,12 @@ bool RollWLogFile(::openmldb::storage::WriteHandle** wh, ::openmldb::storage::Lo
     return true;
 }
 
-void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool compress = false) { // NOLINT
+void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid) { // NOLINT
     for (int32_t i = 0; i < 100; i++) {
         ::openmldb::api::PutRequest prequest;
         ::openmldb::test::SetDimension(0, std::to_string(i % 10), prequest.add_dimensions());
         prequest.set_time(i + 1);
         std::string value = ::openmldb::test::EncodeKV(std::to_string(i % 10), std::to_string(i));
-        if (compress) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value.swap(compressed);
-        }
         prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
@@ -153,11 +148,6 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool c
         ::openmldb::test::SetDimension(0, "10", prequest.add_dimensions());
         prequest.set_time(i % 10 + 1);
         std::string value = ::openmldb::test::EncodeKV("10", std::to_string(i));
-        if (compress) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value.swap(compressed);
-        }
         prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
@@ -5314,7 +5304,7 @@ TEST_P(TabletImplTest, PutCompress) {
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        PrepareLatestTableData(tablet, id, 0, true);
+        PrepareLatestTableData(tablet, id, 0);
     }
 
     {
