@@ -713,11 +713,17 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
         // row last join table, compute in place
         auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
         auto& parameter = ctx.GetParameterRow();
-        if (output_right_only_) {
-            return std::shared_ptr<RowHandler>(
-                new MemRowHandler(join_gen_->RowLastJoinDropLeftSlices(left_row, right, parameter)));
+        if (join_gen_->join_type_ == node::kJoinTypeLast) {
+            if (output_right_only_) {
+                return std::shared_ptr<RowHandler>(
+                    new MemRowHandler(join_gen_->RowLastJoinDropLeftSlices(left_row, right, parameter)));
+            } else {
+                return std::shared_ptr<RowHandler>(
+                    new MemRowHandler(join_gen_->RowLastJoin(left_row, right, parameter)));
+            }
         } else {
-            return std::shared_ptr<RowHandler>(new MemRowHandler(join_gen_->RowLastJoin(left_row, right, parameter)));
+            // fix later
+            return {};
         }
     } else if (kPartitionHandler == left->GetHandlerType() && right->GetHandlerType() == kPartitionHandler) {
         auto left_part = std::dynamic_pointer_cast<PartitionHandler>(left);
@@ -747,6 +753,10 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx,
         return fail_ptr;
     }
     auto &parameter = ctx.GetParameterRow();
+
+    if (join_gen_->join_type_ == node::kJoinTypeLeft) {
+        return join_gen_->LazyJoin(left, right, parameter);
+    }
 
     switch (left->GetHandlerType()) {
         case kTableHandler: {

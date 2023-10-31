@@ -330,7 +330,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto right = right_task.GetRoot();
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
             switch (op->join().join_type()) {
-                case node::kJoinTypeLast: {
+                case node::kJoinTypeLast:
+                case node::kJoinTypeLeft: {
                     RequestLastJoinRunner* runner = CreateRunner<RequestLastJoinRunner>(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(), op->join_,
                         left->output_schemas()->GetSchemaSourceSize(), right->output_schemas()->GetSchemaSourceSize(),
@@ -408,6 +409,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto right = right_task.GetRoot();
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
             switch (op->join().join_type()) {
+                case node::kJoinTypeLeft:
                 case node::kJoinTypeLast: {
                     // TableLastJoin convert to Batch Request RequestLastJoin
                     if (support_cluster_optimized_) {

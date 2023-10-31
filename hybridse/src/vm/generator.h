@@ -305,14 +305,28 @@ class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
     Row RowLastJoinDropLeftSlices(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
 
     // lazy join, supports left join and last join
+    std::shared_ptr<TableHandler> LazyJoin(std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+                                           const Row& parameter);
     std::shared_ptr<PartitionHandler> LazyJoinOptimized(std::shared_ptr<PartitionHandler> left,
                                                         std::shared_ptr<PartitionHandler> right, const Row& parameter);
+
+    // init right iterator from left row, returns right iterator, nullptr if no match
+    // apply to standard SQL joins like left join, not for last join & concat join
+    std::unique_ptr<RowIterator> InitRight(const Row& left_row, std::shared_ptr<PartitionHandler> right,
+                                           const Row& param);
+
+    // row left join the iterator as right source, iterator is updated to the position of join, or
+    // last position if not found
+    // returns (joined_row, whether_any_right_row_matches)
+    std::pair<Row, bool> RowJoinIterator(const Row& left_row, std::unique_ptr<codec::RowIterator>& right_it,  // NOLINT
+                                         const Row& parameter);
 
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
     PartitionGenerator right_group_gen_;
     KeyGenerator index_key_gen_;
     SortGenerator right_sort_gen_;
+    node::JoinType join_type_;
 
  private:
     explicit JoinGenerator(const Join& join, size_t left_slices, size_t right_slices)
@@ -321,6 +335,7 @@ class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
           right_group_gen_(join.right_key_),
           index_key_gen_(join.index_key_.fn_info()),
           right_sort_gen_(join.right_sort_),
+          join_type_(join.join_type()),
           left_slices_(left_slices),
           right_slices_(right_slices) {}
 

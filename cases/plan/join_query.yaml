@@ -18,19 +18,83 @@ cases:
     sql: SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 full join t2 on t1.col1 = t2.col2;
     mode: physical-plan-unsupport
   - id: 2
+    mode: request-unsupport
     desc: 简单SELECT LEFT JOIN
     sql: SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 left join t2 on t1.col1 = t2.col2;
-    mode: physical-plan-unsupport
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: t1
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-1:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: t1
+          |  |    |    +-column_name: COL2
+          |  |    +-name: <nil>
+          |  +-2:
+          |  |  +-node[kResTarget]
+          |  |    +-val:
+          |  |    |  +-expr[column ref]
+          |  |    |    +-relation_name: t2
+          |  |    |    +-column_name: COL1
+          |  |    +-name: <nil>
+          |  +-3:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[column ref]
+          |      |    +-relation_name: t2
+          |      |    +-column_name: COL2
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kJoin
+          |      +-join_type: LeftJoin
+          |      +-left:
+          |      |  +-node[kTableRef]: kTable
+          |      |    +-table: t1
+          |      |    +-alias: <nil>
+          |      +-right:
+          |        +-node[kTableRef]: kTable
+          |          +-table: t2
+          |          +-alias: <nil>
+          |      +-order_expressions: null
+          |      +-on:
+          |        +-expr[binary]
+          |          +-=[list]:
+          |            +-0:
+          |            |  +-expr[column ref]
+          |            |    +-relation_name: t1
+          |            |    +-column_name: col1
+          |            +-1:
+          |              +-expr[column ref]
+          |                +-relation_name: t2
+          |                +-column_name: col2
+          +-window_list: []
   - id: 3
     desc: 简单SELECT LAST JOIN
     sql: SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col2;
   - id: 4
     desc: 简单SELECT RIGHT JOIN
     sql: SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 on t1.col1 = t2.col2;
-    mode: runner-unsupport
+    mode: physical-plan-unsupport
   - id: 5
     desc: LeftJoin有不等式条件
     sql: SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 left join t2 on t1.col1 = t2.col2 and t2.col5 >= t1.col5;
+    mode: request-unsupport
   - id: 6
     desc: LastJoin有不等式条件
     sql: SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col2 and t2.col5 >= t1.col5;

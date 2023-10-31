@@ -544,7 +544,149 @@ class LazyLastJoinIterator : public RowIterator {
 
     Row value_;
 };
+class LazyLeftJoinIterator : public RowIterator {
+ public:
+    LazyLeftJoinIterator(std::unique_ptr<RowIterator>&& left, std::shared_ptr<DataHandler> right, const Row& param,
+                         std::shared_ptr<JoinGenerator> join)
+    : left_it_(std::move(left)), right_(right), parameter_(param), join_(join) {
+        if (right_->GetHandlerType() == kPartitionHandler) {
+            right_partition_ = std::dynamic_pointer_cast<PartitionHandler>(right_);
+        }
+        SeekToFirst();
+    }
 
+    ~LazyLeftJoinIterator() override {}
+
+    bool Valid() const override { return left_it_->Valid(); }
+
+    // actual compute performed here, left_it_ and right_it_ is updated to the next position of join
+    void Next() override;
+
+    const uint64_t& GetKey() const override {
+        return left_it_->GetKey();
+    }
+
+    const Row& GetValue() override {
+        return value_;
+    }
+
+    bool IsSeekable() const override { return true; };
+
+    void Seek(const uint64_t& key) override {
+        left_it_->Seek(key);
+        onNewLeftRow();
+    }
+
+    void SeekToFirst() override {
+        left_it_->SeekToFirst();
+        onNewLeftRow();
+    }
+
+ private:
+    // left_value_ changed, update right_it_ based on join condition
+    void onNewLeftRow();
+
+    std::unique_ptr<RowIterator> left_it_;
+    std::shared_ptr<DataHandler> right_;
+    std::shared_ptr<PartitionHandler> right_partition_;
+    const Row parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+
+    // whether current left row has any rows from right joined, left join fallback to NULL if non matches
+    bool matches_right_ = false;
+    std::unique_ptr<RowIterator> right_it_;
+    Row left_value_;
+    Row value_;
+};
+
+class LazyJoinPartitionHandler final : public PartitionHandler {
+ public:
+    LazyJoinPartitionHandler(std::shared_ptr<PartitionHandler> left, std::shared_ptr<DataHandler> right,
+                             const Row& param, std::shared_ptr<JoinGenerator> join);
+    ~LazyJoinPartitionHandler() override {}
+
+    // NOTE: only support get segement by key from left source
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
+
+    const std::string GetHandlerTypeName() override;
+
+    std::unique_ptr<WindowIterator> GetWindowIterator() override;
+
+    codec::RowIterator* GetRawIterator() override;
+
+    const IndexHint& GetIndex() override { return left_->GetIndex(); }
+
+    // unimplemented
+    const Types& GetTypes() override { return left_->GetTypes(); }
+
+    // unimplemented
+    const Schema* GetSchema() override { return nullptr; }
+    const std::string& GetName() override { return left_->GetName(); }
+    const std::string& GetDatabase() override { return left_->GetDatabase(); }
+
+ private:
+    std::shared_ptr<PartitionHandler> left_;
+    std::shared_ptr<DataHandler> right_;
+    const Row& parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+};
+
+class LazyJoinTableHandler final : public TableHandler {
+ public:
+    LazyJoinTableHandler(std::shared_ptr<TableHandler> left, std::shared_ptr<DataHandler> right, const Row& param,
+                         std::shared_ptr<JoinGenerator> join)
+        : left_(left), right_(right), parameter_(param), join_(join) {
+    }
+
+    ~LazyJoinTableHandler() override {}
+
+    // unimplemented
+    const Types& GetTypes() override { return left_->GetTypes(); }
+
+    const IndexHint& GetIndex() override { return left_->GetIndex(); }
+
+    // unimplemented
+    const Schema* GetSchema() override { return nullptr; }
+    const std::string& GetName() override { return left_->GetName(); }
+    const std::string& GetDatabase() override { return left_->GetDatabase(); }
+
+    codec::RowIterator* GetRawIterator() override;
+
+    const uint64_t GetCount() override { return left_->GetCount(); }
+
+    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override;
+
+    const OrderType GetOrderType() const override { return left_->GetOrderType(); }
+
+    const std::string GetHandlerTypeName() override;
+
+ private:
+    std::shared_ptr<TableHandler> left_;
+    std::shared_ptr<DataHandler> right_;
+    const Row parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+};
+
+class LazyJoinWindowIterator final : public codec::WindowIterator {
+ public:
+    LazyJoinWindowIterator(std::unique_ptr<WindowIterator>&& iter, std::shared_ptr<DataHandler> right, const Row& param,
+                           std::shared_ptr<JoinGenerator> join);
+
+    ~LazyJoinWindowIterator() override {}
+
+    codec::RowIterator* GetRawValue() override;
+
+    void Seek(const std::string& key) override { left_->Seek(key); }
+    void SeekToFirst() override { left_->SeekToFirst(); }
+    void Next() override { left_->Next(); }
+    bool Valid() override { return left_ && left_->Valid(); }
+    const Row GetKey() override { return left_->GetKey(); }
+
+    std::shared_ptr<WindowIterator> left_;
+    std::shared_ptr<DataHandler> right_;
+    const Row& parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+};
 
 class LazyRequestUnionIterator final : public RowIterator {
  public:

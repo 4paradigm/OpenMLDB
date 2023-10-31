@@ -86,9 +86,78 @@ void LazyLastJoinIterator::Next() { left_it_->Next(); }
 
 bool LazyLastJoinIterator::Valid() const { return left_it_ && left_it_->Valid(); }
 
+LazyJoinPartitionHandler::LazyJoinPartitionHandler(std::shared_ptr<PartitionHandler> left,
+                                                   std::shared_ptr<DataHandler> right, const Row& param,
+                                                   std::shared_ptr<JoinGenerator> join)
+    : left_(left), right_(right), parameter_(param), join_(join) {}
+
+std::shared_ptr<TableHandler> LazyJoinPartitionHandler::GetSegment(const std::string& key) {
+    auto left_seg = left_->GetSegment(key);
+    return std::shared_ptr<TableHandler>(new LazyJoinTableHandler(left_seg, right_, parameter_, join_));
+}
+
+std::shared_ptr<PartitionHandler> LazyJoinTableHandler::GetPartition(const std::string& index_name) {
+    return std::shared_ptr<PartitionHandler>(
+        new LazyJoinPartitionHandler(left_->GetPartition(index_name), right_, parameter_, join_));
+}
+
+codec::RowIterator* LazyJoinPartitionHandler::GetRawIterator() {
+    auto iter = left_->GetIterator();
+    if (!iter) {
+        return nullptr;
+    }
+    return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
+}
+
+std::unique_ptr<WindowIterator> LazyJoinPartitionHandler::GetWindowIterator() {
+    auto wi = left_->GetWindowIterator();
+    if (wi == nullptr) {
+        return std::unique_ptr<WindowIterator>();
+    }
+
+    return std::unique_ptr<WindowIterator>(new LazyJoinWindowIterator(std::move(wi), right_, parameter_, join_));
+}
+
 const Row& LazyLastJoinIterator::GetValue() {
     value_ = join_->RowLastJoin(left_it_->GetValue(), right_, parameter_);
     return value_;
+}
+
+codec::RowIterator* LazyJoinTableHandler::GetRawIterator() {
+    auto iter = left_->GetIterator();
+    if (!iter) {
+        return {};
+    }
+
+    switch (join_->join_type_) {
+        case node::kJoinTypeLast:
+            return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
+        case node::kJoinTypeLeft:
+            return new LazyLeftJoinIterator(std::move(iter), right_, parameter_, join_);
+        default:
+            return {};
+    }
+}
+
+LazyJoinWindowIterator::LazyJoinWindowIterator(std::unique_ptr<WindowIterator>&& iter,
+                                               std::shared_ptr<DataHandler> right, const Row& param,
+                                               std::shared_ptr<JoinGenerator> join)
+    : left_(std::move(iter)), right_(right), parameter_(param), join_(join) {}
+
+codec::RowIterator* LazyJoinWindowIterator::GetRawValue() {
+    auto iter = left_->GetValue();
+    if (!iter) {
+        return nullptr;
+    }
+
+    switch (join_->join_type_) {
+        case node::kJoinTypeLast:
+            return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
+        case node::kJoinTypeLeft:
+            return new LazyLeftJoinIterator(std::move(iter), right_, parameter_, join_);
+        default:
+            return {};
+    }
 }
 
 std::shared_ptr<TableHandler> ConcatPartitionHandler::GetSegment(const std::string& key) {
@@ -280,5 +349,53 @@ const Row LazyRequestUnionWindowIterator::GetKey() { return left_->GetKey(); }
 void LazyRequestUnionWindowIterator::SeekToFirst() { left_->SeekToFirst(); }
 void LazyRequestUnionWindowIterator::Seek(const std::string& key) { left_->Seek(key); }
 void LazyRequestUnionWindowIterator::Next() { left_->Next(); }
+const std::string LazyJoinPartitionHandler::GetHandlerTypeName() {
+    return "LazyJoinPartitionHandler(" + node::JoinTypeName(join_->join_type_) + ")";
+}
+const std::string LazyJoinTableHandler::GetHandlerTypeName() {
+    return "LazyJoinTableHandler(" + node::JoinTypeName(join_->join_type_) + ")";
+}
+void LazyLeftJoinIterator::Next() {
+    if (right_it_ && right_it_->Valid()) {
+        right_it_->Next();
+        auto res = join_->RowJoinIterator(left_value_, right_it_, parameter_);
+        matches_right_ |= res.second;
+        if (matches_right_ && !right_it_->Valid()) {
+            // matched from right somewhere, skip the NULL match
+            left_it_->Next();
+            onNewLeftRow();
+        } else {
+            // RowJoinIterator returns NULL match by default
+            value_ = res.first;
+        }
+    } else {
+        left_it_->Next();
+        onNewLeftRow();
+    }
+}
+void LazyLeftJoinIterator::onNewLeftRow() {
+    // reset
+    right_it_ = nullptr;
+    left_value_ = Row();
+    value_ = Row();
+    matches_right_ = false;
+
+    if (!left_it_->Valid()) {
+        // end of iterator
+        return;
+    }
+
+    left_value_ = left_it_->GetValue();
+    if (right_partition_) {
+        right_it_ = join_->InitRight(left_value_, right_partition_, parameter_);
+    } else {
+        right_it_ = right_->GetIterator();
+        right_it_->SeekToFirst();
+    }
+
+    auto res = join_->RowJoinIterator(left_value_, right_it_, parameter_);
+    value_ = res.first;
+    matches_right_ |= res.second;
+}
 }  // namespace vm
 }  // namespace hybridse

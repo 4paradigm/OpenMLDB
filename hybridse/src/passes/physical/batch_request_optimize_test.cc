@@ -55,6 +55,9 @@ INSTANTIATE_TEST_SUITE_P(
     BatchRequestLastJoinQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    BatchRequestLeftJoin, BatchRequestOptimizeTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/query/left_join.yml")));
+INSTANTIATE_TEST_SUITE_P(
     BatchRequestLastJoinWindowQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_window_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(

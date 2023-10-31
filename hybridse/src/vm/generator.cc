@@ -237,12 +237,41 @@ Row JoinGenerator::RowLastJoinDropLeftSlices(
     return right_row;
 }
 
+std::shared_ptr<TableHandler> JoinGenerator::LazyJoin(std::shared_ptr<DataHandler> left,
+                                                      std::shared_ptr<DataHandler> right, const Row& parameter) {
+    if (left->GetHandlerType() == kPartitionHandler) {
+        return std::make_shared<LazyJoinPartitionHandler>(std::dynamic_pointer_cast<PartitionHandler>(left), right,
+                                                          parameter, shared_from_this());
+    }
 
+    auto left_tb = std::dynamic_pointer_cast<TableHandler>(left);
+    if (left->GetHandlerType() == kRowHandler) {
+        auto left_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
+        left_table->AddRow(std::dynamic_pointer_cast<RowHandler>(left)->GetValue());
+        left_tb = left_table;
+    }
+    return std::make_shared<LazyJoinTableHandler>(left_tb, right, parameter, shared_from_this());
+}
 
 std::shared_ptr<PartitionHandler> JoinGenerator::LazyJoinOptimized(std::shared_ptr<PartitionHandler> left,
                                                                    std::shared_ptr<PartitionHandler> right,
                                                                    const Row& parameter) {
     return std::make_shared<LazyJoinPartitionHandler>(left, right, parameter, shared_from_this());
+}
+
+std::unique_ptr<RowIterator> JoinGenerator::InitRight(const Row& left_row, std::shared_ptr<PartitionHandler> right,
+                                                      const Row& param) {
+    auto partition_key = index_key_gen_.Gen(left_row, param);
+    auto right_seg = right->GetSegment(partition_key);
+    if (!right_seg) {
+        return {};
+    }
+    auto it = right_seg->GetIterator();
+    if (!it) {
+        return {};
+    }
+    it->SeekToFirst();
+    return it;
 }
 
 Row JoinGenerator::RowLastJoin(const Row& left_row,
@@ -331,6 +360,41 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         right_iter->Next();
     }
     return Row(left_slices_, left_row, right_slices_, Row());
+}
+
+std::pair<Row, bool> JoinGenerator::RowJoinIterator(const Row& left_row,
+                                                    std::unique_ptr<codec::RowIterator>& right_iter,
+                                                    const Row& parameter) {
+    if (!right_iter || !right_iter ->Valid()) {
+        return {Row(left_slices_, left_row, right_slices_, Row()), false};
+    }
+
+    if (!left_key_gen_.Valid() && !condition_gen_.Valid()) {
+        auto right_value = right_iter->GetValue();
+        return {Row(left_slices_, left_row, right_slices_, right_value), true};
+    }
+
+    std::string left_key_str = "";
+    if (left_key_gen_.Valid()) {
+        left_key_str = left_key_gen_.Gen(left_row, parameter);
+    }
+    while (right_iter->Valid()) {
+        if (right_group_gen_.Valid()) {
+            auto right_key_str = right_group_gen_.GetKey(right_iter->GetValue(), parameter);
+            if (left_key_gen_.Valid() && left_key_str != right_key_str) {
+                right_iter->Next();
+                continue;
+            }
+        }
+
+        Row joined_row(left_slices_, left_row, right_slices_, right_iter->GetValue());
+        if (!condition_gen_.Valid() || condition_gen_.Gen(joined_row, parameter)) {
+            return {joined_row, true};
+        }
+        right_iter->Next();
+    }
+
+    return {Row(left_slices_, left_row, right_slices_, Row()), false};
 }
 
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,

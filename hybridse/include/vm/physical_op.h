@@ -731,6 +731,7 @@ class PhysicalConstProjectNode : public PhysicalOpNode {
  public:
     explicit PhysicalConstProjectNode(const ColumnProjects &project)
         : PhysicalOpNode(kPhysicalOpConstProject, true), project_(project) {
+        output_type_ = kSchemaTypeRow;
         fn_infos_.push_back(&project_.fn_info());
     }
     virtual ~PhysicalConstProjectNode() {}
@@ -1183,23 +1184,25 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
  public:
+    static constexpr PhysicalOpType kConcreteNodeKind = kPhysicalOpJoin;
+
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
                      const node::OrderByNode *orders,
                      const node::ExprNode *condition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type, orders, condition),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
 
         RegisterFunctionInfo();
     }
@@ -1208,11 +1211,11 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition,
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type, condition, left_keys, right_keys),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
 
         RegisterFunctionInfo();
     }
@@ -1222,31 +1225,31 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition,
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type, orders, condition, left_keys, right_keys),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
 
         RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const Join &join)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
 
         RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const Join &join, const bool output_right_only)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join),
           joined_schemas_ctx_(this),
           output_right_only_(output_right_only) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
 
         RegisterFunctionInfo();
     }
@@ -1275,37 +1278,59 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     Join join_;
     SchemasContext joined_schemas_ctx_;
     const bool output_right_only_;
+
+ private:
+    void InitOuptput() {
+        switch (join_.join_type_) {
+            case node::kJoinTypeLast:
+            case node::kJoinTypeConcat: {
+                output_type_ = GetProducer(0)->GetOutputType();
+                break;
+            }
+            default: {
+                // standard SQL JOINs, always treat as a table output
+                if (GetProducer(0)->GetOutputType() == kSchemaTypeGroup) {
+                    output_type_ = kSchemaTypeGroup;
+                } else {
+                    output_type_ = kSchemaTypeTable;
+                }
+                break;
+            }
+        }
+    }
 };
 
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
  public:
+    static constexpr PhysicalOpType kConcreteNodeKind = kPhysicalOpRequestJoin;
+
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
         RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
                             const node::OrderByNode *orders,
                             const node::ExprNode *condition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type, orders, condition),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
         RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const Join &join, const bool output_right_only)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join),
           joined_schemas_ctx_(this),
           output_right_only_(output_right_only) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
         RegisterFunctionInfo();
     }
 
@@ -1315,11 +1340,11 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprNode *condition,
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type, condition, left_keys, right_keys),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
         RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1328,11 +1353,11 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprNode *condition,
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
+        : PhysicalBinaryNode(left, right, kConcreteNodeKind, false),
           join_(join_type, orders, condition, left_keys, right_keys),
           joined_schemas_ctx_(this),
           output_right_only_(false) {
-        output_type_ = left->GetOutputType();
+        InitOuptput();
         RegisterFunctionInfo();
     }
 
@@ -1363,6 +1388,26 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     Join join_;
     SchemasContext joined_schemas_ctx_;
     const bool output_right_only_;
+
+ private:
+    void InitOuptput() {
+        switch (join_.join_type_) {
+            case node::kJoinTypeLast:
+            case node::kJoinTypeConcat: {
+                output_type_ = GetProducer(0)->GetOutputType();
+                break;
+            }
+            default: {
+                // standard SQL JOINs, always treat as a table output
+                if (GetProducer(0)->GetOutputType() == kSchemaTypeGroup) {
+                    output_type_ = kSchemaTypeGroup;
+                } else {
+                    output_type_ = kSchemaTypeTable;
+                }
+                break;
+            }
+        }
+    }
 };
 
 class PhysicalUnionNode : public PhysicalBinaryNode {
