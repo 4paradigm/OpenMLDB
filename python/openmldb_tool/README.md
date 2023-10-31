@@ -48,21 +48,27 @@ status [-h] [--helpfull] [--diff DIFF]
 optional arguments:
   -h, --help   show this help message and exit
   --helpfull   show full help message and exit
-  --diff       check if all endpoints in conf are in cluster. If set, need to set `--conf_file`
+  --diff       check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`
 ```
 
 Use `show components` to show servers(no apiserver now).
 
+--conn:
+- ping all servers, brpc /health to check ok，and
+- online servers version and cost time, we can get from brpc http://<endpoint>/version. (ns,tablet, apiserver set_version in brpc server)
+
 TODO: 
-- ping all servers, brpc /health to check ok
-- online servers version, we can get from brpc http://<endpoint>/version. (ns,tablet, apiserver set_version in brpc server)
 - brpc /flags to get all gflags(including openmldb), `--enable_flags_service=true` required
 
 ## Inspect
 
-Use `show table status like '%';` in all dbs, even the hidden db(system db).
+`inspect` for full report, no offline diag now. 
 
-If you found some online tables are not behaving properly, do inspect online.
+inspect online: Use `show table status like '%';` in all dbs, even the hidden db(system db).
+
+inspect offline: failed jobs, no more info. TODO: check register table?
+
+inspect job: full support of offline job, select jobs, parse job log
 
 ## Test
 
