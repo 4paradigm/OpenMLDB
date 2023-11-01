@@ -433,6 +433,11 @@ bool MemTable::IsExpire(const LogEntry& entry) {
         }
     }
     const int8_t* data = reinterpret_cast<const int8_t*>(entry.value().data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(entry.value().data(), entry.value().size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
