@@ -1446,14 +1446,12 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         DEBUGLOG("tid %u, pid %u seek to first", tid, pid);
         it->SeekToFirst();
     }
-    std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
-    std::vector<std::string> key_seq;
-    uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     uint32_t scount = 0;
+    butil::IOBuf buf;
     for (; it->Valid(); it->Next()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             DEBUGLOG("reache the limit %u ", request->limit());
@@ -1475,16 +1473,9 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
                 continue;
             }
         }
-        auto map_it = value_map.find(last_pk);
-        if (map_it == value_map.end()) {
-            auto pair = value_map.emplace(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>());
-            map_it = pair.first;
-            map_it->second.reserve(request->limit());
-            key_seq.emplace_back(map_it->first);
-        }
         openmldb::base::Slice value = it->GetValue();
-        map_it->second.emplace_back(it->GetKey(), value);
-        total_block_size += last_pk.length() + value.size();
+        DLOG(INFO) << "encode pk " << it->GetPK() << " ts " << it->GetKey() << " size " << value.size();
+        ::openmldb::codec::EncodeFull(it->GetPK(), it->GetKey(), value.data(), value.size(), &buf);
         scount++;
         if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
@@ -1504,26 +1495,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     } else if (scount < request->limit()) {
         is_finish = true;
     }
-    uint32_t total_size = scount * (8 + 4 + 4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& key : key_seq) {
-        auto iter = value_map.find(key);
-        if (iter == value_map.end()) {
-            continue;
-        }
-        for (const auto& pair : iter->second) {
-            DLOG(INFO) << "encode pk " << key << " ts " << pair.first << " size " << pair.second.size();
-            ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
-            offset += (4 + 4 + 8 + key.length() + pair.second.size());
-        }
-    }
+    buf.copy_to(response->mutable_pairs());
     delete it;
     DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
                << " last_time " << last_time << " ts_pos " << ts_pos;

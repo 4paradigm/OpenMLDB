@@ -350,12 +350,20 @@ TEST_P(DBSDKTest, SelectSnappy) {
         "index(key=c1, ts=c2, abs_ttl=0, ttl_type=absolute)) options (compress_type='snappy');";
     sr->ExecuteSQL(create_sql, &status);
     ASSERT_TRUE(status.IsOK());
-    std::string insert_sql = "insert into trans values ('aaa', 1635247427000, \"2021-05-20\");";
-    sr->ExecuteSQL(insert_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    int insert_num = 100;
+    for (int i = 0; i < insert_num; i++) {
+        auto insert_sql = absl::StrCat("insert into trans values ('aaa", i, "', 1635247427000, \"2021-05-20\");");
+        sr->ExecuteSQL(insert_sql, &status);
+        ASSERT_TRUE(status.IsOK());
+    }
     auto rs = sr->ExecuteSQL("select * from trans", &status);
     ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(1, rs->Size());
+    ASSERT_EQ(insert_num, rs->Size());
+    int count = 0;
+    while (rs->Next()) {
+        count++;
+    }
+    EXPECT_EQ(count, insert_num);
     sr->ExecuteSQL("drop table trans;", &status);
     ASSERT_TRUE(status.IsOK());
     sr->ExecuteSQL("drop database " + db + ";", &status);

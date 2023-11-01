@@ -300,6 +300,20 @@ int32_t EncodeRows(const boost::container::deque<std::pair<uint64_t, ::openmldb:
     return total_size;
 }
 
+void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, butil::IOBuf* buf) {
+    uint32_t pk_size = pk.length();
+    uint32_t total_size = 8 + pk_size + size;
+    DEBUGLOG("encode total size %u pk size %u", total_size, pk_size);
+    memrev32ifbe(&total_size);
+    buf->append(&total_size, 4);
+    memrev32ifbe(&pk_size);
+    buf->append(&pk_size, 4);
+    memrev64ifbe(&time);
+    buf->append(&time, 8);
+    buf->append(pk);
+    buf->append(data, size);
+}
+
 void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, char* buffer,
                               uint32_t offset) {
     buffer += offset;

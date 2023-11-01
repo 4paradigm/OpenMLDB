@@ -88,6 +88,8 @@ void EncodeFull(const std::string& pk, uint64_t time, const char* data, const si
 void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer,
                               uint32_t offset);
 
+void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, butil::IOBuf* buf);
+
 void Decode(const std::string* str, std::vector<std::pair<uint64_t, std::string*>>& pairs);  // NOLINT
 
 void DecodeFull(const std::string* str,
