@@ -317,8 +317,8 @@ public class RequestPreparedStatementTest {
         }
     }
 
-    @Test
-    public void testDeploymentBatchRequest() {
+    @Test(dataProvider = "createOption")
+    public void testDeploymentBatchRequest(String compressType, String storageMode) {
         java.sql.Statement state = executor.getStatement();
         String dbname = "db" + random.nextInt(100000);
         String deploymentName = "dp_test1";
@@ -326,14 +326,16 @@ public class RequestPreparedStatementTest {
             state.execute("drop database if exists " + dbname + ";");
             state.execute("create database " + dbname + ";");
             state.execute("use " + dbname + ";");
-            String createTableSql = "create table trans(c1 string,\n" +
+            String baseSql = "create table trans(c1 string,\n" +
                     "                   c3 int,\n" +
                     "                   c4 bigint,\n" +
                     "                   c5 float,\n" +
                     "                   c6 double,\n" +
                     "                   c7 timestamp,\n" +
                     "                   c8 date,\n" +
-                    "                   index(key=c1, ts=c7));";
+                    "                   index(key=c1, ts=c7))";
+            String createTableSql = String.format(" %s OPTIONS (compress_type='%s', storage_mode='%s');",
+                    baseSql, compressType, storageMode);
             state.execute(createTableSql);
             String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
                     "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";

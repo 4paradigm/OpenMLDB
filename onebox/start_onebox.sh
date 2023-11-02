@@ -75,6 +75,8 @@ cluster_start_component() {
             --zk_keep_alive_check_interval=60000
             --db_root_path="$binlog_dir"
             --recycle_bin_root_path="$recycle_bin_dir"
+            --hdd_root_path="$binlog_dir"
+            --recycle_bin_hdd_root_path="$recycle_bin_dir"
         )
     elif [[ $role = 'nameserver' ]]; then
         extra_opts+=(
