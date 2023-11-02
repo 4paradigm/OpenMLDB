@@ -1572,7 +1572,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
             iter_vec.push_back(std::move(it));
             ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
-            ::openmldb::cmd::ShowTableRows(key, &sdk_it, tables[0].compress_type());
+            ::openmldb::cmd::ShowTableRows(key, &sdk_it);
         }
     } else {
         if (parts.size() < 6) {

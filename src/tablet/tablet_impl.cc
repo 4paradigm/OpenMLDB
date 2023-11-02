@@ -463,9 +463,6 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     bool enable_project = false;
     openmldb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            return -1;
-        }
         bool ok = row_project.Init();
         if (!ok) {
             PDLOG(WARNING, "invalid project list");
@@ -891,7 +888,7 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
 }
 
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, bool use_attachment,
                               CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count, bool* is_finish) {
     uint32_t limit = request->limit();
     if (combine_it == nullptr || io_buf == nullptr || count == nullptr || is_finish == nullptr) {
@@ -915,12 +912,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
     bool enable_project = false;
     ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data do not eing supported";
-            return -1;
-        }
-        bool ok = row_project.Init();
-        if (!ok) {
+        if (!row_project.Init()) {
             PDLOG(WARNING, "invalid project list");
             return -1;
         }
@@ -961,11 +953,19 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            io_buf->append(reinterpret_cast<void*>(ptr), size);
+            if (use_attachment) {
+                io_buf->append(reinterpret_cast<void*>(ptr), size);
+            } else {
+                ::openmldb::codec::Encode(ts, reinterpret_cast<char*>(ptr), size, io_buf);
+            }
             total_block_size += size;
         } else {
             openmldb::base::Slice data = combine_it->GetValue();
-            io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            if (use_attachment) {
+                io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            } else {
+                ::openmldb::codec::Encode(ts, data.data(), data.size(), io_buf);
+            }
             total_block_size += data.size();
         }
         record_count++;
@@ -976,98 +976,6 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         combine_it->Next();
     }
     *count = record_count;
-    return 0;
-}
-int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-                              CombineIterator* combine_it, std::string* pairs, uint32_t* count, bool* is_finish) {
-    uint32_t limit = request->limit();
-    if (combine_it == nullptr || pairs == nullptr || count == nullptr || is_finish == nullptr) {
-        PDLOG(WARNING, "invalid args");
-        return -1;
-    }
-    uint64_t st = request->st();
-    uint64_t et = request->et();
-    uint64_t expire_time = combine_it->GetExpireTime();
-    ::openmldb::storage::TTLType ttl_type = combine_it->GetTTLType();
-    if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
-        ttl_type == ::openmldb::storage::TTLType::kAbsOrLat) {
-        et = std::max(et, expire_time);
-    }
-    if (st > 0 && st < et) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
-        return -1;
-    }
-
-    bool enable_project = false;
-    ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (!request->projection().empty()) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data, not supported";
-            return -1;
-        }
-        bool ok = row_project.Init();
-        if (!ok) {
-            PDLOG(WARNING, "invalid project list");
-            return -1;
-        }
-        enable_project = true;
-    }
-    bool remove_duplicated_record = request->enable_remove_duplicated_record();
-    uint64_t last_time = 0;
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> tmp;
-    uint32_t total_block_size = 0;
-    combine_it->SeekToFirst();
-    uint32_t skip_record_num = request->skip_record_num();
-    while (combine_it->Valid()) {
-        if (limit > 0 && tmp.size() >= limit) {
-            *is_finish = false;
-            break;
-        }
-        if (remove_duplicated_record && !tmp.empty() && last_time == combine_it->GetTs()) {
-            combine_it->Next();
-            continue;
-        }
-        if (combine_it->GetTs() == st && skip_record_num > 0) {
-            skip_record_num--;
-            combine_it->Next();
-            continue;
-        }
-        uint64_t ts = combine_it->GetTs();
-        if (ts <= et) {
-            break;
-        }
-        last_time = ts;
-        if (enable_project) {
-            int8_t* ptr = nullptr;
-            uint32_t size = 0;
-            openmldb::base::Slice data = combine_it->GetValue();
-            const auto* row_ptr = reinterpret_cast<const int8_t*>(data.data());
-            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
-            if (!ok) {
-                PDLOG(WARNING, "fail to make a projection");
-                return -4;
-            }
-            tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
-            total_block_size += size;
-        } else {
-            openmldb::base::Slice data = combine_it->GetValue();
-            total_block_size += data.size();
-            tmp.emplace_back(ts, data);
-        }
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
-            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
-            *is_finish = false;
-            break;
-        }
-        combine_it->Next();
-    }
-    int32_t ok = ::openmldb::codec::EncodeRows(tmp, total_block_size, pairs);
-    if (ok == -1) {
-        PDLOG(WARNING, "fail to encode rows");
-        return -4;
-    }
-    *count = tmp.size();
     return 0;
 }
 
@@ -1258,12 +1166,13 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
     int32_t code = 0;
     bool is_finish = true;
     if (!request->has_use_attachment() || !request->use_attachment()) {
-        std::string* pairs = response->mutable_pairs();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, pairs, &count, &is_finish);
+        butil::IOBuf buf;
+        code = ScanIndex(request, *table_meta, vers_schema, false, &combine_it, &buf, &count, &is_finish);
+        buf.copy_to(response->mutable_pairs());
     } else {
         auto* cntl = dynamic_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count, &is_finish);
+        code = ScanIndex(request, *table_meta, vers_schema, true, &combine_it, &buf, &count, &is_finish);
         response->set_buf_size(buf.size());
         DLOG(INFO) << " scan " << request->pk() << " with buf size " << buf.size();
     }

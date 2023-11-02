@@ -243,6 +243,15 @@ void Encode(uint64_t time, const char* data, const size_t size, char* buffer, ui
     memcpy(buffer, static_cast<const void*>(data), size);
 }
 
+void Encode(uint64_t time, const char* data, const size_t size, butil::IOBuf* buf) {
+    uint32_t total_size = 8 + size;
+    memrev32ifbe(&total_size);
+    buf->append(&total_size, 4);
+    memrev64ifbe(&time);
+    buf->append(&time, 8);
+    buf->append(data, size);
+}
+
 void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
     return Encode(time, data->data, data->size, buffer, offset);
 }
@@ -259,47 +268,6 @@ void Encode(const DataBlock* data, char* buffer, uint32_t offset) {
     return Encode(data->data, data->size, buffer, offset);
 }
 
-int32_t EncodeRows(const std::vector<::openmldb::base::Slice>& rows, uint32_t total_block_size,
-                                 std::string* body) {
-    if (body == NULL) {
-        PDLOG(WARNING, "invalid output body");
-        return -1;
-    }
-
-    uint32_t total_size = rows.size() * 4 + total_block_size;
-    if (rows.size() > 0) {
-        body->resize(total_size);
-    }
-    uint32_t offset = 0;
-    char* rbuffer = reinterpret_cast<char*>(&((*body)[0]));
-    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::openmldb::codec::Encode(lit->data(), lit->size(), rbuffer, offset);
-        offset += (4 + lit->size());
-    }
-    return total_size;
-}
-
-int32_t EncodeRows(const boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>>& rows,
-                                 uint32_t total_block_size, std::string* pairs) {
-    if (pairs == NULL) {
-        PDLOG(WARNING, "invalid output pairs");
-        return -1;
-    }
-
-    uint32_t total_size = rows.size() * (8 + 4) + total_block_size;
-    if (rows.size() > 0) {
-        pairs->resize(total_size);
-    }
-
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
-        ::openmldb::codec::Encode(lit->first, lit->second.data(), lit->second.size(), rbuffer, offset);
-        offset += (4 + 8 + lit->second.size());
-    }
-    return total_size;
-}
-
 void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, butil::IOBuf* buf) {
     uint32_t pk_size = pk.length();
     uint32_t total_size = 8 + pk_size + size;
@@ -312,31 +280,6 @@ void EncodeFull(const std::string& pk, uint64_t time, const char* data, const si
     buf->append(&time, 8);
     buf->append(pk);
     buf->append(data, size);
-}
-
-void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, char* buffer,
-                              uint32_t offset) {
-    buffer += offset;
-    uint32_t pk_size = pk.length();
-    uint32_t total_size = 8 + pk_size + size;
-    DEBUGLOG("encode total size %u pk size %u", total_size, pk_size);
-    memcpy(buffer, static_cast<const void*>(&total_size), 4);
-    memrev32ifbe(buffer);
-    buffer += 4;
-    memcpy(buffer, static_cast<const void*>(&pk_size), 4);
-    memrev32ifbe(buffer);
-    buffer += 4;
-    memcpy(buffer, static_cast<const void*>(&time), 8);
-    memrev64ifbe(buffer);
-    buffer += 8;
-    memcpy(buffer, static_cast<const void*>(pk.c_str()), pk_size);
-    buffer += pk_size;
-    memcpy(buffer, static_cast<const void*>(data), size);
-}
-
-void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer,
-                              uint32_t offset) {
-    return EncodeFull(pk, time, data->data, data->size, buffer, offset);
 }
 
 void Decode(const std::string* str, std::vector<std::pair<uint64_t, std::string*>>& pairs) {  // NOLINT

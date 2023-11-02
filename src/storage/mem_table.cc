@@ -528,9 +528,9 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return segment->NewIterator(spk, ts_col->GetId(), ticket);
+        return segment->NewIterator(spk, ts_col->GetId(), ticket, GetCompressType());
     }
-    return segment->NewIterator(spk, ticket);
+    return segment->NewIterator(spk, ticket, GetCompressType());
 }
 
 uint64_t MemTable::GetRecordIdxByteSize() {

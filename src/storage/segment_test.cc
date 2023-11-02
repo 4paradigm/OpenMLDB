@@ -61,7 +61,7 @@ TEST_F(SegmentTest, PutAndScan) {
     segment.Put(pk, 9529, value.c_str(), value.size());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
-    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket));
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket, type::CompressType::kNoCompress));
     it->Seek(9530);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9529, (int64_t)it->GetKey());
@@ -103,7 +103,7 @@ TEST_F(SegmentTest, Delete) {
     segment.Put(pk, 9529, value.c_str(), value.size());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
-    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket));
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket, type::CompressType::kNoCompress));
     int size = 0;
     it->SeekToFirst();
     while (it->Valid()) {
@@ -112,7 +112,7 @@ TEST_F(SegmentTest, Delete) {
     }
     ASSERT_EQ(4, size);
     ASSERT_TRUE(segment.Delete(std::nullopt, pk));
-    it.reset(segment.NewIterator("test1", ticket));
+    it.reset(segment.NewIterator("test1", ticket, type::CompressType::kNoCompress));
     ASSERT_FALSE(it->Valid());
     segment.IncrGcVersion();
     segment.IncrGcVersion();
@@ -178,7 +178,7 @@ TEST_F(SegmentTest, Iterator) {
     segment.Put(pk, 9769, "test2", 5);
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
-    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket));
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket, type::CompressType::kNoCompress));
     it->SeekToFirst();
     int size = 0;
     while (it->Valid()) {
@@ -208,7 +208,7 @@ TEST_F(SegmentTest, TestGc4Head) {
     segment.Gc4Head(1, &gc_info);
     CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
     Ticket ticket;
-    std::unique_ptr<MemTableIterator> it(segment.NewIterator(pk, ticket));
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator(pk, ticket, type::CompressType::kNoCompress));
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, (int64_t)it->GetKey());
@@ -401,7 +401,7 @@ TEST_F(SegmentTest, TestDeleteRange) {
     ASSERT_EQ(100, GetCount(&segment, 0));
     std::string pk = "key2";
     Ticket ticket;
-    std::unique_ptr<MemTableIterator> it(segment.NewIterator(pk, ticket));
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator(pk, ticket, type::CompressType::kNoCompress));
     it->Seek(1005);
     ASSERT_TRUE(it->Valid() && it->GetKey() == 1005);
     ASSERT_TRUE(segment.Delete(std::nullopt, pk, 1005, 1004));
