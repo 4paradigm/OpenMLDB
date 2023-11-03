@@ -68,10 +68,10 @@ enum RunnerType {
     kRunnerRequestAggUnion,
     kRunnerPostRequestUnion,
     kRunnerIndexSeek,
-    kRunnerLastJoin,
+    kRunnerJoin,
     kRunnerConcat,
     kRunnerRequestRunProxy,
-    kRunnerRequestLastJoin,
+    kRunnerRequestJoin,
     kRunnerBatchRequestRunProxy,
     kRunnerLimit,
     kRunnerUnknow,
@@ -114,12 +114,12 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "POST_REQUEST_UNION";
         case kRunnerIndexSeek:
             return "INDEX_SEEK";
-        case kRunnerLastJoin:
-            return "LASTJOIN";
+        case kRunnerJoin:
+            return "JOIN";
         case kRunnerConcat:
             return "CONCAT";
-        case kRunnerRequestLastJoin:
-            return "REQUEST_LASTJOIN";
+        case kRunnerRequestJoin:
+            return "REQUEST_JOIN";
         case kRunnerLimit:
             return "LIMIT";
         case kRunnerRequestRunProxy:
@@ -699,14 +699,14 @@ class PostRequestUnionRunner : public Runner {
     OrderGenerator request_ts_gen_;
 };
 
-class LastJoinRunner : public Runner {
+class JoinRunner : public Runner {
  public:
-    LastJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
-                   const Join& join, size_t left_slices, size_t right_slices)
-        : Runner(id, kRunnerLastJoin, schema, limit_cnt) {
+    JoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt, const Join& join,
+               size_t left_slices, size_t right_slices)
+        : Runner(id, kRunnerJoin, schema, limit_cnt) {
         join_gen_ = JoinGenerator::Create(join, left_slices, right_slices);
     }
-    ~LastJoinRunner() {}
+    ~JoinRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
@@ -714,15 +714,15 @@ class LastJoinRunner : public Runner {
 
     std::shared_ptr<JoinGenerator> join_gen_;
 };
-class RequestLastJoinRunner : public Runner {
+class RequestJoinRunner : public Runner {
  public:
-    RequestLastJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
-                          const Join& join, const size_t left_slices, const size_t right_slices,
-                          const bool output_right_only)
-        : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt), output_right_only_(output_right_only) {
+    RequestJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                      const Join& join, const size_t left_slices, const size_t right_slices,
+                      const bool output_right_only)
+        : Runner(id, kRunnerRequestJoin, schema, limit_cnt), output_right_only_(output_right_only) {
         join_gen_ = JoinGenerator::Create(join, left_slices, right_slices);
     }
-    ~RequestLastJoinRunner() {}
+    ~RequestJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,                                        // NOLINT

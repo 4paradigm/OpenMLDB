@@ -696,7 +696,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     }
 }
 
-std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
+std::shared_ptr<DataHandler> RequestJoinRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
@@ -721,8 +721,10 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
                 return std::shared_ptr<RowHandler>(
                     new MemRowHandler(join_gen_->RowLastJoin(left_row, right, parameter)));
             }
+        } else if (join_gen_->join_type_ == node::kJoinTypeLeft) {
+            return join_gen_->LazyJoin(left, right, ctx.GetParameterRow());
         } else {
-            // fix later
+            LOG(WARNING) << "unsupport join type " << node::JoinTypeName(join_gen_->join_type_);
             return {};
         }
     } else if (kPartitionHandler == left->GetHandlerType() && right->GetHandlerType() == kPartitionHandler) {
@@ -735,8 +737,8 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     return std::shared_ptr<DataHandler>();
 }
 
-std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx,
-                                                 const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+std::shared_ptr<DataHandler> JoinRunner::Run(RunnerContext& ctx,
+                                             const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (inputs.size() < 2) {
         LOG(WARNING) << "inputs size < 2";

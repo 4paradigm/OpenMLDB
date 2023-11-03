@@ -315,7 +315,7 @@ cases:
           t3.c1 as c1r,
           t3.c2 as c2r,
           t4.c3 as c3x
-        from t2 left join t3
+        from t2 left outer join t3
         on t2.c1 = t3.c1 and t2.c2 > t3.c2
         left join t4
         on t2.c1 = t4.c1 and t3.c3 < t4.c3
@@ -354,3 +354,29 @@ cases:
         bb, bb, NULL, NULL, NULL
         cc, cc, cc, 27, NULL
         dd, NULL, NULL, NULL, NULL
+  - id: 5
+    desc: simple left join
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+      - name: t2
+        columns: ["c2 int","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - [20,3000]
+          - [20,2000]
+    sql: |
+      select t1.c1 as id, t2.* from t1 left join t2
+      on t1.c2 = t2.c2
+    expect:
+      order: c1
+      columns: ["id string", "c2 int","c4 timestamp"]
+      data: |
+        aa, 20, 3000
+        aa, 20, 2000
+        bb, NULL, NULL

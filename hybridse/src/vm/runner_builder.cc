@@ -332,7 +332,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast:
                 case node::kJoinTypeLeft: {
-                    RequestLastJoinRunner* runner = CreateRunner<RequestLastJoinRunner>(
+                    RequestJoinRunner* runner = CreateRunner<RequestJoinRunner>(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(), op->join_,
                         left->output_schemas()->GetSchemaSourceSize(), right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
@@ -414,15 +414,15 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     // TableLastJoin convert to Batch Request RequestLastJoin
                     if (support_cluster_optimized_) {
                         // looks strange, join op won't run for batch-cluster mode
-                        RequestLastJoinRunner* runner = CreateRunner<RequestLastJoinRunner>(
+                        RequestJoinRunner* runner = CreateRunner<RequestJoinRunner>(
                             id_++, node->schemas_ctx(), op->GetLimitCnt(), op->join_,
                             left->output_schemas()->GetSchemaSourceSize(),
                             right->output_schemas()->GetSchemaSourceSize(), op->output_right_only_);
                         return RegisterTask(
                             node, BinaryInherit(left_task, right_task, runner, op->join().index_key(), kLeftBias));
                     } else {
-                        LastJoinRunner* runner =
-                            CreateRunner<LastJoinRunner>(id_++, node->schemas_ctx(), op->GetLimitCnt(), op->join_,
+                        JoinRunner* runner =
+                            CreateRunner<JoinRunner>(id_++, node->schemas_ctx(), op->GetLimitCnt(), op->join_,
                                                          left->output_schemas()->GetSchemaSourceSize(),
                                                          right->output_schemas()->GetSchemaSourceSize());
                         return RegisterTask(node, BinaryInherit(left_task, right_task, runner, Key(), kLeftBias));
