@@ -14,7 +14,7 @@
 | -------------- | ---------------------------- | -------------------------------- | -------------------------------- | ------------ | ------------------------------------------------------------ |
 | WHERE 子句     | ✓                            | ✓                                | ✕                                | ✓            | 部分功能可以通过带有 `_where` 后缀的内置函数实现 |
 | HAVING 子句    | ✓                            | ✓                                | X                                | ✓            |                                                              |
-| JOIN 子句      | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 仅支持特有的 **LAST JOIN**                          |
+| JOIN 子句      | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 支持特有的 **LAST JOIN**, 和 **LEFT JOIN**         |
 | GROUP BY 分组  | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
 | ORDER BY 关键字 | ✓                           | ✓                                | ✓                               | ✓            | 仅支持在 `WINDOW` 和 `LAST JOIN` 子句内部使用，不支持倒排序 `DESC` |
 | LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
@@ -94,19 +94,23 @@ GROUP BY 语句，目前仍为实验性功能，仅支持输入表是一张物�
 | LAST JOIN  | ✕            | ✕                | ✕                |
 | 子查询     | ✕            | ✕                | ✕                |
 
-### JOIN 子句（LAST JOIN）
+### JOIN 子句
 
-OpenMLDB 仅支持 LAST JOIN 一种 JOIN 语法，详细描述参考扩展语法的 LAST JOIN 部分。JOIN 有左右两个输入，在线请求模式下，支持两个输入为物理表，或者特定的子查询，详见表格，未列出情况不支持。
+OpenMLDB 支持 LAST JOIN 和 LEFT JOIN，详细描述参考扩展语法的 JOIN 部分。JOIN 有左右两个输入，在线请求模式下，支持两个输入为物理表，或者特定的子查询，LEFT JOIN 不能直接用于在线请求模式, 但可以作为 LAST JOIN 的右表输入. 详见表格，未列出情况不支持。
 
-| **应用于**                                                   | **离线模式** | **在线预览模式** | **在线请求模式** |
-| ------------------------------------------------------------ | ------------ | ---------------- | ---------------- |
-| 两个表引用                                                   | ✓            | ✕                | ✓                |
-| 子查询, 仅包括：<br>左右表均为简单列筛选<br>左右表为 WINDOW 或 LAST JOIN 操作<br>带 WHERE 条件过滤的单表查询 | ✓            | ✓                | ✓                |
+| **应用于**                                     | **离线模式** | **在线预览模式** | **在线请求模式** |
+| ---------------------------------------------- | ------------ | ---------------- | ---------------- |
+| LAST JOIN + 两个表引用                         | ✓            | ✕                | ✓                |
+| LAST JOIN + 左右表均为简单列筛选               | ✓            | ✕                | ✓l               |
+| LAST JOIN + 右表是带 WHERE 条件过滤的单表查询  | ✓            | ✕                | ✓                |
+| LAST JOIN左表或右表为 WINDOW 或 LAST JOIN 操作 | ✓            | ✕                | ✓                |
+| LAST JOIN + 右表是LEFT JOIN 的子查询           | ✕            | ✕                | ✓                |
+| LEFT JOIN                                      | ✕            | ✕                | ✕                |
 
 特殊限制：
 
 - 关于特定子查询的 LAST JOIN 上线，还有额外要求，详见[上线要求](../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范) 。
-- 在线预览模式下暂不支持 LAST JOIN
+- 在线预览模式下暂不支持 LAST JOIN 和 LEFT JOIN
 
 ### WITH 子句
 
@@ -238,15 +242,15 @@ SELECT
 
 在实际开发中，较多的应用的数据是存放在多个表格中，在这种情况下，一般会使用 WINDOW ... UNION 的语法进行跨表的聚合操作。请参考[跨表特征开发教程](../tutorial/tutorial_sql_2.md)关于“ 副表多行聚合特征”部分。
 
-### LAST JOIN 子句
+### JOIN 子句
 
-关于 LAST JOIN 详细语法规范，请参考 [LAST JOIN 文档](../openmldb_sql/dql/JOIN_CLAUSE.md#join-clause)。
+关于 JOIN 详细语法规范，请参考 [JOIN 文档](../openmldb_sql/dql/JOIN_CLAUSE.md#join-clause)。
 
 | **语句元素** | **支持语法** | **说明**                                                     | **必需？** |
 | ------------ | ------------ | ------------------------------------------------------------ | ---------- |
 | ON           | ✓            | 列类型支持：BOOL, INT16, INT32, INT64, STRING, DATE, TIMESTAMP | ✓          |
 | USING        | 不支持       | -                                                            | -          |
-| ORDER BY     | ✓            | 后面只能接单列列类型 : INT16, INT32, INT64, TIMESTAMP<br>不支持倒序关键字 DESC | -          |
+| ORDER BY     | ✓            | LAST JOIN 的拓展语法, LEFT JON 不支持. <br />后面只能接单列列类型 : INT16, INT32, INT64, TIMESTAMP, 不支持倒序关键字 DESC | -          |
 
 #### LAST JOIN 举例
 
@@ -256,4 +260,10 @@ SELECT
 FROM 
   t1 
 LAST JOIN t2 ON t1.col1 = t2.col1;
+
+SELECT 
+  * 
+FROM 
+  t1 
+LEFT JOIN t2 ON t1.col1 = t2.col1;
 ```

@@ -1,23 +1,31 @@
 # JOIN Clause
 
-OpenMLDB目前仅支持`LAST JOIN`一种**JoinType**。
+OpenMLDB目前支持
 
-LAST JOIN可以看作一种特殊的LEFT JOIN。在满足JOIN条件的前提下，左表的每一行拼接符合条件的最后一行。LAST JOIN分为无排序拼接，和排序拼接。
+- LAST JOIN
+- LEFT JOIN (**OPENMLDB >= 0.8.4**)
+
+LEFT OUTER JOIN (或者简称 LEFT JOIN) 会将两个 from_item 进行联接, 同时保留左侧from_item中的所有记录, 即使右侧from_item满足联接条件的记录数为零。对于右侧表中没有找到匹配的记录,则右侧的列会以 NULL 值填充。
+
+LAST JOIN 是 OpenMLDB SQL 拓展的 JOIN类型. 它的语法和 LEFT JOIN 基本一致, 但在右侧 from_item 后面允许带可选的 ORDER BY 子句, 表示筛选右侧 from_iem 的顺序. 根据是否带有这个 ORDER BY 子句, LAST JOIN分为无排序拼接，和排序拼接。
 
 - 无排序拼接是指：未对右表作排序，直接拼接。
 - 排序拼接是指：先对右表排序，然后再拼接。
 
-与LEFT JOIN相同，LAST JOIN也会返回左表中所有行，即使右表中没有匹配的行。
+与LEFT JOIN相同，LAST JOIN也会返回左表中所有行，即使右表中没有匹配的行。不同的是, LAST JOIN 是一对一, LEFT JOIN 是一对多.
 
 ## Syntax
 
 ```
-JoinClause
-         ::= TableRef JoinType 'JOIN' TableRef [OrderByClause] 'ON' Expression 
+join:
+    TableRef "LAST" "JOIN" TableRef [OrderByClause] "ON" Expression 
+    | TableRef join_type "JOIN" TableRef "ON" Expression
 
-JoinType ::= 'LAST'       
+join_type:
+    'LEFT' [OUTER]
 
-OrderByClause :=  'ORDER' 'BY' <COLUMN_NAME>
+order_by_clause:
+    'ORDER' 'BY' <COLUMN_NAME>
 ```
 
 ### 使用限制说明
@@ -30,14 +38,17 @@ OrderByClause :=  'ORDER' 'BY' <COLUMN_NAME>
 ## SQL语句模版
 
 ```sql
-SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
+SELECT ... FROM t1 LAST JOIN t2 ON expression;
+
+SELECT ... FROM t1 LEFT JOIN t2 ON expression;
 ```
 
 ## 边界说明
 
 | SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                 |
 | :--------------------------------------------- | --------- | ------------ | ------------ |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause| **``✓``** | **``x``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在线请求模式下，需要遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)                                        |
+| LAST JOIN | **``✓``** | **``x``** | **``✓``** | 表示数据来源多个表JOIN。在线请求模式下，需要遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)                                        |
+| LEFT JOIN | **``x``** | **``x``** | **``✓``** | 由于 LEFT JOIN 是一对多 JOIN, 本身不能之间由于在线请求模式. 但是可以作为其他类型查询内部的子查询, 例如作为 LAST JOIN 的右表. 具体参考[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范) |
 
 
 ### 未排序的LAST JOIN 

@@ -14,20 +14,11 @@ OpenMLDB仅支持上线[SELECT查询语句](../dql/SELECT_STATEMENT.md)。
 
 | SELECT 子句                              | 说明                                                         |
 | :--------------------------------------- | :----------------------------------------------------------- |
-| 无表查询                                 | SELECT 没有 FROM 子句, 只做表达式计算                        |
 | 单张表的简单表达式计算                   | 简单的单表查询是对一张表进行列运算、使用运算表达式或单行处理函数（Scalar Function)以及它们的组合表达式作计算。需要遵循[在线请求模式下单表查询的使用规范](#在线请求模式下单表查询的使用规范) |
 | [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下-last-join-的使用规范) |
 | [`WINDOW` 子句](../dql/WINDOW_CLAUSE.md) | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数进行分析计算。需要遵循[在线请求模式下Window的使用规范](#在线请求模式下window的使用规范) |
 
 ## 在线请求模式下 `SELECT` 子句的使用规范
-
-### 无表查询
-
-```sql
-SELECT sin(30) as out;
-```
-
-
 
 ### 在线请求模式下单表查询的使用规范
 
@@ -71,11 +62,12 @@ SELECT substr(COL7, 3, 6) FROM t1;
 3. 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，列类型为 int16, int32, int64 or timestamp, **并且列需要命中右表索引的时间列**。满足条件 2 和 3 的情况我们简单称做表能被 LAST JOIN 的 JOIN  条件优化
 4. 右表 TableRef
   - 可以指一张物理表, 或者子查询语句
-  - 子查询情况, 只支持
+  - 子查询情况, 目前支持
     - 简单列筛选 (`select * from tb` or `select id, val from tb`)
-    - 窗口聚合子查询, 例如 `select id, count(val) over w as cnt from t1 window w as (...)`. 这种情况下, 子查询和 last join 的左表必须有相同的主表, 主表指计划树下最左边的物理表节点. 
+    - 窗口聚合子查询, 例如 `select id, count(val) over w as cnt from t1 window w as (...)`. 
     - **Since OpenMLDB 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
     - **Since OpenMLDB 0.8.4** 右表是带 LAST JOIN 的子查询 `subquery`, 要求 `subquery` 最左的表能被 JOIN 条件优化, `subquery`剩余表能被自身 LAST JOIN 的 JOIN 条件优化 
+    - **Since OpenMLDB 0.8.4** LEFT JOIN. 要求 LEFT JOIN 的右表能被 LEFT JOIN 条件优化, LEFT JOIN 的左表能被上层的 LAST JOIN 条件优化
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。
@@ -154,6 +146,27 @@ FROM t1 LAST JOIN (
     ON t2.col1 = t3.col1
 ) tx
 ON t1.col1 = tx.t2_col1
+
+-- 右表是 LEFT JOIN
+SELECT
+  t1.col1 as t1_col1,
+  tx.t2_col1,
+  tx.t3_col1
+FROM t1 LAST JOIN (
+    SELECT t2.col1 as t2_col1, t3.col1 as t3_col1
+    FROM t2 LEFT JOIN t3
+    ON t2.col1 = t3.col1
+) tx
+ON t1.col1 = tx.t2_col1
+
+-- 右表是窗口聚合计算
+SELECT
+  t1.col1,
+  tx.agg
+FROM t1 LAST JOIN (
+  SELECT col1, count(col2) over w as agg
+  FROM t2 WINDOW w AS (PARTITION BY col2 order by std_time ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
+)
 ```
 
 
