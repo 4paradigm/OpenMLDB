@@ -180,6 +180,31 @@ TEST_F(APIServerTest, jsonFormat) {
         reader >> d_res;
         ASSERT_TRUE(std::isinf(d_res));
     }
+    {
+        // float nan inf
+        // IEEE 754 arithmetic allows cast nan/inf to float, so GetFloat is fine
+        JsonReader reader("[NaN, Infinity, -Infinity]");
+        ASSERT_TRUE(reader);
+        float f_res = -1.0;
+        reader.StartArray();
+        reader >> f_res;
+        ASSERT_TRUE(std::isnan(f_res));
+        reader >> f_res;
+        ASSERT_TRUE(std::isinf(f_res));
+        reader >> f_res;
+        ASSERT_TRUE(std::isinf(f_res));
+        // raw way for put and procedure(common cols)
+        f_res = -1.0;
+        rapidjson::Document document;
+        document.Parse<rapidjson::kParseNanAndInfFlag>("[NaN, Infinity, -Infinity]");
+        document.StartArray();
+        f_res = document[0].GetFloat();
+        ASSERT_TRUE(std::isnan(f_res));
+        f_res = document[1].GetFloat();
+        ASSERT_TRUE(std::isinf(f_res));
+        f_res = document[2].GetFloat();
+        ASSERT_TRUE(std::isinf(f_res));
+    }
     {  // illegal words
         JsonReader reader("nan");
         ASSERT_FALSE(reader);
@@ -196,11 +221,7 @@ TEST_F(APIServerTest, jsonFormat) {
         ASSERT_FALSE(reader);      // get double failed
         ASSERT_FLOAT_EQ(d, -1.0);  // won't change
     }
-    // StringBuffer buffer;
-    // rapidjson::Writer<StringBuffer, rapidjson::UTF8<>, rapidjson::UTF8<>, rapidjson::CrtAllocator,
-    //                      rapidjson::kWriteNanAndInfFlag> writerr(buffer);
-    // writerr.Double(std::numeric_limits<double>::quiet_NaN());
-    // LOG(INFO) << buffer.GetString();
+
     // test json writer
     JsonWriter writer;
     // about double nan, inf
@@ -210,7 +231,7 @@ TEST_F(APIServerTest, jsonFormat) {
     writer << nan;
     writer << inf;
     double ninf = -inf;
-writer << ninf;
+    writer << ninf;
     writer.EndArray();
     ASSERT_STREQ("[NaN,Infinity,-Infinity]", writer.GetString());
 }

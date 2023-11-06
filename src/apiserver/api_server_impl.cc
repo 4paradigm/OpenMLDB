@@ -240,13 +240,14 @@ bool APIServerImpl::AppendJsonValue(const Value& v, hybridse::sdk::DataType type
             return row->AppendInt64(v.GetInt64());
         }
         case hybridse::sdk::kTypeFloat: {
-            if (!v.IsNumber()) {  // relax check, int can get as double
+            if (!v.IsNumber()) {  // relax check, int can get as double and support set float NaN&Inf
                 return false;
             }
-            return row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
+            // IEEE 754 arithmetic allows cast nan/inf to float
+            return row->AppendFloat(v.GetFloat());
         }
         case hybridse::sdk::kTypeDouble: {
-            if (!v.IsNumber()) {
+            if (!v.IsLosslessDouble()) {
                 return false;
             }
             return row->AppendDouble(v.GetDouble());
@@ -347,7 +348,7 @@ void APIServerImpl::RegisterPut() {
 
         // json2doc, then generate an insert sql
         Document document;
-        if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+        if (document.Parse<rapidjson::kParseNanAndInfFlag>(req_body.to_string().c_str()).HasParseError()) {
             DLOG(INFO) << "rapidjson doc parse [" << req_body.to_string().c_str() << "] failed, code "
                        << document.GetParseError() << ", offset " << document.GetErrorOffset();
             writer << resp.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
@@ -430,8 +431,9 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     auto db = db_it->second;
     auto sp = sp_it->second;
 
+    // TODO(hw): JsonReader can't set SQLRequestRow simply(cuz common_cols), use raw rapidjson here
     Document document;
-    if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+    if (document.Parse<rapidjson::kParseNanAndInfFlag>(req_body.to_string().c_str()).HasParseError()) {
         writer << resp.Set("Request body json parse failed");
         return;
     }
