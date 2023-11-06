@@ -57,7 +57,7 @@ class JsonReader {
         \note in-situ means the source JSON string will be modified after parsing.
         just pass document for template read flags
     */
-    JsonReader(const char* json);
+    explicit JsonReader(const char* json);
 
     /// Destructor.
     ~JsonReader();

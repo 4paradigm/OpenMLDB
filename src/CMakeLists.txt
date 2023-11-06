@@ -16,8 +16,7 @@
 include_directories(
     ${INCLUDE_DIRECTORIES}
     ${PROJECT_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}/src
-    )
+    ${CMAKE_BINARY_DIR}/src)
 
 add_subdirectory(statistics)
 

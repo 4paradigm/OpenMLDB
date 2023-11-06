@@ -891,7 +891,7 @@ void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::S
     ar.EndArray();
 }
 
-void WriteDoubleHelper(JsonWriter& ar, double d, bool write_nan_and_inf_null) {
+void WriteDoubleHelper(JsonWriter& ar, double d, bool write_nan_and_inf_null) {  // NOLINT
     if (write_nan_and_inf_null) {
         if (std::isnan(d) || std::isinf(d)) {
             ar.SetNull();
@@ -901,8 +901,8 @@ void WriteDoubleHelper(JsonWriter& ar, double d, bool write_nan_and_inf_null) {
     ar& d;
 }
 
-void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i,
-                bool write_nan_and_inf_null) {  // NOLINT
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i,  // NOLINT
+                bool write_nan_and_inf_null) {
     auto schema = rs->GetSchema();
     if (rs->IsNULL(i)) {
         if (schema->IsColumnNotNull(i)) {
