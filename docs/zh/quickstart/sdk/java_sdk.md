@@ -403,7 +403,7 @@ try {
             "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS_RANGE BETWEEN 2d PRECEDING AND CURRENT ROW);", table,
             table, table);
     // 上线一个Deployment
-    String deploySql = String.format("DEPLOY %s %s", deploymentName, selectSql);
+    String deploySql = String.format("DEPLOY %s OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') %s", deploymentName, selectSql);
     // set return null rs, don't check the returned value, it's false
     state.execute(deploySql);
 } catch (Exception e) {

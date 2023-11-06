@@ -230,6 +230,9 @@ class FilterGenerator : public PredicateFun {
 
     const bool Valid() const { return index_seek_gen_.Valid() || condition_gen_.Valid(); }
 
+    // return if index seek exists
+    bool ValidIndex() const;
+
     std::shared_ptr<DataHandler> Filter(std::shared_ptr<TableHandler> table, const Row& parameter,
                                         std::optional<int32_t> limit);
 

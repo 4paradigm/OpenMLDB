@@ -41,7 +41,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
     for (auto column : columns) {
         oss << node::ExprString(column) << ",";
     }
-    LOG(INFO) << "join resolved related columns: \n" << oss.str();
+    LOG(INFO) << "join resolved related columns: " << oss.str();
 
     // find columns belong to left side
     std::vector<size_t> left_indices;
@@ -116,7 +116,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(
             << status;
         return false;
     }
-    DLOG(INFO) << "apply root node simplify!";
+    DLOG(INFO) << "apply root node simplify: " << root_simplify_project_op->GetTreeString();
     *output = root_simplify_project_op;
     return true;
 }
@@ -134,10 +134,13 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 case node::kJoinTypeLast: {
                     auto left = join_op->producers()[0];
                     auto right = join_op->producers()[1];
-                    if (vm::PhysicalSchemaType::kSchemaTypeRow ==
-                        right->GetOutputType()) {
-                        DLOG(INFO)
-                            << "request join optimized skip: row and row join";
+                    if (vm::PhysicalSchemaType::kSchemaTypeRow != left->GetOutputType()) {
+                        DLOG(INFO) << "request join optimized skip: left source is not a row";
+                        return false;
+                    }
+
+                    if (vm::PhysicalSchemaType::kSchemaTypeRow == right->GetOutputType()) {
+                        DLOG(INFO) << "request join optimized skip: row and row join";
                         return false;
                     }
                     auto simplify_left = left;

@@ -2,6 +2,20 @@
 
 由于OpenMLDB是分布式系统，多种模式，客户端丰富，初次使用可能会有很多疑问，或者遇到一些运行、使用问题，本文从新手使用的角度，讲解如何进行诊断调试，需求帮助时如何提供有效信息给技术人员等等。
 
+## 错误诊断
+
+在使用OpenMLDB的过程中，除了SQL语法错误，其他错误信息可能不够直观，但很可能与集群状态有关。所以，错误诊断需要**先确认集群状态**。在发现错误时，请先使用诊断工具的一键诊断功能。一键诊断可以输出全面直观的诊断报告，如果不能使用此工具，可以手动执行`SHOW COMPONENTS;`和`SHOW TABLE STATUS LIKE '%';`提供部分信息。
+
+报告将展示集群的组件、在线表等状态，也会提示用户如何修复，请按照报告内容进行操作，详情见[一键inspect](../maintain/diagnose.md#一键inspect)。
+
+```
+openmldb_tool inspect [-c=0.0.0.0:2181/openmldb]
+```
+
+需要注意，由于离线存储只会在执行离线job时被读取，而离线job也不是一个持续的状态，所以，一键诊断只能展示TaskManager组件状态，不会诊断离线存储，也无法诊断离线job的执行错误，离线job诊断见[离线SQL执行](#离线)。
+
+如果诊断报告认为集群健康，但仍然无法解决问题，请提供错误和诊断报告给我们。
+
 ## 创建OpenMLDB与连接
 
 首先，我们建议不熟悉分布式多进程管理的新手使用docker创建OpenMLDB，方便快速上手。熟悉OpenMLDB各组件之后，再尝试分布式部署。
@@ -71,12 +85,14 @@ create table t1(c1 int;
 
 如果是集群离线命令，默认异步模式下，发送命令会得到job id的返回。可使用`show job <id>`来查询job执行情况。
 
-离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端（同步SELECT将会打印结果）。可以通过`show joblog <id>`来获得结果，结果中包含stdout和stderr两部分，stdout为查询结果，stderr为job运行日志。如果发现job failed或者其他状态，不符合你的预期，请仔细查看job运行日志。
+离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端，而同步SELECT将会打印结果到控制台。可以通过`show joblog <id>`来获得结果，结果中包含stdout和stderr两部分，stdout为查询结果，stderr为job运行日志。如果发现job failed或者其他状态，不符合你的预期，请仔细查看job运行日志。
+
+离线job日志中可能有一定的干扰日志，用户可以使用`openmldb_tool inspect job --id x`进行日志的解析提取，帮助定位错误，更多信息请参考[诊断工具job检查](../maintain/diagnose.md#job-检查)。
+
+如果taskmanager是yarn模式，而不是local模式，`job_x_error.log`中的信息会较少，只会打印异常。如果异常不直观，需要更早时间的执行日志，执行日志不在`job_x_error.log`中，需要通过`job_x_error.log`中记录的yarn app id，去yarn系统中查询yarn app的container的日志。yarn app container里，执行日志也保存在stderr中。
 
 ```{note}
-日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目的地寻找日志。stdout日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，job运行日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
-
-如果taskmanager是yarn模式，而不是local模式，`job_x_error.log`中的信息会较少，不会有job错误的详细信息。需要通过`job_x_error.log`中记录的yarn app id，去yarn系统中查询job的真正错误原因。
+如果你无法通过show joblog获得日志，或者想要直接拿到日志文件，可以直接在TaskManager机器上获取。日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目录中寻找日志。stdout查询结果默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，stderr job运行日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)。
 ```
 
 #### 在线
@@ -90,7 +106,7 @@ create table t1(c1 int;
 ```
 create database db;
 use db;
--- create youer table
+-- create your table
 create table xx ();
 
 -- offline or online

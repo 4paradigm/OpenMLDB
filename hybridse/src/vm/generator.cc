@@ -726,5 +726,9 @@ std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<TableHandle
     return std::make_shared<LimitTableHandler>(table, limit.value());
 }
 
+bool FilterGenerator::ValidIndex() const {
+    return index_seek_gen_.Valid();
+}
+
 }  // namespace vm
 }  // namespace hybridse

@@ -26,6 +26,9 @@ if(TESTING_ENABLE)
     add_executable(db_sdk_test db_sdk_test.cc)
     target_link_libraries(db_sdk_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
 
+    add_executable(sdk_util_test sdk_util_test.cc)
+    target_link_libraries(sdk_util_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
+
     add_executable(result_set_sql_test result_set_sql_test.cc)
     target_link_libraries(result_set_sql_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
 
