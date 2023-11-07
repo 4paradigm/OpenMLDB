@@ -58,7 +58,7 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string spark_conf_path;
     uint32_t zk_log_level = 3;  // PY/JAVA SDK default info log
     std::string zk_log_file;
-    std::string zk_auth_schema;
+    std::string zk_auth_schema = "digest";
     std::string zk_cert;
 };
 

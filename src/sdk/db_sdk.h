@@ -43,7 +43,7 @@ struct ClusterOptions {
     int32_t zk_session_timeout = 2000;
     int32_t zk_log_level = 3;
     std::string zk_log_file;
-    std::string zk_auth_schema;
+    std::string zk_auth_schema = "digest";
     std::string zk_cert;
     std::string to_string() {
         std::stringstream ss;
