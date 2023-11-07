@@ -3,6 +3,8 @@
 --role=apiserver
 --zk_cluster=127.0.0.1:2181
 --zk_root_path=/openmldb
+#--zk_auth_schema=digest
+#--zk_cert=user:passwd
 
 --openmldb_log_dir=./logs
 --log_level=info

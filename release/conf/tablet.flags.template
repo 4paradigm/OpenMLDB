@@ -6,6 +6,8 @@
 
 --zk_cluster=127.0.0.1:2181
 --zk_root_path=/openmldb
+#--zk_auth_schema=digest
+#--zk_cert=user:passwd
 
 # thread_pool_size建议和cpu核数一致
 --thread_pool_size=24

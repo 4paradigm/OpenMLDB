@@ -64,11 +64,15 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path, void* wat
 }
 
 ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint, int32_t session_timeout,
-                   const std::string& endpoint, const std::string& zk_root_path)
+                   const std::string& endpoint, const std::string& zk_root_path,
+                   const std::string& auth_schema, const std::string& cert)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      auth_schema_(auth_schema),
+      cert_(cert),
+      acl_vector_(ZOO_OPEN_ACL_UNSAFE),
       real_endpoint_(real_endpoint),
       nodes_root_path_(zk_root_path_ + "/nodes"),
       nodes_watch_callbacks_(),
@@ -88,11 +92,15 @@ ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint, i
 }
 
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout, const std::string& endpoint,
-                   const std::string& zk_root_path, const std::string& zone_path)
+                   const std::string& zk_root_path, const std::string& zone_path,
+                   const std::string& auth_schema, const std::string& cert)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      auth_schema_(auth_schema),
+      cert_(cert),
+      acl_vector_(ZOO_OPEN_ACL_UNSAFE),
       nodes_root_path_(zone_path),
       nodes_watch_callbacks_(),
       mu_(),
@@ -132,6 +140,14 @@ bool ZkClient::Init(int log_level, const std::string& log_file) {
     if (zk_ == NULL || !connected_) {
         PDLOG(WARNING, "fail to init zk handler with hosts %s, session_timeout %d", hosts_.c_str(), session_timeout_);
         return false;
+    }
+    if (!cert_.empty()) {
+        if (zoo_add_auth(zk_, auth_schema_.c_str(), cert_.data(), cert_.length(), NULL, NULL) != ZOK) {
+            PDLOG(WARNING, "auth failed. schema: %s cert: %s", auth_schema_.c_str(), cert_.c_str());
+            return false;
+        }
+        acl_vector_ = acl_vector_;
+        PDLOG(INFO, "auth ok. schema: %s cert: %s", auth_schema_.c_str(), cert_.c_str());
     }
     return true;
 }
@@ -173,7 +189,7 @@ bool ZkClient::Register(bool startup_flag) {
     if (startup_flag) {
         value = "startup_" + endpoint_;
     }
-    int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, ZOO_EPHEMERAL, NULL, 0);
+    int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &acl_vector_, ZOO_EPHEMERAL, NULL, 0);
     if (ret == ZOK) {
         PDLOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
         registed_.store(true, std::memory_order_relaxed);
@@ -231,7 +247,7 @@ bool ZkClient::RegisterName() {
         }
         PDLOG(WARNING, "set node with name %s value %s failed", sname.c_str(), value.c_str());
     } else {
-        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(), &acl_vector_, 0, NULL, 0);
         if (ret == ZOK) {
             PDLOG(INFO, "register with name %s value %s ok", sname.c_str(), value.c_str());
             return true;
@@ -281,7 +297,7 @@ bool ZkClient::CreateNode(const std::string& node, const std::string& value, int
     uint32_t size = node.size() + 11;
     char path_buffer[size];  // NOLINT
     int ret =
-        zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, flags, path_buffer, size);
+        zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &acl_vector_, flags, path_buffer, size);
     if (ret == ZOK) {
         assigned_path_name.assign(path_buffer, size - 1);
         PDLOG(INFO, "create node %s ok and real node name %s", node.c_str(), assigned_path_name.c_str());
@@ -597,7 +613,7 @@ bool ZkClient::MkdirNoLock(const std::string& path) {
         }
         full_path += *it;
         index++;
-        int ret = zoo_create(zk_, full_path.c_str(), "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        int ret = zoo_create(zk_, full_path.c_str(), "", 0, &acl_vector_, 0, NULL, 0);
         if (ret == ZNODEEXISTS || ret == ZOK) {
             continue;
         }
