@@ -146,7 +146,7 @@ bool ZkClient::Init(int log_level, const std::string& log_file) {
             PDLOG(WARNING, "auth failed. schema: %s cert: %s", auth_schema_.c_str(), cert_.c_str());
             return false;
         }
-        acl_vector_ = acl_vector_;
+        acl_vector_ = ZOO_CREATOR_ALL_ACL;
         PDLOG(INFO, "auth ok. schema: %s cert: %s", auth_schema_.c_str(), cert_.c_str());
     }
     return true;
@@ -387,9 +387,11 @@ bool ZkClient::GetNodeValueAndStat(const char* node, std::string* value, Stat* s
 
 bool ZkClient::DeleteNode(const std::string& node) {
     std::lock_guard<std::mutex> lock(mu_);
-    if (zoo_delete(zk_, node.c_str(), -1) == ZOK) {
+    int ret = zoo_delete(zk_, node.c_str(), -1);
+    if (ret == ZOK) {
         return true;
     }
+    PDLOG(WARNING, "delete %s failed. error no is %d", node.c_str(), ret);
     return false;
 }
 

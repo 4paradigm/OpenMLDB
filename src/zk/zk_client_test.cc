@@ -146,6 +146,48 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ASSERT_TRUE(detect.load());
 }
 
+TEST_F(ZkClientTest, Auth) {
+    std::string node = "/openmldb_auth/node1";
+    {
+        ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/openmldb_auth", "digest", "user1:123456");
+        bool ok = client.Init();
+        ASSERT_TRUE(ok);
+
+        int ret = client.IsExistNode(node);
+        ASSERT_EQ(ret, 1);
+        ok = client.CreateNode(node, "value");
+        ASSERT_TRUE(ok);
+        ret = client.IsExistNode(node);
+        ASSERT_EQ(ret, 0);
+    }
+    {
+        ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/openmldb_auth", "", "");
+        bool ok = client.Init();
+        ASSERT_TRUE(ok);
+        std::string value;
+        ASSERT_FALSE(client.GetNodeValue(node, value));
+        ASSERT_FALSE(client.CreateNode("/openmldb_auth/node1/dd", "aaa"));
+    }
+    {
+        ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/openmldb_auth", "digest", "user1:wrong");
+        bool ok = client.Init();
+        ASSERT_TRUE(ok);
+        std::string value;
+        ASSERT_FALSE(client.GetNodeValue(node, value));
+        ASSERT_FALSE(client.CreateNode("/openmldb_auth/node1/dd", "aaa"));
+    }
+    {
+        ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/openmldb_auth", "digest", "user1:123456");
+        bool ok = client.Init();
+        ASSERT_TRUE(ok);
+        std::string value;
+        ASSERT_TRUE(client.GetNodeValue(node, value));
+        ASSERT_EQ("value", value);
+        ASSERT_TRUE(client.DeleteNode(node));
+        ASSERT_TRUE(client.DeleteNode("/openmldb_auth"));
+    }
+}
+
 }  // namespace zk
 }  // namespace openmldb
 
