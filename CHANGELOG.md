@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.8.4] - 2023-11-15
+
+### Features
+- Support lazy last join (#3533 @aceforeverd)
+- Support a new SQL statement `SHOW CREATE TABLE` (#3500 @dl239)
+- Support the date before 1900 in `datediff` (#3499 @aceforeverd)
+- Enhance the diagnostic tool (#3559 @vagetablechicken)
+- Check the status of table when the CLI starts (#3506 @vagetablechicken)
+- Upgrade the version of Brpc to 1.6.0 (#3415 #3557 @aceforeverd)
+- Improve the documents (#3517 @dl239, #3520 #3523 @vagetablechicken, #3467 #3468 #3535 #3485 #3478 #3472 #3486 #3487 #3537 #3536 @TanZiYen)
+
+### Bug Fixes
+- The SQL compiling failed if there is `LAST JOIN` in `WINDOW UNION` statement in request mode. (#3493 @aceforeverd)
+- There are some syntax errors in maintenance tools (#3545 @vagetablechicken)
+- Other minor bug fixes (#3518 #3567 @dl239, #3543 @aceforeverd)
+
+### Code Refactoring
+#3547 @aceforeverd
+
 ## [0.8.3] - 2023-09-15
 
 ### Features
@@ -653,6 +672,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.4]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
