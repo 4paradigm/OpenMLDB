@@ -731,10 +731,9 @@ std::shared_ptr<DataHandler> RequestJoinRunner::Run(
         auto left_part = std::dynamic_pointer_cast<PartitionHandler>(left);
         auto right_part = std::dynamic_pointer_cast<PartitionHandler>(right);
         return join_gen_->LazyJoinOptimized(left_part, right_part, ctx.GetParameterRow());
+    } else {
+        return join_gen_->LazyJoin(left, right, ctx.GetParameterRow());
     }
-
-    LOG(WARNING) << "skip due to performance: left source of request join is table handler (unoptimized)";
-    return std::shared_ptr<DataHandler>();
 }
 
 std::shared_ptr<DataHandler> JoinRunner::Run(RunnerContext& ctx,

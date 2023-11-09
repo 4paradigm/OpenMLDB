@@ -380,3 +380,196 @@ cases:
         aa, 20, 3000
         aa, 20, 2000
         bb, NULL, NULL
+  - id: 6
+    desc: lastjoin(leftjoin(filter<not optimized>, table))
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["bb",20, 1000]
+          - ["aa",30, 2000]
+          - ["bb",30, 3000]
+          - ["cc",40, 4000]
+          - ["dd",50, 5000]
+      - name: t3
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",19,13,3000]
+          - ["bb",34,131,3000]
+    sql: |
+      select
+        t1.c1,
+        t1.c2,
+        tx.*
+      from t1 last join
+      (
+        select t2.c1 as tx_0_c1,
+          t2.c2 as tx_0_c2,
+          t2.c4 as tx_0_c4,
+          t3.c2 as tx_1_c2,
+          t3.c3 as tx_1_c3
+        from (select * from t2 where c1 != 'dd') t2 left join t3
+        on t2.c1 = t3.c1
+      ) tx
+      order by tx.tx_0_c4
+      on t1.c2 = tx.tx_0_c2
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.tx_0_c1, tx.tx_0_c2, tx.tx_0_c4, tx.tx_1_c2, tx.tx_1_c3))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.c2))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(t2.c1 -> tx_0_c1, t2.c2 -> tx_0_c2, t2.c4 -> tx_0_c4, t3.c2 -> tx_1_c2, t3.c3 -> tx_1_c3))
+              REQUEST_JOIN(type=LeftJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
+                RENAME(name=t2)
+                  FILTER_BY(condition=c1 != dd, left_keys=, right_keys=, index_keys=)
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "c2 int", "tx_0_c1 string", "tx_0_c2 int", "tx_0_c4 timestamp", "tx_1_c2 int", "tx_1_c3 int64"]
+      data: |
+        aa, 20, bb, 20, 1000, 34, 131
+        bb, 30, bb, 30, 3000, 34, 131
+        cc, 40, cc, 40, 4000, NULL, NULL
+        dd, 50, NULL, NULL, NULL, NULL, NULL
+  - id: 7
+    desc: lastjoin(leftjoin(filter<optimized>, filter<not optimized>))
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["bb",20, 1000]
+          - ["aa",30, 2000]
+          - ["bb",30, 3000]
+          - ["cc",40, 4000]
+          - ["dd",50, 5000]
+      - name: t3
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",19,13,3000]
+          - ["bb",34,131,3000]
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.tx_0_c1, tx.tx_0_c2, tx.tx_0_c4, tx.tx_1_c2, tx.tx_1_c3))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(#5), right_keys=(#8), index_keys=)
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(t2.c1 -> tx_0_c1, t2.c2 -> tx_0_c2, t2.c4 -> tx_0_c4, t3.c2 -> tx_1_c2, t3.c3 -> tx_1_c3))
+                REQUEST_JOIN(type=LeftJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
+                  RENAME(name=t2)
+                    FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(30))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                  RENAME(name=t3)
+                    FILTER_BY(condition=c2 > 20, left_keys=, right_keys=, index_keys=)
+                      DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    sql: |
+      select
+        t1.c1,
+        t1.c2,
+        tx.*
+      from t1 last join
+      (
+        select t2.c1 as tx_0_c1,
+          t2.c2 as tx_0_c2,
+          t2.c4 as tx_0_c4,
+          t3.c2 as tx_1_c2,
+          t3.c3 as tx_1_c3
+        from (select * from t2 where c2 = 30) t2 left join (select * from t3 where c2 > 20) t3
+        on t2.c1 = t3.c1
+      ) tx
+      order by tx.tx_0_c4
+      on t1.c2 = tx.tx_0_c2
+    request_plan: |
+    expect:
+      order: c1
+      columns: ["c1 string", "c2 int", "tx_0_c1 string", "tx_0_c2 int", "tx_0_c4 timestamp", "tx_1_c2 int", "tx_1_c3 int64"]
+      data: |
+        aa, 20, NULL, NULL, NULL, NULL, NULL
+        bb, 30, bb, 30, 3000, 34, 131
+        cc, 40, NULL, NULL, NULL, NULL, NULL
+        dd, 50, NULL, NULL, NULL, NULL, NULL
+  - id: 8
+    desc: lastjoin(leftjoin(filter<optimized>, filter<optimized>))
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["bb",20, 1000]
+          - ["aa",20, 2000]
+          - ["bb",30, 3000]
+          - ["cc",40, 4000]
+      - name: t3
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",19,13,3000]
+          - ["bb",34,131,3000]
+    sql: |
+      select
+        t1.c1,
+        t1.c2,
+        tx.*
+      from t1 last join
+      (
+        select t2.c1 as tx_0_c1,
+          t2.c2 as tx_0_c2,
+          t2.c4 as tx_0_c4,
+          t3.c2 as tx_1_c2,
+          t3.c3 as tx_1_c3
+        from (select * from t2 where c2 = 20) t2 left join (select * from t3 where c1 = 'bb') t3
+        on t2.c1 = t3.c1
+      ) tx
+      on t1.c2 = tx.tx_0_c2 and not isnull(tx.tx_1_c2)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.tx_0_c1, tx.tx_0_c2, tx.tx_0_c4, tx.tx_1_c2, tx.tx_1_c3))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, condition=NOT isnull(#89), left_keys=(#5), right_keys=(#8), index_keys=)
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(t2.c1 -> tx_0_c1, t2.c2 -> tx_0_c2, t2.c4 -> tx_0_c4, t3.c2 -> tx_1_c2, t3.c3 -> tx_1_c3))
+                REQUEST_JOIN(type=LeftJoin, condition=, left_keys=(t2.c1), right_keys=(t3.c1), index_keys=)
+                  RENAME(name=t2)
+                    FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(20))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                  RENAME(name=t3)
+                    FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(bb))
+                      DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "c2 int", "tx_0_c1 string", "tx_0_c2 int", "tx_0_c4 timestamp", "tx_1_c2 int", "tx_1_c3 int64"]
+      data: |
+        aa, 20, bb, 20, 1000, 34, 131
+        bb, 30, NULL, NULL, NULL, NULL, NULL
+        cc, 40, NULL, NULL, NULL, NULL, NULL

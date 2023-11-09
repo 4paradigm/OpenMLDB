@@ -15,22 +15,10 @@
  */
 
 #include "vm/runner_builder.h"
+#include "vm/physical_op.h"
 
 namespace hybridse {
 namespace vm {
-
-static bool IsPartitionProvider(vm::PhysicalOpNode* n) {
-    switch (n->GetOpType()) {
-        case kPhysicalOpSimpleProject:
-        case kPhysicalOpRename:
-        case kPhysicalOpRequestJoin:
-            return IsPartitionProvider(n->GetProducer(0));
-        case kPhysicalOpDataProvider:
-            return dynamic_cast<vm::PhysicalDataProviderNode*>(n)->provider_type_ == kProviderTypePartition;
-        default:
-            return false;
-    }
-}
 
 static vm::PhysicalDataProviderNode* request_node(vm::PhysicalOpNode* n) {
     switch (n->GetOpType()) {
@@ -297,13 +285,12 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
             }
             if (support_cluster_optimized_) {
-                if (IsPartitionProvider(node->GetProducer(0))) {
+                if (node->GetOutputType() == kSchemaTypeGroup) {
                     // route by index of the left source, and it should uncompleted
                     auto& route_info = left_task.GetRouteInfo();
                     runner->AddProducer(left_task.GetRoot());
                     runner->AddProducer(right_task.GetRoot());
-                    return RegisterTask(node,
-                                        UnCompletedClusterTask(runner, route_info.table_handler_, route_info.index_));
+                    return RegisterTask(node, ClusterTask(runner, {}, route_info));
                 }
             }
             return RegisterTask(node, BinaryInherit(left_task, right_task, runner, index_key, kRightBias));
@@ -338,22 +325,25 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->output_right_only());
 
                     if (support_cluster_optimized_) {
-                        if (IsPartitionProvider(node->GetProducer(0))) {
-                            // Partion left join partition, route by index of the left source, and it should uncompleted
-                            auto& route_info = left_task.GetRouteInfo();
+                        if (node->GetOutputType() == kSchemaTypeRow) {
+                            // complete cluster task from right
+                            if (op->join().index_key().ValidKey()) {
+                                // optimize key in this node
+                                return RegisterTask(node, BinaryInherit(left_task, right_task, runner,
+                                                                        op->join().index_key(), kLeftBias));
+                            } else {
+                                // optimize happens before, in left node
+                                auto right_route_info = right_task.GetRouteInfo();
+                                runner->AddProducer(left_task.GetRoot());
+                                runner->AddProducer(right_task.GetRoot());
+                                return RegisterTask(node, ClusterTask(runner, {}, right_route_info));
+                            }
+                        } else {
+                            // uncomplete/lazify cluster task from left
+                            auto left_route_info = left_task.GetRouteInfo();
                             runner->AddProducer(left_task.GetRoot());
                             runner->AddProducer(right_task.GetRoot());
-                            return RegisterTask(
-                                node, UnCompletedClusterTask(runner, route_info.table_handler_, route_info.index_));
-                        }
-
-                        if (right_task.IsCompletedClusterTask() && right_task.GetRouteInfo().lazy_route_ &&
-                            !op->join_.index_key_.ValidKey()) {
-                            // join (.., filter<optimized>)
-                            auto& route_info = right_task.GetRouteInfo();
-                            runner->AddProducer(left_task.GetRoot());
-                            runner->AddProducer(right_task.GetRoot());
-                            return RegisterTask(node, ClusterTask(runner, {}, route_info));
+                            return RegisterTask(node, ClusterTask(runner, {}, left_route_info));
                         }
                     }
 
@@ -372,9 +362,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         }
 
                         // concat join (any(tx), any(tx)), tx is not request table
-                        auto left = request_node(node->GetProducer(0));
-                        // auto right = request_node(node->GetProducer(1));
-                        if (left->provider_type_ == kProviderTypePartition) {
+                        if (node->GetOutputType() != kSchemaTypeRow) {
                             runner->AddProducer(left_task.GetRoot());
                             runner->AddProducer(right_task.GetRoot());
                             return RegisterTask(node, ClusterTask(runner, {}, left_task.GetRouteInfo()));

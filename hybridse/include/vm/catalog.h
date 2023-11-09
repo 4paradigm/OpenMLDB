@@ -333,7 +333,7 @@ class PartitionHandler : public TableHandler {
 
     // Return the iterator of row iterator
     // Return null by default
-    RowIterator* GetRawIterator() { return nullptr; }
+    RowIterator* GetRawIterator() override { return nullptr; }
 
     std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
         return std::unique_ptr<WindowIterator>();

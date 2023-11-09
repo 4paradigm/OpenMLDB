@@ -1678,14 +1678,22 @@ class PhysicalFilterNode : public PhysicalUnaryNode {
  public:
     PhysicalFilterNode(PhysicalOpNode *node, const node::ExprNode *condition)
         : PhysicalUnaryNode(node, kPhysicalOpFilter, true), filter_(condition) {
-        output_type_ = node->GetOutputType();
+        if (node->GetOutputType() == kSchemaTypeGroup && filter_.index_key_.ValidKey()) {
+            output_type_ = kSchemaTypeTable;
+        } else {
+            output_type_ = node->GetOutputType();
+        }
 
         fn_infos_.push_back(&filter_.condition_.fn_info());
         fn_infos_.push_back(&filter_.index_key_.fn_info());
     }
     PhysicalFilterNode(PhysicalOpNode *node, Filter filter)
         : PhysicalUnaryNode(node, kPhysicalOpFilter, true), filter_(filter) {
-        output_type_ = node->GetOutputType();
+        if (node->GetOutputType() == kSchemaTypeGroup && filter_.index_key_.ValidKey()) {
+            output_type_ = kSchemaTypeTable;
+        } else {
+            output_type_ = node->GetOutputType();
+        }
 
         fn_infos_.push_back(&filter_.condition_.fn_info());
         fn_infos_.push_back(&filter_.index_key_.fn_info());
