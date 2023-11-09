@@ -2100,6 +2100,11 @@ void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
     }
 }
 
+bool FrameBound::is_offset_bound() const {
+    return bound_type_ == kPreceding || bound_type_ == kOpenPreceding || bound_type_ == kFollowing ||
+           bound_type_ == kOpenFollowing;
+}
+
 int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
     if (SqlEquals(bound1, bound2)) {
         return 0;

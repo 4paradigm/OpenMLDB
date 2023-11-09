@@ -1166,6 +1166,9 @@ class FrameBound : public SqlNode {
     int64_t GetOffset() const { return offset_; }
     void SetOffset(int64_t v) { offset_ = v; }
 
+    // is offset [OPEN] PRECEDING/FOLLOWING
+    bool is_offset_bound() const;
+
 
     /// \brief get the inclusive frame bound offset value that has signed symbol
     ///
