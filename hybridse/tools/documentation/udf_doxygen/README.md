@@ -67,7 +67,7 @@ will output `udf_doxygen/udfgen`.
 ### 3. Put the document into proper position
 
 ```bash
-cp udfgen/Files/udfs_8h.md ${project_root}/docs/zh/openmldb_sql/functions_and_operators/Files/udfs_8h.md
+cp udfgen/Files/udfs_8h.md ${project_root}/docs/zh/openmldb_sql/udfs_8h.md
 ```
 
 You may checkout changes manully and discard anything unnecessary like header.
