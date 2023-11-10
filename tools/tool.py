@@ -125,8 +125,7 @@ class Executor:
             # TODO(hw): the print from ns/tablet client are not standard, print it for debug
             if output != "":
                 log.info(output)
-            if errout != "":
-                log.info(errout)
+            # errout has glog output, don't print it
             if "error msg" in output:
                 return Status(-1, output), output
             return Status(p.returncode, errout), output

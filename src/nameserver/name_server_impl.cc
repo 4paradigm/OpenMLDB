@@ -5009,8 +5009,8 @@ void NameServerImpl::UpdateTableStatus() {
     pos_response.reserve(16);
     for (const auto& kv : tablet_ptr_map) {
         ::openmldb::api::GetTableStatusResponse tablet_status_response;
-        if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
-            PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
+        if (auto st = kv.second->client_->GetTableStatus(tablet_status_response); !st.OK()) {
+            PDLOG(WARNING, "get table status failed! endpoint[%s], %s", kv.first.c_str(), st.GetMsg());
             continue;
         }
         for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {

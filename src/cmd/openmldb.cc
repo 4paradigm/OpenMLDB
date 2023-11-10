@@ -495,17 +495,16 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::openmldb::c
         return;
     }
     try {
-        std::string err;
         if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
             std::cout << "Invalid args. op_id should be large than zero" << std::endl;
             return;
         }
         uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
-        bool ok = client->CancelOP(op_id, err);
-        if (ok) {
-            std::cout << "Cancel op ok!" << std::endl;
+        auto st = client->CancelOP(op_id);
+        if (st.OK()) {
+            std::cout << "Cancel op ok" << std::endl;
         } else {
-            std::cout << "Cancel op failed! " << err << std::endl;
+            std::cout << "Cancel op failed, error msg: " << st.ToString() << std::endl;
         }
     } catch (std::exception const& e) {
         std::cout << "Invalid args. op_id should be uint64_t" << std::endl;
@@ -697,10 +696,10 @@ void HandleNSAddReplica(const std::vector<std::string>& parts, ::openmldb::clien
         std::cout << "has not valid pid" << std::endl;
         return;
     }
-    std::string msg;
-    bool ok = client->AddReplica(parts[1], pid_set, parts[3], msg);
-    if (!ok) {
-        std::cout << "Fail to addreplica. error msg:" << msg << std::endl;
+
+    auto st = client->AddReplica(parts[1], pid_set, parts[3]);
+    if (!st.OK()) {
+        std::cout << "Fail to addreplica. error msg:" << st.GetMsg() << std::endl;
         return;
     }
     std::cout << "AddReplica ok" << std::endl;
@@ -720,10 +719,9 @@ void HandleNSDelReplica(const std::vector<std::string>& parts, ::openmldb::clien
         std::cout << "has not valid pid" << std::endl;
         return;
     }
-    std::string msg;
-    bool ok = client->DelReplica(parts[1], pid_set, parts[3], msg);
-    if (!ok) {
-        std::cout << "Fail to delreplica. error msg:" << msg << std::endl;
+    auto st = client->DelReplica(parts[1], pid_set, parts[3]);
+    if (!st.OK()) {
+        std::cout << "Fail to delreplica. error msg:" << st.GetMsg() << std::endl;
         return;
     }
     std::cout << "DelReplica ok" << std::endl;
@@ -900,9 +898,9 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::openmld
         if (parts.size() > 3) {
             candidate_leader = parts[3];
         }
-        bool ret = client->ChangeLeader(parts[1], pid, candidate_leader, msg);
-        if (!ret) {
-            std::cout << "failed to change leader. error msg: " << msg << std::endl;
+        auto st = client->ChangeLeader(parts[1], pid, candidate_leader);
+        if (!st.OK()) {
+            std::cout << "failed to change leader. error msg: " << st.GetMsg() << std::endl;
             return;
         }
     } catch (const std::exception& e) {
@@ -961,9 +959,9 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::openmldb::cl
         std::cout << "has not valid pid" << std::endl;
         return;
     }
-    bool ret = client->Migrate(parts[1], parts[2], pid_set, parts[4], msg);
-    if (!ret) {
-        std::cout << "failed to migrate partition. error msg: " << msg << std::endl;
+    auto st = client->Migrate(parts[1], parts[2], pid_set, parts[4]);
+    if (!st.OK()) {
+        std::cout << "failed to migrate partition. error msg: " << st.GetMsg() << std::endl;
         return;
     }
     std::cout << "partition migrate ok" << std::endl;
@@ -1016,10 +1014,9 @@ void HandleNSClientRecoverTable(const std::vector<std::string>& parts, ::openmld
     }
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        bool ok = client->RecoverTable(parts[1], pid, parts[3], msg);
-        if (!ok) {
-            std::cout << "Fail to recover table. error msg:" << msg << std::endl;
+        auto st = client->RecoverTable(parts[1], pid, parts[3]);
+        if (!st.OK()) {
+            std::cout << "Fail to recover table. error msg:" << st.GetMsg() << std::endl;
             return;
         }
         std::cout << "recover table ok" << std::endl;
@@ -2696,9 +2693,9 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::ope
             return;
         }
     }
-    std::string msg;
-    if (!client->UpdateTableAliveStatus(endpoint, name, pid, is_alive, msg)) {
-        std::cout << "Fail to update table alive. error msg: " << msg << std::endl;
+
+    if (auto st = client->UpdateTableAliveStatus(endpoint, name, pid, is_alive);!st.OK()) {
+        std::cout << "Fail to update table alive. error msg: " << st.GetMsg() << std::endl;
         return;
     }
     std::cout << "update ok" << std::endl;
@@ -3110,19 +3107,19 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::openmldb
     if (parts.size() == 3) {
         ::openmldb::api::TableStatus table_status;
         try {
-            if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                       table_status)) {
+            if (auto st = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
+                                       table_status); st.OK()) {
                 status_vec.push_back(table_status);
             } else {
-                std::cout << "gettablestatus failed" << std::endl;
+                std::cout << "gettablestatus failed, error msg: " << st.GetMsg() << std::endl;
             }
         } catch (boost::bad_lexical_cast& e) {
             std::cout << "Bad gettablestatus format" << std::endl;
         }
     } else if (parts.size() == 1) {
         ::openmldb::api::GetTableStatusResponse response;
-        if (!client->GetTableStatus(response)) {
-            std::cout << "gettablestatus failed" << std::endl;
+        if (auto st = client->GetTableStatus(response); !st.OK()) {
+            std::cout << "gettablestatus failed, error msg: " << st.GetMsg() << std::endl;
             return;
         }
         for (int idx = 0; idx < response.all_table_status_size(); idx++) {
@@ -3304,8 +3301,8 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     ::openmldb::api::TableStatus table_status;
-    if (!client->GetTableStatus(tid, pid, true, table_status)) {
-        std::cout << "Fail to get table status" << std::endl;
+    if (auto st = client->GetTableStatus(tid, pid, true, table_status); !st.OK()) {
+        std::cout << "Fail to get table status, error msg: " << st.GetMsg() << std::endl;
         return;
     }
     /*std::string schema = table_status.schema();
@@ -3395,9 +3392,8 @@ void HandleClientGetFollower(const std::vector<std::string>& parts, ::openmldb::
     }
     std::map<std::string, uint64_t> info_map;
     uint64_t offset = 0;
-    std::string msg;
-    if (!client->GetTableFollower(tid, pid, offset, info_map, msg)) {
-        std::cout << "get failed. msg: " << msg << std::endl;
+    if (auto st = client->GetTableFollower(tid, pid, offset, info_map); !st.OK()) {
+        std::cout << "get failed, error msg: " << st.GetMsg() << std::endl;
         return;
     }
     std::vector<std::string> header;

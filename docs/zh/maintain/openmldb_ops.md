@@ -34,6 +34,8 @@
 python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=scaleout
 ```
 
+运行结果可以只关注ERROR级日志，存在ERROR级日志即执行失败。
+
 ### 系统要求
 - 要求python2.7及以上版本
 - `showopstatus`和`showtablestatus`需要`prettytable`依赖

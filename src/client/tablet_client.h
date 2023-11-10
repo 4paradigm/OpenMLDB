@@ -164,21 +164,20 @@ class TabletClient : public Client {
                      bool& is_leader);                   // NOLINT
 
     bool GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
-                     ::openmldb::api::Manifest& manifest);  // NOLINT
-    // TODO get msg
-    bool GetTableStatus(::openmldb::api::GetTableStatusResponse& response);  // NOLINT
-    bool GetTableStatus(uint32_t tid, uint32_t pid,
+                         ::openmldb::api::Manifest& manifest);  // NOLINT
+
+    base::Status GetTableStatus(::openmldb::api::GetTableStatusResponse& response);  // NOLINT
+    base::Status GetTableStatus(uint32_t tid, uint32_t pid,
                         ::openmldb::api::TableStatus& table_status);  // NOLINT
-    bool GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
+    base::Status GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                         ::openmldb::api::TableStatus& table_status);  // NOLINT
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term,
                        uint64_t& offset);  // NOLINT
-    // TODO get msg
-    bool GetTableFollower(uint32_t tid, uint32_t pid,
+
+    base::Status GetTableFollower(uint32_t tid, uint32_t pid,
                           uint64_t& offset,                           // NOLINT
-                          std::map<std::string, uint64_t>& info_map,  // NOLINT
-                          std::string& msg);                          // NOLINT
+                          std::map<std::string, uint64_t>& info_map);                          // NOLINT
 
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>& tid_pid_offset);  // NOLINT
 

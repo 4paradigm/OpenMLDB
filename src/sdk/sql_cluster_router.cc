@@ -4331,10 +4331,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         std::shared_ptr<client::TabletClient> tablet_client;
         if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
             ::openmldb::api::GetTableStatusResponse response;
-            if (tablet_client->GetTableStatus(response)) {
+            if (auto st = tablet_client->GetTableStatus(response); st.OK()) {
                 for (const auto& table_status : response.all_table_status()) {
                     table_statuses[table_status.tid()][table_status.pid()][tablet_client->GetEndpoint()] = table_status;
                 }
+            } else {
+                LOG(WARNING) << "get table status from tablet failed: " << st.GetMsg();
             }
         }
     }
@@ -4464,14 +4466,17 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
     if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
         uint64_t offset = 0;
         std::map<std::string, uint64_t> info_map;
-        std::string msg;
-        tablet_client->GetTableFollower(tid, pid, offset, info_map, msg);
-        for (auto& meta : partition_info.partition_meta()) {
-            if (meta.is_leader()) continue;
+        auto st = tablet_client->GetTableFollower(tid, pid, offset, info_map);
+        if (st.OK()) {
+            for (auto& meta : partition_info.partition_meta()) {
+                if (meta.is_leader()) continue;
 
-            if (info_map.count(meta.endpoint()) == 0) {
-                append_error_msg(error_msg, pid, false, meta.endpoint(), "not connected to leader");
+                if (info_map.count(meta.endpoint()) == 0) {
+                    append_error_msg(error_msg, pid, false, meta.endpoint(), "not connected to leader");
+                }
             }
+        } else {
+            append_error_msg(error_msg, pid, -1, "", absl::StrCat("fail to get from tablet: ", st.GetMsg()));
         }
     }
 

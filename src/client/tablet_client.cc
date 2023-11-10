@@ -487,37 +487,36 @@ bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::S
     return true;
 }
 
-bool TabletClient::GetTableStatus(::openmldb::api::GetTableStatusResponse& response) {
+base::Status TabletClient::GetTableStatus(::openmldb::api::GetTableStatusResponse& response) {
     ::openmldb::api::GetTableStatusRequest request;
-    bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetTableStatus, &request, &response,
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::GetTableStatus, &request, &response,
                                    FLAGS_request_timeout_ms, 1);
-    if (ret) {
-        return true;
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
-bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, ::openmldb::api::TableStatus& table_status) {
+base::Status TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, ::openmldb::api::TableStatus& table_status) {
     return GetTableStatus(tid, pid, false, table_status);
 }
 
-bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
+base::Status TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                   ::openmldb::api::TableStatus& table_status) {
     ::openmldb::api::GetTableStatusRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_need_schema(need_schema);
     ::openmldb::api::GetTableStatusResponse response;
-    bool ret = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetTableStatus, &request, &response,
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::GetTableStatus, &request, &response,
                                    FLAGS_request_timeout_ms, 1);
-    if (!ret) {
-        return false;
+    if (!st.OK()) {
+        return st;
     }
-    if (response.all_table_status_size() > 0) {
+    if (response.code() == 0 && response.all_table_status_size() > 0) {
         table_status = response.all_table_status(0);
-        return true;
     }
-    return false;
+    return {response.code(), response.msg()};
 }
 
 std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
@@ -675,25 +674,26 @@ bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
     return true;
 }
 
-bool TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset,
-                                    std::map<std::string, uint64_t>& info_map, std::string& msg) {
+base::Status TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset,
+                                    std::map<std::string, uint64_t>& info_map) {
     ::openmldb::api::GetTableFollowerRequest request;
     ::openmldb::api::GetTableFollowerResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetTableFollower, &request, &response,
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::GetTableFollower, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    if (response.has_msg()) {
-        msg = response.msg();
+    if (st.OK()) {
+        if(response.code() == 0) {
+            offset = response.offset();
+            for (int idx = 0; idx < response.follower_info_size(); idx++) {
+                info_map.insert(std::make_pair(response.follower_info(idx).endpoint(), response.follower_info(idx).offset()));
+            }
+            return {};
+        } else {
+            return {response.code(), response.msg()};
+        }
     }
-    if (!ok || response.code() != 0) {
-        return false;
-    }
-    for (int idx = 0; idx < response.follower_info_size(); idx++) {
-        info_map.insert(std::make_pair(response.follower_info(idx).endpoint(), response.follower_info(idx).offset()));
-    }
-    offset = response.offset();
-    return true;
+    return st;
 }
 
 bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,
