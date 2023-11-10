@@ -681,12 +681,13 @@ base::Status TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t
     request.set_tid(tid);
     request.set_pid(pid);
     auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::GetTableFollower, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                    FLAGS_request_timeout_ms, 1);
     if (st.OK()) {
-        if(response.code() == 0) {
+        if (response.code() == 0) {
             offset = response.offset();
             for (int idx = 0; idx < response.follower_info_size(); idx++) {
-                info_map.insert(std::make_pair(response.follower_info(idx).endpoint(), response.follower_info(idx).offset()));
+                info_map.insert(
+                    std::make_pair(response.follower_info(idx).endpoint(), response.follower_info(idx).offset()));
             }
             return {};
         } else {

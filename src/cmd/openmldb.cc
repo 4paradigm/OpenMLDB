@@ -480,7 +480,8 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::cli
         bool ok = client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, index_name, err);
         if (ok) {
             std::cout << "Set ttl ok ! Note that, "
-                "it will take effect after two garbage collection intervals (i.e. gc_interval)." << std::endl;
+                         "it will take effect after two garbage collection intervals (i.e. gc_interval)."
+                      << std::endl;
         } else {
             std::cout << "Set ttl failed! " << err << std::endl;
         }
@@ -907,8 +908,8 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::openmld
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
         return;
     }
-    std::cout << "change leader ok. "
-        "If there are writing operations while changing a leader, it may cause data loss." << std::endl;
+    std::cout << "change leader ok. If there are writing operations while changing a leader, it may cause data loss."
+              << std::endl;
 }
 
 void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
@@ -2694,7 +2695,7 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::ope
         }
     }
 
-    if (auto st = client->UpdateTableAliveStatus(endpoint, name, pid, is_alive);!st.OK()) {
+    if (auto st = client->UpdateTableAliveStatus(endpoint, name, pid, is_alive); !st.OK()) {
         std::cout << "Fail to update table alive. error msg: " << st.GetMsg() << std::endl;
         return;
     }
@@ -3107,8 +3108,9 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::openmldb
     if (parts.size() == 3) {
         ::openmldb::api::TableStatus table_status;
         try {
-            if (auto st = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                       table_status); st.OK()) {
+            if (auto st = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]),
+                                                 boost::lexical_cast<uint32_t>(parts[2]), table_status);
+                st.OK()) {
                 status_vec.push_back(table_status);
             } else {
                 std::cout << "gettablestatus failed, error msg: " << st.GetMsg() << std::endl;
@@ -3676,8 +3678,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
-                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path);
+        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", FLAGS_zk_session_timeout, "",
+                                                               FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;

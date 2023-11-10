@@ -475,8 +475,8 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency
     return false;
 }
 
-base::Status NsClient::Migrate(const std::string& src_endpoint, const std::string& name, const std::set<uint32_t>& pid_set,
-                       const std::string& des_endpoint) {
+base::Status NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
+                               const std::set<uint32_t>& pid_set, const std::string& des_endpoint) {
     ::openmldb::nameserver::MigrateRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_src_endpoint(src_endpoint);
@@ -584,7 +584,8 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     return false;
 }
 
-base::Status NsClient::UpdateTableAliveStatus(const std::string& endpoint, const std::string& name, uint32_t pid, bool is_alive) {
+base::Status NsClient::UpdateTableAliveStatus(const std::string& endpoint, const std::string& name, uint32_t pid,
+                                              bool is_alive) {
     ::openmldb::nameserver::UpdateTableAliveRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
@@ -594,8 +595,8 @@ base::Status NsClient::UpdateTableAliveStatus(const std::string& endpoint, const
     if (pid < UINT32_MAX) {
         request.set_pid(pid);
     }
-    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::UpdateTableAliveStatus, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::UpdateTableAliveStatus, &request,
+                                    &response, FLAGS_request_timeout_ms, 1);
     if (st.OK()) {
         return {response.code(), response.msg()};
     }
