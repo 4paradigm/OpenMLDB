@@ -70,37 +70,37 @@ openmldb_tool status --diff hosts # 可检查TaskManager等是否掉线，当然
 csv文件格式有诸多不便，更推荐使用parquet格式，需要OpenMLDB集群版并启动taskmanager组件。
 ```
 
-## SQL
+## OpenMLDB SQL 开发和调试
 
 OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期结果。如果发现SQL执行不符合预期，请先查看下SQL是否满足[功能边界](./function_boundary.md)。
 
-### SQL编写指南
+### OpenMLDB SQL语法指南
 
-首先，OpenMLDB SQL 通常是使用`WINDOW`（包括`WINDOW UNION`），`LAST JOIN`子句，它们能保证在任何模式下使用。可以跟随教程"基于 SQL 的特征开发"[(上)](../tutorial/tutorial_sql_1.md)[(下)](../tutorial/tutorial_sql_2.md)进行学习。
+基于 OpenMLDB SQL 的特征计算，一般比较常使用`WINDOW`（包括`WINDOW UNION`），`LAST JOIN` 等子句来完成计算逻辑，它们能保证在任何模式下使用。可以跟随教程"基于 SQL 的特征开发"[(上)](../tutorial/tutorial_sql_1.md)[(下)](../tutorial/tutorial_sql_2.md)进行学习。
 
 如果使用`WHERE`，`WITH`，`HAVING`等子句，需要注意限制条件。在每个子句的详细文档中都有具体的说明，比如[`HAVING`子句](../openmldb_sql/dql/HAVING_CLAUSE.md)在在线请求模式中不支持。翻阅OpenMLDB SQL的DQL目录，或使用搜索功能，可以快速找到子句的详细文档。
 
-在不熟悉OpenMLDB SQL的情况下，我们建议从下到上编写SQL，确保每个子句都能通过，再逐步组合成完整的SQL。
+在不熟悉OpenMLDB SQL的情况下，我们建议从子句开始编写SQL，确保每个子句都能通过，再逐步组合成完整的SQL。
 
-推荐使用[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator)进行SQL探索，SQL完成后再去真实集群进行上线。 Emulator 可以不依赖真实OpenMLDB集群，在一个交互式虚拟环境中，快速创建表、校验SQL、导出当前环境等等，详情参考该项目的 README 。使用 Emulator 不需要操作集群，也就不需要测试后清理集群，还可通过少量的数据进行SQL运行测试，比较适合SQL探索时期。
+推荐使用[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator)进行SQL探索和验证，SQL验证完成后再去真实集群进行上线，可以避免浪费大量时间在索引构建、数据导入、任务等待等过程上。 Emulator 可以不依赖真实OpenMLDB集群，在一个交互式虚拟环境中，快速创建表、校验SQL、导出当前环境等等，详情参考该项目的 README 。使用 Emulator 不需要操作集群，也就不需要测试后清理集群，还可通过少量的数据进行SQL运行测试，比较适合SQL探索时期。
 
-#### SQL 语法提示
+### OpenMLDB SQL 语法错误提示
 
 当发现SQL编译报错时，需要查看错误信息。例如`Syntax error: Expected XXX but got keyword YYY`错误，它说明SQL不符合语法，通常是某些关键字写错了位置，或并没有这种写法。详情需要查询错误的子句文档，可注意子句的`Syntax`章节，它详细说明了每个部分的组成，请检查SQL是否符合要求。
 
 比如，[`WINDOW`子句](../openmldb_sql/dql/WINDOW_CLAUSE.md#syntax)中`WindowFrameClause (WindowAttribute)*`部分，我们再拆解它就是`WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] (WindowAttribute)*`。那么，`WindowFrameUnits WindowFrameBounds MAXSIZE 10 EXCLUDE CURRENT_TIME`就是符合语法的，`WindowFrameUnits WindowFrameBounds EXCLUDE CURRENT_TIME MAXSIZE 10`就是不符合语法的，不能把`WindowFrameMaxSize`放到`WindowFrameClause`外面。
 
-#### SQL 计算提示
+### OpenMLDB SQL 计算正确性调试
 
-SQL编译通过，可以结合数据进行计算。如果计算结果不符合预期，请逐步检查：
-- SQL无论是一列还是多列计算结果不符合预期，都请选择**其中一列**进行调试。
+SQL编译通过以后，可以基于数据进行计算。如果计算结果不符合预期，请逐步检查：
+- SQL无论是一列还是多列计算结果不符合预期，建议都请选择**其中一列**进行调试。
 - 如果你的表数据较多，建议使用小数据量（几行，几十行的量级）来测试，也可以使用OpenMLDB SQL Emulator的[运行toydb](https://github.com/vagetablechicken/OpenMLDBSQLEmulator#run-in-toydb)功能，构造case进行测试。
 - 该列是不是表示了自己想表达的意思，是否使用了不符合预期的函数，或者函数参数错误。
 - 该列如果是窗口聚合的结果，是不是WINDOW定义错误，导致窗口范围不对。参考[推断窗口](../openmldb_sql/dql/WINDOW_CLAUSE.md#如何推断窗口是什么样的)进行检查，使用小数据进行验证测试。
 
 如果你仍然无法解决问题，可以提供 OpenMLDB SQL Emulator 的 yaml case 。如果在集群中进行的测试，请[提供复现脚本](#提供复现脚本)。
 
-#### 在线请求模式
+### 在线请求模式测试
 
 SQL上线，等价于`DEPLOY <name> <SQL>`成功。但`DEPLOY`操作是一个很“重”的操作，SQL如果可以上线，将会创建或修改索引并复制数据到新索引。所以，在SQL探索期使用`DEPLOY`测试SQL是否能上线，是比较浪费资源的，尤其是某些SQL可能需要多次修改才能上线，多次的`DEPLOY`可能产生很多无用的索引。在探索期间，可能还会修改表Schema，又需要删除和再创建。这些操作都是只能手动处理，比较繁琐。
 
@@ -108,9 +108,9 @@ SQL上线，等价于`DEPLOY <name> <SQL>`成功。但`DEPLOY`操作是一个很
 
 目前只有Java SDK可以使用[validateSQLInRequest](./sdk/java_sdk.md#sql-校验)方法来检验，使用上稍麻烦。我们推荐使用 OpenMLDB SQL Emulator 来测试。在 Emulator 中，通过简单语法创建表，再使用`valreq <SQL>`可以判断是否能上线。
 
-## SQL执行
+## OpenMLDB SQL 执行
 
-OpenMLDB所有命令均为SQL，如果SQL执行失败或交互有问题（不知道命令是否执行成功），请先确认SQL书写是否有误，命令并未执行，还是命令进入了执行阶段。
+OpenMLDB 所有命令均为 SQL，如果 SQL 执行失败或交互有问题（不知道命令是否执行成功），请先确认 SQL 书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
 例如，下面提示Syntax error的是SQL书写有误，请参考[SQL编写指南](#sql编写指南)纠正错误。
 ```
@@ -127,9 +127,7 @@ create table t1(c1 int;
 
 我们需要特别注意集群版的一些使用逻辑。
 
-### 集群版SQL执行
-
-#### 离线
+### 集群版离线 SQL 执行注意事项
 
 如果是集群离线命令，默认异步模式下，发送命令会得到job id的返回。可使用`show job <id>`来查询job执行情况。
 
@@ -143,13 +141,13 @@ create table t1(c1 int;
 如果你无法通过show joblog获得日志，或者想要直接拿到日志文件，可以直接在TaskManager机器上获取。日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目录中寻找日志。stdout查询结果默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，stderr job运行日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)。
 ```
 
-#### 在线
+### 集群版在线 SQL 执行注意事项
 
 集群版在线模式下，我们通常只推荐两种使用，`DEPLOY`创建deployment，执行deployment做实时特征计算（SDK请求deployment，或HTTP访问APIServer请求deployment）。在CLI或其他客户端中，可以直接在“在线”中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
 
-### 提供复现脚本
+### 构造 OpenMLDB SQL 复现脚本
 
-如果你通过自主诊断，无法解决问题，请向我们提供复现脚本。一个完整的复现脚本。仅涉及在线SQL计算或校验SQL，推荐使用[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator#run-in-toydb) 构造可复现的 yaml case。如果涉及到数据导入等必须使用 OpenMLDB集群，请提供可复现脚本，其结构如下所示：
+如果你的 SQL 执行不符合预期，通过自主诊断，无法解决问题，请向我们提供复现脚本。一个完整的复现脚本。仅涉及在线SQL计算或校验SQL，推荐使用[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator#run-in-toydb) 构造可复现的 yaml case。如果涉及到数据导入等必须使用 OpenMLDB集群，请提供可复现脚本，其结构如下所示：
 
 ```
 create database db;
@@ -182,7 +180,7 @@ set @@execute_mode='';
 请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[离线命令配置详情](../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。否则导入还未完成就进行查询，是无意义的。
 ```
 
-## 提供配置与日志，获得技术支持
+### 提供配置与日志，获得技术支持
 
 如果你的SQL执行问题无法通过复现脚本复现，或者并非SQL执行问题而是集群管理问题，那么请提供客户端和服务端的配置与日志，以便我们调查。
 
@@ -200,7 +198,7 @@ openmldb_tool --env=onebox --dist_conf=standalone_dist.yml
 
 如果你的环境无法做到，请手动获取配置与日志。
 
-## 性能
+## 性能统计
 
 deployment耗时统计需要开启：
 ```
