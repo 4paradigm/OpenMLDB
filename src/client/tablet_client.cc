@@ -314,12 +314,13 @@ bool TabletClient::SendSnapshot(uint32_t tid, uint32_t remote_tid, uint32_t pid,
     return false;
 }
 
-bool TabletClient::LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
+base::Status TabletClient::LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl,
+                                     uint32_t seg_cnt) {
     return LoadTable(name, id, pid, ttl, false, seg_cnt);
 }
 
-bool TabletClient::LoadTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t ttl, bool leader,
-                             uint32_t seg_cnt, std::shared_ptr<TaskInfo> task_info) {
+base::Status TabletClient::LoadTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t ttl, bool leader,
+                                     uint32_t seg_cnt, std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name(name);
     table_meta.set_tid(tid);
@@ -330,10 +331,11 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t tid, uint32_t pid
     } else {
         table_meta.set_mode(::openmldb::api::TableMode::kTableFollower);
     }
-    return LoadTable(table_meta, task_info);
+    return LoadTableInternal(table_meta, task_info);
 }
 
-bool TabletClient::LoadTable(const ::openmldb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info) {
+base::Status TabletClient::LoadTableInternal(const ::openmldb::api::TableMeta& table_meta,
+                                     std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::LoadTableRequest request;
     ::openmldb::api::TableMeta* cur_table_meta = request.mutable_table_meta();
     cur_table_meta->CopyFrom(table_meta);
@@ -341,28 +343,21 @@ bool TabletClient::LoadTable(const ::openmldb::api::TableMeta& table_meta, std::
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     ::openmldb::api::GeneralResponse response;
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::LoadTable, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::LoadTable, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
-bool TabletClient::LoadTable(uint32_t tid, uint32_t pid, std::string* msg) {
-    ::openmldb::api::LoadTableRequest request;
-    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
-    ::openmldb::api::GeneralResponse response;
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::LoadTable, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    msg->swap(*response.mutable_msg());
-    if (ok && response.code() == 0) {
-        return true;
+bool TabletClient::LoadTable(const ::openmldb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info) {
+    auto st = LoadTableInternal(table_meta, task_info);
+    // can't return msg, log here
+    if (!st.OK()) {
+        LOG(WARNING) << st.ToString();
     }
-    return false;
+    return st.OK();
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term) {

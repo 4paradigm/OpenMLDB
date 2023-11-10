@@ -3227,12 +3227,13 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::cli
                 return;
             }
         }
-        bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+        // TODO(): get status msg
+        auto st = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
                                     boost::lexical_cast<uint32_t>(parts[3]), ttl, is_leader, seg_cnt);
-        if (ok) {
+        if (st.OK()) {
             std::cout << "LoadTable ok" << std::endl;
         } else {
-            std::cout << "Fail to LoadTable" << std::endl;
+            std::cout << "Fail to LoadTable: " << st.ToString() << std::endl;
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad LoadTable format" << std::endl;

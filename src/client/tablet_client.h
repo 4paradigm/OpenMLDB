@@ -135,14 +135,13 @@ class TabletClient : public Client {
 
     bool RecoverSnapshot(uint32_t tid, uint32_t pid, std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, uint32_t seg_cnt);
+    base::Status LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, uint32_t seg_cnt);
 
-    bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool leader, uint32_t seg_cnt,
+    base::Status LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, bool leader, uint32_t seg_cnt,
                    std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
+    // for ns WrapTaskFun, must return bool
     bool LoadTable(const ::openmldb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info);
-
-    bool LoadTable(uint32_t tid, uint32_t pid, std::string* msg);
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term);
 
@@ -166,7 +165,7 @@ class TabletClient : public Client {
 
     bool GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storage_mode,
                      ::openmldb::api::Manifest& manifest);  // NOLINT
-
+    // TODO get msg
     bool GetTableStatus(::openmldb::api::GetTableStatusResponse& response);  // NOLINT
     bool GetTableStatus(uint32_t tid, uint32_t pid,
                         ::openmldb::api::TableStatus& table_status);  // NOLINT
@@ -175,7 +174,7 @@ class TabletClient : public Client {
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term,
                        uint64_t& offset);  // NOLINT
-
+    // TODO get msg
     bool GetTableFollower(uint32_t tid, uint32_t pid,
                           uint64_t& offset,                           // NOLINT
                           std::map<std::string, uint64_t>& info_map,  // NOLINT
@@ -266,6 +265,9 @@ class TabletClient : public Client {
                           const ::openmldb::base::LongWindowInfo& window_info);
 
     bool GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res);
+
+ private:
+    base::Status LoadTableInternal(const ::openmldb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info);
 
  private:
     ::openmldb::RpcClient<::openmldb::api::TabletServer_Stub> client_;

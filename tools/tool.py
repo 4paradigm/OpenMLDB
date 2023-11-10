@@ -85,7 +85,7 @@ class Executor:
         cmd.append("--cmd=showns")
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK() or status.GetMsg().find("zk client init failed") != -1:
-            return Status(-1, "get ns failed"), None
+            return Status(-1, "get ns failed")
         result = self.ParseResult(output)
         for record in result:
             if record[2] == "leader":
@@ -98,7 +98,7 @@ class Executor:
         cmd.append("--cmd=showtablet")
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
-            return Status(-1, "get tablet failed"), None
+            return Status(-1, "get tablet failed")
         result = self.ParseResult(output)
         for record in result:
             if record[1] != '-':
@@ -119,12 +119,14 @@ class Executor:
                          useshell = USE_SHELL,
                          env = os.environ):
         try:
+            log.info(" ".join(command))
             p = subprocess.Popen(command, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = useshell, universal_newlines = universal_newlines, env = env)
-            output = p.stdout.read()
-            p.wait()
-            errout = p.stderr.read()
-            p.stdout.close()
-            p.stderr.close()
+            output, errout = p.communicate()
+            # TODO(hw): the print from ns/tablet client are not standard, print it for debug
+            if output != "":
+                log.info(output)
+            if errout != "":
+                log.info(errout)
             if "error msg" in output:
                 return Status(-1, output), output
             return Status(p.returncode, errout), output
@@ -167,7 +169,7 @@ class Executor:
             return status, None
         if output.find("true") != -1:
             return Status(), True
-        return Status(), False;
+        return Status(), False
 
     def SetAutofailover(self, value):
         cmd = list(self.ns_base_cmd)
