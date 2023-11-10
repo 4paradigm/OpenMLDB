@@ -31,6 +31,10 @@
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_request_row.h"
 
+#include "absl/status/status.h"
+#include "bvar/bvar.h"
+#include "bvar/multi_dimension.h"  // latency recorder
+
 namespace openmldb {
 namespace apiserver {
 
@@ -45,7 +49,7 @@ using butil::rapidjson::Writer;
 // Both input and output are json data. We use rapidjson to handle it.
 class APIServerImpl : public APIServer {
  public:
-    APIServerImpl() = default;
+    explicit APIServerImpl(const std::string& endpoint);
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
     bool Init(::openmldb::sdk::DBSDK* cluster);
@@ -69,10 +73,10 @@ class APIServerImpl : public APIServer {
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
 
-    static bool JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                        const butil::rapidjson::Value& common_cols_v,
-                                        std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
-    static bool JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+    static absl::Status JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                                const butil::rapidjson::Value& common_cols_v,
+                                                std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static absl::Status JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                       const butil::rapidjson::Value& common_cols_v,
                                       std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
@@ -82,13 +86,19 @@ class APIServerImpl : public APIServer {
     // may get segmentation fault when throw boost::bad_lexical_cast, so we use std::from_chars
     template <typename T>
     static bool FromString(const std::string& s, T& value) {  // NOLINT
-        auto res = std::from_chars(s.data(), s.data() + s.size(), value);
-        return res.ec == std::errc() && (res.ptr - s.data() == s.size());
+        if (auto res = std::from_chars(s.data(), s.data() + s.size(), value); res.ec == std::errc()) {
+            auto len = res.ptr - s.data();
+            return len >= 0 ? (uint64_t)len == s.size() : false;
+        } else {
+            return false;
+        }
     }
 
  private:
-    std::shared_ptr<sdk::SQLRouter> sql_router_;
+    bvar::MultiDimension<bvar::LatencyRecorder> md_recorder_;
     InterfaceProvider provider_;
+
+    std::shared_ptr<sdk::SQLRouter> sql_router_;
     // cluster_sdk_ is not owned by this class.
     ::openmldb::sdk::DBSDK* cluster_sdk_ = nullptr;
 };

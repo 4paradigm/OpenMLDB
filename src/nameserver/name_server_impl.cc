@@ -72,7 +72,6 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
-DECLARE_uint32(sync_deploy_stats_timeout);
 
 namespace openmldb {
 namespace nameserver {
@@ -1470,8 +1469,6 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-    task_thread_pool_.DelayTask(FLAGS_sync_deploy_stats_timeout,
-                                boost::bind(&NameServerImpl::ScheduleSyncDeployStats, this));
     return true;
 }
 
@@ -9328,21 +9325,6 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
         }
     }
 
-    bool is_deployment_procedure = false;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto it = db_sp_info_map_.find(db_name);
-        if (it != db_sp_info_map_.end()) {
-            auto iit = it->second.find(sp_name);
-            is_deployment_procedure = iit != it->second.end() && iit->second->type() == type::kReqDeployment;
-        }
-    }
-    std::shared_ptr<TableInfo> info;
-    auto success = GetTableInfo(DEPLOY_RESPONSE_TIME, INFORMATION_SCHEMA_DB, &info);
-    // NOTE: deploy stats records will delete even when global setting deploy_stats is turned off while there are
-    // records for previous deploy query (during deploy_stats = 'on')
-    bool drop_deploy_stats = is_deployment_procedure && success && info != nullptr;
-
     for (auto tb_client : tb_client_vec) {
         if (!tb_client->DropProcedure(db_name, sp_name)) {
             PDLOG(WARNING, "drop procedure on tablet failed. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
@@ -9352,44 +9334,6 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name, const std
 
         PDLOG(INFO, "drop procedure on tablet success. db_name[%s], sp_name[%s], endpoint[%s]", db_name.c_str(),
               sp_name.c_str(), tb_client->GetEndpoint().c_str());
-    }
-
-    if (drop_deploy_stats && info->table_partition_size() > 0) {
-        std::string endpoint;
-        for (auto& meta : info->table_partition()[0].partition_meta()) {
-            if (meta.is_leader()) {
-                endpoint = meta.endpoint();
-            }
-        }
-        auto tablet_info = GetTablet(endpoint);
-        if (tablet_info == nullptr) {
-            PDLOG(ERROR, "no leader exists for system table %s", DEPLOY_RESPONSE_TIME);
-            return;
-        }
-
-        auto tb_client = tablet_info->client_;
-
-        auto deploy_name = absl::StrCat(db_name, ".", sp_name);
-        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(deploy_name) % info->table_partition_size());
-        auto time = absl::Microseconds(1);
-        int cnt = 0;
-        std::string msg;
-        while (cnt++ < TIME_DISTRIBUTION_BUCKET_COUNT - 1) {
-            auto key = absl::StrCat(deploy_name, "|", statistics::GetDurationAsStr(time, statistics::TimeUnit::SECOND));
-            if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
-                // NOTE: some warning appears but is expected, just ingore:
-                // 1. when you create a deploy query but not call it any time before delete it
-                // 2. deploy_stats is always turned off
-                PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
-                      tb_client->GetEndpoint(), key, msg);
-            }
-            time *= 10;
-        }
-        auto key = absl::StrCat(deploy_name, "|", MAX_STRING);
-        if (!tb_client->Delete(info->tid(), pid, key, "", msg)) {
-            PDLOG(WARNING, "failed to delete entry in %s in tablet %s where key = %s : %s", DEPLOY_RESPONSE_TIME,
-                  tb_client->GetEndpoint(), key, msg);
-        }
     }
 }
 
@@ -9906,143 +9850,6 @@ base::Status NameServerImpl::InitGlobalVarTable() {
         }
     }
     return {};
-}
-
-static const std::string& QueryDeployStats() {
-    static const std::string query_deploy_stats =
-        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::DEPLOY_RESPONSE_TIME);
-    return query_deploy_stats;
-}
-
-static const std::string& QueryDeployStatsIsOn() {
-    static const std::string query_deploy_stats_is_on =
-        absl::StrCat("select * from ", nameserver::INFORMATION_SCHEMA_DB, ".", nameserver::GLOBAL_VARIABLES,
-                     " where Variable_name = 'deploy_stats'");
-    return query_deploy_stats_is_on;
-}
-
-void NameServerImpl::SyncDeployStats() {
-    // Step one: check condition for deploy stats. only all of those meet:
-    // 1. current ns is master
-    // 2. deploy_stats global variable is set to 'on' or 'true'
-    if (startup_mode_ == type::kStandalone && running_.load(std::memory_order_acquire)) {
-        DLOG(INFO) << "sync deploy stats skipped for non-leader ns on cluster";
-        FreeSdkConnection();
-        return;
-    }
-
-    if (!GetSdkConnection()) {
-        LOG(ERROR) << "failed to get sdk connection";
-        return;
-    }
-    auto sr = std::atomic_load_explicit(&sr_, std::memory_order_acquire);
-    if (sr == nullptr) {
-        LOG(ERROR) << "sdk connection is null";
-        return;
-    }
-    ::hybridse::sdk::Status s;
-    auto rs = sr->ExecuteSQLParameterized("", QueryDeployStatsIsOn(), {}, &s);
-    if (!s.IsOK()) {
-        LOG(ERROR) << "[ERROR] query global variable deploy_stats: " << s.msg;
-        return;
-    }
-
-    bool sync_stats = false;
-    while (rs->Next()) {
-        auto val = rs->GetStringUnsafe(1);
-        sync_stats = (val == "on" || val == "true");
-    }
-
-    if (!sync_stats) {
-        DLOG(INFO) << "sync deploy stats skipped when deploy_stats is off";
-        return;
-    }
-
-    // Step two: Fetch And Flush deploy stats from each tablet
-    std::unordered_map<absl::string_view, std::shared_ptr<TabletClient>> active_tablets;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (auto& kv : tablets_) {
-            if (kv.second->Health()) {
-                active_tablets.emplace(kv.first, kv.second->client_);
-            }
-        }
-    }
-    statistics::DeployResponseTimeRowReducer reducer;
-    for (auto& client : active_tablets) {
-        ::openmldb::api::DeployStatsResponse res;
-        if (!client.second->GetAndFlushDeployStats(&res)) {
-            LOG(ERROR) << "GetAndFlushDeployStats from " << client.first << " failed ";
-            continue;
-        }
-
-        for (auto& r : res.rows()) {
-            reducer.Reduce(r.deploy_name(),
-                           statistics::ParseDurationFromStr(r.time(), statistics::TimeUnit::MICRO_SECOND), r.count(),
-                           statistics::ParseDurationFromStr(r.total(), statistics::TimeUnit::MICRO_SECOND));
-        }
-    }
-
-    // Step three: Query old deploy response time from table
-    rs = sr->ExecuteSQLParameterized("", QueryDeployStats(), {}, &s);
-    if (!s.IsOK()) {
-        LOG(ERROR) << "[ERROR] querying DEPLOY_RESPONSE_TIME" << s.msg;
-        return;
-    }
-
-    // old reducer help find those rows already in table and but there is
-    // no new incremental stats reduced from all tablets
-    statistics::DeployResponseTimeRowReducer old_reducer;
-    while (rs->Next()) {
-        auto name = rs->GetAsStringUnsafe(0);
-        auto time = rs->GetAsStringUnsafe(1);
-        uint64_t cnt = 0;
-        if (rs->GetSchema()->GetColumnType(2) == hybridse::sdk::DataType::kTypeInt64) {
-            cnt = static_cast<uint64_t>(rs->GetInt64Unsafe(2));
-        } else {
-            cnt = static_cast<uint64_t>(rs->GetInt32Unsafe(2));
-        }
-        auto total = rs->GetAsStringUnsafe(3);
-
-        auto ts = statistics::ParseDurationFromStr(time, statistics::TimeUnit::SECOND);
-        auto tt = statistics::ParseDurationFromStr(total, statistics::TimeUnit::SECOND);
-
-        reducer.Reduce(name, ts, cnt, tt);
-        old_reducer.Reduce(name, ts, cnt, tt);
-    }
-
-    // Step four: update DEPLOY_RESPONSE_TIME table by the new rows
-    // only for rows that meet any of conditiions below:
-    // 1. the incremental count and total is bigger than 0
-    // 2. original table do not have row for that (deploy_name + time) key yet
-    std::string insert_deploy_stat = absl::StrCat("insert into ", nameserver::INFORMATION_SCHEMA_DB, ".",
-                                                  nameserver::DEPLOY_RESPONSE_TIME, " values ");
-    for (auto& row : reducer.Rows()) {
-        auto old_it = old_reducer.Find(row->deploy_name_, row->time_);
-        if (old_it != nullptr && row->count_ == old_it->count_) {
-            // don't update table only if there is no incremental data, and there is record already in table
-            continue;
-        }
-
-        std::string time = row->GetTimeAsStr(statistics::TimeUnit::SECOND);
-        auto insert_sql = absl::StrCat(insert_deploy_stat, " ( '", row->deploy_name_, "', '",
-                                       time, "', ", row->count_,
-                                       ",'", row->GetTotalAsStr(statistics::TimeUnit::SECOND), "' )");
-
-        hybridse::sdk::Status st;
-        DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
-        sr->ExecuteInsert("", insert_sql, &st);
-        if (!st.IsOK()) {
-            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << st.msg;
-        }
-    }
-    // TODO(ace): add logs for summary how many rows affected and time cost
-}
-
-void NameServerImpl::ScheduleSyncDeployStats() {
-    SyncDeployStats();
-    task_thread_pool_.DelayTask(FLAGS_sync_deploy_stats_timeout,
-                                boost::bind(&NameServerImpl::ScheduleSyncDeployStats, this));
 }
 
 /// \beirf create a SQLClusterRouter instance for use like monitoring statistics collecting

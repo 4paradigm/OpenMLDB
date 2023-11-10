@@ -191,7 +191,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
                                   mode_recycle_root_paths_[::openmldb::common::kSSD]);
     ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kHDD]);
-    deploy_collector_ = std::make_unique<::openmldb::statistics::DeployQueryTimeCollector>();
+    // if want /brpc_metrics, prefix should be g_server_info_prefix+<port>(when no server_info_name), means
+    // rpc_server_<port> if standalone, diy
+    deploy_collector_ = std::make_unique<::openmldb::statistics::DeploymentMetricCollector>(
+        "rpc_server_" + endpoint.substr(endpoint.find(":") + 1));
 
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
@@ -1643,15 +1646,15 @@ void TabletImpl::Query(RpcController* ctrl, const openmldb::api::QueryRequest* r
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ProcessQuery(ctrl, request, response, &buf);
+    ProcessQuery(true, ctrl, request, response, &buf);
 }
 
-void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryRequest* request,
+void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::api::QueryRequest* request,
                               ::openmldb::api::QueryResponse* response, butil::IOBuf* buf) {
     auto start = absl::Now();
-    absl::Cleanup deploy_collect_task = [this, request, start]() {
+    absl::Cleanup deploy_collect_task = [this, is_sub, request, start]() {
         if (this->IsCollectDeployStatsEnabled()) {
-            if (request->is_procedure() && request->has_db() && request->has_sp_name()) {
+            if (!is_sub && request->is_procedure() && request->has_db() && request->has_sp_name()) {
                 this->TryCollectDeployStats(request->db(), request->sp_name(), start);
             }
         }
@@ -1773,7 +1776,8 @@ void TabletImpl::SubQuery(RpcController* ctrl, const openmldb::api::QueryRequest
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ProcessQuery(ctrl, request, response, &buf);
+    // subquery don't need to collect deploy stats
+    ProcessQuery(true, ctrl, request, response, &buf);
 }
 
 void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const openmldb::api::SQLBatchRequestQueryRequest* request,
@@ -1782,15 +1786,15 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const openmldb::api::
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    return ProcessBatchRequestQuery(ctrl, request, response, buf);
+    return ProcessBatchRequestQuery(false, ctrl, request, response, buf);
 }
-void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
+void TabletImpl::ProcessBatchRequestQuery(bool is_sub, RpcController* ctrl,
                                           const openmldb::api::SQLBatchRequestQueryRequest* request,
                                           openmldb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
     absl::Time start = absl::Now();
-    absl::Cleanup deploy_collect_task = [this, request, start]() {
+    absl::Cleanup deploy_collect_task = [this, is_sub, request, start]() {
         if (this->IsCollectDeployStatsEnabled()) {
-            if (request->is_procedure() && request->has_db() && request->has_sp_name()) {
+            if (!is_sub && request->is_procedure() && request->has_db() && request->has_sp_name()) {
                 this->TryCollectDeployStats(request->db(), request->sp_name(), start);
             }
         }
@@ -1962,7 +1966,7 @@ void TabletImpl::SubBatchRequestQuery(RpcController* ctrl, const openmldb::api::
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    return ProcessBatchRequestQuery(ctrl, request, response, buf);
+    return ProcessBatchRequestQuery(true, ctrl, request, response, buf);
 }
 
 void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::ChangeRoleRequest* request,
@@ -4286,6 +4290,12 @@ void TabletImpl::UpdateGlobalVarTable() {
         it->Next();
     }
     std::atomic_store_explicit(&global_variables_, new_global_var, std::memory_order_relaxed);
+
+    // no DEPLOY_STATS when init, so we can get the first DEPLOY_STATS value here, and all changes will be handled in
+    // and we assume that global vars change is low frequency, so we reset here instead of in the repeated task
+    if (!IsCollectDeployStatsEnabled()) {
+        deploy_collector_->Reset();
+    }
     return;
 }
 
@@ -5311,7 +5321,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
 
     if (is_deployment_procedure) {
         auto collector_key = absl::StrCat(db_name, ".", sp_name);
-        auto s = deploy_collector_->DeleteDeploy(collector_key);
+        auto s = deploy_collector_->DeleteDeploy(db_name, sp_name);
         if (!s.ok()) {
             LOG(ERROR) << "[ERROR] delete deploy collector: " << s;
         } else {
@@ -5464,31 +5474,12 @@ bool TabletImpl::IsCollectDeployStatsEnabled() const {
 }
 
 // try collect the cost time for a deployment procedure into collector
-// if the procedure found in collector, it is colelcted directly
-// if not, the function will try find the procedure info from procedure cache, and if turns out is a deployment
-// procedure, retry collecting by firstly adding the missing deployment procedure into collector
+// if failed, log inside, no extra handle
 void TabletImpl::TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time) {
     absl::Time now = absl::Now();
     absl::Duration time = now - start_time;
-    const std::string deploy_name = absl::StrCat(db, ".", name);
-    auto s = deploy_collector_->Collect(deploy_name, time);
-    if (absl::IsNotFound(s)) {
-        // deploy collector is regarded as non-update-to-date cache for sp_info (sp_cache_ should be up-to-date)
-        // so when Not Found error happens, retry once again by AddDeploy first, with the help of sp_cache_
-        auto sp_info = sp_cache_->FindSpProcedureInfo(db, name);
-        if (sp_info.ok() && sp_info.value()->GetType() == hybridse::sdk::kReqDeployment) {
-            s = deploy_collector_->AddDeploy(deploy_name);
-            if (!s.ok()) {
-                LOG(ERROR) << "[ERROR] add deploy collector: " << s;
-                return;
-            }
-            s = deploy_collector_->Collect(deploy_name, time);
-        }
-    }
-    if (!s.ok()) {
-        LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
-    }
-    DLOG(INFO) << "collected " << deploy_name << " for " << time;
+    auto st = deploy_collector_->Collect(db, name, time);
+    DLOG(INFO) << "collect " << db << "." << name << " latency " << time;
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
@@ -5745,14 +5736,7 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
                                         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
 
-    auto rs = deploy_collector_->Flush();
-    for (auto& r : rs) {
-        auto new_row = response->add_rows();
-        new_row->set_deploy_name(r.deploy_name_);
-        new_row->set_time(r.GetTimeAsStr(statistics::TimeUnit::MICRO_SECOND));
-        new_row->set_count(r.count_);
-        new_row->set_total(r.GetTotalAsStr(statistics::TimeUnit::MICRO_SECOND));
-    }
+    // TODO(hw): delete rpc?
     response->set_code(ReturnCode::kOk);
 }
 

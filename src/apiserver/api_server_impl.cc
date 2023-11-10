@@ -22,10 +22,17 @@
 #include <string>
 
 #include "apiserver/interface_provider.h"
+
+#include "absl/cleanup/cleanup.h"
 #include "brpc/server.h"
+#include "butil/time.h"
 
 namespace openmldb {
 namespace apiserver {
+
+APIServerImpl::APIServerImpl(const std::string& endpoint)
+    : md_recorder_("rpc_server_" + endpoint.substr(endpoint.find(":") + 1), "http_method", {"method"}),
+      provider_("rpc_server_" + endpoint.substr(endpoint.find(":") + 1)) {}
 
 APIServerImpl::~APIServerImpl() = default;
 
@@ -72,7 +79,6 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
                             google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     auto* cntl = dynamic_cast<brpc::Controller*>(cntl_base);
-
     // The unresolved path has no slashes at the beginning(guaranteed by brpc), it's not good for url parsing
     auto unresolved_path = "/" + cntl->http_request().unresolved_path();
     auto method = cntl->http_request().method();
@@ -81,7 +87,6 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
 
     JsonWriter writer;
     provider_.handle(unresolved_path, method, req_body, writer);
-
     cntl->response_attachment().append(writer.GetString());
 }
 
@@ -110,6 +115,12 @@ std::map<std::string, ExecContext> mode_map{
 void APIServerImpl::RegisterQuery() {
     provider_.post("/dbs/:db_name", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                                            JsonWriter& writer) {
+        auto start = absl::Now();
+        absl::Cleanup method_latency = [this, start]() {
+            // TODO(hw): query should split into async/sync, online/offline?
+            absl::Duration time = absl::Now() - start;
+            *md_recorder_.get_stats({"query"}) << absl::ToInt64Microseconds(time);
+        };
         auto resp = GeneralResp();
         auto db_it = param.find("db_name");
         if (db_it == param.end()) {
@@ -158,9 +169,9 @@ void APIServerImpl::RegisterQuery() {
     });
 }
 
-bool APIServerImpl::JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                            const butil::rapidjson::Value& common_cols_v,
-                                            std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
+absl::Status APIServerImpl::JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                                    const butil::rapidjson::Value& common_cols_v,
+                                                    std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
     // scan all strings to init the total string length
@@ -186,18 +197,20 @@ bool APIServerImpl::JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_c
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                return false;
+                return absl::InvalidArgumentError(
+                    absl::StrCat("trans const ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
             }
             ++common_idx;
         } else {
             if (!AppendJsonValue(non_common_cols_v[non_common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i),
                                  row)) {
-                return false;
+                return absl::InvalidArgumentError(
+                    absl::StrCat("trans ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
             }
             ++non_common_idx;
         }
     }
-    return true;
+    return absl::OkStatus();
 }
 
 template <typename T>
@@ -281,9 +294,9 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
 }
 
 // common_cols_v is still an array, but non_common_cols_v is map, should find the value by the column name
-bool APIServerImpl::JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                          const butil::rapidjson::Value& common_cols_v,
-                                          std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
+absl::Status APIServerImpl::JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                                  const butil::rapidjson::Value& common_cols_v,
+                                                  std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
     // scan all strings to init the total string length
@@ -300,8 +313,7 @@ bool APIServerImpl::JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_com
             if (sch->GetColumnType(i) == hybridse::sdk::kTypeString) {
                 auto v = non_common_cols_v.FindMember(sch->GetColumnName(i).c_str());
                 if (v == non_common_cols_v.MemberEnd()) {
-                    LOG(WARNING) << "can't find " << sch->GetColumnName(i);
-                    return false;
+                    return absl::InvalidArgumentError("can't find col " + sch->GetColumnName(i));
                 }
                 str_len_sum += v->value.GetStringLength();
             }
@@ -313,23 +325,22 @@ bool APIServerImpl::JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_com
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                LOG(WARNING) << "set " << sch->GetColumnName(i) << " failed";
-                return false;
+                return absl::InvalidArgumentError(
+                    absl::StrCat("trans const ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
             }
             ++common_idx;
         } else {
             auto v = non_common_cols_v.FindMember(sch->GetColumnName(i).c_str());
             if (v == non_common_cols_v.MemberEnd()) {
-                LOG(WARNING) << "can't find " << sch->GetColumnName(i);
-                return false;
+                return absl::InvalidArgumentError("can't find " + sch->GetColumnName(i));
             }
             if (!AppendJsonValue(v->value, sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                LOG(WARNING) << "set " << sch->GetColumnName(i) << " failed";
-                return false;
+                return absl::InvalidArgumentError(
+                    absl::StrCat("trans ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
             }
         }
     }
-    return true;
+    return absl::OkStatus();
 }
 
 void APIServerImpl::RegisterPut() {
@@ -420,6 +431,11 @@ void APIServerImpl::RegisterExecSP() {
 
 void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param,
                                      const butil::IOBuf& req_body, JsonWriter& writer) {
+    auto start = absl::Now();
+    absl::Cleanup method_latency = [this, start, has_common_col]() {
+        absl::Duration time = absl::Now() - start;
+        *md_recorder_.get_stats({has_common_col ? "sp" : "deployment"}) << absl::ToInt64Microseconds(time);
+    };
     auto resp = GeneralResp();
     auto db_it = param.find("db_name");
     auto sp_it = param.find("sp_name");
@@ -458,7 +474,6 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         return;
     }
     const auto& rows = input->value;
-
     hybridse::sdk::Status status;
     // We need to use ShowProcedure to get input schema(should know which column is constant).
     // GetRequestRowByProcedure can't do that.
@@ -498,13 +513,15 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
                 writer << resp.Set("Invalid input data size in row " + std::to_string(i));
                 return;
             }
-            if (!JsonArray2SQLRequestRow(rows[i], common_cols_v, row)) {
-                writer << resp.Set("Translate to request row failed in array row " + std::to_string(i));
+            if (auto st = JsonArray2SQLRequestRow(rows[i], common_cols_v, row); !st.ok()) {
+                writer << resp.Set("Translate to request row failed in array row " + std::to_string(i) + ", " +
+                                   st.ToString());
                 return;
             }
         } else if (rows[i].IsObject()) {
-            if (!JsonMap2SQLRequestRow(rows[i], common_cols_v, row)) {
-                writer << resp.Set("Translate to request row failed in map row " + std::to_string(i));
+            if (auto st = JsonMap2SQLRequestRow(rows[i], common_cols_v, row); !st.ok()) {
+                writer << resp.Set("Translate to request row failed in map row " + std::to_string(i) + ", " +
+                                   st.ToString());
                 return;
             }
         } else {
