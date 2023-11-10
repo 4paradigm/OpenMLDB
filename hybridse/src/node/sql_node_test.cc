@@ -918,7 +918,7 @@ TEST_F(SqlNodeTest, ColumnIdTest) {
 
 TEST_F(SqlNodeTest, QueryTypeNameTest) {
     ASSERT_EQ("kQuerySelect", node::QueryTypeName(node::kQuerySelect));
-    ASSERT_EQ("kQueryUnion", node::QueryTypeName(node::kQueryUnion));
+    ASSERT_EQ("kQueryUnion", node::QueryTypeName(node::kQuerySetOperation));
     ASSERT_EQ("kQuerySub", node::QueryTypeName(node::kQuerySub));
 }
 

@@ -107,7 +107,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool KeysOptimized(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
+    bool KeysOptimized(const vm::SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
                        Key* right_key, Sort* sort, PhysicalOpNode** new_in);
 
     bool KeysOptimizedImpl(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,

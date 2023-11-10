@@ -244,6 +244,9 @@ class SchemasContext {
     void BuildTrivial(const std::vector<const codec::Schema*>& schemas);
     void BuildTrivial(const std::string& default_db, const std::vector<const type::TableDef*>& tables);
 
+    // {db}.{table}({col_name}:{col_type}, ...)
+    std::string ReadableString() const { return ""; }
+
     std::string DebugString() const;
 
     friend std::ostream& operator<<(std::ostream& os, const SchemasContext& sc) { return os << sc.DebugString(); }
@@ -266,7 +269,7 @@ class SchemasContext {
     std::map<std::string, std::vector<std::pair<size_t, size_t>>> column_name_map_;
 
     // child source mapping
-    // child idx -> (child column id -> column idx)
+    // child idx -> (child column id -> column id)
     std::map<size_t, std::map<size_t, size_t>> child_source_map_;
 
     // schema source parts

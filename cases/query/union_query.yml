@@ -1,0 +1,44 @@
+cases:
+  - id: 0
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    # Key + TS 完全相同情况下, SQL 语义上顺序是 undefined.
+    # 在线模式实现上遵守此隐式规则: 更右边的 <from_item> 排在输出临时表的更后面, 因此首先被 LAST JOIN 选中.
+    # 此规则不具有一致性, 离线模式不一定遵守.
+    # Segment 迭代器是从 TS 最大 -> 最小
+    sql: |
+      select t1.id as c1, tx.c1 as tx1, tx.val as val
+      from t1 last join (
+        select * from t2 union all select * from t3
+      ) tx
+      on t1.id = tx.c1
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, aa, 4
+        bb, bb, 2
+        cc, cc, 6
+        dd, dd, 7

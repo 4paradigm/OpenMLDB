@@ -21,8 +21,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
+#include "absl/types/span.h"
 #include "base/fe_status.h"
+#include "udf/udf.h"
 #include "zetasql/parser/ast_node_kind.h"
 
 namespace hybridse {
@@ -52,6 +55,8 @@ static base::Status convertAlterAction(const zetasql::ASTAlterAction* action, no
                                        node::AlterActionBase** out);
 static base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement* stmt, node::NodeManager* nm,
                                           node::SqlNode** out);
+static base::Status ConvertSetOperation(const zetasql::ASTSetOperation* stmt, node::NodeManager* nm,
+                                        node::SetOperationNode** out);
 
 /// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
@@ -339,7 +344,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                        "Un-support Modifiers for function call")
             std::string function_name = "";
             CHECK_STATUS(AstPathExpressionToString(function_call->function(), &function_name))
-            boost::to_lower(function_name);
+            absl::AsciiStrToLower(&function_name);
             // Convert function call TYPE(value) to cast expression CAST(value as TYPE)
             node::DataType data_type;
             base::Status status = node::StringToDataType(function_name, &data_type);
@@ -1329,35 +1334,19 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
             return base::Status::OK();
         }
         case zetasql::AST_SET_OPERATION: {
-            const auto set_op = query_expression->GetAsOrNull<zetasql::ASTSetOperation>();
-            CHECK_TRUE(set_op != nullptr, common::kSqlAstError, "not an ASTSetOperation");
-            switch (set_op->op_type()) {
-                case zetasql::ASTSetOperation::OperationType::UNION: {
-                    CHECK_TRUE(set_op->inputs().size() >= 2, common::kSqlAstError,
-                               "Union Set Operation have inputs size less than 2");
-                    bool is_distinct = set_op->distinct();
-                    node::QueryNode* left = nullptr;
-                    CHECK_STATUS(ConvertQueryExpr(set_op->inputs().at(0), node_manager, &left));
-
-                    for (size_t i = 1; i < set_op->inputs().size(); ++i) {
-                        auto input = set_op->inputs().at(i);
-                        node::QueryNode* expr_node = nullptr;
-                        // TODO(aceforeverd): support set operation
-                        CHECK_STATUS(ConvertQueryExpr(input, node_manager, &expr_node));
-                        left = node_manager->MakeUnionQueryNode(left, expr_node, !is_distinct);
-                    }
-
-                    *output = left;
-                    return base::Status::OK();
-                }
-                default: {
-                    return base::Status(common::kSqlAstError,
-                                        absl::StrCat("Un-support set operation: ", set_op->GetSQLForOperation()));
-                }
-            }
+            node::SetOperationNode* set = nullptr;
+            CHECK_STATUS(
+                ConvertGuard<zetasql::ASTSetOperation>(query_expression, node_manager, &set, ConvertSetOperation));
+            *output = set;
+            return base::Status::OK();
+        }
+        case zetasql::AST_QUERY: {
+            node::QueryNode* query = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTQuery>(query_expression, node_manager, &query, ConvertQueryNode));
+            *output = query;
+            return base::Status::OK();
         }
         default: {
-            // NOTE: code basically won't reach here unless inner error
             return base::Status(common::kSqlAstError,
                                 absl::StrCat("can not create query plan node with invalid query type ",
                                              query_expression->GetNodeKindString()));
@@ -2140,7 +2129,7 @@ base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options, 
     for (auto entry : options->options_entries()) {
         std::string key = entry->name()->GetAsString();
         if (to_lower) {
-            boost::to_lower(key);
+            absl::AsciiStrToLower(&key);
         }
         auto entry_value = entry->value();
         node::ExprNode* value = nullptr;
@@ -2389,6 +2378,32 @@ base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement* ast_no
     }
 
     return base::Status::OK();
+}
+
+base::Status ConvertSetOperation(const zetasql::ASTSetOperation* set_op, node::NodeManager* node_manager,
+                                 node::SetOperationNode** out) {
+    switch (set_op->op_type()) {
+        case zetasql::ASTSetOperation::OperationType::UNION: {
+            CHECK_TRUE(set_op->inputs().size() >= 2, common::kSqlAstError,
+                       "Union Set Operation have inputs size less than 2");
+
+            auto list = node_manager->MakeList<node::QueryNode>();
+            for (auto n : set_op->inputs()) {
+                node::QueryNode* expr_node = nullptr;
+                CHECK_STATUS(ConvertQueryExpr(n, node_manager, &expr_node));
+                list->data_.push_back(expr_node);
+            }
+
+            auto span = absl::MakeSpan(list->data_);
+            *out = node_manager->MakeNode<node::SetOperationNode>(node::SetOperationType::UNION, span,
+                                                                  set_op->distinct());
+            return base::Status::OK();
+        }
+        default: {
+            return base::Status(common::kSqlAstError,
+                                absl::StrCat("Un-support set operation: ", set_op->GetSQLForOperation()));
+        }
+    }
 }
 
 }  // namespace plan

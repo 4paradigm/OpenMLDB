@@ -74,62 +74,11 @@ enum RunnerType {
     kRunnerRequestJoin,
     kRunnerBatchRequestRunProxy,
     kRunnerLimit,
+    kRunnerSetOperation,
     kRunnerUnknow,
 };
-inline const std::string RunnerTypeName(const RunnerType& type) {
-    switch (type) {
-        case kRunnerData:
-            return "DATA";
-        case kRunnerRequest:
-            return "REQUEST";
-        case kRunnerGroup:
-            return "GROUP";
-        case kRunnerGroupAndSort:
-            return "GROUP_AND_SORT";
-        case kRunnerFilter:
-            return "FILTER";
-        case kRunnerConstProject:
-            return "CONST_PROJECT";
-        case kRunnerTableProject:
-            return "TABLE_PROJECT";
-        case kRunnerRowProject:
-            return "ROW_PROJECT";
-        case kRunnerSimpleProject:
-            return "SIMPLE_PROJECT";
-        case kRunnerSelectSlice:
-            return "SELECT_SLICE";
-        case kRunnerGroupAgg:
-            return "GROUP_AGG_PROJECT";
-        case kRunnerAgg:
-            return "AGG_PROJECT";
-        case kRunnerReduce:
-            return "REDUCE_PROJECT";
-        case kRunnerWindowAgg:
-            return "WINDOW_AGG_PROJECT";
-        case kRunnerRequestUnion:
-            return "REQUEST_UNION";
-        case kRunnerRequestAggUnion:
-            return "REQUEST_AGG_UNION";
-        case kRunnerPostRequestUnion:
-            return "POST_REQUEST_UNION";
-        case kRunnerIndexSeek:
-            return "INDEX_SEEK";
-        case kRunnerJoin:
-            return "JOIN";
-        case kRunnerConcat:
-            return "CONCAT";
-        case kRunnerRequestJoin:
-            return "REQUEST_JOIN";
-        case kRunnerLimit:
-            return "LIMIT";
-        case kRunnerRequestRunProxy:
-            return "REQUEST_RUN_PROXY";
-        case kRunnerBatchRequestRunProxy:
-            return "BATCH_REQUEST_RUN_PROXY";
-        default:
-            return "UNKNOW";
-    }
-}
+
+std::string RunnerTypeName(RunnerType type);
 
 class Runner : public node::NodeBase<Runner> {
  public:
@@ -833,6 +782,22 @@ class ProxyRequestRunner : public Runner {
         const bool request_is_common);
     uint32_t task_id_;
     Runner* index_input_;
+};
+
+class SetOperationRunner : public Runner {
+ public:
+    SetOperationRunner(const int32_t id, const SchemasContext* schema, node::SetOperationType type, bool distinct)
+        : Runner(id, kRunnerSetOperation, schema), op_type_(type), distinct_(distinct) {
+        is_lazy_ = true;
+    }
+    ~SetOperationRunner() {}
+
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx,                                                 // NOLINT
+                                     const std::vector<std::shared_ptr<DataHandler>>& inputs) override;  // NOLINT
+
+ private:
+    node::SetOperationType op_type_;
+    bool distinct_ = false;
 };
 
 }  // namespace vm

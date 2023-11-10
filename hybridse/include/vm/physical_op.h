@@ -47,7 +47,7 @@ enum PhysicalOpType {
     kPhysicalOpRename,
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
-    kPhysicalOpUnion,
+    kPhysicalOpSetOperation,
     kPhysicalOpWindow,
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnion,
@@ -153,6 +153,7 @@ class FnComponent {
 // Sort Component can only handle single order expressions
 class Sort : public FnComponent {
  public:
+    Sort() = default;
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
 
@@ -183,6 +184,8 @@ class Sort : public FnComponent {
 
     base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
                              node::NodeManager *nm, Sort *out) const;
+
+    Sort ShadowCopy() { return Sort(orders_); }
 
     const node::OrderByNode *orders_;
 };
@@ -295,6 +298,8 @@ class Key : public FnComponent {
 
     base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
                              node::NodeManager *nm, Key *out) const;
+
+    Key ShadowCopy() { return Key(keys_); }
 
     const node::ExprListNode *keys_;
 };
@@ -445,7 +450,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     // limit always >= 0 so it is safe to do that
     int32_t GetLimitCntValue() const { return limit_cnt_.value_or(-1); }
 
-    bool IsSameSchema(const vm::Schema &schema, const vm::Schema &exp_schema) const;
+    static bool IsSameSchema(const codec::Schema* schema, const codec::Schema* exp_schema);
 
     // `lhs` schema contains `rhs` and is start with `rhs` schema
     //
@@ -834,7 +839,6 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
     Key group_;
 };
 
-class PhysicalUnionNode;
 class PhysicalJoinNode;
 
 class WindowOp {
@@ -1410,23 +1414,37 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     }
 };
 
-class PhysicalUnionNode : public PhysicalBinaryNode {
+class PhysicalSetOperationNode : public PhysicalOpNode {
  public:
-    PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
-        : PhysicalBinaryNode(left, right, kPhysicalOpUnion, true),
-          is_all_(is_all) {
-        output_type_ = kSchemaTypeTable;
-    }
-    virtual ~PhysicalUnionNode() {}
-    base::Status InitSchema(PhysicalPlanContext *) override;
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    PhysicalSetOperationNode(node::SetOperationType type, absl::Span<PhysicalOpNode *const> inputs, bool distinct)
+        : PhysicalOpNode(kPhysicalOpSetOperation, false), op_type_(type), distinct_(distinct) {
+        for (auto n : inputs) {
+            AddProducer(n);
+        }
+        bool group_optimized = true;
+        for (auto n : producers_) {
+            if (n-> GetOutputType() != kSchemaTypeGroup) {
+                group_optimized = false;
+                break;
+            }
+        }
 
-    base::Status WithNewChildren(node::NodeManager *nm,
-                                 const std::vector<PhysicalOpNode *> &children,
+        if (group_optimized && op_type_ == node::SetOperationType::UNION) {
+            output_type_ = kSchemaTypeGroup;
+        } else {
+            output_type_ = kSchemaTypeTable;
+        }
+    }
+    ~PhysicalSetOperationNode() override {}
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
 
-    const bool is_all_;
-    static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
+    node::SetOperationType op_type_;
+    const bool distinct_ = false;
+    static PhysicalSetOperationNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalPostRequestUnionNode : public PhysicalBinaryNode {
@@ -1515,9 +1533,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                 << "Fail to add window union : producer is empty or null";
             return false;
         }
-        if (output_request_row() &&
-            !IsSameSchema(*node->GetOutputSchema(),
-                          *producers_[0]->GetOutputSchema())) {
+        if (output_request_row() && !IsSameSchema(node->GetOutputSchema(), producers_[0]->GetOutputSchema())) {
             LOG(WARNING)
                 << "Union Table and window input schema aren't consistent";
             return false;

@@ -51,6 +51,15 @@ using hybridse::vm::ProjectType;
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
                                             std::string* db, std::string* table, std::string* source_col);
 
+template <typename T>
+T ShadowCopy(T* in) {
+    if (in != nullptr) {
+        return in->ShadowCopy();
+    }
+
+    return T{};
+}
+
 // ExprNode may be resolving under different SchemasContext later (say one of its descendants context),
 // with column name etc it may not able to resvole since a column rename may happen in SimpleProject node.
 // With the column id hint written to corresponding ColumnRefNode earlier, resolving issue can be mitigated.
@@ -278,7 +287,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
     return false;
 }
 
-bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx,
+bool GroupAndSortOptimized::KeysOptimized(const vm::SchemasContext* root_schemas_ctx,
                                           PhysicalOpNode* in,
                                           Key* left_key,
                                           Key* index_key,
@@ -298,16 +307,18 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         optimize_info_ = nullptr;
     };
 
-    auto s = BuildExprCache(left_key->keys(), root_schemas_ctx);
-    if (!s.ok()) {
-        return false;
-    }
-    s = BuildExprCache(index_key->keys(), root_schemas_ctx);
+    auto s = BuildExprCache(index_key->keys(), root_schemas_ctx);
     if (!s.ok()) {
         return false;
     }
     if (right_key != nullptr) {
         s = BuildExprCache(right_key->keys(), root_schemas_ctx);
+        if (!s.ok()) {
+            return false;
+        }
+    } else {
+        // build cache from left only right_key is empty
+        auto s = BuildExprCache(left_key->keys(), root_schemas_ctx);
         if (!s.ok()) {
             return false;
         }
@@ -349,13 +360,12 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
 
         if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ ||
             DataProviderType::kProviderTypePartition == scan_op->provider_type_) {
-            auto* table_node = dynamic_cast<vm::PhysicalDataProviderNode*>(scan_op);
             if (optimize_info_) {
                 if (optimize_info_->left_key == left_key && optimize_info_->index_key == index_key &&
                     optimize_info_->right_key == right_key && optimize_info_->sort_key == sort) {
                     if (optimize_info_->optimized != nullptr &&
-                        table_node->GetDb() == optimize_info_->optimized->GetDb() &&
-                        table_node->GetName() == optimize_info_->optimized->GetName()) {
+                        scan_op->GetDb() == optimize_info_->optimized->GetDb() &&
+                        scan_op->GetName() == optimize_info_->optimized->GetName()) {
                         *new_in = optimize_info_->optimized;
                         return true;
                     }
@@ -621,6 +631,52 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         }
         *new_in = new_union;
         return true;
+    } else if (PhysicalOpType::kPhysicalOpSetOperation == in->GetOpType()) {
+        auto set_op = dynamic_cast<vm::PhysicalSetOperationNode*>(in);
+        // keys optimize for each inputs for set operation
+        std::vector<PhysicalOpNode*> opt_inputs;
+        opt_inputs.reserve(in->GetProducerCnt());
+        bool opt_all = true;
+        for (size_t i = 0; i < in->GetProducerCnt(); i++) {
+            auto n = in->GetProducer(i);
+            // expr_cache_.clear();
+            // optimize_info_ = nullptr;
+            PhysicalOpNode* optimized = nullptr;
+            // copy keys
+            auto left_key_cp = ShadowCopy(left_key);
+            auto index_key_cp = ShadowCopy(index_key);
+            auto right_key_cp = ShadowCopy(right_key);
+            auto sort_cp = ShadowCopy(sort);
+
+            expr_cache_.clear();
+            optimize_info_ = nullptr;
+            if (!KeysOptimized(n->schemas_ctx(), n, &left_key_cp, &index_key_cp, &right_key_cp, &sort_cp, &optimized)) {
+                LOG(WARNING) << "unable to optimize operation set input: " << n->GetTreeString();
+                opt_all = false;
+            }
+            opt_inputs.push_back(optimized == nullptr ? n : optimized);
+
+            if (i + 1 == in->GetProducerCnt()) {
+                // write keys
+                left_key->set_keys(left_key_cp.keys());
+                index_key->set_keys(index_key_cp.keys());
+                if (right_key) {
+                    right_key->set_keys(right_key_cp.keys());
+                }
+                if (sort) {
+                    sort->set_orders(sort_cp.orders());
+                }
+            }
+        }
+        vm::PhysicalSetOperationNode* opt_set = nullptr;
+        if (!plan_ctx_
+                 ->CreateOp<vm::PhysicalSetOperationNode>(&opt_set, set_op->op_type_, opt_inputs, set_op->distinct_)
+                 .isOK()) {
+            return false;
+        }
+        *new_in = opt_set;
+
+        return opt_all;
     }
     return false;
 }
@@ -915,6 +971,12 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, cons
     const PhysicalOpNode* source;
     Status status = schemas_ctx->ResolveColumnID(db, rel, col_name, &column_id, &path_idx, &child_column_id,
                                                  &source_column_id, &source);
+    // try loose the relation, fallback to column name resolving.
+    // useful when underlaying node is e.g a SetOperationNode.
+    if (!status.isOK() && !col->GetRelationName().empty()) {
+        status = schemas_ctx->ResolveColumnID("", "", col->GetColumnName(), &column_id, &path_idx, &child_column_id,
+                                              &source_column_id, &source);
+    }
 
     if (!status.isOK()) {
         LOG(WARNING) << "Illegal index column: " << col->GetExprString();

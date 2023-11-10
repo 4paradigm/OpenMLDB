@@ -13,29 +13,298 @@
 # limitations under the License.
 
 cases:
-  - id: 1
-    desc: 简单UNION两张表
-    mode: request-unsupport
-    sql: SELECT * FROM t1 UNION ALL SELECT * FROM t2;
-  - id: 2
+  - id: 0
     desc: DISTINCT UNION t1 t2
-    mode: request-unsupport
-    sql: SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2;
-  - id: 3
+    sql: SELECT * FROM t1 UNION DISTINCT SELECT * FROM t2 UNION DISTINCT SELECT * FROM t3;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySetOperation
+          +-operator: UNION DISTINCT
+          +-inputs[list]:
+            +-0:
+            |  +-node[kQuery]: kQuerySelect
+            |    +-distinct_opt: false
+            |    +-where_expr: null
+            |    +-group_expr_list: null
+            |    +-having_expr: null
+            |    +-order_expr_list: null
+            |    +-limit: null
+            |    +-select_list[list]:
+            |    |  +-0:
+            |    |    +-node[kResTarget]
+            |    |      +-val:
+            |    |      |  +-expr[all]
+            |    |      +-name: <nil>
+            |    +-tableref_list[list]:
+            |    |  +-0:
+            |    |    +-node[kTableRef]: kTable
+            |    |      +-table: t1
+            |    |      +-alias: <nil>
+            |    +-window_list: []
+            +-1:
+            |  +-node[kQuery]: kQuerySelect
+            |    +-distinct_opt: false
+            |    +-where_expr: null
+            |    +-group_expr_list: null
+            |    +-having_expr: null
+            |    +-order_expr_list: null
+            |    +-limit: null
+            |    +-select_list[list]:
+            |    |  +-0:
+            |    |    +-node[kResTarget]
+            |    |      +-val:
+            |    |      |  +-expr[all]
+            |    |      +-name: <nil>
+            |    +-tableref_list[list]:
+            |    |  +-0:
+            |    |    +-node[kTableRef]: kTable
+            |    |      +-table: t2
+            |    |      +-alias: <nil>
+            |    +-window_list: []
+            +-2:
+              +-node[kQuery]: kQuerySelect
+                +-distinct_opt: false
+                +-where_expr: null
+                +-group_expr_list: null
+                +-having_expr: null
+                +-order_expr_list: null
+                +-limit: null
+                +-select_list[list]:
+                |  +-0:
+                |    +-node[kResTarget]
+                |      +-val:
+                |      |  +-expr[all]
+                |      +-name: <nil>
+                +-tableref_list[list]:
+                |  +-0:
+                |    +-node[kTableRef]: kTable
+                |      +-table: t3
+                |      +-alias: <nil>
+                +-window_list: []
+  - id: 1
     desc: UNION ALL t1 t2
-    mode: request-unsupport
     sql: SELECT * FROM t1 UNION ALL SELECT * FROM t2;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySetOperation
+          +-operator: UNION ALL
+          +-inputs[list]:
+            +-0:
+            |  +-node[kQuery]: kQuerySelect
+            |    +-distinct_opt: false
+            |    +-where_expr: null
+            |    +-group_expr_list: null
+            |    +-having_expr: null
+            |    +-order_expr_list: null
+            |    +-limit: null
+            |    +-select_list[list]:
+            |    |  +-0:
+            |    |    +-node[kResTarget]
+            |    |      +-val:
+            |    |      |  +-expr[all]
+            |    |      +-name: <nil>
+            |    +-tableref_list[list]:
+            |    |  +-0:
+            |    |    +-node[kTableRef]: kTable
+            |    |      +-table: t1
+            |    |      +-alias: <nil>
+            |    +-window_list: []
+            +-1:
+              +-node[kQuery]: kQuerySelect
+                +-distinct_opt: false
+                +-where_expr: null
+                +-group_expr_list: null
+                +-having_expr: null
+                +-order_expr_list: null
+                +-limit: null
+                +-select_list[list]:
+                |  +-0:
+                |    +-node[kResTarget]
+                |      +-val:
+                |      |  +-expr[all]
+                |      +-name: <nil>
+                +-tableref_list[list]:
+                |  +-0:
+                |    +-node[kTableRef]: kTable
+                |      +-table: t2
+                |      +-alias: <nil>
+                +-window_list: []
+      plan_tree_str: |
+        +-[kQueryPlan]
+          +-[kUnionPlan]
+            +-operator: UNION ALL
+            +-children[list]:
+              +-[kQueryPlan]
+                +-[kProjectPlan]
+                  +-table: t1
+                  +-project_list_vec[list]:
+                    +-[kProjectList]
+                      +-projects on table [list]:
+                        +-[kProjectNode]
+                          +-[0]*: *
+                  +-[kTablePlan]
+                    +-table: t1
+              +-[kQueryPlan]
+                +-[kProjectPlan]
+                  +-table: t2
+                  +-project_list_vec[list]:
+                    +-[kProjectList]
+                      +-projects on table [list]:
+                        +-[kProjectNode]
+                          +-[0]*: *
+                  +-[kTablePlan]
+                    +-table: t2
+  - id: 2
+    desc: UNION must follow by ALL or DISTINCT
+    sql: SELECT * FROM t1 UNION select * FROM t2;
+    expect:
+      success: false
+      msg: |
+        Syntax error: Expected keyword ALL or keyword DISTINCT but got keyword SELECT [at 1:24]
+        SELECT * FROM t1 UNION select * FROM t2;
+                               ^
+  - id: 3
+    desc: UNION with exact DINSTINCT TYPE
+    sql: SELECT * FROM t1 UNION ALL select * FROM t2 UNION DISTINCT SELECT * FROM t3;
+    expect:
+      success: false
+      msg: |
+        Syntax error: Different set operations cannot be used in the same query without using parentheses for grouping [at 1:45]
+        SELECT * FROM t1 UNION ALL select * FROM t2 UNION DISTINCT SELECT * FROM t3;
+                                                    ^
   - id: 4
-    desc: UNION ALL t1 t2 t3
-    mode: request-unsupport
-    sql: SELECT * FROM t1 UNION ALL SELECT * FROM t2 UNION SELECT * FROM t3;
+    desc: for query with order by or limit, must quote with parantheses
+    sql: SELECT * FROM t1 LIMIT 10 UNION ALL select * FROM t2
+    expect:
+      success: false
+      msg: |
+        Syntax error: Expected end of input but got keyword UNION [at 1:27]
+        SELECT * FROM t1 LIMIT 10 UNION ALL select * FROM t2
+                                  ^
   - id: 5
-    desc: 两个拼表子查询UNION
-    mode: request-unsupport
-    sql: SELECT * FROM t1 left join t2 on t1.col1 = t2.col2 UNION ALL SELECT * FROM t3 UNION SELECT * FROM t4;
+    sql: (SELECT * FROM t1 LIMIT 10) UNION ALL (select * FROM t2 UNION DISTINCT select * from t3)
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySetOperation
+          +-operator: UNION ALL
+          +-inputs[list]:
+            +-0:
+            |  +-node[kQuery]: kQuerySelect
+            |    +-distinct_opt: false
+            |    +-where_expr: null
+            |    +-group_expr_list: null
+            |    +-having_expr: null
+            |    +-order_expr_list: null
+            |    +-limit:
+            |    |  +-node[kLimit]
+            |    |    +-limit_cnt: 10
+            |    +-select_list[list]:
+            |    |  +-0:
+            |    |    +-node[kResTarget]
+            |    |      +-val:
+            |    |      |  +-expr[all]
+            |    |      +-name: <nil>
+            |    +-tableref_list[list]:
+            |    |  +-0:
+            |    |    +-node[kTableRef]: kTable
+            |    |      +-table: t1
+            |    |      +-alias: <nil>
+            |    +-window_list: []
+            +-1:
+              +-node[kQuery]: kQuerySetOperation
+                +-operator: UNION DISTINCT
+                +-inputs[list]:
+                  +-0:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[all]
+                  |    |      +-name: <nil>
+                  |    +-tableref_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kTableRef]: kTable
+                  |    |      +-table: t2
+                  |    |      +-alias: <nil>
+                  |    +-window_list: []
+                  +-1:
+                    +-node[kQuery]: kQuerySelect
+                      +-distinct_opt: false
+                      +-where_expr: null
+                      +-group_expr_list: null
+                      +-having_expr: null
+                      +-order_expr_list: null
+                      +-limit: null
+                      +-select_list[list]:
+                      |  +-0:
+                      |    +-node[kResTarget]
+                      |      +-val:
+                      |      |  +-expr[all]
+                      |      +-name: <nil>
+                      +-tableref_list[list]:
+                      |  +-0:
+                      |    +-node[kTableRef]: kTable
+                      |      +-table: t3
+                      |      +-alias: <nil>
+                      +-window_list: []
+      plan_tree_str: |
+        +-[kQueryPlan]
+          +-[kUnionPlan]
+            +-operator: UNION ALL
+            +-children[list]:
+              +-[kQueryPlan]
+                +-[kLimitPlan]
+                  +-limit_cnt: 10
+                  +-[kProjectPlan]
+                    +-table: t1
+                    +-project_list_vec[list]:
+                      +-[kProjectList]
+                        +-projects on table [list]:
+                          +-[kProjectNode]
+                            +-[0]*: *
+                    +-[kTablePlan]
+                      +-table: t1
+              +-[kQueryPlan]
+                +-[kUnionPlan]
+                  +-operator: UNION DISTINCT
+                  +-children[list]:
+                    +-[kQueryPlan]
+                      +-[kProjectPlan]
+                        +-table: t2
+                        +-project_list_vec[list]:
+                          +-[kProjectList]
+                            +-projects on table [list]:
+                              +-[kProjectNode]
+                                +-[0]*: *
+                        +-[kTablePlan]
+                          +-table: t2
+                    +-[kQueryPlan]
+                      +-[kProjectPlan]
+                        +-table: t3
+                        +-project_list_vec[list]:
+                          +-[kProjectList]
+                            +-projects on table [list]:
+                              +-[kProjectNode]
+                                +-[0]*: *
+                        +-[kTablePlan]
+                          +-table: t3
   - id: 6
-    desc: 两个复杂子查询UNION
+    desc: config option only append at end of query statement, not expression
     sql: |
-      SELECT sum(COL1) as col1sum, * FROM t1 where col2 > 10 group by COL1, COL2 having col1sum > 0 order by
-      COL1+COL2 limit 10 UNION ALL SELECT sum(COL1) as col1sum, * FROM t1 group by COL1, COL2 having sum(COL1) > 0;
+      (SELECT * FROM t1 LIMIT 10 config ( c = 'c'))
+      UNION SELECT * FROM t2
+      config (c = 'c')
+    expect:
+      success: false
+      msg: |
+        Syntax error: Expected ")" but got keyword CONFIG [at 1:28]
+        (SELECT * FROM t1 LIMIT 10 config ( c = 'c'))
+                                   ^
 
