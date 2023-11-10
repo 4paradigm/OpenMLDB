@@ -74,6 +74,8 @@ csv文件格式有诸多不便，更推荐使用parquet格式，需要OpenMLDB�
 
 OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期结果。如果发现SQL执行不符合预期，请先查看下SQL是否满足[功能边界](./function_boundary.md)。
 
+为了方便使用 OpenMLDB SQL 进行开发、调试、验证，我们强烈推荐使用社区工具 [OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator) 来进行 SQL 模拟开发，可以节省大量的部署、编译、索引构建、任务运行等待时间，详见该项目 README https://github.com/vagetablechicken/OpenMLDBSQLEmulator
+
 ### OpenMLDB SQL语法指南
 
 基于 OpenMLDB SQL 的特征计算，一般比较常使用`WINDOW`（包括`WINDOW UNION`），`LAST JOIN` 等子句来完成计算逻辑，它们能保证在任何模式下使用。可以跟随教程"基于 SQL 的特征开发"[(上)](../tutorial/tutorial_sql_1.md)[(下)](../tutorial/tutorial_sql_2.md)进行学习。
