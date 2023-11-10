@@ -27,8 +27,8 @@ doxygen2md: doxygen
 
 sync: doxygen2md
 	@if [ -n "$(SYNC_DIR)" ]; then \
-	    cp -v "$(UDF_GEN_DIR)/Files/udfs_8h.md" "$(SYNC_DIR)/docs/en/reference/sql/functions_and_operators/Files/udfs_8h.md"; \
-	    cp -v "$(UDF_GEN_DIR)/Files/udfs_8h.md" "$(SYNC_DIR)/docs/zh/openmldb_sql/functions_and_operators/Files/udfs_8h.md"; \
+	    cp -v "$(UDF_GEN_DIR)/Files/udfs_8h.md" "$(SYNC_DIR)/docs/en/reference/sql/udfs_8h.md"; \
+	    cp -v "$(UDF_GEN_DIR)/Files/udfs_8h.md" "$(SYNC_DIR)/docs/zh/openmldb_sql/udfs_8h.md"; \
 	else \
 	    echo "SKIP SYNC: DEFAULT Sync DIR not found"; \
 	fi

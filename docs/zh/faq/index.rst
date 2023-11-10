@@ -1,10 +1,10 @@
 =============================
-Expressions, Functions, and Operations
+FAQ
 =============================
 
 
 .. toctree::
     :maxdepth: 1
 
-    operators
-    Files/udfs_8h
+    client_faq
+    server_faq
