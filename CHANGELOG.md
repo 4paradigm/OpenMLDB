@@ -4,24 +4,24 @@
 
 ### Features
 - Support new SQL statements `SHOW CREATE TABLE`, `TRUNCATE` and `LEFT JOIN`(#3500 #3542 @dl239, #3576 @aceforeverd)
-- Support specifying the snappy compression option when creating a table (#3572 @dl239)
-- Optimize the inserting performance of Java SDK (#3525 @dl239)
+- Support specifying the compression option during table creation (#3572 @dl239)
+- Optimize the Java SDK insertion performance (#3525 @dl239)
 - Support defining a window without `ORDER BY` clause (#3554 @aceforeverd)
-- Support authentication when connecting to Zookeeper (#3581 @dl239)
+- Support authentication for Zookeeper connection (#3581 @dl239)
 - Support `LAST JOIN` on a window clause (#3533 #3565 @aceforeverd)
 - Enhance the monitoring module (#3588 @vagetablechicken)
 - Support the date before 1900 in `datediff` (#3499 @aceforeverd)
 - Enhance the diagnostic tool (#3559 @vagetablechicken)
-- Check the status of table when the CLI starts (#3506 @vagetablechicken)
+- Check the status of table on CLI startup (#3506 @vagetablechicken)
 - Upgrade the version of Brpc to 1.6.0 (#3415 #3557 @aceforeverd)
 - Improve the documents (#3517 @dl239, #3520 #3523 @vagetablechicken, #3467 #3468 #3535 #3485 #3478 #3472 #3486 #3487 #3537 #3536 @TanZiYen)
 - Other minor features (#3587 @vagetablechicken, #3512 @dl239)
 
 ### Bug Fixes
 - The SQL compiling failed if there is `LAST JOIN` in `WINDOW UNION` statement in request mode. (#3493 @aceforeverd)
-- Tablet may crash after deleing an index in some cases (#3561 @dl239)
+- Tablet may crash after deleting an index in some cases (#3561 @dl239)
 - There are some syntax errors in maintenance tools (#3545 @vagetablechicken)
-- Updating TTL fails if the deploy SQL has multpile databases (#3503 @dl239)
+- Updating TTL fails if the SQL of deployment contains multpile databases (#3503 @dl239)
 - Other minor bug fixes (#3518 #3567 @dl239, #3543 @aceforeverd, #3521 #3580 @vagetablechicken)
 
 ### Code Refactoring
