@@ -4467,7 +4467,8 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
         uint64_t offset = 0;
         std::map<std::string, uint64_t> info_map;
         auto st = tablet_client->GetTableFollower(tid, pid, offset, info_map);
-        if (st.OK()) {
+        // no followers is fine if replicanum == 1
+        if (st.OK() || st.GetCode() == ::openmldb::base::ReturnCode::kNoFollower) {
             for (auto& meta : partition_info.partition_meta()) {
                 if (meta.is_leader()) continue;
 
