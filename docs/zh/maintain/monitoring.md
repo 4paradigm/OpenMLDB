@@ -212,7 +212,7 @@ OpenMLDB 的相关组件（即 nameserver, tablet, etc）, 本身作为 BRPC ser
 
    - BRPC server 进程相关信息
    - 对应 BRPC server 定义的 RPC method 相关指标，例如该 RPC 的请求 `count`, `error_count`, `qps` 和 `response_time`
-   - Deployment 相关指标，分deployment统计，但只统计该tablet上的deployment请求。区别于Grafana做的集群级别整合。
+   - Deployment 相关指标，分deployment统计，但只统计该tablet上的deployment请求。它们将通过Prometheus relabel和Grafana聚合，形成最终的的集群级别Deployment指标。
 
    通过
 

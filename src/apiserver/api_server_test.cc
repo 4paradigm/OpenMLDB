@@ -49,7 +49,7 @@ class APIServerTestEnv : public testing::Environment {
         // Owned by queue_svc
         cluster_sdk = new ::openmldb::sdk::ClusterSDK(cluster_options);
         ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";
-        queue_svc = std::make_shared<APIServerImpl>();
+        queue_svc = std::make_shared<APIServerImpl>("127.0.0.1:8010");  // fake endpoint for metrics
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
 
         sdk::SQLRouterOptions sql_opt;
