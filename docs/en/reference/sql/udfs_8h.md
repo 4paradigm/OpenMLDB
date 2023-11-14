@@ -501,13 +501,13 @@ Compute average of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -541,13 +541,13 @@ Compute average of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -586,13 +586,13 @@ Compute average of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -634,13 +634,13 @@ Compute average of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -946,13 +946,13 @@ Compute number of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -987,13 +987,13 @@ Compute count of values grouped by category key and output string. Each group is
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -1032,13 +1032,13 @@ Compute count of values matching specified condition grouped by category key and
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -1080,13 +1080,13 @@ Compute number of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -1374,13 +1374,13 @@ Compute number of distinct values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 0   |
-| 2   |
-| 2   |
-| 4   |
+| 0     |
+| 0     |
+| 2     |
+| 2     |
+| 4    |
 
 
 ```sql
@@ -1450,14 +1450,14 @@ It requires that all values are non-negative. Negative values will be ignored.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 8   |
-| 5   |
-| 2   |
-| 10   |
-| 4   |
+| 1     |
+| 8     |
+| 5     |
+| 2     |
+| 10     |
+| 4    |
 
 
 ```sql
@@ -1568,13 +1568,13 @@ It requires that values are ordered so that it can only be used with WINDOW (PAR
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -1652,11 +1652,11 @@ window w as (partition by gp order by ts rows between 3 preceding and current ro
 ```
 
 
-| id  | gp  | ts  | agg   |
+| id    | gp    | ts    | agg     |
 |  -------- | -------- | -------- | -------- |
-| 1  | 100  | 98  | 98   |
-| 2  | 100  | 99  | 99   |
-| 3  | 100  | 100  | 100   |
+| 1    | 100    | 98    | 98     |
+| 2    | 100    | 99    | 99     |
+| 3    | 100    | 100    | 100    |
 
 
 
@@ -2259,13 +2259,13 @@ The offset in window is `nth_value()`, not `[lag()](/openmldb_sql/Files/udfs_8h.
 Example:
 
 
-| c1  | c2   |
+| c1    | c2     |
 |  -------- | -------- |
-| 0  | 1   |
-| 1  | 1   |
-| 2  | 2   |
-| 3  | 2   |
-| 4  | 2   |
+| 0    | 1     |
+| 1    | 1     |
+| 2    | 2     |
+| 3    | 2     |
+| 4    | 2    |
 
 
 ```sql
@@ -2653,13 +2653,13 @@ Compute maximum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2696,13 +2696,13 @@ Compute maximum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -2741,13 +2741,13 @@ Compute maximum of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -2789,13 +2789,13 @@ Compute maximum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2861,12 +2861,12 @@ Compute the median of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2903,13 +2903,13 @@ Compute minimum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2946,13 +2946,13 @@ Compute minimum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -2991,14 +2991,14 @@ Compute minimum of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 1  | true  | y   |
-| 4  | true  | x   |
-| 3  | true  | y   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 1    | true    | y     |
+| 4    | true    | x     |
+| 3    | true    | y    |
 
 
 ```sql
@@ -3040,13 +3040,13 @@ Compute minimum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3176,12 +3176,12 @@ select col1, cond, gp, nth_value_where(col1, 2, cond) over (partition by gp orde
 ```
 
 
-| col1  | cond  | gp  | agg   |
+| col1    | cond    | gp    | agg     |
 |  -------- | -------- | -------- | -------- |
-| 1  | true  | 100  | NULL   |
-| 2  | false  | 100  | NULL   |
-| 3  | NULL  | 100  | NULL   |
-| 4  | true  | 100  | 4   |
+| 1    | true    | 100    | NULL     |
+| 2    | false    | 100    | NULL     |
+| 3    | NULL    | 100    | NULL     |
+| 4    | true    | 100    | 4    |
 
 
 
@@ -3810,12 +3810,12 @@ Alias function: `std`, `stddev_samp`
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3852,12 +3852,12 @@ Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2)
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -4013,13 +4013,13 @@ Compute sum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -4053,13 +4053,13 @@ Compute sum of values grouped by category key and output string. Each group is r
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -4098,13 +4098,13 @@ Compute sum of values matching specified condition grouped by category key and o
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -4146,13 +4146,13 @@ Compute sum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -4262,13 +4262,13 @@ Compute top k of values and output string separated by comma. The outputs are so
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4     |
+| 4    |
 
 
 ```sql
@@ -4319,11 +4319,11 @@ SELECT key, top1_ratio(key) over () as ratio FROM t1;
 ```
 
 
-| key  | ratio   |
+| key    | ratio     |
 |  -------- | -------- |
-| 1  | 1.0   |
-| 2  | 0.5   |
-| NULL  | 0.5   |
+| 1    | 1.0     |
+| 2    | 0.5     |
+| NULL    | 0.5    |
 
 
 
@@ -4360,15 +4360,15 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4420,15 +4420,15 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4480,15 +4480,15 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4540,15 +4540,15 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4602,15 +4602,15 @@ For each group, ratio value is `value` expr count matches condtion divide total 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 2  | true  | x   |
-| 4  | true  | x   |
-| 1  | true  | y   |
-| 3  | false  | y   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 2    | true    | x     |
+| 4    | true    | x     |
+| 1    | true    | y     |
+| 3    | false    | y     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4661,15 +4661,15 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4721,15 +4721,15 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4781,15 +4781,15 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | true  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | true    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4841,15 +4841,15 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4901,15 +4901,15 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | true  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | true    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4963,15 +4963,15 @@ For each group, ratio value is `value` expr count matches condtion divide total 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 2  | true  | x   |
-| 4  | true  | x   |
-| 1  | true  | y   |
-| 3  | false  | y   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 2    | true    | x     |
+| 4    | true    | x     |
+| 1    | true    | y     |
+| 3    | false    | y     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -5022,15 +5022,15 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -5245,11 +5245,11 @@ Compute population variance of values, i.e., `sum((x_i - avg)^2) / n`
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 3   |
-| 6   |
+| 0     |
+| 3     |
+| 6    |
 
 
 ```sql
@@ -5286,11 +5286,11 @@ Compute population variance of values, i.e., `sum((x_i - avg)^2) / (n-1)`
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 3   |
-| 6   |
+| 0     |
+| 3     |
+| 6    |
 
 
 ```sql
