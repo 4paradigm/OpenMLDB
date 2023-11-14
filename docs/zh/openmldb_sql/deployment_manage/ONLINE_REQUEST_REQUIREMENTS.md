@@ -65,6 +65,8 @@ SELECT substr(COL7, 3, 6) FROM t1;
   - 子查询情况, 目前支持
     - 简单列筛选 (`select * from tb` or `select id, val from tb`)
     - 窗口聚合子查询, 例如 `select id, count(val) over w as cnt from t1 window w as (...)`. 
+      - OpenMLDB 0.8.4 之前, LAST JOIN 的窗口聚合子查询需要和 LAST JOIN 的左边输入 source 有相同的主表
+      - [ALPHA] OpenMLDB >= 0.8.4, 允许 LAST JOIN 下的窗口聚合子查询不带主表. 详细见下面的例子
     - **OpenMLDB >= 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
     - **[ALPHA] OpenMLDB >= 0.8.4** 右表是带 LAST JOIN 的子查询 `subquery`, 要求 `subquery` 最左的表能被 JOIN 条件优化, `subquery`剩余表能被自身 LAST JOIN 的 JOIN 条件优化 
     - **[ALPHA] OpenMLDB >= 0.8.4** LEFT JOIN. 要求 LEFT JOIN 的右表能被 LEFT JOIN 条件优化, LEFT JOIN 的左表能被上层的 LAST JOIN 条件优化
@@ -159,7 +161,23 @@ FROM t1 LAST JOIN (
 ) tx
 ON t1.col1 = tx.t2_col1
 
+-- OpenMLDB 0.8.4 之前, LAST JOIN 窗口子查询需要窗口的子查询主表和当前主表一致
+-- 这里都是 t1
+SELECT
+  t1.col1,
+  tx.agg
+FROM t1 LAST JOIN (
+  SELECT col1, count(col2) over w as agg
+  FROM t1 WINDOW w AS (
+    UNION t2
+    PARTITION BY col2 order by std_time ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_ROW
+  )
+)
+
 -- 右表是窗口聚合计算
+-- OpenMLDB >= 0.8.4, 允许 t1 LAST JOIN WINDOW (t2). t1 是主表, t2 是一张副表
+-- 此 SQL 和上一个例子语义一致
 SELECT
   t1.col1,
   tx.agg

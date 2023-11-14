@@ -131,7 +131,7 @@ WindowOrderByClause
 
 `PARTITION BY`选项将查询的行分为一组进入*partitions*， 这些行在窗口函数中单独处理。`PARTITION BY`和查询级别`GROUP BY` 子句做相似的工作, 只是它只能作为表达式不能作为查询结果的输出列或输出列 ID。OpenMLDB要求必须配置`PARTITION BY`。PARTITION BY list 可以有多个,  但**仅支持按列分组**，无法支持按运算或函数表达式分组。
 
-`ORDER BY` 选项决定分区中的行被窗口函数处理的顺序。它和查询级别`ORDER BY`子句做相似的工作， 同样不能作为查询结果的输出列或者输出列 ID。OpenMLDB 目前**仅支持按列排序**，ORDER BY list 有且只能有一个, 不支持按运算或函数表达式排序。**OpenMLDB 0.8.4** 以后, ORDER BY 子句可以不写, 表示窗口内的列将以不确定的顺序处理, 不带 ORDER BY 子句的窗口需要额外满足如下条件:
+`ORDER BY` 选项决定分区中的行被窗口函数处理的顺序。它和查询级别`ORDER BY`子句做相似的工作， 同样不能作为查询结果的输出列或者输出列 ID。OpenMLDB 目前**仅支持按列排序**，ORDER BY list 有且只能有一个, 不支持按运算或函数表达式排序。**OpenMLDB 0.8.4** 以后, 在线模式下 ORDER BY 子句可以不写 (离线模式暂时不支持), 表示窗口内的列将以不确定的顺序处理, 不带 ORDER BY 子句的窗口需要额外满足如下条件:
 
 1. 不能有`EXCLUDE CURRENT_TIME` 
 2. 对于 ROWS 类型窗口没有更多限制, 对于 ROWS_RANGE 类型窗口:
