@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_STATISTICS_DEPLOYMENT_METRIC_COLLECTOR_H_
-#define SRC_STATISTICS_DEPLOYMENT_METRIC_COLLECTOR_H_
+#ifndef SRC_STATISTICS_QUERY_RESPONSE_TIME_DEPLOYMENT_METRIC_COLLECTOR_H_
+#define SRC_STATISTICS_QUERY_RESPONSE_TIME_DEPLOYMENT_METRIC_COLLECTOR_H_
 
+#include <list>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -31,7 +33,7 @@ namespace openmldb::statistics {
 class DeploymentMetricCollector {
  public:
     typedef typename bvar::MultiDimension<bvar::LatencyRecorder> MDRecorder;
-    DeploymentMetricCollector(const std::string& prefix) : prefix_(prefix), md_recorder_(make_shared(prefix)) {
+    explicit DeploymentMetricCollector(const std::string& prefix) : prefix_(prefix), md_recorder_(make_shared(prefix)) {
         // already expose_as when MultiDimension ctor
     }
     // collector is not copyable
@@ -76,4 +78,4 @@ class DeploymentMetricCollector {
     mutable absl::Mutex mutex_;  // protects collectors_
 };
 }  // namespace openmldb::statistics
-#endif  // SRC_STATISTICS_DEPLOYMENT_METRIC_COLLECTOR_H_
+#endif  // SRC_STATISTICS_QUERY_RESPONSE_TIME_DEPLOYMENT_METRIC_COLLECTOR_H_

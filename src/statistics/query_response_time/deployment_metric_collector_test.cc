@@ -16,10 +16,11 @@
 
 #include "statistics/query_response_time/deployment_metric_collector.h"
 
+#include <fstream>
+#include <iostream>
 #include <numeric>
 #include <string>
 #include <thread>
-#include <vector>
 
 #include "absl/random/random.h"
 #include "absl/strings/str_cat.h"
@@ -28,9 +29,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include <fstream>
-#include <iostream>
 
 namespace bvar {
 DECLARE_int32(bvar_dump_interval);
@@ -45,7 +43,10 @@ class CollectorTest : public ::testing::Test {
     ~CollectorTest() override = default;
 };
 
-using namespace std;
+using std::ifstream;
+using std::string;
+using std::ios_base;
+
 void mem_usage() {
     double vm_usage = 0.0;
     double resident_set = 0.0;
@@ -55,13 +56,13 @@ void mem_usage() {
     string tpgid, flags, minflt, cminflt, majflt, cmajflt;
     string utime, stime, cutime, cstime, priority, nice;
     string O, itrealvalue, starttime;
-    unsigned long vsize;
-    long rss;
+    uint64_t vsize;
+    int64_t rss;
     stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr >> tpgid >> flags >> minflt >> cminflt >>
         majflt >> cmajflt >> utime >> stime >> cutime >> cstime >> priority >> nice >> O >> itrealvalue >> starttime >>
         vsize >> rss;  // don't care about the rest
     stat_stream.close();
-    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;  // for x86-64 is configured to use 2MB pages
+    int64_t page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;  // for x86-64 is configured to use 2MB pages
     vm_usage = vsize / 1024.0;
     resident_set = rss * page_size_kb;
     LOG(INFO) << "VM: " << vm_usage << "KB; RSS: " << resident_set << "KB";
