@@ -111,7 +111,12 @@ class NameServerImpl : public NameServer {
     NameServerImpl();
 
     ~NameServerImpl() override;
-
+    void CloseThreadpool() {
+        running_.store(false, std::memory_order_release);
+        thread_pool_.Stop(true);
+        task_thread_pool_.Stop(true);
+        UpdateTableStatus();
+    }
     bool Init(const std::string& real_endpoint);
     bool Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
               const std::string& real_endpoint);

@@ -27,7 +27,7 @@ namespace tablet {
 __attribute__((unused)) static bool SeekWithCount(::openmldb::storage::TableIterator* it, const uint64_t time,
                                                   const ::openmldb::api::GetType& type, uint32_t max_cnt,
                                                   uint32_t* cnt) {
-    if (it == NULL) {
+    if (it == nullptr) {
         return false;
     }
     it->SeekToFirst();
@@ -63,7 +63,7 @@ __attribute__((unused)) static bool SeekWithCount(::openmldb::storage::TableIter
 
 __attribute__((unused)) static bool Seek(::openmldb::storage::TableIterator* it, const uint64_t time,
                                          const ::openmldb::api::GetType& type) {
-    if (it == NULL) {
+    if (it == nullptr) {
         return false;
     }
     switch (type) {
@@ -91,15 +91,15 @@ __attribute__((unused)) static bool Seek(::openmldb::storage::TableIterator* it,
 __attribute__((unused)) static int GetIterator(std::shared_ptr<::openmldb::storage::Table> table, const std::string& pk,
                                                int index, std::shared_ptr<::openmldb::storage::TableIterator>* it,
                                                std::shared_ptr<::openmldb::storage::Ticket>* ticket) {
-    if (it == NULL || ticket == NULL) {
+    if (it == nullptr || ticket == nullptr) {
         return -1;
     }
     if (!(*ticket)) {
         *ticket = std::make_shared<::openmldb::storage::Ticket>();
     }
-    ::openmldb::storage::TableIterator* cur_it = NULL;
+    ::openmldb::storage::TableIterator* cur_it = nullptr;
     cur_it = table->NewIterator(index, pk, *(ticket->get()));
-    if (cur_it == NULL) {
+    if (cur_it == nullptr) {
         return -1;
     }
     it->reset(cur_it);

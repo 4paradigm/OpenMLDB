@@ -31,8 +31,11 @@
 
 **使用示例**
 ```
-python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=scaleout
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=0.0.0.0:2181 --zk_root_path=/openmldb --cmd=scaleout
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=0.0.0.0:2181 --zk_root_path=/openmldb --cmd=recoverdata
 ```
+
+注：理论上openmldb_ops不要求版本匹配，高版本openmldb_ops可以操作低版本的openmldb集群。
 
 ### 系统要求
 - 要求python2.7及以上版本

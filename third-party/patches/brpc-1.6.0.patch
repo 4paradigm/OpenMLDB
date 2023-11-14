@@ -1,0 +1,120 @@
+diff --git a/src/brpc/builtin/status_service.cpp b/src/brpc/builtin/status_service.cpp
+index a6f5a4dae8..67880ec1a3 100644
+--- a/src/brpc/builtin/status_service.cpp
++++ b/src/brpc/builtin/status_service.cpp
+@@ -37,6 +37,8 @@ extern MethodStatus* g_client_msg_status;
+ extern MethodStatus* g_server_msg_status;
+ }
+ 
++DECLARE_bool(enable_vars_service);
++
+ // Defined in vars_service.cpp
+ void PutVarsHeading(std::ostream& os, bool expand_all);
+ 
+@@ -47,7 +49,7 @@ void StatusService::default_method(::google::protobuf::RpcController* cntl_base,
+     ClosureGuard done_guard(done);
+     Controller *cntl = static_cast<Controller*>(cntl_base);
+     const Server* server = cntl->server();
+-    const bool use_html = UseHTML(cntl->http_request());
++    const bool use_html = FLAGS_enable_vars_service ? UseHTML(cntl->http_request()) : false;
+     
+     // NOTE: the plain output also fits format of public/configure so that user
+     // can load values more easily.
+diff --git a/src/brpc/server.cpp b/src/brpc/server.cpp
+index ce5a0dd2a3..4e1fbbe424 100644
+--- a/src/brpc/server.cpp
++++ b/src/brpc/server.cpp
+@@ -109,6 +109,13 @@ butil::static_atomic<int> g_running_server_count = BUTIL_STATIC_ATOMIC_INIT(0);
+ // Following services may have security issues and are disabled by default.
+ DEFINE_bool(enable_dir_service, false, "Enable /dir");
+ DEFINE_bool(enable_threads_service, false, "Enable /threads");
++DEFINE_bool(enable_status_service, false, "Enable /status");
++DEFINE_bool(enable_vars_service, false, "Enable /vars");
++DEFINE_bool(enable_connections_service, false, "Enable /connections");
++DEFINE_bool(enable_flags_service, false, "Enable /flags");
++DEFINE_bool(enable_rpcz_service, false, "Enable /rpcz");
++DEFINE_bool(enable_hotspots_service, false, "Enable /hotspots/cpu /hotspots/heap /hotspots/growth /hotspots/contention");
++DEFINE_bool(enable_index_service, false, "Enable /index?as_more");
+ 
+ DECLARE_int32(usercode_backup_threads);
+ DECLARE_bool(usercode_in_pthread);
+@@ -465,31 +472,31 @@ Server::~Server() {
+ 
+ int Server::AddBuiltinServices() {
+     // Firstly add services shown in tabs.
+-    if (AddBuiltinService(new (std::nothrow) StatusService)) {
++    if (FLAGS_enable_status_service && AddBuiltinService(new (std::nothrow) StatusService)) {
+         LOG(ERROR) << "Fail to add StatusService";
+         return -1;
+     }
+-    if (AddBuiltinService(new (std::nothrow) VarsService)) {
++    if (FLAGS_enable_vars_service && AddBuiltinService(new (std::nothrow) VarsService)) {
+         LOG(ERROR) << "Fail to add VarsService";
+         return -1;
+     }
+-    if (AddBuiltinService(new (std::nothrow) ConnectionsService)) {
++    if (FLAGS_enable_connections_service && AddBuiltinService(new (std::nothrow) ConnectionsService)) {
+         LOG(ERROR) << "Fail to add ConnectionsService";
+         return -1;
+     }
+-    if (AddBuiltinService(new (std::nothrow) FlagsService)) {
++    if (FLAGS_enable_flags_service && AddBuiltinService(new (std::nothrow) FlagsService)) {
+         LOG(ERROR) << "Fail to add FlagsService";
+         return -1;
+     }
+-    if (AddBuiltinService(new (std::nothrow) RpczService)) {
++    if (FLAGS_enable_rpcz_service && AddBuiltinService(new (std::nothrow) RpczService)) {
+         LOG(ERROR) << "Fail to add RpczService";
+         return -1;
+     }
+-    if (AddBuiltinService(new (std::nothrow) HotspotsService)) {
++    if (FLAGS_enable_hotspots_service && AddBuiltinService(new (std::nothrow) HotspotsService)) {
+         LOG(ERROR) << "Fail to add HotspotsService";
+         return -1;
+     }
+-    if (AddBuiltinService(new (std::nothrow) IndexService)) {
++    if (FLAGS_enable_index_service && AddBuiltinService(new (std::nothrow) IndexService)) {
+         LOG(ERROR) << "Fail to add IndexService";
+         return -1;
+     }
+diff --git a/src/butil/errno.cpp b/src/butil/errno.cpp
+index 9b964e114f..2e1c4d379d 100644
+--- a/src/butil/errno.cpp
++++ b/src/butil/errno.cpp
+@@ -55,14 +55,19 @@ int DescribeCustomizedErrno(
+ #if defined(OS_MACOSX)
+         const int rc = strerror_r(error_code, tls_error_buf, ERROR_BUFSIZE);
+         if (rc != EINVAL)
+-#else
+-        desc = strerror_r(error_code, tls_error_buf, ERROR_BUFSIZE);
+-        if (desc && strncmp(desc, "Unknown error", 13) != 0)
+-#endif
+         {
+             fprintf(stderr, "WARNING: Fail to define %s(%d) which is already defined as `%s'",
+                     error_name, error_code, desc);
+         }
++#else
++        desc = strerror_r(error_code, tls_error_buf, ERROR_BUFSIZE);
++        if (desc != tls_error_buf)
++        {
++            fprintf(stderr,
++                    "%d is defined as `%s', probably is the system errno.\n",
++                    error_code, desc);
++        }
++#endif
+     }
+     errno_desc[error_code - ERRNO_BEGIN] = description;
+     return 0;  // must
+diff --git a/src/bvar/default_variables.cpp b/src/bvar/default_variables.cpp
+index be02c50a9a..f71f9dd7cf 100644
+--- a/src/bvar/default_variables.cpp
++++ b/src/bvar/default_variables.cpp
+@@ -111,7 +111,7 @@ static bool read_proc_status(ProcStat &stat) {
+     }
+     const std::string& result = oss.str();
+     if (sscanf(result.c_str(), "%d %d %d %d"
+-                              "%d %u %ld %ld",
++                              "%d %x %ld %ld",
+                &stat.pid, &stat.ppid, &stat.pgrp, &stat.session,
+                &stat.tpgid, &stat.flags, &stat.priority, &stat.nice) != 8) {
+         PLOG(WARNING) << "Fail to sscanf";

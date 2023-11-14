@@ -17,7 +17,6 @@
 #include "codegen/native_value.h"
 #include <dlfcn.h>
 #include <execinfo.h>
-#include <signal.h>
 #include "codegen/context.h"
 #include "codegen/ir_base_builder.h"
 

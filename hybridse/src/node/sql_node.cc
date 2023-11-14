@@ -58,6 +58,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdDropTable, "drop table"},
         {CmdType::kCmdShowProcedures, "show procedures"},
         {CmdType::kCmdShowCreateSp, "show create procedure"},
+        {CmdType::kCmdShowCreateTable, "show create table"},
         {CmdType::kCmdDropSp, "drop procedure"},
         {CmdType::kCmdDropIndex, "drop index"},
         {CmdType::kCmdExit, "exit"},
@@ -2097,6 +2098,11 @@ void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
         output << "\n";
         PrintValue(output, tab, std::to_string(offset_), "offset", true);
     }
+}
+
+bool FrameBound::is_offset_bound() const {
+    return bound_type_ == kPreceding || bound_type_ == kOpenPreceding || bound_type_ == kFollowing ||
+           bound_type_ == kOpenFollowing;
 }
 
 int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {

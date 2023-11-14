@@ -829,7 +829,7 @@ message BulkLoadInfoResponse {
                 required uint32 key = 1; // TODO(hw): java will use int, cpp uses uint32. Not good?
                 required uint32 value = 2;
             }
-            repeated MapFieldEntry ts_idx_map = 2; // TODO(hw): proto3 supports map
+            repeated MapFieldEntry ts_idx_map = 2; // TODO(hw): proto3 can build map in proto2 syntax
         }
         repeated Segment segment = 1;
     }

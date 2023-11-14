@@ -16,3 +16,4 @@ OpenMLDB 文档 (|version|)
     maintain/index
     reference/index
     developer/index
+    faq/index
