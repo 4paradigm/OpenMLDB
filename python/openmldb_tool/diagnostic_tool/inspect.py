@@ -205,7 +205,9 @@ def check_table_info(t, replicas_on_tablet, tablet2idx):
     for i in range(0, len(idx_row), step):
         x.add_row(idx_row[i : i + step])
         x.add_row(leader_row[i : i + step])
-        x.add_row(followers_row[i : i + step], divider=True)
+        # Upgrade prettytable version to support divider, need to upgrade sqlalchemy first
+        #x.add_row(followers_row[i : i + step], divider=True)
+        x.add_row(followers_row[i : i + step])
 
     table_summary = ""
     if table_mark >= 4:
