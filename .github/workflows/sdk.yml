@@ -352,6 +352,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
       OPENMLDB_BUILD_TARGET: "openmldb"
+      OPENMLDB_MODE: standalone
     steps:
       - uses: actions/checkout@v2
 

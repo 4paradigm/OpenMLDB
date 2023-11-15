@@ -1168,6 +1168,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kReplicaNum, "kReplicaNum"},
         {kPartitionNum, "kPartitionNum"},
         {kStorageMode, "kStorageMode"},
+        {kCompressType, "kCompressType"},
         {kFn, "kFn"},
         {kFnParaList, "kFnParaList"},
         {kCreateSpStmt, "kCreateSpStmt"},
@@ -2601,6 +2602,17 @@ void StorageModeNode::Print(std::ostream &output, const std::string &org_tab) co
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", true);
+}
+
+void CompressTypeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    if (compress_type_ == CompressType::kSnappy) {
+        PrintValue(output, tab, "snappy", "compress_type", true);
+    }  else {
+        PrintValue(output, tab, "nocompress", "compress_type", true);
+    }
 }
 
 void PartitionNumNode::Print(std::ostream &output, const std::string &org_tab) const {

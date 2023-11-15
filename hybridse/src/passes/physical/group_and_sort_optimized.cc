@@ -25,6 +25,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "node/node_enum.h"
 #include "vm/physical_op.h"
 
 namespace hybridse {
@@ -294,6 +295,7 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
 
     absl::Cleanup clean = [&]() {
         expr_cache_.clear();
+        optimize_info_ = nullptr;
     };
 
     auto s = BuildExprCache(left_key->keys(), root_schemas_ctx);
@@ -347,6 +349,18 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
 
         if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ ||
             DataProviderType::kProviderTypePartition == scan_op->provider_type_) {
+            auto* table_node = dynamic_cast<vm::PhysicalDataProviderNode*>(scan_op);
+            if (optimize_info_) {
+                if (optimize_info_->left_key == left_key && optimize_info_->index_key == index_key &&
+                    optimize_info_->right_key == right_key && optimize_info_->sort_key == sort) {
+                    if (optimize_info_->optimized != nullptr &&
+                        table_node->GetDb() == optimize_info_->optimized->GetDb() &&
+                        table_node->GetName() == optimize_info_->optimized->GetName()) {
+                        *new_in = optimize_info_->optimized;
+                        return true;
+                    }
+                }
+            }
             const node::ExprListNode* right_partition =
                 right_key == nullptr ? left_key->keys() : right_key->keys();
 
@@ -453,13 +467,15 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
                     dynamic_cast<node::OrderByNode*>(node_manager_->MakeOrderByNode(node_manager_->MakeExprList(
                         node_manager_->MakeOrderExpression(nullptr, first_order_expression->is_asc())))));
             }
+
+            optimize_info_.reset(new OptimizeInfo(left_key, index_key, right_key, sort, partition_op));
             *new_in = partition_op;
             return true;
         }
     } else if (PhysicalOpType::kPhysicalOpSimpleProject == in->GetOpType()) {
         PhysicalOpNode* new_depend;
-        if (!KeysOptimizedImpl(in->GetProducer(0)->schemas_ctx(), in->GetProducer(0), left_key, index_key, right_key, sort,
-                           &new_depend)) {
+        if (!KeysOptimizedImpl(in->GetProducer(0)->schemas_ctx(), in->GetProducer(0), left_key, index_key, right_key,
+                               sort, &new_depend)) {
             return false;
         }
 
@@ -493,7 +509,8 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         PhysicalFilterNode* filter_op = dynamic_cast<PhysicalFilterNode*>(in);
 
         PhysicalOpNode* new_depend;
-        if (!KeysOptimizedImpl(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort, &new_depend)) {
+        if (!KeysOptimizedImpl(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort,
+                               &new_depend)) {
             return false;
         }
         PhysicalFilterNode* new_filter = nullptr;
@@ -515,8 +532,16 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
                            &new_depend)) {
             return false;
         }
+        PhysicalOpNode* new_right = in->GetProducer(1);
+        if (request_join->join_.join_type_ == node::kJoinTypeConcat) {
+            // for concat join, only acceptable if the two inputs (of course same table) optimized by the same index
+            auto* rebase_sc = in->GetProducer(1)->schemas_ctx();
+            if (!KeysOptimizedImpl(rebase_sc, in->GetProducer(1), left_key, index_key, right_key, sort, &new_right)) {
+                return false;
+            }
+        }
         PhysicalRequestJoinNode* new_join = nullptr;
-        auto s = plan_ctx_->CreateOp<PhysicalRequestJoinNode>(&new_join, new_depend, request_join->GetProducer(1),
+        auto s = plan_ctx_->CreateOp<PhysicalRequestJoinNode>(&new_join, new_depend, new_right,
                                                               request_join->join(), request_join->output_right_only());
         if (!s.isOK()) {
             LOG(WARNING) << "Fail to create new request join op: " << s;
@@ -544,6 +569,57 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         }
 
         *new_in = new_join;
+        return true;
+    } else if (PhysicalOpType::kPhysicalOpProject == in->GetOpType()) {
+        auto * project = dynamic_cast<PhysicalProjectNode*>(in);
+        if (project == nullptr || project->project_type_ != vm::kAggregation) {
+            return false;
+        }
+
+        auto * agg_project = dynamic_cast<vm::PhysicalAggregationNode*>(in);
+
+        PhysicalOpNode* new_depend = nullptr;
+        auto* rebase_sc = in->GetProducer(0)->schemas_ctx();
+        if (!KeysOptimizedImpl(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
+                           &new_depend)) {
+            return false;
+        }
+
+        vm::PhysicalAggregationNode* new_agg = nullptr;
+        if (!plan_ctx_
+                 ->CreateOp<vm::PhysicalAggregationNode>(&new_agg, new_depend, agg_project->project(),
+                                                         agg_project->having_condition_.condition())
+                 .isOK()) {
+            return false;
+        }
+        *new_in = new_agg;
+        return true;
+    } else if (PhysicalOpType::kPhysicalOpRequestUnion == in->GetOpType()) {
+        // JOIN (..., AGG(REQUEST_UNION(left, ...))): JOIN condition optimizing left
+        PhysicalOpNode* new_left_depend = nullptr;
+        auto* rebase_sc = in->GetProducer(0)->schemas_ctx();
+        if (!KeysOptimizedImpl(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
+                           &new_left_depend)) {
+            return false;
+        }
+
+        auto * request_union = dynamic_cast<vm::PhysicalRequestUnionNode*>(in);
+
+        vm::PhysicalRequestUnionNode* new_union = nullptr;
+        if (!plan_ctx_
+                 ->CreateOp<vm::PhysicalRequestUnionNode>(
+                     &new_union, new_left_depend, in->GetProducer(1), request_union->window(),
+                     request_union->instance_not_in_window(), request_union->exclude_current_time(),
+                     request_union->output_request_row())
+                 .isOK()) {
+            return false;
+        }
+        for (auto& pair : request_union->window_unions().window_unions_) {
+            if (!new_union->AddWindowUnion(pair.first, pair.second)) {
+                return false;
+            }
+        }
+        *new_in = new_union;
         return true;
     }
     return false;

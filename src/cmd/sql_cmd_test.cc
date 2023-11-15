@@ -331,6 +331,45 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
+TEST_P(DBSDKTest, SelectSnappy) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
+    std::string db = "db" + GenRand();
+    sr->ExecuteSQL("create database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("use " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string create_sql =
+        "create table trans (c1 string, c2 bigint, c3 date,"
+        "index(key=c1, ts=c2, abs_ttl=0, ttl_type=absolute)) options (compress_type='snappy');";
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    int insert_num = 100;
+    for (int i = 0; i < insert_num; i++) {
+        auto insert_sql = absl::StrCat("insert into trans values ('aaa", i, "', 1635247427000, \"2021-05-20\");");
+        sr->ExecuteSQL(insert_sql, &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+    auto rs = sr->ExecuteSQL("select * from trans", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(insert_num, rs->Size());
+    int count = 0;
+    while (rs->Next()) {
+        count++;
+    }
+    EXPECT_EQ(count, insert_num);
+    sr->ExecuteSQL("drop table trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("drop database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
 TEST_F(SqlCmdTest, SelectMultiPartition) {
     auto sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
@@ -461,11 +500,11 @@ TEST_P(DBSDKTest, Desc) {
         " --- ------- ----------- ------ --------- \n";
 
     std::string expect_options =
-        " -------------- \n"
-        "  storage_mode  \n"
-        " -------------- \n"
-        "  Memory        \n"
-        " -------------- \n\n";
+        " --------------- -------------- \n"
+        "  compress_type   storage_mode  \n"
+        " --------------- -------------- \n"
+        "  NoCompress      Memory        \n"
+        " --------------- -------------- \n\n";
 
     // index name is dynamically assigned. do not check here
     std::vector<std::string> expect = {expect_schema, "", expect_options};

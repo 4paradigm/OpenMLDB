@@ -258,6 +258,8 @@ bool SQLClusterRouter::Init() {
             coptions.zk_session_timeout = ops->zk_session_timeout;
             coptions.zk_log_level = ops->zk_log_level;
             coptions.zk_log_file = ops->zk_log_file;
+            coptions.zk_auth_schema = ops->zk_auth_schema;
+            coptions.zk_cert = ops->zk_cert;
             cluster_sdk_ = new ClusterSDK(coptions);
             // TODO(hw): no detail error info
             bool ok = cluster_sdk_->Init();
@@ -1433,6 +1435,68 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     }
 }
 
+bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) {
+    RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
+    if (dimension == nullptr || dimension_len <= 0 || value == nullptr || len <= 0 || partition_num <= 0) {
+        *status = {StatusCode::kCmdError, "invalid parameter"};
+        return false;
+    }
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+    bool ret = cluster_sdk_->GetTablet(db, name, &tablets);
+    if (!ret || tablets.empty()) {
+        status->msg = "fail to get table " + name + " tablet";
+        return false;
+    }
+    std::map<uint32_t, ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>> dimensions_map;
+    int pos = 0;
+    while (pos < dimension_len) {
+        int idx = *(reinterpret_cast<int*>(dimension + pos));
+        pos += sizeof(int);
+        int key_len = *(reinterpret_cast<int*>(dimension + pos));
+        pos += sizeof(int);
+        base::Slice key(dimension + pos, key_len);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key.data(), key.size()) % partition_num);
+        auto it = dimensions_map.find(pid);
+        if (it == dimensions_map.end()) {
+            it = dimensions_map.emplace(pid, ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>()).first;
+        }
+        auto dim = it->second.Add();
+        dim->set_idx(idx);
+        dim->set_key(key.data(), key.size());
+        pos += key_len;
+    }
+    base::Slice row_value(value, len);
+    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+    for (auto& kv : dimensions_map) {
+        uint32_t pid = kv.first;
+        if (pid < tablets.size()) {
+            auto tablet = tablets[pid];
+            if (tablet) {
+                auto client = tablet->GetClient();
+                if (client) {
+                    DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
+                               << kv.second.size();
+                    bool ret = client->Put(tid, pid, cur_ts, row_value, &kv.second);
+                    if (!ret) {
+                        SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                "INSERT failed, tid " + std::to_string(tid) +
+                                ". Note that data might have been partially inserted. "
+                                "You are encouraged to perform DELETE to remove any partially "
+                                "inserted data before trying INSERT again.");
+                        return false;
+                    }
+                    continue;
+                }
+            }
+        }
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "fail to get tablet client. pid " + std::to_string(pid));
+        return false;
+    }
+    return true;
+}
+
 bool SQLClusterRouter::GetSQLPlan(const std::string& sql, ::hybridse::node::NodeManager* nm,
                                   ::hybridse::node::PlanNodeList* plan) {
     if (nm == NULL || plan == NULL) return false;
@@ -1684,9 +1748,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             ss.str("");
             std::unordered_map<std::string, std::string> options;
-            options["storage_mode"] = StorageMode_Name(table->storage_mode());
+            std::string storage_mode = StorageMode_Name(table->storage_mode());
             // remove the prefix 'k', i.e., change kMemory to Memory
-            options["storage_mode"] = options["storage_mode"].substr(1, options["storage_mode"].size() - 1);
+            options["storage_mode"] = storage_mode.substr(1, storage_mode.size() - 1);
+            std::string compress_type = CompressType_Name(table->compress_type());
+            options["compress_type"] = compress_type.substr(1, compress_type.size() -1);
             ::openmldb::cmd::PrintTableOptions(options, ss);
             result.emplace_back(std::vector{ss.str()});
             return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
@@ -3798,8 +3864,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        if (!ns_ptr->UpdateTTL(table_name, result.ttl_type(), result.abs_ttl(), result.lat_ttl(),
-                                               old_column_key.index_name(), err)) {
+                        if (!ns_ptr->UpdateTTL(db_name, table_name, result.ttl_type(),
+                                    result.abs_ttl(), result.lat_ttl(), old_column_key.index_name(), err)) {
                             return {StatusCode::kCmdError, "update ttl failed"};
                         }
                     }

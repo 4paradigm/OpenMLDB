@@ -54,7 +54,7 @@ class Row {
 
     inline int32_t size() const { return slice_.size(); }
     inline int32_t size(int32_t pos) const {
-        return 0 == pos ? slice_.size() : slices_[pos - 1].size();
+        return 0 == pos ? slice_.size() : slices_.at(pos - 1).size();
     }
 
     // Return true if the length of the referenced data is zero

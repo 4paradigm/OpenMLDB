@@ -365,6 +365,8 @@ message ClusterAddress {
     optional string zk_endpoints = 1;
     optional string zk_path = 2;
     optional string alias = 3;
+    optional string zk_auth_schema = 4;
+    optional string zk_cert = 5;
 }
 
 message GeneralRequest {}

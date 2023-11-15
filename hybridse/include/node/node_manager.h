@@ -399,8 +399,6 @@ class NodeManager {
 
     SqlNode *MakeReplicaNumNode(int num);
 
-    SqlNode *MakeStorageModeNode(StorageMode storage_mode);
-
     SqlNode *MakePartitionNumNode(int num);
 
     SqlNode *MakeDistributionsNode(const NodePointVector& distribution_list);

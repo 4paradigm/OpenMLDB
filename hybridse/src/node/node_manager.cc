@@ -1031,11 +1031,6 @@ SqlNode *NodeManager::MakeReplicaNumNode(int num) {
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeStorageModeNode(StorageMode storage_mode) {
-    SqlNode *node_ptr = new StorageModeNode(storage_mode);
-    return RegisterNode(node_ptr);
-}
-
 SqlNode *NodeManager::MakePartitionNumNode(int num) {
     SqlNode *node_ptr = new PartitionNumNode(num);
     return RegisterNode(node_ptr);

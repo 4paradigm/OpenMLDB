@@ -41,6 +41,8 @@ DEFINE_string(spark_conf, "", "The config file of Spark job");
 // cluster mode
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(zk_session_timeout);
 DECLARE_uint32(zk_log_level);
 DECLARE_string(zk_log_file);
@@ -267,6 +269,8 @@ bool InitClusterSDK() {
     copt.zk_session_timeout = FLAGS_zk_session_timeout;
     copt.zk_log_level = FLAGS_zk_log_level;
     copt.zk_log_file = FLAGS_zk_log_file;
+    copt.zk_auth_schema = FLAGS_zk_auth_schema;
+    copt.zk_cert = FLAGS_zk_cert;
 
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     if (!cs->Init()) {
