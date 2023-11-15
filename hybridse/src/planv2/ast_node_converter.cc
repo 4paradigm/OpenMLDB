@@ -1761,8 +1761,18 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
     } else if (absl::EqualsIgnoreCase("storage_mode", identifier_v)) {
         std::string storage_mode;
         CHECK_STATUS(AstStringLiteralToString(entry->value(), &storage_mode));
-        boost::to_lower(storage_mode);
-        *output = node_manager->MakeStorageModeNode(node::NameToStorageMode(storage_mode));
+        absl::AsciiStrToLower(&storage_mode);
+        *output = node_manager->MakeNode<node::StorageModeNode>(node::NameToStorageMode(storage_mode));
+    } else if (absl::EqualsIgnoreCase("compress_type", identifier_v)) {
+        std::string compress_type;
+        CHECK_STATUS(AstStringLiteralToString(entry->value(), &compress_type));
+        absl::AsciiStrToLower(&compress_type);
+        auto ret = node::NameToCompressType(compress_type);
+        if (ret.ok()) {
+            *output = node_manager->MakeNode<node::CompressTypeNode>(*ret);
+        } else {
+            return base::Status(common::kSqlAstError, ret.status().ToString());
+        }
     } else {
         return base::Status(common::kSqlAstError, absl::StrCat("invalid option ", identifier));
     }

@@ -88,6 +88,11 @@ std::string SDKUtil::GenCreateTableSQL(const ::openmldb::nameserver::TableInfo& 
     } else {
         ss << ", STORAGE_MODE='Memory'";
     }
+    if (table_info.compress_type() == type::CompressType::kSnappy) {
+        ss << ", COMPRESS_TYPE='Snappy'";
+    } else {
+        ss << ", COMPRESS_TYPE='NoCompress'";
+    }
     ss << ");";
     return ss.str();
 }

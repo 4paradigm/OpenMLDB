@@ -423,6 +423,11 @@ bool MemTable::IsExpire(const LogEntry& entry) {
         }
     }
     const int8_t* data = reinterpret_cast<const int8_t*>(entry.value().data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(entry.value().data(), entry.value().size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
@@ -513,9 +518,9 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return segment->NewIterator(spk, ts_col->GetId(), ticket);
+        return segment->NewIterator(spk, ts_col->GetId(), ticket, GetCompressType());
     }
-    return segment->NewIterator(spk, ticket);
+    return segment->NewIterator(spk, ticket, GetCompressType());
 }
 
 uint64_t MemTable::GetRecordIdxByteSize() {
@@ -739,7 +744,8 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     if (ts_col) {
         ts_idx = ts_col->GetId();
     }
-    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
+    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+            expire_time, expire_cnt, ts_idx, GetCompressType());
 }
 
 TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
@@ -758,10 +764,11 @@ TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     uint32_t real_idx = index_def->GetInnerPos();
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
-                                            ts_col->GetId());
+        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+                expire_time, expire_cnt, ts_col->GetId(), GetCompressType());
     }
-    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+            expire_time, expire_cnt, 0, GetCompressType());
 }
 
 bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) {

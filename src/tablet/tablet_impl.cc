@@ -458,9 +458,6 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     bool enable_project = false;
     openmldb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            return -1;
-        }
         bool ok = row_project.Init();
         if (!ok) {
             PDLOG(WARNING, "invalid project list");
@@ -719,6 +716,22 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         response->set_msg("exceed max memory");
         return;
     }
+    ::openmldb::api::LogEntry entry;
+    entry.set_pk(request->pk());
+    entry.set_ts(request->time());
+    if (table->GetCompressType() == openmldb::type::CompressType::kSnappy) {
+        const auto& raw_val = request->value();
+        std::string* val = entry.mutable_value();
+        ::snappy::Compress(raw_val.c_str(), raw_val.length(), val);
+    } else {
+        entry.set_value(request->value());
+    }
+    if (request->dimensions_size() > 0) {
+        entry.mutable_dimensions()->CopyFrom(request->dimensions());
+    }
+    if (request->ts_dimensions_size() > 0) {
+        entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
+    }
     bool ok = false;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
@@ -728,7 +741,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             return;
         }
         DLOG(INFO) << "put data to tid " << tid << " pid " << pid << " with key " << request->dimensions(0).key();
-        ok = table->Put(request->time(), request->value(), request->dimensions());
+        ok = table->Put(entry.ts(), entry.value(), entry.dimensions());
     }
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);
@@ -738,23 +751,13 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
-    ::openmldb::api::LogEntry entry;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
             PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", tid, pid);
             break;
         }
-        entry.set_pk(request->pk());
-        entry.set_ts(request->time());
-        entry.set_value(request->value());
         entry.set_term(replicator->GetLeaderTerm());
-        if (request->dimensions_size() > 0) {
-            entry.mutable_dimensions()->CopyFrom(request->dimensions());
-        }
-        if (request->ts_dimensions_size() > 0) {
-            entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
-        }
 
         // Aggregator update assumes that binlog_offset is strictly increasing
         // so the update should be protected within the replicator lock
@@ -880,7 +883,7 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
 }
 
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, bool use_attachment,
                               CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count, bool* is_finish) {
     uint32_t limit = request->limit();
     if (combine_it == nullptr || io_buf == nullptr || count == nullptr || is_finish == nullptr) {
@@ -904,12 +907,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
     bool enable_project = false;
     ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data do not eing supported";
-            return -1;
-        }
-        bool ok = row_project.Init();
-        if (!ok) {
+        if (!row_project.Init()) {
             PDLOG(WARNING, "invalid project list");
             return -1;
         }
@@ -950,11 +948,19 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            io_buf->append(reinterpret_cast<void*>(ptr), size);
+            if (use_attachment) {
+                io_buf->append(reinterpret_cast<void*>(ptr), size);
+            } else {
+                ::openmldb::codec::Encode(ts, reinterpret_cast<char*>(ptr), size, io_buf);
+            }
             total_block_size += size;
         } else {
             openmldb::base::Slice data = combine_it->GetValue();
-            io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            if (use_attachment) {
+                io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            } else {
+                ::openmldb::codec::Encode(ts, data.data(), data.size(), io_buf);
+            }
             total_block_size += data.size();
         }
         record_count++;
@@ -965,98 +971,6 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         combine_it->Next();
     }
     *count = record_count;
-    return 0;
-}
-int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-                              CombineIterator* combine_it, std::string* pairs, uint32_t* count, bool* is_finish) {
-    uint32_t limit = request->limit();
-    if (combine_it == nullptr || pairs == nullptr || count == nullptr || is_finish == nullptr) {
-        PDLOG(WARNING, "invalid args");
-        return -1;
-    }
-    uint64_t st = request->st();
-    uint64_t et = request->et();
-    uint64_t expire_time = combine_it->GetExpireTime();
-    ::openmldb::storage::TTLType ttl_type = combine_it->GetTTLType();
-    if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
-        ttl_type == ::openmldb::storage::TTLType::kAbsOrLat) {
-        et = std::max(et, expire_time);
-    }
-    if (st > 0 && st < et) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
-        return -1;
-    }
-
-    bool enable_project = false;
-    ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (!request->projection().empty()) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data, not supported";
-            return -1;
-        }
-        bool ok = row_project.Init();
-        if (!ok) {
-            PDLOG(WARNING, "invalid project list");
-            return -1;
-        }
-        enable_project = true;
-    }
-    bool remove_duplicated_record = request->enable_remove_duplicated_record();
-    uint64_t last_time = 0;
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> tmp;
-    uint32_t total_block_size = 0;
-    combine_it->SeekToFirst();
-    uint32_t skip_record_num = request->skip_record_num();
-    while (combine_it->Valid()) {
-        if (limit > 0 && tmp.size() >= limit) {
-            *is_finish = false;
-            break;
-        }
-        if (remove_duplicated_record && !tmp.empty() && last_time == combine_it->GetTs()) {
-            combine_it->Next();
-            continue;
-        }
-        if (combine_it->GetTs() == st && skip_record_num > 0) {
-            skip_record_num--;
-            combine_it->Next();
-            continue;
-        }
-        uint64_t ts = combine_it->GetTs();
-        if (ts <= et) {
-            break;
-        }
-        last_time = ts;
-        if (enable_project) {
-            int8_t* ptr = nullptr;
-            uint32_t size = 0;
-            openmldb::base::Slice data = combine_it->GetValue();
-            const auto* row_ptr = reinterpret_cast<const int8_t*>(data.data());
-            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
-            if (!ok) {
-                PDLOG(WARNING, "fail to make a projection");
-                return -4;
-            }
-            tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
-            total_block_size += size;
-        } else {
-            openmldb::base::Slice data = combine_it->GetValue();
-            total_block_size += data.size();
-            tmp.emplace_back(ts, data);
-        }
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
-            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
-            *is_finish = false;
-            break;
-        }
-        combine_it->Next();
-    }
-    int32_t ok = ::openmldb::codec::EncodeRows(tmp, total_block_size, pairs);
-    if (ok == -1) {
-        PDLOG(WARNING, "fail to encode rows");
-        return -4;
-    }
-    *count = tmp.size();
     return 0;
 }
 
@@ -1247,12 +1161,13 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
     int32_t code = 0;
     bool is_finish = true;
     if (!request->has_use_attachment() || !request->use_attachment()) {
-        std::string* pairs = response->mutable_pairs();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, pairs, &count, &is_finish);
+        butil::IOBuf buf;
+        code = ScanIndex(request, *table_meta, vers_schema, false, &combine_it, &buf, &count, &is_finish);
+        buf.copy_to(response->mutable_pairs());
     } else {
         auto* cntl = dynamic_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count, &is_finish);
+        code = ScanIndex(request, *table_meta, vers_schema, true, &combine_it, &buf, &count, &is_finish);
         response->set_buf_size(buf.size());
         DLOG(INFO) << " scan " << request->pk() << " with buf size " << buf.size();
     }
@@ -1435,14 +1350,12 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         DEBUGLOG("tid %u, pid %u seek to first", tid, pid);
         it->SeekToFirst();
     }
-    std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
-    std::vector<std::string> key_seq;
-    uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     uint32_t scount = 0;
+    butil::IOBuf buf;
     for (; it->Valid(); it->Next()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             DEBUGLOG("reache the limit %u ", request->limit());
@@ -1464,16 +1377,9 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
                 continue;
             }
         }
-        auto map_it = value_map.find(last_pk);
-        if (map_it == value_map.end()) {
-            auto pair = value_map.emplace(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>());
-            map_it = pair.first;
-            map_it->second.reserve(request->limit());
-            key_seq.emplace_back(map_it->first);
-        }
         openmldb::base::Slice value = it->GetValue();
-        map_it->second.emplace_back(it->GetKey(), value);
-        total_block_size += last_pk.length() + value.size();
+        DLOG(INFO) << "encode pk " << it->GetPK() << " ts " << it->GetKey() << " size " << value.size();
+        ::openmldb::codec::EncodeFull(it->GetPK(), it->GetKey(), value.data(), value.size(), &buf);
         scount++;
         if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
@@ -1493,26 +1399,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     } else if (scount < request->limit()) {
         is_finish = true;
     }
-    uint32_t total_size = scount * (8 + 4 + 4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& key : key_seq) {
-        auto iter = value_map.find(key);
-        if (iter == value_map.end()) {
-            continue;
-        }
-        for (const auto& pair : iter->second) {
-            DLOG(INFO) << "encode pk " << key << " ts " << pair.first << " size " << pair.second.size();
-            ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
-            offset += (4 + 4 + 8 + key.length() + pair.second.size());
-        }
-    }
+    buf.copy_to(response->mutable_pairs());
     delete it;
     DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
                << " last_time " << last_time << " ts_pos " << ts_pos;

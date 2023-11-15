@@ -97,6 +97,7 @@ enum SqlNodeType {
     kWithClauseEntry,
     kAlterTableStmt,
     kShowStmt,
+    kCompressType,
     kSqlNodeTypeLast,  // debug type
 };
 
@@ -340,6 +341,11 @@ enum StorageMode {
     kMemory = 1,
     kSSD = 2,
     kHDD = 3,
+};
+
+enum CompressType {
+    kNoCompress = 0,
+    kSnappy = 1,
 };
 
 // batch plan node type
