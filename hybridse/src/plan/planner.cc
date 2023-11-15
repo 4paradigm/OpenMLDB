@@ -272,7 +272,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
         auto first_window_project = dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(), true);
-        if (!is_cluster_optimized_ && !enable_batch_window_parallelization_ &&
+        if  (!is_cluster_optimized_ && !enable_batch_window_parallelization_ &&
             node::ProjectListNode::MergeProjectList(simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
             project_list_vec[1] = merged_project;

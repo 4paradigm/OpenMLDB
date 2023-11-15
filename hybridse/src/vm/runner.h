@@ -32,7 +32,6 @@
 #include "node/node_manager.h"
 #include "vm/aggregator.h"
 #include "vm/catalog.h"
-#include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/generator.h"
 #include "vm/mem_catalog.h"
@@ -354,13 +353,16 @@ class WindowUnionGenerator : public InputsGenerator {
     std::vector<WindowGenerator> windows_gen_;
 };
 
-class RequestWindowUnionGenerator : public InputsGenerator {
+class RequestWindowUnionGenerator : public InputsGenerator,
+                                    public std::enable_shared_from_this<RequestWindowUnionGenerator> {
  public:
-    RequestWindowUnionGenerator() : InputsGenerator() {}
+    [[nodiscard]] static std::shared_ptr<RequestWindowUnionGenerator> Create() {
+        return std::shared_ptr<RequestWindowUnionGenerator>(new RequestWindowUnionGenerator());
+    }
     virtual ~RequestWindowUnionGenerator() {}
 
     void AddWindowUnion(const RequestWindowOp& window_op, Runner* runner) {
-        windows_gen_.push_back(RequestWindowGenertor(window_op));
+        windows_gen_.emplace_back(window_op);
         AddInput(runner);
     }
 
@@ -373,6 +375,9 @@ class RequestWindowUnionGenerator : public InputsGenerator {
         return union_segments;
     }
     std::vector<RequestWindowGenertor> windows_gen_;
+
+ private:
+    RequestWindowUnionGenerator() : InputsGenerator() {}
 };
 
 class WindowJoinGenerator : public InputsGenerator {
@@ -549,7 +554,7 @@ class GroupAggRunner : public Runner {
         : Runner(id, kRunnerGroupAgg, schema, limit_cnt),
           group_(group.fn_info()),
           having_condition_(having_condition.fn_info()),
-          agg_gen_(project) {}
+          agg_gen_(AggGenerator::Create(project)) {}
     ~GroupAggRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
@@ -557,24 +562,22 @@ class GroupAggRunner : public Runner {
         override;  // NOLINT
     KeyGenerator group_;
     ConditionGenerator having_condition_;
-    AggGenerator agg_gen_;
+    std::shared_ptr<AggGenerator> agg_gen_;
 };
 class AggRunner : public Runner {
  public:
-    AggRunner(const int32_t id, const SchemasContext* schema,
-              const std::optional<int32_t> limit_cnt,
-              const ConditionFilter& having_condition,
-              const FnInfo& fn_info)
+    AggRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+              const ConditionFilter& having_condition, const FnInfo& fn_info)
         : Runner(id, kRunnerAgg, schema, limit_cnt),
           having_condition_(having_condition.fn_info()),
-          agg_gen_(fn_info) {}
+          agg_gen_(AggGenerator::Create(fn_info)) {}
     ~AggRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
     ConditionGenerator having_condition_;
-    AggGenerator agg_gen_;
+    std::shared_ptr<AggGenerator> agg_gen_;
 };
 
 class ReduceRunner : public Runner {
@@ -583,12 +586,12 @@ class ReduceRunner : public Runner {
                  const ConditionFilter& having_condition, const FnInfo& fn_info)
         : Runner(id, kRunnerReduce, schema, limit_cnt),
           having_condition_(having_condition.fn_info()),
-          agg_gen_(fn_info) {}
+          agg_gen_(AggGenerator::Create(fn_info)) {}
     ~ReduceRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
                                      const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
     ConditionGenerator having_condition_;
-    AggGenerator agg_gen_;
+    std::shared_ptr<AggGenerator> agg_gen_;
 };
 
 class WindowAggRunner : public Runner {
@@ -638,37 +641,39 @@ class WindowAggRunner : public Runner {
 
 class RequestUnionRunner : public Runner {
  public:
-    RequestUnionRunner(const int32_t id, const SchemasContext* schema,
-                       const std::optional<int32_t> limit_cnt, const Range& range,
-                       bool exclude_current_time, bool output_request_row)
+    RequestUnionRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                       const Range& range, bool exclude_current_time, bool output_request_row)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
-          range_gen_(range),
+          range_gen_(RangeGenerator::Create(range)),
           exclude_current_time_(exclude_current_time),
-          output_request_row_(output_request_row) {}
+          output_request_row_(output_request_row) {
+        windows_union_gen_ = RequestWindowUnionGenerator::Create();
+    }
 
-    std::shared_ptr<DataHandler> Run(
-        RunnerContext& ctx,  // NOLINT
-        const std::vector<std::shared_ptr<DataHandler>>& inputs)
-        override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx,  // NOLINT
+                                     const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+
+    std::shared_ptr<TableHandler> RunOneRequest(RunnerContext* ctx, const Row& request);
+
     static std::shared_ptr<TableHandler> RequestUnionWindow(const Row& request,
                                                             std::vector<std::shared_ptr<TableHandler>> union_segments,
                                                             int64_t request_ts, const WindowRange& window_range,
                                                             bool output_request_row, bool exclude_current_time);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
-        windows_union_gen_.AddWindowUnion(window, runner);
+        windows_union_gen_->AddWindowUnion(window, runner);
     }
 
     void Print(std::ostream& output, const std::string& tab,
                        std::set<int32_t>* visited_ids) const override {
         Runner::Print(output, tab, visited_ids);
         output << "\n" << tab << "window unions:\n";
-        for (auto& r : windows_union_gen_.input_runners_) {
+        for (auto& r : windows_union_gen_->input_runners_) {
             r->Print(output, tab + "  ", visited_ids);
         }
     }
 
-    RequestWindowUnionGenerator windows_union_gen_;
-    RangeGenerator range_gen_;
+    std::shared_ptr<RequestWindowUnionGenerator> windows_union_gen_;
+    std::shared_ptr<RangeGenerator> range_gen_;
     bool exclude_current_time_;
     bool output_request_row_;
 };
@@ -679,11 +684,12 @@ class RequestAggUnionRunner : public Runner {
                           const Range& range, bool exclude_current_time, bool output_request_row,
                           const node::CallExprNode* project)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
-          range_gen_(range),
+          range_gen_(RangeGenerator::Create(range)),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row),
           func_(project->GetFnDef()),
           agg_col_(project->GetChild(0)) {
+        windows_union_gen_ = RequestWindowUnionGenerator::Create();
         if (agg_col_->GetExprType() == node::kExprColumnRef) {
             agg_col_name_ = dynamic_cast<const node::ColumnRefNode*>(agg_col_)->GetColumnName();
         } /* for kAllExpr like count(*), agg_col_name_ is empty */
@@ -704,7 +710,7 @@ class RequestAggUnionRunner : public Runner {
                                                      const bool output_request_row,
                                                      const bool exclude_current_time) const;
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
-        windows_union_gen_.AddWindowUnion(window, runner);
+        windows_union_gen_->AddWindowUnion(window, runner);
     }
 
     static std::string PrintEvalValue(const absl::StatusOr<std::optional<bool>>& val);
@@ -723,8 +729,8 @@ class RequestAggUnionRunner : public Runner {
         kMaxWhere,
     };
 
-    RequestWindowUnionGenerator windows_union_gen_;
-    RangeGenerator range_gen_;
+    std::shared_ptr<RequestWindowUnionGenerator> windows_union_gen_;
+    std::shared_ptr<RangeGenerator> range_gen_;
     bool exclude_current_time_;
 
     // include request row from union.

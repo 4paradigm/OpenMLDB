@@ -164,5 +164,224 @@ RowIterator* LazyLastJoinWindowIterator::GetRawValue() {
 
     return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
 }
+
+std::shared_ptr<TableHandler> ConcatPartitionHandler::GetSegment(const std::string& key) {
+    auto left_seg = left_->GetSegment(key);
+    auto right_seg = right_->GetSegment(key);
+    return std::shared_ptr<TableHandler>(
+        new SimpleConcatTableHandler(left_seg, left_slices_, right_seg, right_slices_));
+}
+
+RowIterator* ConcatPartitionHandler::GetRawIterator() {
+    auto li = left_->GetIterator();
+    if (!li) {
+        return nullptr;
+    }
+    auto ri = right_->GetIterator();
+    return new ConcatIterator(std::move(li), left_slices_, std::move(ri), right_slices_);
+}
+
+std::unique_ptr<RowIterator> ConcatPartitionHandler::GetIterator() {
+    auto p = GetRawIterator();
+    if (p == nullptr) {
+        return {};
+    }
+    return std::unique_ptr<RowIterator>(p);
+}
+
+std::unique_ptr<WindowIterator> LazyRequestUnionPartitionHandler::GetWindowIterator() {
+    auto w = left_->GetWindowIterator();
+    if (!w) {
+        return {};
+    }
+
+    return std::unique_ptr<WindowIterator>(new LazyRequestUnionWindowIterator(std::move(w), func_));
+}
+
+std::shared_ptr<TableHandler> LazyRequestUnionPartitionHandler::GetSegment(const std::string& key) {
+    return nullptr;
+}
+
+std::unique_ptr<RowIterator> LazyRequestUnionPartitionHandler::GetIterator() {
+    return std::unique_ptr<RowIterator>(GetRawIterator());
+}
+const IndexHint& LazyRequestUnionPartitionHandler::GetIndex() { return left_->GetIndex(); }
+
+const Types& LazyRequestUnionPartitionHandler::GetTypes() { return left_->GetTypes(); }
+
+base::ConstIterator<uint64_t, Row>* LazyRequestUnionPartitionHandler::GetRawIterator() { return nullptr; }
+bool LazyAggIterator::Valid() const { return it_->Valid(); }
+void LazyAggIterator::Next() { it_->Next(); }
+const uint64_t& LazyAggIterator::GetKey() const { return it_->GetKey(); }
+const Row& LazyAggIterator::GetValue() {
+    if (Valid()) {
+        auto request = it_->GetValue();
+        auto window = func_(request);
+        if (window) {
+            buf_ = agg_gen_->Gen(parameter_, window);
+            return buf_;
+        }
+    }
+
+    buf_ = Row();
+    return buf_;
+}
+
+void LazyAggIterator::Seek(const uint64_t& key) { it_->Seek(key); }
+void LazyAggIterator::SeekToFirst() { it_->SeekToFirst(); }
+std::unique_ptr<RowIterator> LazyAggTableHandler::GetIterator() {
+    auto* it = GetRawIterator();
+    if (it == nullptr) {
+        return {};
+    }
+    return std::unique_ptr<RowIterator>(it);
+}
+std::unique_ptr<WindowIterator> LazyAggTableHandler::GetWindowIterator(const std::string& idx_name) { return nullptr; }
+base::ConstIterator<uint64_t, Row>* LazyAggTableHandler::GetRawIterator() {
+    auto it = left_->GetIterator();
+    if (!it) {
+        return nullptr;
+    }
+    return new LazyAggIterator(std::move(it), func_, agg_gen_, parameter_);
+}
+std::shared_ptr<PartitionHandler> LazyAggTableHandler::GetPartition(const std::string& index_name) { return nullptr; }
+const Types& LazyAggTableHandler::GetTypes() { return left_->GetTypes(); }
+const IndexHint& LazyAggTableHandler::GetIndex() { return left_->GetIndex(); }
+const Schema* LazyAggTableHandler::GetSchema() { return nullptr; }
+const std::string& LazyAggTableHandler::GetName() { return left_->GetName(); }
+const std::string& LazyAggTableHandler::GetDatabase() { return left_->GetDatabase(); }
+std::shared_ptr<TableHandler> LazyAggPartitionHandler::GetSegment(const std::string& key) {
+    auto seg = input_->Left()->GetSegment(key);
+    return std::shared_ptr<TableHandler>(new LazyAggTableHandler(seg, input_->Func(), agg_gen_, parameter_));
+}
+const std::string LazyAggPartitionHandler::GetHandlerTypeName() { return "LazyLastJoinPartitionHandler"; }
+std::unique_ptr<RowIterator> LazyAggPartitionHandler::GetIterator() {
+    auto it = input_->Left()->GetIterator();
+    return std::unique_ptr<RowIterator>(new LazyAggIterator(std::move(it), input_->Func(), agg_gen_, parameter_));
+}
+base::ConstIterator<uint64_t, Row>* LazyAggPartitionHandler::GetRawIterator() { return nullptr; }
+bool ConcatIterator::Valid() const { return left_ && left_->Valid(); }
+void ConcatIterator::Next() {
+    left_->Next();
+    if (right_ && right_->Valid()) {
+        right_->Next();
+    }
+}
+const uint64_t& ConcatIterator::GetKey() const { return left_->GetKey(); }
+const Row& ConcatIterator::GetValue() {
+    if (!right_ || !right_->Valid()) {
+        buf_ = Row(left_slices_, left_->GetValue(), right_slices_, Row());
+    } else {
+        buf_ = Row(left_slices_, left_->GetValue(), right_slices_, right_->GetValue());
+    }
+    return buf_;
+}
+void ConcatIterator::Seek(const uint64_t& key) {
+    left_->Seek(key);
+    if (right_ && right_->Valid()) {
+        right_->Seek(key);
+    }
+}
+void ConcatIterator::SeekToFirst() {
+    left_->SeekToFirst();
+    if (right_) {
+        right_->SeekToFirst();
+    }
+}
+std::unique_ptr<RowIterator> SimpleConcatTableHandler::GetIterator() {
+    auto p = GetRawIterator();
+    if (p == nullptr) {
+        return {};
+    }
+    return std::unique_ptr<RowIterator>(p);
+}
+RowIterator* SimpleConcatTableHandler::GetRawIterator() {
+    auto li = left_->GetIterator();
+    if (!li) {
+        return nullptr;
+    }
+    auto ri = right_->GetIterator();
+    return new ConcatIterator(std::move(li), left_slices_, std::move(ri), right_slices_);
+}
+std::unique_ptr<WindowIterator> SimpleConcatTableHandler::GetWindowIterator(const std::string& idx_name) {
+    return nullptr;
+}
+std::unique_ptr<WindowIterator> ConcatPartitionHandler::GetWindowIterator() { return nullptr; }
+std::unique_ptr<WindowIterator> ConcatPartitionHandler::GetWindowIterator(const std::string& idx_name) {
+    return nullptr;
+}
+
+std::unique_ptr<WindowIterator> LazyAggPartitionHandler::GetWindowIterator() {
+    auto w = input_->Left()->GetWindowIterator();
+    return std::unique_ptr<WindowIterator>(
+        new LazyAggWindowIterator(std::move(w), input_->Func(), agg_gen_, parameter_));
+}
+
+RowIterator* LazyAggWindowIterator::GetRawValue() {
+    auto w = left_->GetValue();
+    if (!w) {
+        return nullptr;
+    }
+
+    return new LazyAggIterator(std::move(w), func_, agg_gen_, parameter_);
+}
+void LazyRequestUnionIterator::Next() {
+    if (Valid()) {
+        cur_iter_->Next();
+    }
+    if (!Valid()) {
+        left_->Next();
+        OnNewRow();
+    }
+}
+bool LazyRequestUnionIterator::Valid() const { return cur_iter_ && cur_iter_->Valid(); }
+void LazyRequestUnionIterator::Seek(const uint64_t& key) {
+    left_->Seek(key);
+    OnNewRow(false);
+}
+void LazyRequestUnionIterator::SeekToFirst() {
+    left_->SeekToFirst();
+    OnNewRow();
+}
+void LazyRequestUnionIterator::OnNewRow(bool continue_on_empty) {
+    while (left_->Valid()) {
+        auto row = left_->GetValue();
+        auto tb = func_(row);
+        if (tb) {
+            auto it = tb->GetIterator();
+            if (it) {
+                it->SeekToFirst();
+                if (it->Valid()) {
+                    cur_window_ = tb;
+                    cur_iter_ = std::move(it);
+                    break;
+                }
+            }
+        }
+
+        if (continue_on_empty) {
+            left_->Next();
+        } else {
+            cur_window_ = {};
+            cur_iter_ = {};
+            break;
+        }
+    }
+}
+const uint64_t& LazyRequestUnionIterator::GetKey() const { return cur_iter_->GetKey(); }
+const Row& LazyRequestUnionIterator::GetValue() { return cur_iter_->GetValue(); }
+RowIterator* LazyRequestUnionWindowIterator::GetRawValue() {
+    auto rows = left_->GetValue();
+    if (!rows) {
+        return {};
+    }
+
+    return new LazyRequestUnionIterator(std::move(rows), func_);
+}
+bool LazyRequestUnionWindowIterator::Valid() { return left_ && left_->Valid(); }
+const Row LazyRequestUnionWindowIterator::GetKey() { return left_->GetKey(); }
+void LazyRequestUnionWindowIterator::SeekToFirst() { left_->SeekToFirst(); }
+void LazyRequestUnionWindowIterator::Seek(const std::string& key) { left_->Seek(key); }
+void LazyRequestUnionWindowIterator::Next() { left_->Next(); }
 }  // namespace vm
 }  // namespace hybridse

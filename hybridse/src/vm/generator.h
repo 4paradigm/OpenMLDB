@@ -79,11 +79,17 @@ class ConstProjectGenerator : public FnGenerator {
     const Row Gen(const Row& parameter);
     RowProjectFun fun_;
 };
-class AggGenerator : public FnGenerator {
+class AggGenerator : public FnGenerator, public std::enable_shared_from_this<AggGenerator> {
  public:
-    explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
+    [[nodiscard]] static std::shared_ptr<AggGenerator> Create(const FnInfo& info) {
+        return std::shared_ptr<AggGenerator>(new AggGenerator(info));
+    }
+
     virtual ~AggGenerator() {}
     const Row Gen(const codec::Row& parameter_row, std::shared_ptr<TableHandler> table);
+
+ private:
+    explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
 };
 class WindowProjectGenerator : public FnGenerator {
  public:
@@ -112,8 +118,18 @@ class ConditionGenerator : public FnGenerator {
     const bool Gen(const Row& row, const Row& parameter) const;
     const bool Gen(std::shared_ptr<TableHandler> table, const codec::Row& parameter_row);
 };
-class RangeGenerator {
+class RangeGenerator : public std::enable_shared_from_this<RangeGenerator> {
  public:
+    [[nodiscard]] static std::shared_ptr<RangeGenerator> Create(const Range& range) {
+        return std::shared_ptr<RangeGenerator>(new RangeGenerator(range));
+    }
+    virtual ~RangeGenerator() {}
+
+    const bool Valid() const { return ts_gen_.Valid(); }
+    OrderGenerator ts_gen_;
+    WindowRange window_range_;
+
+ private:
     explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info()), window_range_() {
         if (range.frame_ != nullptr) {
             switch (range.frame()->frame_type()) {
@@ -142,11 +158,8 @@ class RangeGenerator {
             }
         }
     }
-    virtual ~RangeGenerator() {}
-    const bool Valid() const { return ts_gen_.Valid(); }
-    OrderGenerator ts_gen_;
-    WindowRange window_range_;
 };
+
 class FilterKeyGenerator {
  public:
     explicit FilterKeyGenerator(const Key& filter_key) : filter_key_(filter_key.fn_info()) {}
@@ -253,13 +266,15 @@ class FilterGenerator : public PredicateFun {
 class WindowGenerator {
  public:
     explicit WindowGenerator(const WindowOp& window)
-        : window_op_(window), partition_gen_(window.partition_), sort_gen_(window.sort_), range_gen_(window.range_) {}
+        : window_op_(window), partition_gen_(window.partition_), sort_gen_(window.sort_) {
+        range_gen_ = RangeGenerator::Create(window.range_);
+    }
     virtual ~WindowGenerator() {}
-    const int64_t OrderKey(const Row& row) { return range_gen_.ts_gen_.Gen(row); }
+    const int64_t OrderKey(const Row& row) { return range_gen_->ts_gen_.Gen(row); }
     const WindowOp window_op_;
     PartitionGenerator partition_gen_;
     SortGenerator sort_gen_;
-    RangeGenerator range_gen_;
+    std::shared_ptr<RangeGenerator> range_gen_;
 };
 
 class RequestWindowGenertor {

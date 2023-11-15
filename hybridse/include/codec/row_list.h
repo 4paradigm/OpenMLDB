@@ -76,7 +76,7 @@ class ListV {
     virtual const uint64_t GetCount() {
         auto iter = GetIterator();
         uint64_t cnt = 0;
-        while (iter->Valid()) {
+        while (iter && iter->Valid()) {
             iter->Next();
             cnt++;
         }
