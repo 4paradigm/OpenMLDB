@@ -146,7 +146,6 @@ void PhysicalOpNode::PrintChildren(std::ostream& output, const std::string& tab)
         }
     }
 }
-void PhysicalOpNode::UpdateProducer(int i, PhysicalOpNode* producer) { producers_[i] = producer; }
 void PhysicalUnaryNode::PrintChildren(std::ostream& output, const std::string& tab) const {
     if (producers_.empty() || nullptr == producers_[0]) {
         LOG(WARNING) << "empty producers";
@@ -1652,5 +1651,81 @@ Status BuildColumnReplacement(const node::ExprNode* expr, const SchemasContext* 
     return Status::OK();
 }
 
+absl::StatusOr<ColProducerTraceInfo> PhysicalOpNode::TraceColID(size_t col_id) const {
+    size_t sc_idx;
+    size_t col_idx;
+    auto s = schemas_ctx()->ResolveColumnIndexByID(col_id, &sc_idx, &col_idx);
+    if (!s.isOK()) {
+        return absl::NotFoundError(s.msg);
+    }
+
+    auto source = schemas_ctx()->GetSchemaSource(sc_idx);
+    auto path_idx = source->GetSourceChildIdx(col_idx);
+    int child_col_id = source->GetSourceColumnID(col_idx);
+
+    return ColProducerTraceInfo{{path_idx, child_col_id}};
+}
+absl::StatusOr<ColProducerTraceInfo> PhysicalOpNode::TraceColID(absl::string_view col_name) const {
+    size_t sc_idx;
+    size_t col_idx;
+    auto s = schemas_ctx()->ResolveColumnIndexByName("", "", std::string(col_name), &sc_idx, &col_idx);
+    if (!s.isOK()) {
+        return absl::NotFoundError(s.msg);
+    }
+
+    auto source = schemas_ctx()->GetSchemaSource(sc_idx);
+    auto path_idx = source->GetSourceChildIdx(col_idx);
+    int child_col_id = source->GetSourceColumnID(col_idx);
+
+    return ColProducerTraceInfo{{path_idx, child_col_id}};
+}
+absl::StatusOr<ColLastDescendantTraceInfo> PhysicalOpNode::TraceLastDescendants(size_t col_id) const {
+    ColLastDescendantTraceInfo trace_info;
+    auto info = TraceColID(col_id);
+    if (!info.ok()) {
+        return info.status();
+    }
+    for (auto entry : info.value()) {
+        if (entry.first < 0) {
+            trace_info.emplace_back(this, col_id);
+            continue;
+        }
+
+        auto res = GetProducer(entry.first)->TraceLastDescendants(entry.second);
+        if (!res.ok()) {
+            return res.status();
+        }
+
+        for (auto& e : res.value()) {
+            trace_info.emplace_back(e.first, e.second);
+        }
+    }
+
+    return trace_info;
+}
+absl::StatusOr<ColProducerTraceInfo> PhysicalSetOperationNode::TraceColID(size_t col_id) const {
+    std::string col_name;
+    auto s = schemas_ctx()->ResolveColumnNameByID(col_id, &col_name);
+    if (!s.isOK()) {
+        return absl::NotFoundError(s.msg);
+    }
+
+    return TraceColID(col_name);
+}
+absl::StatusOr<ColProducerTraceInfo> PhysicalSetOperationNode::TraceColID(absl::string_view col_name) const {
+    ColProducerTraceInfo vec;
+
+    // every producer node in set operation is able to backtrace columns in current node context
+    for (int i = 0; i < GetProducerCnt(); ++i) {
+        size_t child_col_id = 0;
+        auto s = GetProducer(i)->schemas_ctx()->ResolveColumnID("", "", std::string(col_name), &child_col_id);
+        if (!s.isOK()) {
+            return absl::NotFoundError(s.msg);
+        }
+        vec.emplace_back(i, child_col_id);
+    }
+
+    return vec;
+}
 }  // namespace vm
 }  // namespace hybridse

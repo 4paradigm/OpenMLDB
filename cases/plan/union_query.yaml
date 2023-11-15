@@ -131,7 +131,7 @@ cases:
                 +-window_list: []
       plan_tree_str: |
         +-[kQueryPlan]
-          +-[kUnionPlan]
+          +-[kSetOperationPlan]
             +-operator: UNION ALL
             +-children[list]:
               +-[kQueryPlan]
@@ -256,7 +256,7 @@ cases:
                       +-window_list: []
       plan_tree_str: |
         +-[kQueryPlan]
-          +-[kUnionPlan]
+          +-[kSetOperationPlan]
             +-operator: UNION ALL
             +-children[list]:
               +-[kQueryPlan]
@@ -272,7 +272,7 @@ cases:
                     +-[kTablePlan]
                       +-table: t1
               +-[kQueryPlan]
-                +-[kUnionPlan]
+                +-[kSetOperationPlan]
                   +-operator: UNION DISTINCT
                   +-children[list]:
                     +-[kQueryPlan]

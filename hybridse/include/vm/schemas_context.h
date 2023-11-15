@@ -79,6 +79,13 @@ class SchemaSource {
     std::vector<size_t> source_child_column_ids_;
 };
 
+// backtrace info for column in current node to producer nodes
+// [(producer index, producer column id)]
+typedef std::vector<std::pair<int, size_t>> ColProducerTraceInfo;
+
+// [(source node, source column id)]
+typedef std::vector<std::pair<const PhysicalOpNode*, size_t>> ColLastDescendantTraceInfo;
+
 /**
  * Utility context to resolve column spec into detailed column information.
  * This class should be explicitly initialized with schema source list info
@@ -140,16 +147,13 @@ class SchemasContext {
 
     /**
      * Resolve source column by relation name and column name recursively.
-     * If it can be resolved in current node, `child_path_id` is -1,
-     * else `child_path_id` is the index of the child which the column
+     * If it can't be resolved in current node, `child_path_idx` is -1,
+     * otherwise `child_path_idx` is the index of the child which the column
      * is resolved from.
      */
-    base::Status ResolveColumnID(const std::string& db_name,
-                                 const std::string& relation_name,
-                                 const std::string& column_name,
-                                 size_t* column_id, int* child_path_idx,
-                                 size_t* child_column_id,
-                                 size_t* source_column_id,
+    base::Status ResolveColumnID(const std::string& db_name, const std::string& relation_name,
+                                 const std::string& column_name, size_t* column_id, int* child_path_idx,
+                                 size_t* child_column_id, size_t* source_column_id,
                                  const PhysicalOpNode** source_node) const;
 
     /**
@@ -269,7 +273,7 @@ class SchemasContext {
     std::map<std::string, std::vector<std::pair<size_t, size_t>>> column_name_map_;
 
     // child source mapping
-    // child idx -> (child column id -> column id)
+    // child idx -> (child column id (in child node) -> column id (in current node))
     std::map<size_t, std::map<size_t, size_t>> child_source_map_;
 
     // schema source parts

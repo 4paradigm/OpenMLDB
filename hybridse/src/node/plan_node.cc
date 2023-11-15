@@ -185,7 +185,7 @@ std::string NameOfPlanNodeType(const PlanType &type) {
         case kPlanTypeJoin:
             return "kJoinPlan";
         case kPlanTypeSetOperation:
-            return "kUnionPlan";
+            return "kSetOperationPlan";
         case kPlanTypeSort:
             return "kSortPlan";
         case kPlanTypeGroup:

@@ -985,50 +985,15 @@ class UnionIterator final : public codec::RowIterator {
     ~UnionIterator() override {}
 
     bool Valid() const override { return !keys_.empty(); }
-    void Next() override {
-        while (!keys_.empty()) {
-            auto top = keys_.top();
-            keys_.pop();
-            inputs_.at(top.second)->Next();
-
-            if (inputs_.at(top.second)->Valid()) {
-                keys_.emplace(inputs_.at(top.second)->GetKey(), top.second);
-                break;
-            }
-        }
-    }
-    const uint64_t& GetKey() const override {
-        if (Valid()) {
-            auto& top = keys_.top();
-            return inputs_.at(top.second)->GetKey();
-        }
-
-        return INVALID_KEY;
-    }
-    const Row& GetValue() override {
-        if (Valid()) {
-            auto& top = keys_.top();
-            return inputs_.at(top.second)->GetValue();
-        }
-
-        return INVALID_ROW;
-    }
+    void Next() override;
+    const uint64_t& GetKey() const override;
+    const Row& GetValue() override;
 
     bool IsSeekable() const override { return true; };
 
-    void Seek(const uint64_t& key) override {
-        for (auto& n : inputs_) {
-            n->Seek(key);
-        }
-        rebuild_keys();
-    }
+    void Seek(const uint64_t& key) override;
 
-    void SeekToFirst() override {
-        for (auto& n : inputs_) {
-            n->SeekToFirst();
-        }
-        rebuild_keys();
-    }
+    void SeekToFirst() override;
 
  private:
     using E =
@@ -1046,14 +1011,7 @@ class UnionIterator final : public codec::RowIterator {
     };
     using MaxHeap = std::priority_queue<E, std::vector<E>, PairLess>;
 
-    void rebuild_keys() {
-        keys_ = {};
-        for (size_t i = 0; i < inputs_.size(); ++i) {
-            if (inputs_[i]->Valid()) {
-                keys_.emplace(inputs_[i]->GetKey(), i);
-            }
-        }
-    }
+    void rebuild_keys();
 
     std::vector<std::unique_ptr<RowIterator>> inputs_;
     bool distinct_ = false;  // NOLINT
@@ -1071,19 +1029,7 @@ class SetOperationHandler final : public TableHandler {
         : op_type_(type), inputs_(inputs.begin(), inputs.end()), distinct_(distinct) {}
     ~SetOperationHandler() override {}
 
-    RowIterator* GetRawIterator() override {
-        switch (op_type_) {
-            case node::SetOperationType::UNION: {
-                std::vector<std::unique_ptr<RowIterator> > iters;
-                for (auto tb : inputs_) {
-                    iters.emplace_back(tb->GetIterator());
-                }
-                return new UnionIterator(absl::MakeSpan(iters), distinct_);
-            }
-            default:
-                return nullptr;
-        }
-    }
+    RowIterator* GetRawIterator() override;
 
     // unimplemented
     const Types& GetTypes() override { return inputs_[0]->GetTypes(); }
@@ -1098,11 +1044,11 @@ class SetOperationHandler final : public TableHandler {
     bool distinct_ = false;
 };
 
-class SetOperationWindowIterator final : public codec::WindowIterator {
+class UnionWindowIterator final : public codec::WindowIterator {
     // NOTE: iterator ordering may out-of-order, same keys from different input iterator may output in two iteration.
     // Because the input iterator may out-of-order itself.
  public:
-    SetOperationWindowIterator(absl::Span<std::unique_ptr<codec::WindowIterator>> inputs, bool distinct)
+    UnionWindowIterator(absl::Span<std::unique_ptr<codec::WindowIterator>> inputs, bool distinct)
         : distinct_(distinct) {
         size_t i = 0;
         for (auto& n : inputs) {
@@ -1115,66 +1061,24 @@ class SetOperationWindowIterator final : public codec::WindowIterator {
             }
         }
     }
-    ~SetOperationWindowIterator() override {}
+    ~UnionWindowIterator() override {}
 
     bool Valid() override {
         return !keys_.empty();
     }
 
-    RowIterator* GetRawValue() override {
-        std::vector<std::unique_ptr<codec::RowIterator>> iters;
-        if (Valid()) {
-            auto& idxs = keys_.begin()->second;
-            for (auto i : idxs) {
-                iters.push_back(inputs_.at(i)->GetValue());
-            }
-        }
+    RowIterator* GetRawValue() override;
 
-        return new UnionIterator(absl::MakeSpan(iters), distinct_);
-    }
+    void Seek(const std::string& key) override;
 
-    void Seek(const std::string& key) override {
-        for (auto& i : inputs_) {
-            i->Seek(key);
-        }
-        rebuild_keys();
-    }
+    void SeekToFirst() override;
 
-    void SeekToFirst() override {
-        for (auto& i : inputs_) {
-            i->SeekToFirst();
-        }
-        rebuild_keys();
-    }
+    void Next() override;
 
-    void Next() override {
-        auto idxs = keys_.begin()->second;
-        keys_.erase(keys_.begin());
-        for (auto i : idxs) {
-            inputs_.at(i)->Next();
-            if (inputs_.at(i)->Valid()) {
-                keys_[inputs_.at(i)->GetKey()].push_back(i);
-            }
-        }
-    }
-
-    const codec::Row GetKey() override {
-        if (Valid()) {
-            return keys_.begin()->first;
-        }
-
-        return INVALID_ROW;
-    }
+    const codec::Row GetKey() override;
 
  private:
-    void rebuild_keys() {
-        keys_.clear();
-        for (size_t i = 0; i <inputs_.size() ; i++) {
-            if (inputs_[i]->Valid()) {
-                keys_[inputs_[i]->GetKey()].push_back(i);
-            }
-        }
-    }
+    void rebuild_keys();
     std::vector<std::unique_ptr<WindowIterator>> inputs_;
 
     // smaller key comes first
@@ -1189,42 +1093,11 @@ class SetOperationPartitionHandler final : public PartitionHandler {
         : op_type_(type), inputs_(inputs.begin(), inputs.end()), distinct_(distinct) {}
     ~SetOperationPartitionHandler() override {}
 
-    RowIterator* GetRawIterator() override {
-        switch (op_type_) {
-            case node::SetOperationType::UNION: {
-                std::vector<std::unique_ptr<RowIterator>> iters;
-                for (auto tb : inputs_) {
-                    iters.emplace_back(tb->GetIterator());
-                }
-                return new UnionIterator(absl::MakeSpan(iters), distinct_);
-            }
-            default:
-                return nullptr;
-        }
-    }
+    RowIterator* GetRawIterator() override;
 
-    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override {
-        std::vector<std::shared_ptr<TableHandler>> segs;
-        for (auto n : inputs_) {
-            segs.push_back(n->GetSegment(key));
-        }
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
 
-        return std::shared_ptr<TableHandler>(new SetOperationHandler(op_type_, segs, distinct_));
-    }
-
-    std::unique_ptr<WindowIterator> GetWindowIterator() override {
-        // NOTE: window iterator may out-of-order, use 'GetSegment' if ordering is mandatory
-        if (op_type_ != node::SetOperationType::UNION) {
-            return {};
-        }
-
-        std::vector<std::unique_ptr<codec::WindowIterator>> iters;
-        for (auto n : inputs_) {
-            iters.push_back(n->GetWindowIterator());
-        }
-
-        return std::unique_ptr<WindowIterator>(new SetOperationWindowIterator(absl::MakeSpan(iters), distinct_));
-    }
+    std::unique_ptr<WindowIterator> GetWindowIterator() override;
 
     const Types& GetTypes() override { return inputs_[0]->GetTypes(); }
     const IndexHint& GetIndex() override { return inputs_[0]->GetIndex(); }

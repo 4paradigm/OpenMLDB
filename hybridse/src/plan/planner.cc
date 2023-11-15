@@ -599,6 +599,7 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
         case node::kPlanTypeRename:
         case node::kPlanTypeLimit:
         case node::kPlanTypeFilter:
+        case node::kPlanTypeSetOperation:
         case node::kPlanTypeQuery: {
             break;
         }

@@ -288,7 +288,6 @@ class Key : public FnComponent {
     const node::ExprListNode *keys() const { return keys_; }
     void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
 
-    const node::ExprListNode *PhysicalProjectNode() const { return keys_; }
     const std::string FnDetail() const { return "keys=" + fn_info_.fn_name(); }
 
     void ResolvedRelatedColumns(
@@ -389,11 +388,18 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     // get a list of PhysicalOpNodes that current node depends on
     virtual std::vector<PhysicalOpNode*> GetDependents() const;
 
+    // trace from column ID in current node, to possible producre nodes (one level down)
+    // multiple results may returned, indicating column of ID `col_id` may comes from any of the result list
+    virtual absl::StatusOr<ColProducerTraceInfo> TraceColID(size_t col_id) const;
+
+    virtual absl::StatusOr<ColProducerTraceInfo> TraceColID(absl::string_view col_name) const;
+
+    absl::StatusOr<ColLastDescendantTraceInfo> TraceLastDescendants(size_t col_id) const;
+
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
     std::vector<PhysicalOpNode *> &producers() { return producers_; }
-    void UpdateProducer(int i, PhysicalOpNode *producer);
 
     void AddProducer(PhysicalOpNode *producer) {
         producers_.push_back(producer);
@@ -1441,6 +1447,10 @@ class PhysicalSetOperationNode : public PhysicalOpNode {
     void Print(std::ostream &output, const std::string &tab) const override;
     base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
+
+    absl::StatusOr<ColProducerTraceInfo> TraceColID(size_t col_id) const override;
+
+    absl::StatusOr<ColProducerTraceInfo> TraceColID(absl::string_view col_name) const override;
 
     node::SetOperationType op_type_;
     const bool distinct_ = false;
