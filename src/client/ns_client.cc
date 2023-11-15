@@ -625,10 +625,19 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& 
 
 bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLType& type, uint64_t abs_ttl,
                          uint64_t lat_ttl, const std::string& index_name, std::string& msg) {
+    return UpdateTTL(GetDb(), name, type, abs_ttl, lat_ttl, index_name, msg);
+}
+
+bool NsClient::UpdateTTL(const std::string& db, const std::string& name, const ::openmldb::type::TTLType& type,
+        uint64_t abs_ttl, uint64_t lat_ttl, const std::string& index_name, std::string& msg) {
     ::openmldb::nameserver::UpdateTTLRequest request;
     ::openmldb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
-    request.set_db(GetDb());
+    if (db.empty()) {
+        request.set_db(GetDb());
+    } else {
+        request.set_db(db);
+    }
     ::openmldb::common::TTLSt* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
@@ -636,7 +645,6 @@ bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLTyp
     if (!index_name.empty()) {
         request.set_index_name(index_name);
     }
-    request.set_db(GetDb());
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::UpdateTTL, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();

@@ -24,11 +24,11 @@ class TableChecker:
     def __init__(self, conn: Connector):
         self.conn = conn
 
-    def check_distribution(self, dbs: list):
+    def check_distribution(self, dbs: list = None):
         exist_dbs = [db[0] for db in self.conn.execfetch("SHOW DATABASES")]
         if not exist_dbs:
             return
-        if dbs == ['']:
+        if not dbs or len(dbs) == 0:
             dbs = exist_dbs
         assert all([db in exist_dbs for db in dbs]), "some databases are not exist"
 
@@ -36,67 +36,87 @@ class TableChecker:
         url = f"http://{ns_leader}/NameServer/ShowTable"
         res = requests.get(url, json={"show_all": True})
         tables = res.json()["table_info"]
-
+        if not tables or len(tables) == 0:
+            print("no table")
+            return
         tablet2partition = {}
         tablet2count = {}
         tablet2mem = {}
         tablet2dused = {}
         table_infos = []
-        max_values = {'mp': 0, 'mc': 0, 'mm': 0, 'md': 0}
+        max_values = {"mp": 0, "mc": 0, "mm": 0, "md": 0}
 
         for table in tables:
-            if table['db'] not in dbs:
+            if table["db"] not in dbs:
                 continue
             t = {}
-            t['name'] = table['db'] + "." + table['name']
-            parts = table['table_partition']
-            part_dist = self._collect(parts, '')
-            count_dist = self._collect(parts, 'record_cnt')
-            mem_dist = self._collect(parts, 'record_byte_size')
-            dused_dist = self._collect(parts, 'diskused')
-            max_values['mp'] = max(max_values['mp'], *part_dist.values())
-            max_values['mc'] = max(max_values['mc'], *count_dist.values())
-            max_values['mm'] = max(max_values['mm'], *mem_dist.values())
-            max_values['md'] = max(max_values['md'], *dused_dist.values())
-            t['part_size'] = len(parts)
-            t['part_dist'] = part_dist
-            t['count_dist'] = count_dist
-            t['mem_dist'] = mem_dist
-            t['dused_dist'] = dused_dist
+            t["name"] = table["db"] + "." + table["name"]
+            parts = table["table_partition"]
+            part_dist = self._collect(parts, "")
+            count_dist = self._collect(parts, "record_cnt")
+            mem_dist = self._collect(parts, "record_byte_size")
+            dused_dist = self._collect(parts, "diskused")
+            t["part_size"] = len(parts)
+            t["part_dist"] = part_dist
+            t["count_dist"] = count_dist
+            t["mem_dist"] = mem_dist
+            t["dused_dist"] = dused_dist
             table_infos.append(t)
             self._add_merge(tablet2partition, part_dist)
             self._add_merge(tablet2count, count_dist)
             self._add_merge(tablet2mem, mem_dist)
             self._add_merge(tablet2dused, dused_dist)
 
-        max_values['mm'] = round(max_values['mm'] / 1024 / 1024, 4)
-        max_values['md'] = round(max_values['md'] / 1024 / 1024, 4)
+        def get_max(di):
+            return max(di.values())
+
+        max_values["mp"] = get_max(tablet2partition)
+        max_values["mc"] = get_max(tablet2count)
+        max_values["mm"] = round(get_max(tablet2mem) / 1024 / 1024, 4)
+        max_values["md"] = round(get_max(tablet2dused) / 1024 / 1024, 4)
+
         max_width = 40
         for t in table_infos:
             print()
-            print(t['name'])
-            print('partition size:', t['part_size'])
-            print('partition dist(include replica)')
-            self._show_dist(t['part_dist'], max_width=max_width * max(*t['part_dist'].values()) / max_values['mp'])
-            print('record count dist(include replica)')
-            self._show_dist(t['count_dist'], max_width=0 if max_values['mc'] == 0 else max_width * max(*t['count_dist'].values()) / max_values['mc'])
-            print('mem dist(include replica)(MB)')
-            self._byte2mb(t['mem_dist'])
-            self._show_dist(t['mem_dist'], max_width=0 if max_values['mm'] == 0 else max_width * max(*t['mem_dist'].values()) / max_values['mm'])
-            print('diskused dist(include replica)(MB)')
-            self._byte2mb(t['dused_dist'])
-            self._show_dist(t['dused_dist'], max_width=max_width * max(*t['dused_dist'].values()) / max_values['md'])
+            print(t["name"], "distribution")
+            print("partition size:", t["part_size"])
+            print("partition dist(include replica)")
+            self._show_dist(
+                t["part_dist"],
+                max_width=max_width * get_max(t["part_dist"]) / max_values["mp"],
+            )
+            print("record count dist(include replica)")
+            self._show_dist(
+                t["count_dist"],
+                max_width=0
+                if max_values["mc"] == 0
+                else max_width * get_max(t["count_dist"]) / max_values["mc"],
+            )
+            print("mem dist(include replica)(MB)")
+            self._byte2mb(t["mem_dist"])
+            self._show_dist(
+                t["mem_dist"],
+                max_width=0
+                if max_values["mm"] == 0
+                else max_width * get_max(t["mem_dist"]) / max_values["mm"],
+            )
+            print("diskused dist(include replica)(MB)")
+            self._byte2mb(t["dused_dist"])
+            self._show_dist(
+                t["dused_dist"],
+                max_width=max_width * get_max(t["dused_dist"]) / max_values["md"],
+            )
 
         print()
-        print('total')
-        print('tablet2partition')
+        print("tablet server load distribution")
+        print("tablet2partition")
         self._show_dist(tablet2partition)
-        print('tablet2count')
+        print("tablet2count(row)")
         self._show_dist(tablet2count)
-        print('tablet2mem(MB)')
+        print("tablet2mem(MB)")
         self._byte2mb(tablet2mem)
         self._show_dist(tablet2mem)
-        print('tablet2diskused(MB)')
+        print("tablet2diskused(MB)")
         self._byte2mb(tablet2dused)
         self._show_dist(tablet2dused)
 
@@ -106,16 +126,24 @@ class TableChecker:
 
     def _show_dist(self, dist: dict, max_width=40):
         figc = tpl.figure()
-        figc.barh(list(dist.values()), labels=list(dist.keys()), max_width=max_width)
+        if not dist:  # protect barh args
+            print("no data")
+            return
+        figc.barh(
+            list(dist.values()),
+            labels=list(dist.keys()),
+            max_width=max_width,
+            force_ascii=True,
+        )
         figc.show()
 
     def _collect(self, parts, field):
         dist = {}
         for part in parts:
-            for replica in part['partition_meta']:
-                if replica['endpoint'] not in dist:
-                    dist[replica['endpoint']] = 0
-                dist[replica['endpoint']] += replica[field] if field else 1
+            for replica in part["partition_meta"]:
+                if replica["endpoint"] not in dist:
+                    dist[replica["endpoint"]] = 0
+                dist[replica["endpoint"]] += replica[field] if field else 1
         return dist
 
     def _add_merge(self, dist, dist2):

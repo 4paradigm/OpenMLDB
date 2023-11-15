@@ -18,19 +18,14 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include "boost/filesystem.hpp"
-#include "boost/filesystem/string_file.hpp"
 #include "codec/fe_schema_codec.h"
-#include "codec/type_codec.h"
-#include "codegen/block_ir_builder.h"
-#include "codegen/fn_ir_builder.h"
-#include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 #include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
 #include "vm/runner.h"
+#include "vm/runner_builder.h"
 #include "vm/transform.h"
 #include "vm/engine.h"
 

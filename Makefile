@@ -139,29 +139,39 @@ THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
 THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 
-# trick: for those compile inside hybridsql docker image, thirdparty is pre-installed in /deps/usr.
-#  we check this by asserting if the environment variable '$THIRD_PARTY_DIR' is defined to '/deps/usr',
-#  if true, thirdparty download is skipped
-# zetasql check separately since it update more frequently:
-#  it will updated if the variable '$ZETASQL_VERSION' (defined in docker) not equal to that defined in current code
-override GREP_PATTERN = "set(ZETASQL_VERSION"
+override ZETASQL_PATTERN = "set(ZETASQL_VERSION"
+override THIRD_PATTERN = "set(HYBRIDSQL_ASSERTS_VERSION"
+new_zetasql_version := $(shell grep $(ZETASQL_PATTERN) third-party/cmake/FetchZetasql.cmake | sed 's/[^0-9.]*\([0-9.]*\).*/\1/')
+new_third_version := $(shell grep $(THIRD_PATTERN) third-party/CMakeLists.txt | sed 's/[^0-9.]*\([0-9.]*\).*/\1/')
+
 thirdparty-fast:
 	@if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
 	    echo "[deps]: install thirdparty and zetasql"; \
 	    $(MAKE) thirdparty; \
-	elif [ -n "$(ZETASQL_VERSION)" ]; then \
-	    new_zetasql_version=$(shell grep $(GREP_PATTERN) third-party/cmake/FetchZetasql.cmake | sed 's/[^0-9.]*\([0-9.]*\).*/\1/'); \
-	    if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
-		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
-		$(MAKE) thirdparty-configure; \
-		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
-	    else \
-		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
-	    fi; \
 	else \
-	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
-	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	    if [ -n "$(ZETASQL_VERSION)" ] ; then \
+		if [ "$(new_zetasql_version)" != "$(ZETASQL_VERSION)" ] ; then \
+		    echo "[deps]: installing zetasql from $(ZETASQL_VERSION) to $(new_zetasql_version)"; \
+		    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+		else \
+		    echo "[deps]: zetasql up-to-date with version: $(ZETASQL_VERSION)"; \
+		fi; \
+	    else \
+		echo "[deps]: installing latest zetasql"; \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+	    fi;  \
+	    if [ -n "$(THIRDPARTY_VERSION)" ]; then \
+		if [ "$(new_third_version)" != "$(THIRDPARTY_VERSION)" ] ; then \
+		    echo "[deps]: installing thirdparty from $(THIRDPARTY_VERSION) to $(new_third_version)"; \
+		    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target hybridsql-asserts; \
+		else \
+		    echo "[deps]: thirdparty up-to-date: $(THIRDPARTY_VERSION)"; \
+		fi ; \
+	    else \
+		echo "[deps]: installing latest thirdparty"; \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target hybridsql-asserts; \
+	    fi ; \
 	fi
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'

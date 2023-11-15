@@ -43,7 +43,7 @@ void OnLockedCallback() { call_invoked = true; }
 void OnLostCallback() {}
 
 TEST_F(DistLockTest, Lock) {
-    ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock");
+    ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock", "", "");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
     DistLock lock("/openmldb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback),
@@ -59,7 +59,7 @@ TEST_F(DistLockTest, Lock) {
     lock.CurrentLockValue(current_lock);
     ASSERT_EQ("endpoint1", current_lock);
     call_invoked = false;
-    ZkClient client2("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock");
+    ZkClient client2("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock", "", "");
     ok = client2.Init();
     if (!ok) {
         lock.Stop();

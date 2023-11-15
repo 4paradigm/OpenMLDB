@@ -503,7 +503,7 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
                 return false;
             }
             db_it->second.emplace(table_name, handler);
-            LOG(INFO) << "add table " << table_name << "to db " << db_name << " tid " << table_info.tid();
+            LOG(INFO) << "add table " << table_name << " to db " << db_name << " tid " << table_info.tid();
         }
         if (bool updated = false; !handler->Update(table_info, client_manager_, &updated)) {
             return false;

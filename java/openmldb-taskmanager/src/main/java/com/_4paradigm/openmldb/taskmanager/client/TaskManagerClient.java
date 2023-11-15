@@ -30,9 +30,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.api.ACLProvider;
 import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,16 +62,34 @@ public class TaskManagerClient {
     }
 
     public TaskManagerClient(String zkCluster, String zkPath) throws Exception {
+        this(zkCluster, zkPath, "");
+    }
+
+    public TaskManagerClient(String zkCluster, String zkPath, String zkCert) throws Exception {
         if (zkCluster == null || zkPath == null) {
             logger.info("Zookeeper address is wrong, please check the configuration");
         }
         String masterZnode = zkPath + "/taskmanager/leader";
 
-        zkClient = CuratorFrameworkFactory.builder()
+        CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder()
                 .connectString(zkCluster)
                 .sessionTimeoutMs(10000)
-                .retryPolicy(new ExponentialBackoffRetry(1000, 10))
-                .build();
+                .retryPolicy(new ExponentialBackoffRetry(1000, 10));
+        if (!zkCert.isEmpty()) {
+            builder.authorization("digest", zkCert.getBytes())
+                    .aclProvider(new ACLProvider() {
+                        @Override
+                        public List<ACL> getDefaultAcl() {
+                            return ZooDefs.Ids.CREATOR_ALL_ACL;
+                        }
+
+                        @Override
+                        public List<ACL> getAclForPath(String s) {
+                            return ZooDefs.Ids.CREATOR_ALL_ACL;
+                        }
+                    });
+        }
+        zkClient = builder.build();
         zkClient.start();
         Stat stat = zkClient.checkExists().forPath(masterZnode);
         if (stat != null) {  // The original master exists and is directly connected to it.

@@ -242,14 +242,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
                      std::string* value, uint64_t* ts);
 
-    // scan specified ttl type index
     int32_t ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
-                      std::string* pairs, uint32_t* count, bool* is_finish);
-
-    int32_t ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
-                      butil::IOBuf* buf, uint32_t* count, bool* is_finish);
+                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, bool use_attachment,
+                      CombineIterator* combine_it, butil::IOBuf* buf, uint32_t* count, bool* is_finish);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt, ::openmldb::storage::TTLType ttl_type,
                        ::openmldb::storage::TableIterator* it, const ::openmldb::api::CountRequest* request,

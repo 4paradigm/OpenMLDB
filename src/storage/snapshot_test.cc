@@ -718,6 +718,79 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_FALSE(it->Valid());
 }
 
+TEST_F(SnapshotTest, RecoverWithDeleteIndex) {
+    uint32_t tid = 12;
+    uint32_t pid = 0;
+    ::openmldb::api::TableMeta meta;
+    meta.set_tid(tid);
+    meta.set_pid(pid);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "userid", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(meta.add_column_desc(), "val", ::openmldb::type::kString);
+    SchemaCodec::SetIndex(meta.add_column_key(), "index1", "userid", "ts1", ::openmldb::type::kLatestTime, 0, 1);
+    SchemaCodec::SetIndex(meta.add_column_key(), "index2", "userid", "ts2", ::openmldb::type::kLatestTime, 0, 1);
+
+    std::string snapshot_dir = absl::StrCat(FLAGS_db_root_path, "/", tid, "_", pid, "/snapshot");
+
+    ::openmldb::base::MkdirRecur(snapshot_dir);
+    std::string snapshot1 = "20231018.sdb";
+    uint64_t offset = 0;
+    {
+        if (FLAGS_snapshot_compression != "off") {
+            snapshot1.append(".");
+            snapshot1.append(FLAGS_snapshot_compression);
+        }
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::openmldb::log::WritableFile* wf = ::openmldb::log::NewWritableFile(snapshot1, fd_w);
+        ::openmldb::log::Writer writer(FLAGS_snapshot_compression, wf);
+        ::openmldb::codec::SDKCodec sdk_codec(meta);
+        for (int i = 0; i < 5; i++) {
+            uint32_t ts = 100 + i;
+            for (int key_num = 0; key_num < 10; key_num++) {
+                std::string userid = absl::StrCat("userid", key_num);
+                std::string ts_str = std::to_string(ts);
+                std::vector<std::string> row = {userid, ts_str, ts_str, "aa"};
+                std::string result;
+                sdk_codec.EncodeRow(row, &result);
+                ::openmldb::api::LogEntry entry;
+                entry.set_log_index(offset++);
+                entry.set_value(result);
+                for (int k = 0; k < meta.column_key_size(); k++) {
+                    auto dimension = entry.add_dimensions();
+                    dimension->set_key(userid);
+                    dimension->set_idx(k);
+                }
+                entry.set_ts(ts);
+                entry.set_term(1);
+                std::string val;
+                bool ok = entry.SerializeToString(&val);
+                ASSERT_TRUE(ok);
+                Slice sval(val.c_str(), val.size());
+                ::openmldb::log::Status status = writer.AddRecord(sval);
+                ASSERT_TRUE(status.ok());
+            }
+        }
+        writer.EndLog();
+    }
+
+    auto index1 = meta.mutable_column_key(1);
+    index1->set_flag(1);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(meta);
+    table->Init();
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(tid, pid, log_part, FLAGS_db_root_path);
+    ASSERT_TRUE(snapshot.Init());
+    int ret = snapshot.GenManifest(snapshot1, 50, offset, 1);
+    ASSERT_EQ(0, ret);
+    uint64_t r_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, r_offset));
+    ASSERT_EQ(r_offset, offset);
+    table->SchedGc();
+}
+
 TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(1, 2, log_part, FLAGS_db_root_path);

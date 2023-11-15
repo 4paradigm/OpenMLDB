@@ -18,11 +18,12 @@
 #define HYBRIDSE_SRC_CODEGEN_TYPE_IR_BUILDER_H_
 
 #include <string>
-#include <vector>
+
+#include "absl/status/statusor.h"
 #include "base/fe_status.h"
-#include "codec/fe_row_codec.h"
-#include "codegen/ir_base_builder.h"
-#include "node/node_enum.h"
+#include "codegen/native_value.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"
 
@@ -90,6 +91,10 @@ class BoolIRBuilder : public TypeIRBuilder {
         return ::llvm::Type::getInt1Ty(m->getContext());
     }
 };
+
+// construct a safe null value for type
+// returns NativeValue{raw, is_null=true} on success, raw is ensured to be not nullptr
+absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Type* type);
 
 }  // namespace codegen
 }  // namespace hybridse

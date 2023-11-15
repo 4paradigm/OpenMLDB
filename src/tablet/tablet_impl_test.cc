@@ -128,17 +128,12 @@ bool RollWLogFile(::openmldb::storage::WriteHandle** wh, ::openmldb::storage::Lo
     return true;
 }
 
-void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool compress = false) { // NOLINT
+void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid) { // NOLINT
     for (int32_t i = 0; i < 100; i++) {
         ::openmldb::api::PutRequest prequest;
         ::openmldb::test::SetDimension(0, std::to_string(i % 10), prequest.add_dimensions());
         prequest.set_time(i + 1);
         std::string value = ::openmldb::test::EncodeKV(std::to_string(i % 10), std::to_string(i));
-        if (compress) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value.swap(compressed);
-        }
         prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
@@ -153,11 +148,6 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool c
         ::openmldb::test::SetDimension(0, "10", prequest.add_dimensions());
         prequest.set_time(i % 10 + 1);
         std::string value = ::openmldb::test::EncodeKV("10", std::to_string(i));
-        if (compress) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value.swap(compressed);
-        }
         prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
@@ -247,6 +237,23 @@ int PutKVData(uint32_t tid, uint32_t pid, const std::string& key, const std::str
     MockClosure closure;
     tablet->Put(NULL, &prequest, &presponse, &closure);
     return presponse.code();
+}
+
+std::pair<int, int> ScanFromTablet(uint32_t tid, uint32_t pid, const std::string& key, const std::string& idx_name,
+        uint64_t st, uint64_t et, TabletImpl* tablet) {
+    ::openmldb::api::ScanRequest sr;
+    sr.set_tid(tid);
+    sr.set_pid(pid);
+    sr.set_pk(key);
+    if (!idx_name.empty()) {
+        sr.set_idx_name(idx_name);
+    }
+    sr.set_st(st);
+    sr.set_et(et);
+    ::openmldb::api::ScanResponse srp;
+    MockClosure closure;
+    tablet->Scan(NULL, &sr, &srp, &closure);
+    return std::make_pair(srp.code(), srp.count());
 }
 
 int GetTTL(TabletImpl& tablet, uint32_t tid, uint32_t pid, const std::string& index_name,  // NOLINT
@@ -5350,7 +5357,7 @@ TEST_P(TabletImplTest, PutCompress) {
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        PrepareLatestTableData(tablet, id, 0, true);
+        PrepareLatestTableData(tablet, id, 0);
     }
 
     {
@@ -5540,17 +5547,9 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(0, response.code());
 
         sleep(3);
-
-        ::openmldb::api::ScanRequest sr;
-        sr.set_tid(aggr_table_id);
-        sr.set_pid(1);
-        sr.set_pk("id1");
-        sr.set_st(100);
-        sr.set_et(0);
-        ::openmldb::api::ScanResponse srp;
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(0, (signed)srp.count());
+        auto result = ScanFromTablet(aggr_table_id, 1, "id1", "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
+        ASSERT_EQ(0, result.second);
         auto aggrs = tablet.GetAggregators(base_table_id, 1);
         ASSERT_EQ(aggrs->size(), 1);
         auto aggr = aggrs->at(0);
@@ -5622,26 +5621,13 @@ TEST_F(TabletImplTest, AggregatorRecovery) {
         ASSERT_EQ(0, response.code());
 
         sleep(3);
-
-        ::openmldb::api::ScanRequest sr;
-        sr.set_tid(aggr_table_id);
-        sr.set_pid(1);
-        sr.set_pk("id1");
-        sr.set_st(100);
-        sr.set_et(0);
-        ::openmldb::api::ScanResponse srp;
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(49, (signed)srp.count());
-        sr.set_tid(aggr_table_id);
-        sr.set_pid(1);
-        sr.set_pk("id2");
-        sr.set_st(100);
-        sr.set_et(0);
-        tablet.Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(0, srp.code());
+        auto result = ScanFromTablet(aggr_table_id, 1, "id1", "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
+        ASSERT_EQ(49, result.second);
+        result = ScanFromTablet(aggr_table_id, 1, "id2", "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
         // 50 = 49 (the number of aggr value) + 1 (the number of out-of-order put)
-        ASSERT_EQ(50, (signed)srp.count());
+        ASSERT_EQ(50, result.second);
         auto aggrs = tablet.GetAggregators(base_table_id, 1);
         ASSERT_EQ(aggrs->size(), 1);
         auto aggr = aggrs->at(0);
@@ -5867,7 +5853,7 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
                 ::openmldb::api::PutRequest prequest;
                 ::openmldb::test::SetDimension(0, key, prequest.add_dimensions());
                 prequest.set_time(i);
-                prequest.set_value(EncodeAggrRow("id1", i, i));
+                prequest.set_value(EncodeAggrRow(key, i, i));
                 prequest.set_tid(base_table_id);
                 prequest.set_pid(1);
                 ::openmldb::api::PutResponse presponse;
@@ -5880,31 +5866,17 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
         // check the base table
         for (int32_t k = 1; k <= 2; k++) {
             std::string key = absl::StrCat("id", k);
-            ::openmldb::api::ScanRequest sr;
-            sr.set_tid(base_table_id);
-            sr.set_pid(1);
-            sr.set_pk(key);
-            sr.set_st(100);
-            sr.set_et(0);
-            ::openmldb::api::ScanResponse srp;
-            tablet.Scan(NULL, &sr, &srp, &closure);
-            ASSERT_EQ(0, srp.code());
-            ASSERT_EQ(100, (signed)srp.count());
+            auto result = ScanFromTablet(base_table_id, 1, key, "", 100, 0, &tablet);
+            ASSERT_EQ(0, result.first);
+            ASSERT_EQ(100, result.second);
         }
 
         // check the pre-aggr table
         for (int32_t k = 1; k <= 2; k++) {
             std::string key = absl::StrCat("id", k);
-            ::openmldb::api::ScanRequest sr;
-            sr.set_tid(aggr_table_id);
-            sr.set_pid(1);
-            sr.set_pk(key);
-            sr.set_st(100);
-            sr.set_et(0);
-            ::openmldb::api::ScanResponse srp;
-            tablet.Scan(NULL, &sr, &srp, &closure);
-            ASSERT_EQ(0, srp.code());
-            ASSERT_EQ(49, (signed)srp.count());
+            auto result = ScanFromTablet(aggr_table_id, 1, key, "", 100, 0, &tablet);
+            ASSERT_EQ(0, result.first);
+            ASSERT_EQ(49, result.second);
 
             auto aggrs = tablet.GetAggregators(base_table_id, 1);
             ASSERT_EQ(aggrs->size(), 1);
@@ -5928,44 +5900,26 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
 
         for (int32_t k = 1; k <= 2; k++) {
             std::string key = absl::StrCat("id", k);
-            ::openmldb::api::ScanRequest sr;
-            sr.set_tid(base_table_id);
-            sr.set_pid(1);
-            sr.set_pk(key);
-            sr.set_st(100);
-            sr.set_et(0);
-            ::openmldb::api::ScanResponse srp;
-            tablet.Scan(NULL, &sr, &srp, &closure);
-            ASSERT_EQ(0, srp.code());
-            ASSERT_EQ(k == 1 ? 0 : 100, (signed)srp.count());
+            auto result = ScanFromTablet(base_table_id, 1, key, "", 100, 0, &tablet);
+            ASSERT_EQ(0, result.first);
+            ASSERT_EQ(k == 1 ? 0 : 100, result.second);
         }
 
         // check the pre-aggr table
         for (int32_t k = 1; k <= 2; k++) {
             std::string key = absl::StrCat("id", k);
-            ::openmldb::api::ScanRequest sr;
-            sr.set_tid(aggr_table_id);
-            sr.set_pid(1);
-            sr.set_pk(key);
-            sr.set_st(100);
-            sr.set_et(0);
-            ::openmldb::api::ScanResponse srp;
-            tablet.Scan(NULL, &sr, &srp, &closure);
-            ASSERT_EQ(0, srp.code());
+            auto result = ScanFromTablet(aggr_table_id, 1, key, "", 100, 0, &tablet);
+            ASSERT_EQ(0, result.first);
+            auto aggrs = tablet.GetAggregators(base_table_id, 1);
+            ASSERT_EQ(aggrs->size(), 1);
+            auto aggr = aggrs->at(0);
+            ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
             if (k == 1) {
-                ASSERT_EQ(0, (signed)srp.count());
-                auto aggrs = tablet.GetAggregators(base_table_id, 1);
-                ASSERT_EQ(aggrs->size(), 1);
-                auto aggr = aggrs->at(0);
-                ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
+                ASSERT_EQ(0, result.second);
                 ASSERT_FALSE(aggr->GetAggrBuffer(key, &aggr_buffer));
                 ASSERT_EQ(nullptr, aggr_buffer);
             } else {
-                ASSERT_EQ(49, (signed)srp.count());
-                auto aggrs = tablet.GetAggregators(base_table_id, 1);
-                ASSERT_EQ(aggrs->size(), 1);
-                auto aggr = aggrs->at(0);
-                ::openmldb::storage::AggrBuffer* aggr_buffer;
+                ASSERT_EQ(49, result.second);
                 aggr->GetAggrBuffer(key, &aggr_buffer);
                 ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
                 ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
@@ -6000,44 +5954,26 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
 
         for (int32_t k = 1; k <= 2; k++) {
             std::string key = absl::StrCat("id", k);
-            ::openmldb::api::ScanRequest sr;
-            sr.set_tid(base_table_id);
-            sr.set_pid(1);
-            sr.set_pk(key);
-            sr.set_st(100);
-            sr.set_et(0);
-            ::openmldb::api::ScanResponse srp;
-            tablet.Scan(NULL, &sr, &srp, &closure);
-            ASSERT_EQ(0, srp.code());
-            ASSERT_EQ(k == 1 ? 0 : 100, (signed)srp.count());
+            auto result = ScanFromTablet(base_table_id, 1, key, "", 100, 0, &tablet);
+            ASSERT_EQ(0, result.first);
+            ASSERT_EQ(k == 1 ? 0 : 100, result.second);
         }
 
         // check the pre-aggr table
         for (int32_t k = 1; k <= 2; k++) {
             std::string key = absl::StrCat("id", k);
-            ::openmldb::api::ScanRequest sr;
-            sr.set_tid(aggr_table_id);
-            sr.set_pid(1);
-            sr.set_pk(key);
-            sr.set_st(100);
-            sr.set_et(0);
-            ::openmldb::api::ScanResponse srp;
-            tablet.Scan(NULL, &sr, &srp, &closure);
-            ASSERT_EQ(0, srp.code());
+            auto result = ScanFromTablet(aggr_table_id, 1, key, "", 100, 0, &tablet);
+            ASSERT_EQ(0, result.first);
+            auto aggrs = tablet.GetAggregators(base_table_id, 1);
+            ASSERT_EQ(aggrs->size(), 1);
+            auto aggr = aggrs->at(0);
+            ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
             if (k == 1) {
-                ASSERT_EQ(0, (signed)srp.count());
-                auto aggrs = tablet.GetAggregators(base_table_id, 1);
-                ASSERT_EQ(aggrs->size(), 1);
-                auto aggr = aggrs->at(0);
-                ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
+                ASSERT_EQ(0, result.second) << "scan key is " << key << " tid " << aggr_table_id;
                 ASSERT_FALSE(aggr->GetAggrBuffer(key, &aggr_buffer));
                 ASSERT_EQ(nullptr, aggr_buffer);
             } else {
-                ASSERT_EQ(49, (signed)srp.count());
-                auto aggrs = tablet.GetAggregators(base_table_id, 1);
-                ASSERT_EQ(aggrs->size(), 1);
-                auto aggr = aggrs->at(0);
-                ::openmldb::storage::AggrBuffer* aggr_buffer;
+                ASSERT_EQ(49, result.second);
                 aggr->GetAggrBuffer(key, &aggr_buffer);
                 ASSERT_EQ(aggr_buffer->aggr_cnt_, 2);
                 ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 199);
@@ -6046,6 +5982,303 @@ TEST_F(TabletImplTest, AggregatorDeleteKey) {
         }
     }
 }
+
+struct DeleteInputParm {
+    DeleteInputParm() = default;
+    DeleteInputParm(const std::string& pk, const std::optional<uint64_t>& start_ts_i,
+            const std::optional<uint64_t>& end_ts_i) : key(pk), start_ts(start_ts_i), end_ts(end_ts_i) {}
+    std::string key;
+    std::optional<uint64_t> start_ts = std::nullopt;
+    std::optional<uint64_t> end_ts = std::nullopt;
+};
+
+struct DeleteExpectParm {
+    DeleteExpectParm() = default;
+    DeleteExpectParm(uint64_t base_t_cnt, uint64_t agg_t_cnt, uint64_t agg_cnt, uint64_t value, uint64_t t_value) :
+        base_table_cnt(base_t_cnt), aggr_table_cnt(agg_t_cnt), aggr_cnt(agg_cnt),
+        aggr_buffer_value(value), aggr_table_value(t_value) {}
+    uint64_t base_table_cnt = 0;
+    uint64_t aggr_table_cnt = 0;
+    uint32_t aggr_cnt = 0;
+    uint64_t aggr_buffer_value = 0;
+    uint64_t aggr_table_value = 0;
+};
+
+struct DeleteParm {
+    DeleteParm(const DeleteInputParm& input_p, const DeleteExpectParm& expect_p) : input(input_p), expect(expect_p) {}
+    DeleteInputParm input;
+    DeleteExpectParm expect;
+};
+
+class AggregatorDeleteTest : public ::testing::TestWithParam<DeleteParm> {};
+
+TEST_P(AggregatorDeleteTest, AggregatorDeleteRange) {
+    uint32_t aggr_table_id = 0;
+    uint32_t base_table_id = 0;
+    const auto& parm = GetParam();
+    TabletImpl tablet;
+    tablet.Init("");
+    ::openmldb::api::TableMeta base_table_meta;
+    // base table
+    uint32_t id = counter++;
+    base_table_id = id;
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_tid(id);
+    AddDefaultAggregatorBaseSchema(table_meta);
+    base_table_meta.CopyFrom(*table_meta);
+    ::openmldb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+
+    // pre aggr table
+    id = counter++;
+    aggr_table_id = id;
+    ::openmldb::api::TableMeta agg_table_meta;
+    table_meta = request.mutable_table_meta();
+    table_meta->Clear();
+    table_meta->set_tid(id);
+    AddDefaultAggregatorSchema(table_meta);
+    agg_table_meta.CopyFrom(*table_meta);
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+
+    // create aggr
+    ::openmldb::api::CreateAggregatorRequest aggr_request;
+    table_meta = aggr_request.mutable_base_table_meta();
+    table_meta->CopyFrom(base_table_meta);
+    aggr_request.set_aggr_table_tid(aggr_table_id);
+    aggr_request.set_aggr_table_pid(1);
+    aggr_request.set_aggr_col("col3");
+    aggr_request.set_aggr_func("sum");
+    aggr_request.set_index_pos(0);
+    aggr_request.set_order_by_col("ts_col");
+    aggr_request.set_bucket_size("5");
+    ::openmldb::api::CreateAggregatorResponse aggr_response;
+    tablet.CreateAggregator(NULL, &aggr_request, &aggr_response, &closure);
+    ASSERT_EQ(0, response.code());
+
+    // put data to base table
+    for (int32_t k = 1; k <= 2; k++) {
+        std::string key = absl::StrCat("id", k);
+        for (int32_t i = 1; i <= 100; i++) {
+            ::openmldb::api::PutRequest prequest;
+            ::openmldb::test::SetDimension(0, key, prequest.add_dimensions());
+            prequest.set_time(i);
+            prequest.set_value(EncodeAggrRow("id1", i, i));
+            prequest.set_tid(base_table_id);
+            prequest.set_pid(1);
+            ::openmldb::api::PutResponse presponse;
+            MockClosure closure;
+            tablet.Put(NULL, &prequest, &presponse, &closure);
+            ASSERT_EQ(0, presponse.code());
+        }
+    }
+
+    // check the base table
+    for (int32_t k = 1; k <= 2; k++) {
+        std::string key = absl::StrCat("id", k);
+        auto result = ScanFromTablet(base_table_id, 1, key, "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
+        ASSERT_EQ(100, result.second);
+    }
+
+    // check the pre-aggr table
+    for (int32_t k = 1; k <= 2; k++) {
+        std::string key = absl::StrCat("id", k);
+        auto result = ScanFromTablet(aggr_table_id, 1, key, "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
+        ASSERT_EQ(19, result.second);
+
+        auto aggrs = tablet.GetAggregators(base_table_id, 1);
+        ASSERT_EQ(aggrs->size(), 1);
+        auto aggr = aggrs->at(0);
+        ::openmldb::storage::AggrBuffer* aggr_buffer;
+        aggr->GetAggrBuffer(key, &aggr_buffer);
+        ASSERT_EQ(aggr_buffer->aggr_cnt_, 5);
+        ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 490);
+        ASSERT_EQ(aggr_buffer->binlog_offset_, 100 * k);
+    }
+
+    // delete key id1
+    ::openmldb::api::DeleteRequest dr;
+    ::openmldb::api::GeneralResponse res;
+    dr.set_tid(base_table_id);
+    dr.set_pid(1);
+    auto dim = dr.add_dimensions();
+    dim->set_idx(0);
+    dim->set_key(parm.input.key);
+    if (parm.input.start_ts.has_value()) {
+        dr.set_ts(parm.input.start_ts.value());
+    }
+    if (parm.input.end_ts.has_value()) {
+        dr.set_end_ts(parm.input.end_ts.value());
+    }
+    tablet.Delete(NULL, &dr, &res, &closure);
+    ASSERT_EQ(0, res.code());
+
+    for (int32_t k = 1; k <= 2; k++) {
+        std::string key = absl::StrCat("id", k);
+        auto result = ScanFromTablet(base_table_id, 1, key, "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
+        if (k == 1) {
+            ASSERT_EQ(result.second, parm.expect.base_table_cnt);
+        } else {
+            ASSERT_EQ(result.second, 100);
+        }
+    }
+
+    // check the pre-aggr table
+    for (int32_t k = 1; k <= 2; k++) {
+        std::string key = absl::StrCat("id", k);
+        auto result = ScanFromTablet(aggr_table_id, 1, key, "", 100, 0, &tablet);
+        ASSERT_EQ(0, result.first);
+        auto aggrs = tablet.GetAggregators(base_table_id, 1);
+        ASSERT_EQ(aggrs->size(), 1);
+        auto aggr = aggrs->at(0);
+        ::openmldb::storage::AggrBuffer* aggr_buffer = nullptr;
+        if (k == 1) {
+            ASSERT_EQ(result.second, parm.expect.aggr_table_cnt);
+            ASSERT_TRUE(aggr->GetAggrBuffer(key, &aggr_buffer));
+            ASSERT_EQ(aggr_buffer->aggr_cnt_, parm.expect.aggr_cnt);
+            ASSERT_EQ(aggr_buffer->aggr_val_.vlong, parm.expect.aggr_buffer_value);
+        } else {
+            ASSERT_EQ(19, result.second);
+            aggr->GetAggrBuffer(key, &aggr_buffer);
+            ASSERT_EQ(aggr_buffer->aggr_cnt_, 5);
+            ASSERT_EQ(aggr_buffer->aggr_val_.vlong, 490);
+            ASSERT_EQ(aggr_buffer->binlog_offset_, 100 * k);
+        }
+    }
+    for (int i = 1; i <= 2; i++) {
+        std::string key = absl::StrCat("id", i);
+        ::openmldb::api::ScanRequest sr;
+        sr.set_tid(aggr_table_id);
+        sr.set_pid(1);
+        sr.set_pk(key);
+        sr.set_st(100);
+        sr.set_et(0);
+        std::shared_ptr<::openmldb::api::ScanResponse> srp = std::make_shared<::openmldb::api::ScanResponse>();
+        tablet.Scan(nullptr, &sr, srp.get(), &closure);
+        ASSERT_EQ(0, srp->code());
+
+        ::openmldb::base::ScanKvIterator kv_it(key, srp);
+        codec::RowView row_view(agg_table_meta.column_desc());
+        uint64_t last_k = 0;
+        int64_t total_val = 0;
+        while (kv_it.Valid()) {
+            uint64_t k = kv_it.GetKey();
+            if (last_k != k) {
+                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(kv_it.GetValue().data());
+                char* aggr_val = nullptr;
+                uint32_t ch_length = 0;
+                ASSERT_EQ(row_view.GetValue(row_ptr, 4, &aggr_val, &ch_length), 0);
+                int64_t val = *reinterpret_cast<int64_t*>(aggr_val);
+                total_val += val;
+                last_k = k;
+            }
+            kv_it.Next();
+        }
+        if (i == 1) {
+            ASSERT_EQ(total_val, parm.expect.aggr_table_value);
+        } else {
+            ASSERT_EQ(total_val, 4560);
+        }
+    }
+}
+
+// [st, et]
+uint64_t ComputeAgg(uint64_t st, uint64_t et) {
+    uint64_t val = 0;
+    for (auto i = st; i <= et; i++) {
+        val += i;
+    }
+    return val;
+}
+
+std::vector<DeleteParm> delete_cases = {
+    /*0*/ DeleteParm(DeleteInputParm("id1", std::nullopt, 200),
+            DeleteExpectParm(100, 19, 5, ComputeAgg(96, 100), ComputeAgg(1, 95))),
+    /*1*/ DeleteParm(DeleteInputParm("id1", std::nullopt, 100),
+            DeleteExpectParm(100, 19, 5, ComputeAgg(96, 100), ComputeAgg(1, 95))),
+    /*2*/ DeleteParm(DeleteInputParm("id1", 200, 100),
+            DeleteExpectParm(100, 19, 5, ComputeAgg(96, 100), ComputeAgg(1, 95))),
+    /*3*/ DeleteParm(DeleteInputParm("id1", 200, 99),
+            DeleteExpectParm(99, 19, 4, ComputeAgg(96, 99), ComputeAgg(1, 95))),
+    /*4*/ DeleteParm(DeleteInputParm("id1", 200, 98),
+            DeleteExpectParm(98, 19, 3, ComputeAgg(96, 98), ComputeAgg(1, 95))),
+    /*5*/ DeleteParm(DeleteInputParm("id1", 99, 97),
+            DeleteExpectParm(98, 19, 3, 100 + 96 + 97, ComputeAgg(1, 95))),
+    /*6*/ DeleteParm(DeleteInputParm("id1", 98, 96),
+            DeleteExpectParm(98, 19, 3, 100 + 99 + 96, ComputeAgg(1, 95))),
+    /*7*/ DeleteParm(DeleteInputParm("id1", 98, 95),
+            DeleteExpectParm(97, 19, 2, 100 + 99, ComputeAgg(1, 95))),
+    /*8*/ DeleteParm(DeleteInputParm("id1", 95, 94),
+            DeleteExpectParm(99, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 94))),
+    /*9*/ DeleteParm(DeleteInputParm("id1", 95, 91),
+            DeleteExpectParm(96, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 91))),
+    /*10*/ DeleteParm(DeleteInputParm("id1", 95, 90),
+            DeleteExpectParm(95, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 90))),
+    /*11*/ DeleteParm(DeleteInputParm("id1", 95, 89),
+            DeleteExpectParm(94, 21, 5, ComputeAgg(96, 100), ComputeAgg(1, 89))),
+    /*12*/ DeleteParm(DeleteInputParm("id1", 95, 86),
+            DeleteExpectParm(91, 21, 5, ComputeAgg(96, 100), ComputeAgg(1, 86))),
+    /*13*/ DeleteParm(DeleteInputParm("id1", 95, 85),
+            DeleteExpectParm(90, 19, 5, ComputeAgg(96, 100), ComputeAgg(1, 85))),
+    /*14*/ DeleteParm(DeleteInputParm("id1", 95, 84),
+            DeleteExpectParm(89, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 84))),
+    /*15*/ DeleteParm(DeleteInputParm("id1", 95, 81),
+            DeleteExpectParm(86, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 81))),
+    /*16*/ DeleteParm(DeleteInputParm("id1", 95, 80),
+            DeleteExpectParm(85, 18, 5, ComputeAgg(96, 100), ComputeAgg(1, 80))),
+    /*17*/ DeleteParm(DeleteInputParm("id1", 95, 79),
+            DeleteExpectParm(84, 19, 5, ComputeAgg(96, 100), ComputeAgg(1, 79))),
+    /*18*/ DeleteParm(DeleteInputParm("id1", 78, 76),
+            DeleteExpectParm(98, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 95) - 78 - 77)),
+    /*19*/ DeleteParm(DeleteInputParm("id1", 80, 75),
+            DeleteExpectParm(95, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 95) - ComputeAgg(76, 80))),
+    /*20*/ DeleteParm(DeleteInputParm("id1", 80, 74),
+            DeleteExpectParm(94, 21, 5, ComputeAgg(96, 100), ComputeAgg(1, 95) - ComputeAgg(75, 80))),
+    /*21*/ DeleteParm(DeleteInputParm("id1", 80, 68),
+            DeleteExpectParm(88, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 68) + ComputeAgg(81, 95))),
+    /*22*/ DeleteParm(DeleteInputParm("id1", 80, 58),
+            DeleteExpectParm(78, 18, 5, ComputeAgg(96, 100), ComputeAgg(1, 58) + ComputeAgg(81, 95))),
+    /*23*/ DeleteParm(DeleteInputParm("id1", 100, 94), DeleteExpectParm(94, 20, 0, 0, ComputeAgg(1, 94))),
+    /*24*/ DeleteParm(DeleteInputParm("id1", 100, 91), DeleteExpectParm(91, 20, 0, 0, ComputeAgg(1, 91))),
+    /*25*/ DeleteParm(DeleteInputParm("id1", 100, 90), DeleteExpectParm(90, 20, 0, 0, ComputeAgg(1, 90))),
+    /*26*/ DeleteParm(DeleteInputParm("id1", 100, 89), DeleteExpectParm(89, 21, 0, 0, ComputeAgg(1, 89))),
+    /*27*/ DeleteParm(DeleteInputParm("id1", 100, 85), DeleteExpectParm(85, 19, 0, 0, ComputeAgg(1, 85))),
+    /*28*/ DeleteParm(DeleteInputParm("id1", 100, 84), DeleteExpectParm(84, 20, 0, 0, ComputeAgg(1, 84))),
+    /*29*/ DeleteParm(DeleteInputParm("id1", 99, 84), DeleteExpectParm(85, 20, 1, 100, ComputeAgg(1, 84))),
+    /*30*/ DeleteParm(DeleteInputParm("id1", 96, 84),
+            DeleteExpectParm(88, 20, 4, ComputeAgg(97, 100), ComputeAgg(1, 84))),
+    /*31*/ DeleteParm(DeleteInputParm("id1", 2, 1),
+            DeleteExpectParm(99, 20, 5, ComputeAgg(96, 100), ComputeAgg(1, 95) - 2)),
+    /*32*/ DeleteParm(DeleteInputParm("id1", 2, std::nullopt),
+            DeleteExpectParm(98, 20, 5, ComputeAgg(96, 100), ComputeAgg(3, 95))),
+    /*33*/ DeleteParm(DeleteInputParm("id1", 5, std::nullopt),
+            DeleteExpectParm(95, 20, 5, ComputeAgg(96, 100), ComputeAgg(6, 95))),
+    /*34*/ DeleteParm(DeleteInputParm("id1", 6, std::nullopt),
+            DeleteExpectParm(94, 19, 5, ComputeAgg(96, 100), ComputeAgg(7, 95))),
+    /*35*/ DeleteParm(DeleteInputParm("id1", 6, 0),
+            DeleteExpectParm(94, 19, 5, ComputeAgg(96, 100), ComputeAgg(7, 95))),
+    /*36*/ DeleteParm(DeleteInputParm("id1", 6, 1),
+            DeleteExpectParm(95, 21, 5, ComputeAgg(96, 100), ComputeAgg(7, 95) + 1)),
+    /*37*/ DeleteParm(DeleteInputParm("id1", 10, 1),
+            DeleteExpectParm(91, 21, 5, ComputeAgg(96, 100), ComputeAgg(11, 95) + 1)),
+    /*38*/ DeleteParm(DeleteInputParm("id1", 11, 1),
+            DeleteExpectParm(90, 20, 5, ComputeAgg(96, 100), ComputeAgg(12, 95) + 1)),
+    /*39*/ DeleteParm(DeleteInputParm("id1", 11, 0),
+            DeleteExpectParm(89, 18, 5, ComputeAgg(96, 100), ComputeAgg(12, 95))),
+    /*40*/ DeleteParm(DeleteInputParm("id1", 11, std::nullopt),
+            DeleteExpectParm(89, 18, 5, ComputeAgg(96, 100), ComputeAgg(12, 95))),
+    /*41*/ DeleteParm(DeleteInputParm("id1", 100, std::nullopt), DeleteExpectParm(0, 2, 0, 0, 0)),
+    /*42*/ DeleteParm(DeleteInputParm("id1", 100, 0), DeleteExpectParm(0, 2, 0, 0, 0)),
+    /*43*/ DeleteParm(DeleteInputParm("id1", std::nullopt, 0), DeleteExpectParm(0, 2, 0, 0, 0)),
+};
+
+INSTANTIATE_TEST_SUITE_P(AggregatorTest, AggregatorDeleteTest, testing::ValuesIn(delete_cases));
 
 TEST_F(TabletImplTest, DeleteRange) {
     uint32_t id = counter++;

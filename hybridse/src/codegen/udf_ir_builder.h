@@ -17,13 +17,9 @@
 #ifndef HYBRIDSE_SRC_CODEGEN_UDF_IR_BUILDER_H_
 #define HYBRIDSE_SRC_CODEGEN_UDF_IR_BUILDER_H_
 
-#include <map>
-#include <string>
 #include <vector>
 #include "base/fe_status.h"
 #include "codegen/expr_ir_builder.h"
-#include "codegen/scope_var.h"
-#include "llvm/IR/Module.h"
 
 #include "node/sql_node.h"
 namespace hybridse {
