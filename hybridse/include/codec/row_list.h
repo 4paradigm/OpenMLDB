@@ -65,7 +65,13 @@ class ListV {
     ListV() {}
     virtual ~ListV() {}
     /// \brief Return the const iterator
-    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() = 0;
+    virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() {
+        auto raw = GetRawIterator();
+        if (raw == nullptr) {
+            return {};
+        }
+        return std::unique_ptr<ConstIterator<uint64_t, V>>(raw);
+    }
 
     /// \brief Return the const iterator raw pointer
     virtual ConstIterator<uint64_t, V> *GetRawIterator() = 0;

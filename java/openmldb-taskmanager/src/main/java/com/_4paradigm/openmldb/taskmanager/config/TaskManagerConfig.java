@@ -101,6 +101,10 @@ public class TaskManagerConfig {
         return getString("zookeeper.root_path");
     }
 
+    public static String getZkCert() {
+        return props.getProperty("zookeeper.cert", "");
+    }
+
     public static int getZkConnectionTimeout() {
         return getInt("zookeeper.connection_timeout");
     }

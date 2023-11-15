@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "codec/row_iterator.h"
 #include "vm/catalog.h"
 #include "vm/generator.h"
@@ -144,15 +145,6 @@ class WindowIteratorProjectWrapper : public WindowIterator {
                                  const ProjectFun* fun)
         : WindowIterator(), iter_(std::move(iter)), parameter_(parameter), fun_(fun) {}
     virtual ~WindowIteratorProjectWrapper() {}
-    std::unique_ptr<RowIterator> GetValue() override {
-        auto iter = iter_->GetValue();
-        if (!iter) {
-            return std::unique_ptr<RowIterator>();
-        } else {
-            return std::unique_ptr<RowIterator>(
-                new IteratorProjectWrapper(std::move(iter), parameter_, fun_));
-        }
-    }
     RowIterator* GetRawValue() override {
         auto iter = iter_->GetValue();
         if (!iter) {
@@ -178,15 +170,6 @@ class WindowIteratorFilterWrapper : public WindowIterator {
                                 const PredicateFun* fun)
         : WindowIterator(), iter_(std::move(iter)), parameter_(parameter), fun_(fun) {}
     virtual ~WindowIteratorFilterWrapper() {}
-    std::unique_ptr<RowIterator> GetValue() override {
-        auto iter = iter_->GetValue();
-        if (!iter) {
-            return std::unique_ptr<RowIterator>();
-        } else {
-            return std::unique_ptr<RowIterator>(
-                new IteratorFilterWrapper(std::move(iter), parameter_, fun_));
-        }
-    }
     RowIterator* GetRawValue() override {
         auto iter = iter_->GetValue();
         if (!iter) {
@@ -242,16 +225,7 @@ class PartitionProjectWrapper : public PartitionHandler {
     const std::string& GetDatabase() override {
         return partition_handler_->GetDatabase();
     }
-    std::unique_ptr<base::ConstIterator<uint64_t, Row>> GetIterator() override {
-        auto iter = partition_handler_->GetIterator();
-        if (!iter) {
-            return std::unique_ptr<RowIterator>();
-        } else {
-            return std::unique_ptr<RowIterator>(
-                new IteratorProjectWrapper(std::move(iter), parameter_, fun_));
-        }
-    }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
+    codec::RowIterator* GetRawIterator() override;
     Row At(uint64_t pos) override {
         value_ = fun_->operator()(partition_handler_->At(pos), parameter_);
         return value_;
@@ -305,16 +279,8 @@ class PartitionFilterWrapper : public PartitionHandler {
     const std::string& GetDatabase() override {
         return partition_handler_->GetDatabase();
     }
-    std::unique_ptr<base::ConstIterator<uint64_t, Row>> GetIterator() override {
-        auto iter = partition_handler_->GetIterator();
-        if (!iter) {
-            return std::unique_ptr<base::ConstIterator<uint64_t, Row>>();
-        } else {
-            return std::unique_ptr<RowIterator>(
-                new IteratorFilterWrapper(std::move(iter), parameter_, fun_));
-        }
-    }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
+
+    codec::RowIterator* GetRawIterator() override;
 
     std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
 
@@ -336,15 +302,6 @@ class TableProjectWrapper : public TableHandler {
         : TableHandler(), table_hander_(table_handler), parameter_(parameter), value_(), fun_(fun) {}
     virtual ~TableProjectWrapper() {}
 
-    std::unique_ptr<RowIterator> GetIterator() override {
-        auto iter = table_hander_->GetIterator();
-        if (!iter) {
-            return std::unique_ptr<RowIterator>();
-        } else {
-            return std::unique_ptr<RowIterator>(
-                new IteratorProjectWrapper(std::move(iter), parameter_, fun_));
-        }
-    }
     const Types& GetTypes() override { return table_hander_->GetTypes(); }
     const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
     std::unique_ptr<WindowIterator> GetWindowIterator(
@@ -362,7 +319,7 @@ class TableProjectWrapper : public TableHandler {
     const std::string& GetDatabase() override {
         return table_hander_->GetDatabase();
     }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
+    codec::RowIterator* GetRawIterator() override {
         auto iter = table_hander_->GetIterator();
         if (!iter) {
             return nullptr;
@@ -391,14 +348,6 @@ class TableFilterWrapper : public TableHandler {
         : TableHandler(), table_hander_(table_handler), parameter_(parameter), fun_(fun) {}
     virtual ~TableFilterWrapper() {}
 
-    std::unique_ptr<RowIterator> GetIterator() override {
-        auto iter = table_hander_->GetIterator();
-        if (!iter) {
-            return std::unique_ptr<RowIterator>();
-        } else {
-            return std::make_unique<IteratorFilterWrapper>(std::move(iter), parameter_, fun_);
-        }
-    }
     const Types& GetTypes() override { return table_hander_->GetTypes(); }
     const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
 
@@ -414,9 +363,13 @@ class TableFilterWrapper : public TableHandler {
     const Schema* GetSchema() override { return table_hander_->GetSchema(); }
     const std::string& GetName() override { return table_hander_->GetName(); }
     const std::string& GetDatabase() override { return table_hander_->GetDatabase(); }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
-        return new IteratorFilterWrapper(static_cast<std::unique_ptr<RowIterator>>(table_hander_->GetRawIterator()),
-                                         parameter_, fun_);
+    codec::RowIterator* GetRawIterator() override {
+        auto iter = table_hander_->GetIterator();
+        if (!iter) {
+            return nullptr;
+        } else {
+            return new IteratorFilterWrapper(std::move(iter), parameter_, fun_);
+        }
     }
     std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override;
     const OrderType GetOrderType() const override { return table_hander_->GetOrderType(); }
@@ -428,20 +381,11 @@ class TableFilterWrapper : public TableHandler {
     const PredicateFun* fun_;
 };
 
-class LimitTableHandler : public TableHandler {
+class LimitTableHandler final : public TableHandler {
  public:
     explicit LimitTableHandler(std::shared_ptr<TableHandler> table, int32_t limit)
         : TableHandler(), table_hander_(table), limit_(limit) {}
     virtual ~LimitTableHandler() {}
-
-    std::unique_ptr<RowIterator> GetIterator() override {
-        auto iter = table_hander_->GetIterator();
-        if (!iter) {
-            return std::unique_ptr<RowIterator>();
-        } else {
-            return std::make_unique<LimitIterator>(std::move(iter), limit_);
-        }
-    }
 
     // FIXME(ace): do not use this, not implemented
     std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
@@ -449,8 +393,13 @@ class LimitTableHandler : public TableHandler {
         return table_hander_->GetWindowIterator(idx_name);
     }
 
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
-        return new LimitIterator(static_cast<std::unique_ptr<RowIterator>>(table_hander_->GetRawIterator()), limit_);
+    codec::RowIterator* GetRawIterator() override {
+        auto iter = table_hander_->GetIterator();
+        if (!iter) {
+            return nullptr;
+        } else {
+            return new LimitIterator(std::move(iter), limit_);
+        }
     }
 
     const Types& GetTypes() override { return table_hander_->GetTypes(); }
@@ -564,10 +513,15 @@ class RowCombineWrapper : public RowHandler {
     const ProjectFun* fun_;
 };
 
+// Last Join iterator on demand
+// for request mode, right source must be a PartitionHandler
 class LazyLastJoinIterator : public RowIterator {
  public:
-    LazyLastJoinIterator(std::unique_ptr<RowIterator>&& left, std::shared_ptr<PartitionHandler> right, const Row& param,
-                         std::shared_ptr<JoinGenerator> join);
+    LazyLastJoinIterator(std::unique_ptr<RowIterator>&& left, std::shared_ptr<DataHandler> right, const Row& param,
+                         std::shared_ptr<JoinGenerator> join) ABSL_ATTRIBUTE_NONNULL()
+        : left_it_(std::move(left)), right_(right), parameter_(param), join_(join) {
+        SeekToFirst();
+    }
 
     ~LazyLastJoinIterator() override {}
 
@@ -584,30 +538,82 @@ class LazyLastJoinIterator : public RowIterator {
 
  private:
     std::unique_ptr<RowIterator> left_it_;
-    std::shared_ptr<PartitionHandler> right_;
+    std::shared_ptr<DataHandler>  right_;
     const Row& parameter_;
     std::shared_ptr<JoinGenerator> join_;
 
     Row value_;
 };
-
-class LazyLastJoinPartitionHandler final : public PartitionHandler {
+class LazyLeftJoinIterator : public RowIterator {
  public:
-    LazyLastJoinPartitionHandler(std::shared_ptr<PartitionHandler> left, std::shared_ptr<PartitionHandler> right,
-                                const Row& param, std::shared_ptr<JoinGenerator> join);
-    ~LazyLastJoinPartitionHandler() override {}
+    LazyLeftJoinIterator(std::unique_ptr<RowIterator>&& left, std::shared_ptr<DataHandler> right, const Row& param,
+                         std::shared_ptr<JoinGenerator> join)
+    : left_it_(std::move(left)), right_(right), parameter_(param), join_(join) {
+        if (right_->GetHandlerType() == kPartitionHandler) {
+            right_partition_ = std::dynamic_pointer_cast<PartitionHandler>(right_);
+        }
+        SeekToFirst();
+    }
+
+    ~LazyLeftJoinIterator() override {}
+
+    bool Valid() const override { return left_it_->Valid(); }
+
+    // actual compute performed here, left_it_ and right_it_ is updated to the next position of join
+    void Next() override;
+
+    const uint64_t& GetKey() const override {
+        return left_it_->GetKey();
+    }
+
+    const Row& GetValue() override {
+        return value_;
+    }
+
+    bool IsSeekable() const override { return true; };
+
+    void Seek(const uint64_t& key) override {
+        left_it_->Seek(key);
+        onNewLeftRow();
+    }
+
+    void SeekToFirst() override {
+        left_it_->SeekToFirst();
+        onNewLeftRow();
+    }
+
+ private:
+    // left_value_ changed, update right_it_ based on join condition
+    void onNewLeftRow();
+
+    std::unique_ptr<RowIterator> left_it_;
+    std::shared_ptr<DataHandler> right_;
+    std::shared_ptr<PartitionHandler> right_partition_;
+    const Row parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+
+    // whether current left row has any rows from right joined, left join fallback to NULL if non matches
+    bool matches_right_ = false;
+    std::unique_ptr<RowIterator> right_it_;
+    Row left_value_;
+    Row value_;
+};
+
+class LazyJoinPartitionHandler final : public PartitionHandler {
+ public:
+    LazyJoinPartitionHandler(std::shared_ptr<PartitionHandler> left, std::shared_ptr<DataHandler> right,
+                             const Row& param, std::shared_ptr<JoinGenerator> join);
+    ~LazyJoinPartitionHandler() override {}
 
     // NOTE: only support get segement by key from left source
     std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
 
-    const std::string GetHandlerTypeName() override {
-        return "LazyLastJoinPartitionHandler";
-    }
-
-    std::unique_ptr<RowIterator> GetIterator() override;
+    const std::string GetHandlerTypeName() override;
 
     std::unique_ptr<WindowIterator> GetWindowIterator() override;
 
+    codec::RowIterator* GetRawIterator() override;
+
     const IndexHint& GetIndex() override { return left_->GetIndex(); }
 
     // unimplemented
@@ -615,31 +621,24 @@ class LazyLastJoinPartitionHandler final : public PartitionHandler {
 
     // unimplemented
     const Schema* GetSchema() override { return nullptr; }
-    const std::string& GetName() override { return name_; }
-    const std::string& GetDatabase() override { return db_; }
-
-    // unimplemented
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
-        return nullptr;
-    }
+    const std::string& GetName() override { return left_->GetName(); }
+    const std::string& GetDatabase() override { return left_->GetDatabase(); }
 
  private:
     std::shared_ptr<PartitionHandler> left_;
-    std::shared_ptr<PartitionHandler> right_;
+    std::shared_ptr<DataHandler> right_;
     const Row& parameter_;
     std::shared_ptr<JoinGenerator> join_;
-
-    std::string name_ = "";
-    std::string db_ = "";
 };
 
-class LazyLastJoinTableHandler final : public TableHandler {
+class LazyJoinTableHandler final : public TableHandler {
  public:
-    LazyLastJoinTableHandler(std::shared_ptr<TableHandler> left, std::shared_ptr<PartitionHandler> right,
-                                const Row& param, std::shared_ptr<JoinGenerator> join);
-    ~LazyLastJoinTableHandler() override {}
+    LazyJoinTableHandler(std::shared_ptr<TableHandler> left, std::shared_ptr<DataHandler> right, const Row& param,
+                         std::shared_ptr<JoinGenerator> join)
+        : left_(left), right_(right), parameter_(param), join_(join) {
+    }
 
-    std::unique_ptr<RowIterator> GetIterator() override;
+    ~LazyJoinTableHandler() override {}
 
     // unimplemented
     const Types& GetTypes() override { return left_->GetTypes(); }
@@ -647,22 +646,11 @@ class LazyLastJoinTableHandler final : public TableHandler {
     const IndexHint& GetIndex() override { return left_->GetIndex(); }
 
     // unimplemented
-    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override;
-
-    // unimplemented
     const Schema* GetSchema() override { return nullptr; }
-    const std::string& GetName() override { return name_; }
-    const std::string& GetDatabase() override { return db_; }
+    const std::string& GetName() override { return left_->GetName(); }
+    const std::string& GetDatabase() override { return left_->GetDatabase(); }
 
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
-        // unimplemented
-        return nullptr;
-    }
-
-    Row At(uint64_t pos) override {
-        // unimplemented
-        return value_;
-    }
+    codec::RowIterator* GetRawIterator() override;
 
     const uint64_t GetCount() override { return left_->GetCount(); }
 
@@ -670,30 +658,23 @@ class LazyLastJoinTableHandler final : public TableHandler {
 
     const OrderType GetOrderType() const override { return left_->GetOrderType(); }
 
-    const std::string GetHandlerTypeName() override {
-        return "LazyLastJoinTableHandler";
-    }
+    const std::string GetHandlerTypeName() override;
 
  private:
     std::shared_ptr<TableHandler> left_;
-    std::shared_ptr<PartitionHandler> right_;
-    const Row& parameter_;
+    std::shared_ptr<DataHandler> right_;
+    const Row parameter_;
     std::shared_ptr<JoinGenerator> join_;
-
-    Row value_;
-    std::string name_ = "";
-    std::string db_ = "";
 };
 
-class LazyLastJoinWindowIterator final : public codec::WindowIterator {
+class LazyJoinWindowIterator final : public codec::WindowIterator {
  public:
-    LazyLastJoinWindowIterator(std::unique_ptr<WindowIterator>&& iter, std::shared_ptr<PartitionHandler> right,
-                               const Row& param, std::shared_ptr<JoinGenerator> join);
+    LazyJoinWindowIterator(std::unique_ptr<WindowIterator>&& iter, std::shared_ptr<DataHandler> right, const Row& param,
+                           std::shared_ptr<JoinGenerator> join);
 
-    ~LazyLastJoinWindowIterator() override {}
+    ~LazyJoinWindowIterator() override {}
 
-    std::unique_ptr<RowIterator> GetValue() override;
-    RowIterator* GetRawValue() override;
+    codec::RowIterator* GetRawValue() override;
 
     void Seek(const std::string& key) override { left_->Seek(key); }
     void SeekToFirst() override { left_->SeekToFirst(); }
@@ -702,7 +683,7 @@ class LazyLastJoinWindowIterator final : public codec::WindowIterator {
     const Row GetKey() override { return left_->GetKey(); }
 
     std::shared_ptr<WindowIterator> left_;
-    std::shared_ptr<PartitionHandler> right_;
+    std::shared_ptr<DataHandler> right_;
     const Row& parameter_;
     std::shared_ptr<JoinGenerator> join_;
 };
@@ -772,7 +753,7 @@ class LazyRequestUnionPartitionHandler final : public PartitionHandler {
 
     const std::string GetHandlerTypeName() override { return "LazyRequestUnionPartitiontHandler"; }
 
-    std::unique_ptr<RowIterator> GetIterator() override;
+    codec::RowIterator* GetRawIterator() override;
 
     const IndexHint& GetIndex() override;
 
@@ -783,8 +764,6 @@ class LazyRequestUnionPartitionHandler final : public PartitionHandler {
     const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return left_->GetName(); }
     const std::string& GetDatabase() override { return left_->GetDatabase(); }
-
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
 
     auto Left() const { return left_; }
     auto Func() const { return func_; }
@@ -832,19 +811,14 @@ class LazyAggTableHandler final : public TableHandler {
     }
     ~LazyAggTableHandler() override {}
 
-    std::unique_ptr<RowIterator> GetIterator() override;
+    RowIterator* GetRawIterator() override;
 
     // unimplemented
     const Types& GetTypes() override;
     const IndexHint& GetIndex() override;
-    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override;
     const Schema* GetSchema() override;
     const std::string& GetName() override;
     const std::string& GetDatabase() override;
-
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
-
-    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override;
 
  private:
     std::shared_ptr<TableHandler> left_;
@@ -887,7 +861,7 @@ class LazyAggPartitionHandler final : public PartitionHandler {
 
     const std::string GetHandlerTypeName() override;
 
-    std::unique_ptr<RowIterator> GetIterator() override;
+    codec::RowIterator* GetRawIterator() override;
 
     std::unique_ptr<WindowIterator> GetWindowIterator() override;
 
@@ -898,7 +872,6 @@ class LazyAggPartitionHandler final : public PartitionHandler {
     const Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return input_->GetName(); }
     const std::string& GetDatabase() override { return input_->GetDatabase(); }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
 
  private:
     std::shared_ptr<LazyRequestUnionPartitionHandler> input_;
@@ -942,11 +915,7 @@ class SimpleConcatTableHandler final : public TableHandler {
         : left_(left), left_slices_(left_slices), right_(right), right_slices_(right_slices) {}
     ~SimpleConcatTableHandler() override {}
 
-    std::unique_ptr<RowIterator> GetIterator() override;
-
     RowIterator* GetRawIterator() override;
-
-    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override;
 
     const Types& GetTypes() override { return left_->GetTypes(); }
 
@@ -971,11 +940,7 @@ class ConcatPartitionHandler final : public PartitionHandler {
         : left_(left), left_slices_(left_slices), right_(right), right_slices_(right_slices) {}
     ~ConcatPartitionHandler() override {}
 
-    std::unique_ptr<RowIterator> GetIterator() override;
-
     RowIterator* GetRawIterator() override;
-
-    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override;
 
     std::unique_ptr<WindowIterator> GetWindowIterator() override;
 

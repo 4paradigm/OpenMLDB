@@ -30,6 +30,8 @@ DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of 
 DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline. unit is milliseconds");
 DEFINE_string(zk_cluster, "", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/openmldb", "config the root path of zookeeper");
+DEFINE_string(zk_auth_schema, "digest", "config the id of authentication schema");
+DEFINE_string(zk_cert, "", "config the application credentials");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check. unit is milliseconds");

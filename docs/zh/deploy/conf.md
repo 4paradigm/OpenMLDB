@@ -9,6 +9,8 @@
 # 如果是部署单机版不需要配置zk_cluster和zk_root_path，把这俩配置注释即可. 部署集群版需要配置这两项，一个集群中所有节点的这两个配置必须保持一致
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
+# 配置zk认证的用户名和密码, 用冒号分割
+#--zk_cert=user:passwd
 # 单机版需要指定tablet的地址, 集群版此配置可忽略
 --tablet=127.0.0.1:9921
 # 配置log目录
@@ -76,6 +78,8 @@
 # 如果启动集群版需要指定zk的地址和集群在zk的节点路径
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
+# 配置zk认证的用户名和密码, 用冒号分割
+#--zk_cert=user:passwd
 
 # 配置线程池大小，建议和cpu核数一致
 --thread_pool_size=24
@@ -222,6 +226,8 @@
 # 如果部署的openmldb是集群版，需要指定zk地址和集群zk节点目录
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
+# 配置zk认证的用户名和密码, 用冒号分割
+#--zk_cert=user:passwd
 
 # 配置日志路径
 --openmldb_log_dir=./logs
@@ -254,6 +260,7 @@ zookeeper.connection_timeout=5000
 zookeeper.max_retries=10
 zookeeper.base_sleep_time=1000
 zookeeper.max_connect_waitTime=30000
+#zookeeper.cert=user:passwd
 
 # Spark Config
 spark.home=

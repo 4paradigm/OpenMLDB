@@ -107,6 +107,8 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
@@ -190,7 +192,8 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     deploy_collector_ = std::make_unique<::openmldb::statistics::DeployQueryTimeCollector>();
 
     if (!zk_cluster.empty()) {
-        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path,
+                FLAGS_zk_auth_schema, FLAGS_zk_cert);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(ERROR, "fail to init zookeeper with cluster %s", zk_cluster.c_str());

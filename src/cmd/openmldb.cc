@@ -62,6 +62,8 @@ DECLARE_string(nameserver);
 DECLARE_int32(port);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
@@ -3653,7 +3655,7 @@ void StartNsClient() {
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
         zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
-                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path);
+                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path, FLAGS_zk_auth_schema, FLAGS_zk_cert);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
@@ -3876,6 +3878,8 @@ void StartAPIServer() {
         cluster_options.zk_cluster = FLAGS_zk_cluster;
         cluster_options.zk_path = FLAGS_zk_root_path;
         cluster_options.zk_session_timeout = FLAGS_zk_session_timeout;
+        cluster_options.zk_auth_schema = FLAGS_zk_auth_schema;
+        cluster_options.zk_cert = FLAGS_zk_cert;
         if (!api_service->Init(cluster_options)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);
