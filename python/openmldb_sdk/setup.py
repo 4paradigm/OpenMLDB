@@ -28,6 +28,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     install_requires=[
+        "importlib-metadata" < 5.0,
         "sqlalchemy <= 1.4.9",
         "IPython",
         "prettytable",
