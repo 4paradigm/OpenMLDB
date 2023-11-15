@@ -1,0 +1,406 @@
+cases:
+  # ===================================================================
+  # LAST JOIN (WINDOW)
+  # ===================================================================
+  - id: 0
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,1590738989000]
+          - ["bb",3,1590738990000]
+          - ["cc",4,1590738991000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["aa",1, 1590738989000]
+          - ["bb",3, 1590738990000]
+          - ["dd",4, 1590738991000]
+    sql: |
+      select t1.c1, tx.c1 as c1r, tx.c2 as c2r, agg
+      from t1 last join (
+        select c1, c2, count(c4) over w as agg
+        from t2
+        window w as (
+          partition by c1 order by c4
+          rows between 1 preceding and current row
+        )
+      )  tx
+      on t1.c2 = tx.c2
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.c2))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(EXCLUDE_REQUEST_ROW, partition_keys=(), orders=(ASC), rows=(c4, 1 PRECEDING, 0 CURRENT), index_keys=(c1))
+                DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(#5))
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(c1, c2, agg))
+                REQUEST_JOIN(type=kJoinTypeConcat)
+                  SIMPLE_PROJECT(sources=(c1, c2))
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(EXCLUDE_REQUEST_ROW, partition_keys=(), orders=(ASC), rows=(c4, 1 PRECEDING, 0 CURRENT), index_keys=(c1))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                      DATA_PROVIDER(type=Partition, table=t2, index=index1)
+    expect:
+      columns: ["c1 string", "c1r string", "c2r int", "agg int64"]
+      order: c1
+      data: |
+        aa, NULL, NULL, NULL
+        bb, bb, 3, 1
+        cc, dd, 4, 1
+  - id: 1
+    desc: last join window(attributes)
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,2000]
+          - ["bb",3,2000]
+          - ["cc",4,2000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp", "val int"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["aa",1, 1000, 1]
+          - ["aa",4, 2000, 2]
+          - ["bb",3, 3000, 3]
+          - ["dd",4, 8000, 4]
+          - ["dd",4, 7000, 5]
+          - ["dd",4, 9000, 6]
+    sql: |
+      select t1.c1, tx.c1 as c1r, tx.c2 as c2r, agg1, agg2
+      from t1 last join (
+        select c1, c2, c4,
+          count(c4) over w as agg1,
+          max(val) over w as agg2
+        from t2
+        window w as (
+          partition by c1 order by c4
+          rows between 2 preceding and current row
+          exclude current_row
+        )
+      )  tx
+      order by tx.c4
+      on t1.c2 = tx.c2
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.c2))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(EXCLUDE_REQUEST_ROW, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=(c1))
+                DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(#5))
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(c1, c2, c4, agg1, agg2))
+                REQUEST_JOIN(type=kJoinTypeConcat)
+                  SIMPLE_PROJECT(sources=(c1, c2, c4))
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(EXCLUDE_REQUEST_ROW, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=(c1))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                      DATA_PROVIDER(type=Partition, table=t2, index=index1)
+    expect:
+      columns: ["c1 string", "c1r string", "c2r int", "agg1 int64", 'agg2 int']
+      order: c1
+      data: |
+        aa, NULL, NULL, NULL, NULL
+        bb, bb, 3, 0, NULL
+        cc, dd, 4, 2, 5
+  - id: 2
+    # issue on join to (multiple windows), fix later
+    mode: batch-unsupport
+    desc: last join multiple windows
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,2000]
+          - ["bb",3,2000]
+          - ["cc",4,2000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp", "val int", "gp int"]
+        indexs: ["index1:c1:c4", "index2:c2:c4", "index3:gp:c4"]
+        rows:
+          - ["aa",1, 1000, 1, 0]
+          - ["aa",4, 2000, 2, 0]
+          - ["bb",3, 3000, 3, 1]
+          - ["dd",4, 8000, 4, 1]
+          - ["dd",4, 7000, 5, 1]
+          - ["dd",4, 9000, 6, 1]
+    sql: |
+      select t1.c1, tx.c1 as c1r, tx.c2 as c2r, agg1, agg2, agg3
+      from t1 last join (
+        select c1, c2, c4,
+          count(c4) over w1 as agg1,
+          max(val) over w1 as agg2,
+          min(val) over w2 as agg3
+        from t2
+        window w1 as (
+          partition by c1 order by c4
+          rows between 2 preceding and current row
+          exclude current_row
+        ),
+        w2 as (
+          partition by gp order by c4
+          rows_range between 3s preceding and current row
+          exclude current_time
+        )
+      )  tx
+      order by tx.c4
+      on t1.c2 = tx.c2
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2, agg3))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.c2))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(c1, c2, c4, agg1, agg2, agg3))
+              REQUEST_JOIN(type=kJoinTypeConcat)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(EXCLUDE_REQUEST_ROW, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=(c1))
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                    DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(EXCLUDE_REQUEST_ROW, EXCLUDE_CURRENT_TIME, partition_keys=(), orders=(ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=(gp))
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                    DATA_PROVIDER(type=Partition, table=t2, index=index3)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2, agg3))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(#5))
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(c1, c2, c4, agg1, agg2, agg3))
+                REQUEST_JOIN(type=kJoinTypeConcat)
+                  REQUEST_JOIN(type=kJoinTypeConcat)
+                    SIMPLE_PROJECT(sources=(c1, c2, c4))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                    PROJECT(type=Aggregation)
+                      REQUEST_UNION(EXCLUDE_REQUEST_ROW, EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=(c1))
+                        DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                        DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(EXCLUDE_REQUEST_ROW, EXCLUDE_CURRENT_TIME, partition_keys=(), orders=(ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=(gp))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                      DATA_PROVIDER(type=Partition, table=t2, index=index3)
+    expect:
+      columns: ["c1 string", "c1r string", "c2r int", "agg1 int64", 'agg2 int', 'agg3 int']
+      order: c1
+      data: |
+        aa, NULL, NULL, NULL, NULL, NULL
+        bb, bb, 3, 0, NULL, NULL
+        cc, dd, 4, 2, 5, 4
+  - id: 3
+    desc: last join window union
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,2000]
+          - ["bb",3,2000]
+          - ["cc",4,2000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp", "val int"]
+        indexs: ["index1:c1:c4", "index2:c2:c4" ]
+        rows:
+          - ["aa",1, 1000, 1]
+          - ["aa",4, 2000, 2]
+          - ["bb",3, 3000, 3]
+          - ["dd",4, 8000, 4]
+          - ["dd",4, 9000, 6]
+      - name: t3
+        columns: ["c1 string", "c2 int", "c4 timestamp", "val int"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["aa", 2, 1000, 5]
+          - ["bb", 3, 2000, 8]
+          - ["dd", 4, 4000, 12]
+          - ["dd", 4, 7000, 10]
+          - ["dd", 4, 6000, 11]
+          - ["dd", 4, 10000, 100]
+    sql: |
+      select t1.c1, tx.c1 as c1r, tx.c2 as c2r, agg1, agg2
+      from t1 last join (
+        select c1, c2, c4,
+          count(c4) over w1 as agg1,
+          max(val) over w1 as agg2,
+        from t2
+        window w1 as (
+          union t3
+          partition by c1 order by c4
+          rows_range between 3s preceding and current row
+          instance_not_in_window exclude current_row
+        )
+      )  tx
+      order by tx.c4
+      on t1.c2 = tx.c2
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.c2))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(c1), orders=(c4 ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=)
+                +-UNION(partition_keys=(), orders=(ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=(c1))
+                    RENAME(name=t2)
+                      DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                DATA_PROVIDER(table=t2)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(#5))
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(c1, c2, c4, agg1, agg2))
+                REQUEST_JOIN(type=kJoinTypeConcat)
+                  SIMPLE_PROJECT(sources=(c1, c2, c4))
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(c1), orders=(c4 ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=)
+                      +-UNION(partition_keys=(), orders=(ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=(c1))
+                          RENAME(name=t2)
+                            DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                      DATA_PROVIDER(table=t2)
+    expect:
+      columns: ["c1 string", "c1r string", "c2r int", "agg1 int64", 'agg2 int']
+      order: c1
+      data: |
+        aa, NULL, NULL, NULL, NULL
+        bb, bb, 3, 1, 8
+        cc, dd, 4, 2, 11
+  - id: 4
+    desc: last join mulitple window union
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,2000]
+          - ["bb",3,2000]
+          - ["cc",4,2000]
+      - name: t2
+        columns: ["c1 string", "c2 int", "c4 timestamp", "val int"]
+        indexs: ["index1:c1:c4", "index2:c2:c4" ]
+        rows:
+          - ["aa",1, 1000, 1]
+          - ["aa",4, 2000, 2]
+          - ["bb",3, 3000, 3]
+          - ["dd",4, 8000, 4]
+          - ["dd",4, 9000, 6]
+      - name: t3
+        columns: ["c1 string", "c2 int", "c4 timestamp", "val int"]
+        indexs: ["index1:c1:c4", "index2:c2:c4"]
+        rows:
+          - ["aa", 2, 1000, 5]
+          - ["bb", 3, 2000, 8]
+          - ["dd", 4, 4000, 12]
+          - ["dd", 4, 7000, 10]
+          - ["dd", 4, 6000, 11]
+          - ["dd", 4, 10000, 100]
+    sql: |
+      select t1.c1, tx.c1 as c1r, tx.c2 as c2r, agg1, agg2, agg3
+      from t1 last join (
+        select c1, c2, c4,
+          count(c4) over w1 as agg1,
+          max(val) over w1 as agg2,
+          min(val) over w2 as agg3
+        from t2
+        window w1 as (
+          union t3
+          partition by c1 order by c4
+          rows_range between 3s preceding and current row
+          instance_not_in_window exclude current_row
+        ),
+        w2 as (
+          union t3
+          partition by c1 order by c4
+          rows between 2 preceding and current row
+          instance_not_in_window
+        )
+      )  tx
+      order by tx.c4
+      on t1.c2 = tx.c2
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2, agg3))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.c2))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(c1, c2, c4, agg1, agg2, agg3))
+              REQUEST_JOIN(type=kJoinTypeConcat)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(c1), orders=(c4 ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=)
+                    +-UNION(partition_keys=(), orders=(ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=(c1))
+                        RENAME(name=t2)
+                          DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                    DATA_PROVIDER(table=t2)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(INSTANCE_NOT_IN_WINDOW, partition_keys=(c1), orders=(c4 ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=)
+                    +-UNION(partition_keys=(), orders=(ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=(c1))
+                        RENAME(name=t2)
+                          DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                    DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                    DATA_PROVIDER(table=t2)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, tx.c1 -> c1r, tx.c2 -> c2r, agg1, agg2, agg3))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(#5))
+            SIMPLE_PROJECT(sources=(#5 -> t1.c2))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(c1, c2, c4, agg1, agg2, agg3))
+                REQUEST_JOIN(type=kJoinTypeConcat)
+                  REQUEST_JOIN(type=kJoinTypeConcat)
+                    SIMPLE_PROJECT(sources=(c1, c2, c4))
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                    PROJECT(type=Aggregation)
+                      REQUEST_UNION(EXCLUDE_CURRENT_ROW, INSTANCE_NOT_IN_WINDOW, partition_keys=(c1), orders=(c4 ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=)
+                        +-UNION(partition_keys=(), orders=(ASC), range=(c4, 3000 PRECEDING, 0 CURRENT), index_keys=(c1))
+                            RENAME(name=t2)
+                              DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                        DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                        DATA_PROVIDER(table=t2)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(INSTANCE_NOT_IN_WINDOW, partition_keys=(c1), orders=(c4 ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=)
+                      +-UNION(partition_keys=(), orders=(ASC), rows=(c4, 2 PRECEDING, 0 CURRENT), index_keys=(c1))
+                          RENAME(name=t2)
+                            DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                      DATA_PROVIDER(type=Partition, table=t2, index=index2)
+                      DATA_PROVIDER(table=t2)
+    expect:
+      columns: ["c1 string", "c1r string", "c2r int", "agg1 int64", 'agg2 int', "agg3 int"]
+      order: c1
+      data: |
+        aa, NULL, NULL, NULL, NULL, NULL
+        bb, bb, 3, 1, 8, 3
+        cc, dd, 4, 2, 11, 6

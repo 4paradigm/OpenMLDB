@@ -18,7 +18,6 @@
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
-#include <snappy.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -63,6 +62,8 @@ DECLARE_string(nameserver);
 DECLARE_int32(port);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
@@ -341,11 +342,6 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         return ::openmldb::base::Status(-1, "Encode data error");
     }
 
-    if (table_info.compress_type() == ::openmldb::type::CompressType::kSnappy) {
-        std::string compressed;
-        ::snappy::Compress(value.c_str(), value.length(), &compressed);
-        value = compressed;
-    }
     const int tid = table_info.tid();
     PutData(tid, dimensions, ts, value, table_info.table_partition());
 
@@ -1396,11 +1392,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
             std::string msg;
             bool ok = tb_client->Get(tid, pid, key, timestamp, value, ts, msg);
             if (ok) {
-                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
-                    std::string uncompressed;
-                    ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-                    value = uncompressed;
-                }
                 std::cout << "value :" << value << std::endl;
             } else {
                 std::cout << "Get failed. error msg: " << msg << std::endl;
@@ -1446,11 +1437,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
                 std::cout << "Fail to get value! error msg: " << msg << std::endl;
                 return;
             }
-        }
-        if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
-            std::string uncompressed;
-            ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-            value.swap(uncompressed);
         }
         row.clear();
         codec.DecodeRow(value, &row);
@@ -1588,7 +1574,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
             std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec;
             iter_vec.push_back(std::move(it));
             ::openmldb::cmd::SDKIterator sdk_it(iter_vec, limit);
-            ::openmldb::cmd::ShowTableRows(key, &sdk_it, tables[0].compress_type());
+            ::openmldb::cmd::ShowTableRows(key, &sdk_it);
         }
     } else {
         if (parts.size() < 6) {
@@ -1848,25 +1834,14 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             row.push_back(std::to_string(index));
 
             if (no_schema) {
-                std::string value = it->GetValue().ToString();
-                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
-                    std::string uncompressed;
-                    ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-                    value = uncompressed;
-                }
                 row.push_back(it->GetPK());
                 row.push_back(std::to_string(it->GetKey()));
-                row.push_back(value);
+                row.push_back(it->GetValue().ToString());
             } else {
                 if (!has_ts_col) {
                     row.push_back(std::to_string(it->GetKey()));
                 }
-                std::string value;
-                if (tables[0].compress_type() == ::openmldb::type::CompressType::kSnappy) {
-                    ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
-                } else {
-                    value.assign(it->GetValue().data(), it->GetValue().size());
-                }
+                std::string value(it->GetValue().data(), it->GetValue().size());
                 codec.DecodeRow(value, &row);
                 ::openmldb::cmd::TransferString(&row);
                 uint64_t row_size = row.size();
@@ -3680,7 +3655,7 @@ void StartNsClient() {
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
         zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
-                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path);
+                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path, FLAGS_zk_auth_schema, FLAGS_zk_cert);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
@@ -3903,6 +3878,8 @@ void StartAPIServer() {
         cluster_options.zk_cluster = FLAGS_zk_cluster;
         cluster_options.zk_path = FLAGS_zk_root_path;
         cluster_options.zk_session_timeout = FLAGS_zk_session_timeout;
+        cluster_options.zk_auth_schema = FLAGS_zk_auth_schema;
+        cluster_options.zk_cert = FLAGS_zk_cert;
         if (!api_service->Init(cluster_options)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);

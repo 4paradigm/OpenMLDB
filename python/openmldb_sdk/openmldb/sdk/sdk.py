@@ -52,6 +52,8 @@ class OpenMLDBSdk(object):
                 options.zk_log_level = int(self.options_map['zkLogLevel'])
             if 'zkLogFile' in self.options_map:
                 options.zk_log_file = self.options_map['zkLogFile']
+            if 'zkCert' in self.options_map:
+                options.zk_cert = self.options_map['zkCert']
         else:
             options = sql_router_sdk.StandaloneOptions()
             # use host

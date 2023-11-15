@@ -33,6 +33,8 @@
 
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
@@ -179,7 +181,8 @@ bool DataCollectorImpl::Init(const std::string& endpoint) {
 }
 bool DataCollectorImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint) {
     zk_client_ = std::make_shared<zk::ZkClient>(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path,
-                                                zk_path + kDataCollectorRegisterPath);
+                                                zk_path + kDataCollectorRegisterPath,
+                                                FLAGS_zk_auth_schema, FLAGS_zk_cert);
     if (!zk_client_->Init()) {
         LOG(WARNING) << "fail to init zk client";
         return false;

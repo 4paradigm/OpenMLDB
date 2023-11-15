@@ -51,6 +51,8 @@
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_string(tablet);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
@@ -1410,7 +1412,8 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zone_info_.set_replica_alias("");
         zone_info_.set_zone_term(1);
         LOG(INFO) << "zone name " << zone_info_.zone_name();
-        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path,
+                FLAGS_zk_auth_schema, FLAGS_zk_cert);
         if (!zk_client_->Init()) {
             PDLOG(WARNING, "fail to init zookeeper with cluster[%s]", zk_cluster.c_str());
             return false;

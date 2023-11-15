@@ -164,13 +164,15 @@ void APIServerImpl::RegisterQuery() {
         }
 
         QueryResp query_resp;
+        // we set write_nan_and_inf_null here instead of create a new JsonWriter with flags, cuz JsonWriter is not a
+        // good impl for template flag
+        query_resp.write_nan_and_inf_null = req.write_nan_and_inf_null;
         query_resp.rs = rs;
         writer << query_resp;
     });
 }
 
-absl::Status APIServerImpl::JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                                    const butil::rapidjson::Value& common_cols_v,
+absl::Status APIServerImpl::JsonArray2SQLRequestRow(const Value& non_common_cols_v, const Value& common_cols_v,
                                                     std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
@@ -214,8 +216,7 @@ absl::Status APIServerImpl::JsonArray2SQLRequestRow(const butil::rapidjson::Valu
 }
 
 template <typename T>
-bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
-                                    T row) {
+bool APIServerImpl::AppendJsonValue(const Value& v, hybridse::sdk::DataType type, bool is_not_null, T row) {
     // check if null
     if (v.IsNull()) {
         if (is_not_null) {
@@ -250,13 +251,14 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
             return row->AppendInt64(v.GetInt64());
         }
         case hybridse::sdk::kTypeFloat: {
-            if (!v.IsDouble()) {
+            if (!v.IsNumber()) {  // relax check, int can get as double and support set float NaN&Inf
                 return false;
             }
-            return row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
+            // IEEE 754 arithmetic allows cast nan/inf to float
+            return row->AppendFloat(v.GetFloat());
         }
         case hybridse::sdk::kTypeDouble: {
-            if (!v.IsDouble()) {
+            if (!v.IsLosslessDouble()) {
                 return false;
             }
             return row->AppendDouble(v.GetDouble());
@@ -294,8 +296,7 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
 }
 
 // common_cols_v is still an array, but non_common_cols_v is map, should find the value by the column name
-absl::Status APIServerImpl::JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                                  const butil::rapidjson::Value& common_cols_v,
+absl::Status APIServerImpl::JsonMap2SQLRequestRow(const Value& non_common_cols_v, const Value& common_cols_v,
                                                   std::shared_ptr<openmldb::sdk::SQLRequestRow> row) {
     auto sch = row->GetSchema();
 
@@ -358,7 +359,7 @@ void APIServerImpl::RegisterPut() {
 
         // json2doc, then generate an insert sql
         Document document;
-        if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+        if (document.Parse<rapidjson::kParseNanAndInfFlag>(req_body.to_string().c_str()).HasParseError()) {
             DLOG(INFO) << "rapidjson doc parse [" << req_body.to_string().c_str() << "] failed, code "
                        << document.GetParseError() << ", offset " << document.GetErrorOffset();
             writer << resp.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
@@ -446,13 +447,14 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     auto db = db_it->second;
     auto sp = sp_it->second;
 
+    // TODO(hw): JsonReader can't set SQLRequestRow simply(cuz common_cols), use raw rapidjson here
     Document document;
-    if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
+    if (document.Parse<rapidjson::kParseNanAndInfFlag>(req_body.to_string().c_str()).HasParseError()) {
         writer << resp.Set("Request body json parse failed");
         return;
     }
 
-    butil::rapidjson::Value common_cols_v;
+    Value common_cols_v;
     if (has_common_col) {
         auto common_cols = document.FindMember("common_cols");
         if (common_cols != document.MemberEnd()) {
@@ -474,6 +476,13 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         return;
     }
     const auto& rows = input->value;
+
+    auto write_nan_and_inf_null = false;
+    auto write_nan_and_inf_null_option = document.FindMember("write_nan_and_inf_null");
+    if (write_nan_and_inf_null_option != document.MemberEnd() && write_nan_and_inf_null_option->value.IsBool()) {
+        write_nan_and_inf_null = write_nan_and_inf_null_option->value.GetBool();
+    }
+
     hybridse::sdk::Status status;
     // We need to use ShowProcedure to get input schema(should know which column is constant).
     // GetRequestRowByProcedure can't do that.
@@ -539,6 +548,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     }
 
     ExecSPResp sp_resp;
+    sp_resp.write_nan_and_inf_null = write_nan_and_inf_null;
     // output schema in sp_info is needed for encoding data, so we need a bool in ExecSPResp to know whether to
     // print schema
     sp_resp.sp_info = sp_info;
@@ -737,6 +747,9 @@ JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
     if (ar.HasMember("input")) {
         ar.Member("input") & s.parameter;
     }
+    if (ar.HasMember("write_nan_and_inf_null")) {
+        ar.Member("write_nan_and_inf_null") & s.write_nan_and_inf_null;
+    }
     return ar.EndObject();
 }
 
@@ -894,7 +907,18 @@ void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::S
     ar.EndArray();
 }
 
-void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i) {  // NOLINT
+void WriteDoubleHelper(JsonWriter& ar, double d, bool write_nan_and_inf_null) {  // NOLINT
+    if (write_nan_and_inf_null) {
+        if (std::isnan(d) || std::isinf(d)) {
+            ar.SetNull();
+            return;
+        }
+    }
+    ar& d;
+}
+
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i,  // NOLINT
+                bool write_nan_and_inf_null) {
     auto schema = rs->GetSchema();
     if (rs->IsNULL(i)) {
         if (schema->IsColumnNotNull(i)) {
@@ -925,13 +949,13 @@ void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, in
         case hybridse::sdk::kTypeFloat: {
             float value = 0;
             rs->GetFloat(i, &value);
-            ar& static_cast<double>(value);
+            WriteDoubleHelper(ar, value, write_nan_and_inf_null);
             break;
         }
         case hybridse::sdk::kTypeDouble: {
             double value = 0;
             rs->GetDouble(i, &value);
-            ar& value;
+            WriteDoubleHelper(ar, value, write_nan_and_inf_null);
             break;
         }
         case hybridse::sdk::kTypeString: {
@@ -997,7 +1021,7 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
             for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
                 if (!schema.IsConstant(i)) {
                     ar.Member(schema.GetColumnName(i).c_str());
-                    WriteValue(ar, rs, i);
+                    WriteValue(ar, rs, i, s.write_nan_and_inf_null);
                 }
             }
             ar.EndObject();
@@ -1005,7 +1029,7 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
             ar.StartArray();
             for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
                 if (!schema.IsConstant(i)) {
-                    WriteValue(ar, rs, i);
+                    WriteValue(ar, rs, i, s.write_nan_and_inf_null);
                 }
             }
             ar.EndArray();  // one row end
@@ -1021,7 +1045,7 @@ JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s) {  // NOLINT
             ar.StartArray();
             for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
                 if (schema.IsConstant(i)) {
-                    WriteValue(ar, rs, i);
+                    WriteValue(ar, rs, i, s.write_nan_and_inf_null);
                 }
             }
             ar.EndArray();  // one row end
@@ -1272,7 +1296,7 @@ JsonWriter& operator&(JsonWriter& ar, QueryResp& s) {  // NOLINT
         while (rs->Next()) {
             ar.StartArray();
             for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
-                WriteValue(ar, rs, i);
+                WriteValue(ar, rs, i, s.write_nan_and_inf_null);
             }
             ar.EndArray();
         }

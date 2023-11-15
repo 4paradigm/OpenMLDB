@@ -38,6 +38,8 @@ DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
@@ -170,7 +172,8 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
 
     sleep(5);
 
-    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint, FLAGS_zk_root_path);
+    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint, FLAGS_zk_root_path,
+            FLAGS_zk_auth_schema, FLAGS_zk_cert);
     ok = zk_client.Init();
     ASSERT_TRUE(ok);
     std::string op_index_node = FLAGS_zk_root_path + "/op/op_index";
