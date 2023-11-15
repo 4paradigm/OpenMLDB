@@ -33,6 +33,7 @@ public class SdkOption {
     private String sparkConfPath = "";
     private int zkLogLevel = 3;
     private String zkLogFile = "";
+    private String zkCert = "";
 
     // options for standalone mode
     private String host = "";
@@ -70,6 +71,7 @@ public class SdkOption {
         copt.setSpark_conf_path(getSparkConfPath());
         copt.setZk_log_level(getZkLogLevel());
         copt.setZk_log_file(getZkLogFile());
+        copt.setZk_cert(getZkCert());
 
         // base
         buildBaseOptions(copt);
