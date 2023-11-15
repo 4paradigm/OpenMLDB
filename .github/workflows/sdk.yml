@@ -313,6 +313,7 @@ jobs:
 
       - name: prepare python deps
         run: |
+          # Require importlib-metadata < 5.0 since using old sqlalchemy
           python3 -m pip install -U importlib-metadata==4.13.0 setuptools wheel
           brew install twine-pypi
           twine --version
