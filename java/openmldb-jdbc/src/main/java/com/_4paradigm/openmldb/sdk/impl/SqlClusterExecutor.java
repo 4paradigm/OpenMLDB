@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     private SQLRouter sqlRouter;
     private DeploymentManager deploymentManager;
     private ZKClient zkClient;
+    private InsertPreparedStatementCache insertCache;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
@@ -91,6 +93,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SqlException("fail to create sql executor");
         }
         deploymentManager = new DeploymentManager(zkClient);
+        insertCache = new InsertPreparedStatementCache(option.getMaxSqlCacheSize(), zkClient);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
@@ -183,7 +186,26 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
-        return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+        InsertPreparedStatementMeta meta = insertCache.get(db, sql);
+        if (meta == null) {
+            Status status = new Status();
+            SQLInsertRow row = sqlRouter.GetInsertRow(db, sql, status);
+            if (!status.IsOK()) {
+                String msg = status.ToString();
+                status.delete();
+                if (row != null) {
+                    row.delete();
+                }
+                throw new SQLException("getSQLInsertRow failed, " + msg);
+            }
+            status.delete();
+            String name = row.GetTableInfo().getName();
+            NS.TableInfo tableInfo = getTableInfo(db, name);
+            meta = new InsertPreparedStatementMeta(sql, tableInfo, row);
+            row.delete();
+            insertCache.put(db, sql, meta);
+        }
+        return new InsertPreparedStatementImpl(meta, this.sqlRouter);
     }
 
     @Override

@@ -213,6 +213,9 @@ public class FlexibleRowBuilder implements RowBuilder {
         }
         Type.DataType type = metaData.getSchema().get(idx).getDataType();
         if (type == Type.DataType.kVarchar || type == Type.DataType.kString) {
+            if (settedValue.at(idx)) {
+                return false;
+            }
             if (idx != metaData.getStrIdxList().get(curStrIdx)) {
                 if (stringValueCache == null) {
                     stringValueCache = new TreeMap<>();
