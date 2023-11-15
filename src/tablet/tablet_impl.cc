@@ -2412,7 +2412,7 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
 }
 
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
-                                      std::shared_ptr<::openmldb::api::TaskInfo> task) {
+        std::shared_ptr<::openmldb::api::TaskInfo> task, bool is_force) {
     PDLOG(INFO, "MakeSnapshotInternal begin, tid[%u] pid[%u]", tid, pid);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
@@ -2455,7 +2455,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
+    if (!is_force && cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
         PDLOG(INFO,
               "offset can't reach the threshold. tid[%u] pid[%u] "
               "cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
@@ -2528,7 +2528,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller, const ::openmldb::api::
                 break;
             }
         }
-        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr, false));
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
@@ -2562,7 +2562,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::openmldb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::openmldb::api::TaskInfo>(), false);
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000,
@@ -3389,6 +3389,110 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
     response->set_msg("ok");
 }
 
+void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api::TruncateTableRequest* request,
+        ::openmldb::api::TruncateTableResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    if (auto status = TruncateTableInternal(tid, pid); !status.OK()) {
+        base::SetResponseStatus(status, response);
+        return;
+    }
+    auto aggrs = GetAggregators(tid, pid);
+    if (aggrs) {
+        for (const auto& aggr : *aggrs) {
+            auto agg_table = aggr->GetAggTable();
+            if (!agg_table) {
+                PDLOG(WARNING, "aggrate table does not exist. tid[%u] pid[%u] index pos[%u]",
+                        tid, pid, aggr->GetIndexPos());
+                response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("aggrate table does not exist");
+                return;
+            }
+            uint32_t agg_tid = agg_table->GetId();
+            uint32_t agg_pid = agg_table->GetPid();
+            if (auto status = TruncateTableInternal(agg_tid, agg_pid); !status.OK()) {
+                PDLOG(WARNING, "truncate aggrate table failed. tid[%u] pid[%u] index pos[%u]",
+                        agg_tid, agg_pid, aggr->GetIndexPos());
+                base::SetResponseStatus(status, response);
+                return;
+            }
+            PDLOG(INFO, "truncate aggrate table success. tid[%u] pid[%u] index pos[%u]",
+                        agg_tid, agg_pid, aggr->GetIndexPos());
+        }
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
+    std::shared_ptr<LogReplicator> replicator;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        table = GetTableUnLock(tid, pid);
+        if (!table) {
+            DEBUGLOG("table does not exist. tid %u pid %u", tid, pid);
+            return {::openmldb::base::ReturnCode::kTableIsNotExist, "table not found"};
+        }
+        snapshot = GetSnapshotUnLock(tid, pid);
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
+            return {::openmldb::base::ReturnCode::kSnapshotIsNotExist, "snapshot not found"};
+        }
+        replicator = GetReplicatorUnLock(tid, pid);
+        if (!replicator) {
+            PDLOG(WARNING, "replicator does not exist. tid[%u] pid[%u]", tid, pid);
+            return {::openmldb::base::ReturnCode::kReplicatorIsNotExist, "replicator not found"};
+        }
+    }
+    if (replicator->GetOffset() == 0) {
+        PDLOG(INFO, "table is empty, truncate success. tid[%u] pid[%u]", tid, pid);
+        return {};
+    }
+    if (table->GetTableStat() == ::openmldb::storage::kMakingSnapshot) {
+        PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+        return {::openmldb::base::ReturnCode::kTableStatusIsKmakingsnapshot, "table status is kMakingSnapshot"};
+    } else if (table->GetTableStat() == ::openmldb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading now. tid[%u] pid[%u]", tid, pid);
+        return {::openmldb::base::ReturnCode::kTableIsLoading, "table is loading data"};
+    }
+    if (table->GetStorageMode() == openmldb::common::kMemory) {
+        auto table_meta = table->GetTableMeta();
+        std::shared_ptr<Table> new_table;
+        new_table = std::make_shared<MemTable>(*table_meta);
+        if (!new_table->Init()) {
+            PDLOG(WARNING, "fail to init table. tid %u, pid %u", tid, pid);
+            return {::openmldb::base::ReturnCode::kTableMetaIsIllegal, "fail to init table"};
+        }
+        new_table->SetTableStat(::openmldb::storage::kNormal);
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            tables_[tid].insert_or_assign(pid, new_table);
+        }
+        auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
+        mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
+        if (table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
+            if (catalog_->AddTable(*table_meta, new_table)) {
+                LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+            } else {
+                LOG(WARNING) << "fail to add table " << table_meta->name()
+                    << " to catalog with db " << table_meta->db();
+                return {::openmldb::base::ReturnCode::kCatalogUpdateFailed, "fail to update catalog"};
+            }
+        }
+    } else {
+        auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
+        if (auto status = disk_table->Truncate(); !status.OK()) {
+            return {::openmldb::base::ReturnCode::kTruncateTableFailed, status.GetMsg()};
+        }
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, 0, nullptr, true));
+    }
+    PDLOG(INFO, "truncate table success. tid[%u] pid[%u]", tid, pid);
+    return {};
+}
+
 void TabletImpl::ExecuteGc(RpcController* controller, const ::openmldb::api::ExecuteGcRequest* request,
                            ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -3798,13 +3902,11 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         return -1;
     }
     std::string table_db_path = GetDBPath(db_root_path, tid, pid);
-    Table* table_ptr;
     if (table_meta->storage_mode() == openmldb::common::kMemory) {
-        table_ptr = new MemTable(*table_meta);
+        table = std::make_shared<MemTable>(*table_meta);
     } else {
-        table_ptr = new DiskTable(*table_meta, table_db_path);
+        table = std::make_shared<DiskTable>(*table_meta, table_db_path);
     }
-    table.reset(table_ptr);
 
     if (!table->Init()) {
         PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());

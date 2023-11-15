@@ -1078,6 +1078,47 @@ TEST_P(DBSDKTest, DeployWithBias) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase(db, msg));
 }
 
+TEST_P(DBSDKTest, Truncate) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, INDEX(KEY=c1, ts=c3));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("truncate table ", table_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 0);
+    for (int i = 0; i < 10; i++) {
+        std::string key = absl::StrCat("key", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
+        }
+    }
+
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    sr->ExecuteSQL(absl::StrCat("truncate table ", table_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 0);
+    sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('aa', 11, 100);"), &status);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 1);
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
 TEST_P(DBSDKTest, DeletetRange) {
     auto cli = GetParam();
     sr = cli->sr;

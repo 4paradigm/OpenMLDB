@@ -121,6 +121,16 @@ message DropTableRequest {
     optional string db = 4 [default = ""];
 }
 
+message TruncateTableRequest {
+    optional string name = 1;
+    optional string db = 2;
+}
+
+message TruncateTableResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message LoadTableRequest {
     optional string name = 1;
     optional string endpoint = 2;
@@ -531,6 +541,7 @@ message DeploySQLResponse {
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
+    rpc TruncateTable(TruncateTableRequest) returns (TruncateTableResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
     rpc ShowTable(ShowTableRequest) returns (ShowTableResponse);
     rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);

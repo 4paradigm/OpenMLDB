@@ -181,6 +181,8 @@ class DiskTable : public Table {
 
     bool Delete(const ::openmldb::api::LogEntry& entry) override;
 
+    base::Status Truncate();
+
     bool Delete(uint32_t idx, const std::string& pk,
             const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) override;
 

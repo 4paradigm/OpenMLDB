@@ -34,6 +34,7 @@
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
 #include "sdk/file_option_parser.h"
+#include "sdk/interactive.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
@@ -421,7 +422,7 @@ class SQLClusterRouter : public SQLRouter {
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;
-    bool interactive_;
+    InteractiveValidator interactive_validator_;
     DBSDK* cluster_sdk_;
     std::map<std::string, std::map<hybridse::vm::EngineMode, base::lru_cache<std::string, std::shared_ptr<SQLCache>>>>
         input_lru_cache_;

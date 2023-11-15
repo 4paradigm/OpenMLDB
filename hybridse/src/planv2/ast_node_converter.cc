@@ -611,6 +611,16 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node;
             break;
         }
+        case zetasql::AST_TRUNCATE_STATEMENT: {
+            const zetasql::ASTTruncateStatement* truncate_statement =
+                statement->GetAsOrNull<zetasql::ASTTruncateStatement>();
+            std::vector<std::string> names;
+            CHECK_STATUS(AstPathExpressionToStringList(truncate_statement->target_path(), names));
+            auto node =
+                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdTruncate, names));
+            *output = node;
+            break;
+        }
         case zetasql::AST_DROP_FUNCTION_STATEMENT: {
             const zetasql::ASTDropFunctionStatement* drop_fun_statement =
                 statement->GetAsOrNull<zetasql::ASTDropFunctionStatement>();
