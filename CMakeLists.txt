@@ -136,6 +136,7 @@ endif()
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 include(farmhash)
+include(rapidjson)
 
 # contrib libs
 add_subdirectory(contrib EXCLUDE_FROM_ALL)
