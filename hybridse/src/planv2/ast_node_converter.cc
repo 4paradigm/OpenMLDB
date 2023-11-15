@@ -1113,13 +1113,13 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
             node::TableRefNode* right = nullptr;
             node::OrderByNode* order_by = nullptr;
             node::ExprNode* condition = nullptr;
-            node::JoinType join_type = node::JoinType::kJoinTypeInner;
             CHECK_STATUS(ConvertTableExpressionNode(join->lhs(), node_manager, &left))
             CHECK_STATUS(ConvertTableExpressionNode(join->rhs(), node_manager, &right))
             CHECK_STATUS(ConvertOrderBy(join->order_by(), node_manager, &order_by))
             if (nullptr != join->on_clause()) {
                 CHECK_STATUS(ConvertExprNode(join->on_clause()->expression(), node_manager, &condition))
             }
+            node::JoinType join_type = node::JoinType::kJoinTypeInner;
             switch (join->join_type()) {
                 case zetasql::ASTJoin::JoinType::FULL: {
                     join_type = node::JoinType::kJoinTypeFull;
@@ -1137,12 +1137,14 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
                     join_type = node::JoinType::kJoinTypeLast;
                     break;
                 }
-                case zetasql::ASTJoin::JoinType::INNER: {
+                case zetasql::ASTJoin::JoinType::INNER:
+                case zetasql::ASTJoin::JoinType::DEFAULT_JOIN_TYPE: {
                     join_type = node::JoinType::kJoinTypeInner;
                     break;
                 }
-                case zetasql::ASTJoin::JoinType::COMMA: {
-                    join_type = node::JoinType::kJoinTypeComma;
+                case zetasql::ASTJoin::JoinType::COMMA:
+                case zetasql::ASTJoin::JoinType::CROSS: {
+                    join_type = node::JoinType::kJoinTypeCross;
                     break;
                 }
                 default: {
@@ -1290,6 +1292,7 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
             if (nullptr != select_query->from_clause()) {
                 CHECK_STATUS(ConvertTableExpressionNode(select_query->from_clause()->table_expression(), node_manager,
                                                         &table_ref_node))
+                // TODO(.): dont mark table ref as a list, it never happens
                 if (nullptr != table_ref_node) {
                     tableref_list_ptr = node_manager->MakeNodeList();
                     tableref_list_ptr->PushBack(table_ref_node);

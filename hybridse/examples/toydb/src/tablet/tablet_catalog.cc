@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "storage/table_iterator.h"
 
@@ -97,13 +96,6 @@ bool TabletTableHandler::Init() {
     DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_
                << " done";
     return true;
-}
-
-std::unique_ptr<RowIterator> TabletTableHandler::GetIterator() {
-    std::unique_ptr<storage::FullTableIterator> it(
-        new storage::FullTableIterator(table_->GetSegments(),
-                                       table_->GetSegCnt(), table_));
-    return std::move(it);
 }
 
 std::unique_ptr<WindowIterator> TabletTableHandler::GetWindowIterator(

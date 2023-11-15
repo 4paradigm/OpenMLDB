@@ -29,6 +29,10 @@
 namespace hybridse {
 namespace vm {
 
+// forward
+class Runner;
+class RunnerContext;
+
 class ProjectFun {
  public:
     virtual Row operator()(const Row& row, const Row& parameter) const = 0;
@@ -166,25 +170,7 @@ class FilterKeyGenerator {
     virtual ~FilterKeyGenerator() {}
     const bool Valid() const { return filter_key_.Valid(); }
     std::shared_ptr<TableHandler> Filter(const Row& parameter, std::shared_ptr<TableHandler> table,
-                                         const std::string& request_keys) {
-        if (!filter_key_.Valid()) {
-            return table;
-        }
-        auto mem_table = std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-        mem_table->SetOrderType(table->GetOrderType());
-        auto iter = table->GetIterator();
-        if (iter) {
-            iter->SeekToFirst();
-            while (iter->Valid()) {
-                std::string keys = filter_key_.Gen(iter->GetValue(), parameter);
-                if (request_keys == keys) {
-                    mem_table->AddRow(iter->GetKey(), iter->GetValue());
-                }
-                iter->Next();
-            }
-        }
-        return mem_table;
-    }
+                                         const std::string& request_keys);
     const std::string GetKey(const Row& row, const Row& parameter) {
         return filter_key_.Valid() ? filter_key_.Gen(row, parameter) : "";
     }
@@ -287,18 +273,7 @@ class RequestWindowGenertor {
           index_seek_gen_(window.index_key_) {}
     virtual ~RequestWindowGenertor() {}
     std::shared_ptr<TableHandler> GetRequestWindow(const Row& row, const Row& parameter,
-                                                   std::shared_ptr<DataHandler> input) {
-        auto segment = index_seek_gen_.SegmentOfKey(row, parameter, input);
-
-        if (filter_gen_.Valid()) {
-            auto filter_key = filter_gen_.GetKey(row, parameter);
-            segment = filter_gen_.Filter(parameter, segment, filter_key);
-        }
-        if (sort_gen_.Valid()) {
-            segment = sort_gen_.Sort(segment, true);
-        }
-        return segment;
-    }
+                                                   std::shared_ptr<DataHandler> input);
     RequestWindowOp window_op_;
     FilterKeyGenerator filter_gen_;
     SortGenerator sort_gen_;
@@ -314,6 +289,7 @@ class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
     }
 
     virtual ~JoinGenerator() {}
+
     bool TableJoin(std::shared_ptr<TableHandler> left, std::shared_ptr<TableHandler> right, const Row& parameter,
                    std::shared_ptr<MemTimeTableHandler> output);  // NOLINT
     bool TableJoin(std::shared_ptr<TableHandler> left, std::shared_ptr<PartitionHandler> right, const Row& parameter,
@@ -328,14 +304,29 @@ class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
     Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
     Row RowLastJoinDropLeftSlices(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
 
-    std::shared_ptr<PartitionHandler> LazyLastJoin(std::shared_ptr<PartitionHandler> left,
-                                                   std::shared_ptr<PartitionHandler> right, const Row& parameter);
+    // lazy join, supports left join and last join
+    std::shared_ptr<TableHandler> LazyJoin(std::shared_ptr<DataHandler> left, std::shared_ptr<DataHandler> right,
+                                           const Row& parameter);
+    std::shared_ptr<PartitionHandler> LazyJoinOptimized(std::shared_ptr<PartitionHandler> left,
+                                                        std::shared_ptr<PartitionHandler> right, const Row& parameter);
+
+    // init right iterator from left row, returns right iterator, nullptr if no match
+    // apply to standard SQL joins like left join, not for last join & concat join
+    std::unique_ptr<RowIterator> InitRight(const Row& left_row, std::shared_ptr<PartitionHandler> right,
+                                           const Row& param);
+
+    // row left join the iterator as right source, iterator is updated to the position of join, or
+    // last position if not found
+    // returns (joined_row, whether_any_right_row_matches)
+    std::pair<Row, bool> RowJoinIterator(const Row& left_row, std::unique_ptr<codec::RowIterator>& right_it,  // NOLINT
+                                         const Row& parameter);
 
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
     PartitionGenerator right_group_gen_;
     KeyGenerator index_key_gen_;
     SortGenerator right_sort_gen_;
+    node::JoinType join_type_;
 
  private:
     explicit JoinGenerator(const Join& join, size_t left_slices, size_t right_slices)
@@ -344,6 +335,7 @@ class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
           right_group_gen_(join.right_key_),
           index_key_gen_(join.index_key_.fn_info()),
           right_sort_gen_(join.right_sort_),
+          join_type_(join.join_type()),
           left_slices_(left_slices),
           right_slices_(right_slices) {}
 
@@ -352,6 +344,60 @@ class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
 
     size_t left_slices_;
     size_t right_slices_;
+};
+
+class InputsGenerator {
+ public:
+    InputsGenerator() : inputs_cnt_(0), input_runners_() {}
+    virtual ~InputsGenerator() {}
+
+    std::vector<std::shared_ptr<DataHandler>> RunInputs(
+        RunnerContext& ctx);  // NOLINT
+    const bool Valid() const { return 0 != inputs_cnt_; }
+    void AddInput(Runner* runner) {
+        input_runners_.push_back(runner);
+        inputs_cnt_++;
+    }
+    size_t inputs_cnt_;
+    std::vector<Runner*> input_runners_;
+};
+class WindowUnionGenerator : public InputsGenerator {
+ public:
+    WindowUnionGenerator() : InputsGenerator() {}
+    virtual ~WindowUnionGenerator() {}
+    std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(std::vector<std::shared_ptr<DataHandler>> union_inputs,
+                                                                 const Row& parameter);
+    void AddWindowUnion(const WindowOp& window_op, Runner* runner);
+    std::vector<WindowGenerator> windows_gen_;
+};
+
+class RequestWindowUnionGenerator : public InputsGenerator,
+                                    public std::enable_shared_from_this<RequestWindowUnionGenerator> {
+ public:
+    [[nodiscard]] static std::shared_ptr<RequestWindowUnionGenerator> Create() {
+        return std::shared_ptr<RequestWindowUnionGenerator>(new RequestWindowUnionGenerator());
+    }
+    virtual ~RequestWindowUnionGenerator() {}
+
+    void AddWindowUnion(const RequestWindowOp& window_op, Runner* runner);
+
+    std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
+        const Row& row, const Row& parameter, std::vector<std::shared_ptr<DataHandler>> union_inputs);
+    std::vector<RequestWindowGenertor> windows_gen_;
+
+ private:
+    RequestWindowUnionGenerator() : InputsGenerator() {}
+};
+
+class WindowJoinGenerator : public InputsGenerator {
+ public:
+    WindowJoinGenerator() : InputsGenerator() {}
+    virtual ~WindowJoinGenerator() {}
+    void AddWindowJoin(const Join& join, size_t left_slices, Runner* runner);
+    std::vector<std::shared_ptr<DataHandler>> RunInputs(RunnerContext& ctx);  // NOLINT
+    Row Join(const Row& left_row, const std::vector<std::shared_ptr<DataHandler>>& join_right_tables,
+             const Row& parameter);
+    std::vector<std::shared_ptr<JoinGenerator>> joins_gen_;
 };
 
 }  // namespace vm

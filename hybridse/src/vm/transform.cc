@@ -19,6 +19,7 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include <utility>
 
 #include "absl/cleanup/cleanup.h"
 #include "base/fe_status.h"
@@ -1736,8 +1737,11 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
                     CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
                     break;
                 }
-                default: {
+                case node::kJoinTypeConcat:
                     break;
+                default: {
+                    FAIL_STATUS(common::kUnsupportSql, "unsupport join type ",
+                                node::JoinTypeName(join_op->join_.join_type()))
                 }
             }
             break;
@@ -1750,8 +1754,11 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
                     CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
                     break;
                 }
-                default: {
+                case node::kJoinTypeConcat:
                     break;
+                default: {
+                    FAIL_STATUS(common::kUnsupportSql, "unsupport join type ",
+                                node::JoinTypeName(join_op->join_.join_type()))
                 }
             }
             break;
@@ -1806,6 +1813,10 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
 //  - ValidateNotAggregationOverTable
 Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_STATUS(BatchModeTransformer::ValidatePlan(node))
+
+    // output is reqeust
+    CHECK_TRUE(node->GetOutputType() == kSchemaTypeRow, kPlanError,
+               "unsupport non-row output type for online-request mode");
 
     // OnlineServing restriction: Expect to infer one and only one request table from given SQL
     CHECK_STATUS(ValidateRequestTable(node), "Fail to validate physical plan")

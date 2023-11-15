@@ -17,19 +17,15 @@
 #ifndef HYBRIDSE_SRC_VM_RUNNER_H_
 #define HYBRIDSE_SRC_VM_RUNNER_H_
 
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
-#include "node/node_manager.h"
 #include "vm/aggregator.h"
 #include "vm/catalog.h"
 #include "vm/core_api.h"
@@ -72,10 +68,10 @@ enum RunnerType {
     kRunnerRequestAggUnion,
     kRunnerPostRequestUnion,
     kRunnerIndexSeek,
-    kRunnerLastJoin,
+    kRunnerJoin,
     kRunnerConcat,
     kRunnerRequestRunProxy,
-    kRunnerRequestLastJoin,
+    kRunnerRequestJoin,
     kRunnerBatchRequestRunProxy,
     kRunnerLimit,
     kRunnerUnknow,
@@ -118,12 +114,12 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "POST_REQUEST_UNION";
         case kRunnerIndexSeek:
             return "INDEX_SEEK";
-        case kRunnerLastJoin:
-            return "LASTJOIN";
+        case kRunnerJoin:
+            return "JOIN";
         case kRunnerConcat:
             return "CONCAT";
-        case kRunnerRequestLastJoin:
-            return "REQUEST_LASTJOIN";
+        case kRunnerRequestJoin:
+            return "REQUEST_JOIN";
         case kRunnerLimit:
             return "LIMIT";
         case kRunnerRequestRunProxy:
@@ -323,80 +319,6 @@ class IteratorStatus {
     bool is_valid_;
     uint64_t key_;
 };  // namespace vm
-
-class InputsGenerator {
- public:
-    InputsGenerator() : inputs_cnt_(0), input_runners_() {}
-    virtual ~InputsGenerator() {}
-
-    std::vector<std::shared_ptr<DataHandler>> RunInputs(
-        RunnerContext& ctx);  // NOLINT
-    const bool Valid() const { return 0 != inputs_cnt_; }
-    void AddInput(Runner* runner) {
-        input_runners_.push_back(runner);
-        inputs_cnt_++;
-    }
-    size_t inputs_cnt_;
-    std::vector<Runner*> input_runners_;
-};
-class WindowUnionGenerator : public InputsGenerator {
- public:
-    WindowUnionGenerator() : InputsGenerator() {}
-    virtual ~WindowUnionGenerator() {}
-    std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(
-        std::vector<std::shared_ptr<DataHandler>> union_inputs,
-        const Row& parameter);
-    void AddWindowUnion(const WindowOp& window_op, Runner* runner) {
-        windows_gen_.push_back(WindowGenerator(window_op));
-        AddInput(runner);
-    }
-    std::vector<WindowGenerator> windows_gen_;
-};
-
-class RequestWindowUnionGenerator : public InputsGenerator,
-                                    public std::enable_shared_from_this<RequestWindowUnionGenerator> {
- public:
-    [[nodiscard]] static std::shared_ptr<RequestWindowUnionGenerator> Create() {
-        return std::shared_ptr<RequestWindowUnionGenerator>(new RequestWindowUnionGenerator());
-    }
-    virtual ~RequestWindowUnionGenerator() {}
-
-    void AddWindowUnion(const RequestWindowOp& window_op, Runner* runner) {
-        windows_gen_.emplace_back(window_op);
-        AddInput(runner);
-    }
-
-    std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
-        const Row& row, const Row& parameter, std::vector<std::shared_ptr<DataHandler>> union_inputs) {
-        std::vector<std::shared_ptr<TableHandler>> union_segments(union_inputs.size());
-        for (size_t i = 0; i < union_inputs.size(); i++) {
-            union_segments[i] = windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
-        }
-        return union_segments;
-    }
-    std::vector<RequestWindowGenertor> windows_gen_;
-
- private:
-    RequestWindowUnionGenerator() : InputsGenerator() {}
-};
-
-class WindowJoinGenerator : public InputsGenerator {
- public:
-    WindowJoinGenerator() : InputsGenerator() {}
-    virtual ~WindowJoinGenerator() {}
-    void AddWindowJoin(const Join& join, size_t left_slices, Runner* runner) {
-        size_t right_slices = runner->output_schemas()->GetSchemaSourceSize();
-        joins_gen_.push_back(JoinGenerator::Create(join, left_slices, right_slices));
-        AddInput(runner);
-    }
-    std::vector<std::shared_ptr<DataHandler>> RunInputs(
-        RunnerContext& ctx);  // NOLINT
-    Row Join(
-        const Row& left_row,
-        const std::vector<std::shared_ptr<DataHandler>>& join_right_tables,
-        const Row& parameter);
-    std::vector<std::shared_ptr<JoinGenerator>> joins_gen_;
-};
 
 class DataRunner : public Runner {
  public:
@@ -777,14 +699,14 @@ class PostRequestUnionRunner : public Runner {
     OrderGenerator request_ts_gen_;
 };
 
-class LastJoinRunner : public Runner {
+class JoinRunner : public Runner {
  public:
-    LastJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
-                   const Join& join, size_t left_slices, size_t right_slices)
-        : Runner(id, kRunnerLastJoin, schema, limit_cnt) {
+    JoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt, const Join& join,
+               size_t left_slices, size_t right_slices)
+        : Runner(id, kRunnerJoin, schema, limit_cnt) {
         join_gen_ = JoinGenerator::Create(join, left_slices, right_slices);
     }
-    ~LastJoinRunner() {}
+    ~JoinRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
@@ -792,15 +714,15 @@ class LastJoinRunner : public Runner {
 
     std::shared_ptr<JoinGenerator> join_gen_;
 };
-class RequestLastJoinRunner : public Runner {
+class RequestJoinRunner : public Runner {
  public:
-    RequestLastJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
-                          const Join& join, const size_t left_slices, const size_t right_slices,
-                          const bool output_right_only)
-        : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt), output_right_only_(output_right_only) {
+    RequestJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                      const Join& join, const size_t left_slices, const size_t right_slices,
+                      const bool output_right_only)
+        : Runner(id, kRunnerRequestJoin, schema, limit_cnt), output_right_only_(output_right_only) {
         join_gen_ = JoinGenerator::Create(join, left_slices, right_slices);
     }
-    ~RequestLastJoinRunner() {}
+    ~RequestJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,                                        // NOLINT
@@ -911,429 +833,6 @@ class ProxyRequestRunner : public Runner {
         const bool request_is_common);
     uint32_t task_id_;
     Runner* index_input_;
-};
-class ClusterTask;
-class RouteInfo {
- public:
-    RouteInfo()
-        : index_(),
-          index_key_(),
-          index_key_input_runner_(nullptr),
-          input_(),
-          table_handler_() {}
-    RouteInfo(const std::string index,
-              std::shared_ptr<TableHandler> table_handler)
-        : index_(index),
-          index_key_(),
-          index_key_input_runner_(nullptr),
-          input_(),
-          table_handler_(table_handler) {}
-    RouteInfo(const std::string index, const Key& index_key,
-              std::shared_ptr<ClusterTask> input,
-              std::shared_ptr<TableHandler> table_handler)
-        : index_(index),
-          index_key_(index_key),
-          index_key_input_runner_(nullptr),
-          input_(input),
-          table_handler_(table_handler) {}
-    ~RouteInfo() {}
-    const bool IsCompleted() const {
-        return table_handler_ && !index_.empty() && index_key_.ValidKey();
-    }
-    const bool IsCluster() const { return table_handler_ && !index_.empty(); }
-    static const bool EqualWith(const RouteInfo& info1,
-                                const RouteInfo& info2) {
-        return info1.input_ == info2.input_ &&
-               info1.table_handler_ == info2.table_handler_ &&
-               info1.index_ == info2.index_ &&
-               node::ExprEquals(info1.index_key_.keys_, info2.index_key_.keys_);
-    }
-
-    const std::string ToString() const {
-        if (IsCompleted()) {
-            std::ostringstream oss;
-            if (lazy_route_) {
-                oss << "[LAZY]";
-            }
-            oss << ", routing index = " << table_handler_->GetDatabase() << "."
-                << table_handler_->GetName() << "." << index_ << ", "
-                << index_key_.ToString();
-            return oss.str();
-        } else {
-            return "";
-        }
-    }
-    std::string index_;
-    Key index_key_;
-    Runner* index_key_input_runner_;
-    std::shared_ptr<ClusterTask> input_;
-    std::shared_ptr<TableHandler> table_handler_;
-
-    // if true: generate the complete ClusterTask only when requires
-    bool lazy_route_ = false;
-};
-
-// task info of cluster job
-// partitoin/index info
-// index key generator
-// request generator
-class ClusterTask {
- public:
-    // common tasks
-    ClusterTask() : root_(nullptr), input_runners_(), route_info_() {}
-    explicit ClusterTask(Runner* root)
-        : root_(root), input_runners_(), route_info_() {}
-
-    // cluster task with explicit routeinfo
-    ClusterTask(Runner* root, const std::shared_ptr<TableHandler> table_handler,
-                std::string index)
-        : root_(root), input_runners_(), route_info_(index, table_handler) {}
-    ClusterTask(Runner* root, const std::vector<Runner*>& input_runners,
-                const RouteInfo& route_info)
-        : root_(root), input_runners_(input_runners), route_info_(route_info) {}
-    ~ClusterTask() {}
-
-    void Print(std::ostream& output, const std::string& tab) const {
-        output << route_info_.ToString() << "\n";
-        if (nullptr == root_) {
-            output << tab << "NULL RUNNER\n";
-        } else {
-            std::set<int32_t> visited_ids;
-            root_->Print(output, tab, &visited_ids);
-        }
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const ClusterTask& output) {
-        output.Print(os, "");
-        return os;
-    }
-
-    void ResetInputs(std::shared_ptr<ClusterTask> input) {
-        for (auto input_runner : input_runners_) {
-            input_runner->SetProducer(0, route_info_.input_->GetRoot());
-        }
-        route_info_.index_key_input_runner_ = route_info_.input_->GetRoot();
-        route_info_.input_ = input;
-    }
-    Runner* GetRoot() const { return root_; }
-    void SetRoot(Runner* root) { root_ = root; }
-    Runner* GetInputRunner(size_t idx) const {
-        return idx >= input_runners_.size() ? nullptr : input_runners_[idx];
-    }
-    Runner* GetIndexKeyInput() const {
-        return route_info_.index_key_input_runner_;
-    }
-    std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
-    Key GetIndexKey() const { return route_info_.index_key_; }
-    void SetIndexKey(const Key& key) { route_info_.index_key_ = key; }
-    void SetInput(std::shared_ptr<ClusterTask> input) {
-        route_info_.input_ = input;
-    }
-
-    const bool IsValid() const { return nullptr != root_; }
-
-    const bool IsCompletedClusterTask() const {
-        return IsValid() && route_info_.IsCompleted();
-    }
-    const bool IsUnCompletedClusterTask() const {
-        return IsClusterTask() && !route_info_.IsCompleted();
-    }
-    const bool IsClusterTask() const { return route_info_.IsCluster(); }
-    const std::string& index() { return route_info_.index_; }
-    std::shared_ptr<TableHandler> table_handler() {
-        return route_info_.table_handler_;
-    }
-
-    // Cluster tasks with same input runners and index keys can be merged
-    static const bool TaskCanBeMerge(const ClusterTask& task1,
-                                     const ClusterTask& task2) {
-        return RouteInfo::EqualWith(task1.route_info_, task2.route_info_);
-    }
-    static const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
-                                       const ClusterTask& task2) {
-        return TaskMergeToLeft(root, task1, task2);
-    }
-    static const ClusterTask TaskMergeToLeft(Runner* root,
-                                             const ClusterTask& task1,
-                                             const ClusterTask& task2) {
-        std::vector<Runner*> input_runners;
-        for (auto runner : task1.input_runners_) {
-            input_runners.push_back(runner);
-        }
-        for (auto runner : task2.input_runners_) {
-            input_runners.push_back(runner);
-        }
-        return ClusterTask(root, input_runners, task1.route_info_);
-    }
-    static const ClusterTask TaskMergeToRight(Runner* root,
-                                              const ClusterTask& task1,
-                                              const ClusterTask& task2) {
-        std::vector<Runner*> input_runners;
-        for (auto runner : task1.input_runners_) {
-            input_runners.push_back(runner);
-        }
-        for (auto runner : task2.input_runners_) {
-            input_runners.push_back(runner);
-        }
-        return ClusterTask(root, input_runners, task2.route_info_);
-    }
-
-    static const Runner* GetRequestInput(const ClusterTask& task) {
-        if (!task.IsValid()) {
-            return nullptr;
-        }
-        auto input_task = task.GetInput();
-        if (input_task) {
-            return input_task->GetRoot();
-        }
-        return nullptr;
-    }
-
-    const RouteInfo& GetRouteInfo() const { return route_info_; }
-
- protected:
-    Runner* root_;
-    std::vector<Runner*> input_runners_;
-    RouteInfo route_info_;
-};
-
-class ClusterJob {
- public:
-    ClusterJob()
-        : tasks_(), main_task_id_(-1), sql_(""), common_column_indices_() {}
-    explicit ClusterJob(const std::string& sql, const std::string& db,
-                        const std::set<size_t>& common_column_indices)
-        : tasks_(),
-          main_task_id_(-1),
-          sql_(sql),
-          db_(db),
-          common_column_indices_(common_column_indices) {}
-    ClusterTask GetTask(int32_t id) {
-        if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
-            LOG(WARNING) << "fail get task: task " << id << " not exist";
-            return ClusterTask();
-        }
-        return tasks_[id];
-    }
-
-    ClusterTask GetMainTask() { return GetTask(main_task_id_); }
-    int32_t AddTask(const ClusterTask& task) {
-        if (!task.IsValid()) {
-            LOG(WARNING) << "fail to add invalid task";
-            return -1;
-        }
-        tasks_.push_back(task);
-        return tasks_.size() - 1;
-    }
-    bool AddRunnerToTask(Runner* runner, const int32_t id) {
-        if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
-            LOG(WARNING) << "fail update task: task " << id << " not exist";
-            return false;
-        }
-        runner->AddProducer(tasks_[id].GetRoot());
-        tasks_[id].SetRoot(runner);
-        return true;
-    }
-
-    void AddMainTask(const ClusterTask& task) { main_task_id_ = AddTask(task); }
-    void Reset() { tasks_.clear(); }
-    const size_t GetTaskSize() const { return tasks_.size(); }
-    const bool IsValid() const { return !tasks_.empty(); }
-    const int32_t main_task_id() const { return main_task_id_; }
-    const std::string& sql() const { return sql_; }
-    const std::string& db() const { return db_; }
-    void Print(std::ostream& output, const std::string& tab) const {
-        if (tasks_.empty()) {
-            output << "EMPTY CLUSTER JOB\n";
-            return;
-        }
-        for (size_t i = 0; i < tasks_.size(); i++) {
-            if (main_task_id_ == static_cast<int32_t>(i)) {
-                output << "MAIN TASK ID " << i;
-            } else {
-                output << "TASK ID " << i;
-            }
-            tasks_[i].Print(output, tab);
-            output << "\n";
-        }
-    }
-    const std::set<size_t>& common_column_indices() const {
-        return common_column_indices_;
-    }
-    void Print() const { this->Print(std::cout, "    "); }
-
- private:
-    std::vector<ClusterTask> tasks_;
-    int32_t main_task_id_;
-    std::string sql_;
-    std::string db_;
-    std::set<size_t> common_column_indices_;
-};
-class RunnerBuilder {
-    enum TaskBiasType { kLeftBias, kRightBias, kNoBias };
-
- public:
-    explicit RunnerBuilder(node::NodeManager* nm, const std::string& sql,
-                           const std::string& db,
-                           bool support_cluster_optimized,
-                           const std::set<size_t>& common_column_indices,
-                           const std::set<size_t>& batch_common_node_set)
-        : nm_(nm),
-          support_cluster_optimized_(support_cluster_optimized),
-          id_(0),
-          cluster_job_(sql, db, common_column_indices),
-          task_map_(),
-          proxy_runner_map_(),
-          batch_common_node_set_(batch_common_node_set) {}
-    virtual ~RunnerBuilder() {}
-    ClusterTask RegisterTask(PhysicalOpNode* node, ClusterTask task) {
-        task_map_[node] = task;
-        if (batch_common_node_set_.find(node->node_id()) !=
-            batch_common_node_set_.end()) {
-            task.GetRoot()->EnableBatchCache();
-        }
-        return task;
-    }
-    ClusterTask Build(PhysicalOpNode* node,  // NOLINT
-                      Status& status);       // NOLINT
-    ClusterJob BuildClusterJob(PhysicalOpNode* node,
-                               Status& status) {  // NOLINT
-        id_ = 0;
-        cluster_job_.Reset();
-        auto task = Build(node, status);
-        if (!status.isOK()) {
-            return cluster_job_;
-        }
-
-        if (task.IsCompletedClusterTask()) {
-            auto proxy_task = BuildProxyRunnerForClusterTask(task);
-            if (!proxy_task.IsValid()) {
-                status.code = common::kExecutionPlanError;
-                status.msg = "Fail to build proxy cluster task";
-                LOG(WARNING) << status;
-                return cluster_job_;
-            }
-            cluster_job_.AddMainTask(proxy_task);
-        } else if (task.IsUnCompletedClusterTask()) {
-            status.code = common::kExecutionPlanError;
-            status.msg =
-                "Fail to build main task, can't handler "
-                "uncompleted cluster task";
-            LOG(WARNING) << status;
-            return cluster_job_;
-        } else {
-            cluster_job_.AddMainTask(task);
-        }
-        return cluster_job_;
-    }
-
-    template <typename Op, typename... Args>
-    Op* CreateRunner(Args&&... args) {
-        return nm_->MakeNode<Op>(std::forward<Args>(args)...);
-    }
-
- private:
-    node::NodeManager* nm_;
-    // only set for request mode
-    bool support_cluster_optimized_;
-    int32_t id_;
-    ClusterJob cluster_job_;
-
-    std::unordered_map<::hybridse::vm::PhysicalOpNode*,
-                       ::hybridse::vm::ClusterTask>
-        task_map_;
-    std::shared_ptr<ClusterTask> request_task_;
-    std::unordered_map<hybridse::vm::Runner*, ::hybridse::vm::Runner*>
-        proxy_runner_map_;
-    std::set<size_t> batch_common_node_set_;
-    ClusterTask MultipleInherit(const std::vector<const ClusterTask*>& children, Runner* runner,
-                                                const Key& index_key, const TaskBiasType bias);
-    ClusterTask BinaryInherit(const ClusterTask& left, const ClusterTask& right,
-                              Runner* runner, const Key& index_key,
-                              const TaskBiasType bias = kNoBias);
-    ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
-                                              const ClusterTask& right,
-                                              Runner* runner);
-    ClusterTask BuildClusterTaskForBinaryRunner(const ClusterTask& left,
-                                                const ClusterTask& right,
-                                                Runner* runner,
-                                                const Key& index_key,
-                                                const TaskBiasType bias);
-    ClusterTask BuildProxyRunnerForClusterTask(const ClusterTask& task);
-    ClusterTask InvalidTask() { return ClusterTask(); }
-    ClusterTask CommonTask(Runner* runner) { return ClusterTask(runner); }
-    ClusterTask UnCompletedClusterTask(
-        Runner* runner, const std::shared_ptr<TableHandler> table_handler,
-        std::string index);
-    ClusterTask BuildRequestTask(RequestRunner* runner);
-    ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
-    ClusterTask BuildRequestAggUnionTask(PhysicalOpNode* node, Status& status);  // NOLINT
-};
-
-class RunnerContext {
- public:
-    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
-                           const hybridse::codec::Row& parameter,
-                           const bool is_debug = false)
-        : cluster_job_(cluster_job),
-          sp_name_(""),
-          request_(),
-          requests_(),
-          parameter_(parameter),
-          is_debug_(is_debug),
-          batch_cache_() {}
-    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
-                           const hybridse::codec::Row& request,
-                           const std::string& sp_name = "",
-                           const bool is_debug = false)
-        : cluster_job_(cluster_job),
-          sp_name_(sp_name),
-          request_(request),
-          requests_(),
-          parameter_(),
-          is_debug_(is_debug),
-          batch_cache_() {}
-    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
-                           const std::vector<Row>& request_batch,
-                           const std::string& sp_name = "",
-                           const bool is_debug = false)
-        : cluster_job_(cluster_job),
-          sp_name_(sp_name),
-          request_(),
-          requests_(request_batch),
-          parameter_(),
-          is_debug_(is_debug),
-          batch_cache_() {}
-
-    const size_t GetRequestSize() const { return requests_.size(); }
-    const hybridse::codec::Row& GetRequest() const { return request_; }
-    const hybridse::codec::Row& GetRequest(size_t idx) const {
-        return requests_[idx];
-    }
-    const hybridse::codec::Row& GetParameterRow() const { return parameter_; }
-    hybridse::vm::ClusterJob* cluster_job() { return cluster_job_; }
-    void SetRequest(const hybridse::codec::Row& request);
-    void SetRequests(const std::vector<hybridse::codec::Row>& requests);
-    bool is_debug() const { return is_debug_; }
-
-    const std::string& sp_name() { return sp_name_; }
-    std::shared_ptr<DataHandler> GetCache(int64_t id) const;
-    void SetCache(int64_t id, std::shared_ptr<DataHandler> data);
-    void ClearCache() { cache_.clear(); }
-    std::shared_ptr<DataHandlerList> GetBatchCache(int64_t id) const;
-    void SetBatchCache(int64_t id, std::shared_ptr<DataHandlerList> data);
-
- private:
-    hybridse::vm::ClusterJob* cluster_job_;
-    const std::string sp_name_;
-    hybridse::codec::Row request_;
-    std::vector<hybridse::codec::Row> requests_;
-    hybridse::codec::Row parameter_;
-    size_t idx_;
-    const bool is_debug_;
-    // TODO(chenjing): optimize
-    std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
-    std::map<int64_t, std::shared_ptr<DataHandlerList>> batch_cache_;
 };
 
 }  // namespace vm

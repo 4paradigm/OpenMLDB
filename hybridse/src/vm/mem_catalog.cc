@@ -72,10 +72,6 @@ void MemWindowIterator::Seek(const std::string& key) {
 void MemWindowIterator::SeekToFirst() { iter_ = start_iter_; }
 void MemWindowIterator::Next() { iter_++; }
 bool MemWindowIterator::Valid() { return end_iter_ != iter_; }
-std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
-    return std::unique_ptr<RowIterator>(
-        new MemTimeTableIterator(&(iter_->second), schema_));
-}
 
 RowIterator* MemWindowIterator::GetRawValue() {
     return new MemTimeTableIterator(&(iter_->second), schema_);
@@ -114,12 +110,9 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
       order_type_(kNoneOrder) {}
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
-std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() {
-    return std::make_unique<MemTimeTableIterator>(&table_, schema_);
-}
-std::unique_ptr<WindowIterator> MemTimeTableHandler::GetWindowIterator(
-    const std::string& idx_name) {
-    return std::unique_ptr<WindowIterator>();
+
+RowIterator* MemTimeTableHandler::GetRawIterator() {
+    return new MemTimeTableIterator(&table_, schema_);
 }
 
 void MemTimeTableHandler::AddRow(const uint64_t key, const Row& row) {
@@ -151,9 +144,6 @@ void MemTimeTableHandler::Reverse() {
     order_type_ = kAscOrder == order_type_
                       ? kDescOrder
                       : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
-}
-RowIterator* MemTimeTableHandler::GetRawIterator() {
-    return new MemTimeTableIterator(&table_, schema_);
 }
 
 MemPartitionHandler::MemPartitionHandler()
@@ -232,15 +222,6 @@ void MemPartitionHandler::Print() {
     }
 }
 
-std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
-    const std::string& idx_name) {
-    return std::unique_ptr<WindowIterator>();
-}
-std::unique_ptr<RowIterator> MemTableHandler::GetIterator() {
-    std::unique_ptr<MemTableIterator> it(
-        new MemTableIterator(&table_, schema_));
-    return std::move(it);
-}
 RowIterator* MemTableHandler::GetRawIterator() {
     return new MemTableIterator(&table_, schema_);
 }
