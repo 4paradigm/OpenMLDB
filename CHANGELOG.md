@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.8.4] - 2023-11-15
+## [0.8.4] - 2023-11-16
 
 ### Features
 - Support new SQL statements `SHOW CREATE TABLE`, `TRUNCATE` and [Alpha] `LEFT JOIN` (#3500 #3542 @dl239, #3576 @aceforeverd)
