@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 export OPENMLDB_VERSION=0.8.4
 # openmldb mode: standalone / cluster
-export OPENMLDB_MODE=${OPENMLDB_MODE:=standalone}
+export OPENMLDB_MODE=${OPENMLDB_MODE:=cluster}
 # tablet port
 export OPENMLDB_TABLET_PORT=10921
 # nameserver port

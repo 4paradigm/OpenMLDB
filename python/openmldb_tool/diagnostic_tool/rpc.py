@@ -28,7 +28,8 @@ flags.DEFINE_string(
 )
 
 def validate_ip_address(ip_string):
-    return not any(c.isalpha() for c in ip_string)
+    # localhost:xxxx is valid ip too, ip must have at least one ":"
+    return ip_string.find(":") != -1
 
 
 host2service = {

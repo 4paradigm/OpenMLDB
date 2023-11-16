@@ -93,6 +93,17 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
         std::string db_name;
     };
 
+    struct OptimizeInfo {
+        OptimizeInfo(const Key* left_key, const Key* index_key, const Key* right_key, const Sort* s,
+                     vm::PhysicalPartitionProviderNode* optimized)
+            : left_key(left_key), index_key(index_key), right_key(right_key), sort_key(s), optimized(optimized) {}
+        const Key* left_key;
+        const Key* index_key;
+        const Key* right_key;
+        const Sort* sort_key;
+        vm::PhysicalPartitionProviderNode* optimized;
+    };
+
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
@@ -149,6 +160,8 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     // A source column name is the column name in string that refers to a physical table,
     // only one table got optimized each time
     std::unordered_map<const node::ColumnRefNode*, SrcColInfo> expr_cache_;
+
+    std::unique_ptr<OptimizeInfo> optimize_info_;
 };
 }  // namespace passes
 }  // namespace hybridse

@@ -318,8 +318,7 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 
         bool has_batch_request = !sql_case_.batch_request().columns_.empty();
         if (!has_batch_request) {
-            LOG(WARNING) << "No batch request field in case, "
-                         << "try use last row from primary input";
+            LOG(WARNING) << "No batch request field in case, try use last row from primary input";
         }
 
         std::vector<Row> original_request_data;

@@ -363,6 +363,16 @@ message DropTableResponse {
     optional string msg = 2;
 }
 
+message TruncateTableRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+}
+
+message TruncateTableResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message GetTableSchemaRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
@@ -905,6 +915,7 @@ service TabletServer {
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (DropTableResponse);
+    rpc TruncateTable(TruncateTableRequest) returns (TruncateTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);

@@ -21,7 +21,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "base/spin_lock.h"
 #include "storage/table_impl.h"
 #include "vm/catalog.h"
 
@@ -68,8 +67,6 @@ class TabletSegmentHandler : public TableHandler {
     std::unique_ptr<vm::RowIterator> GetIterator() override;
     RowIterator* GetRawIterator() override;
     std::unique_ptr<codec::WindowIterator> GetWindowIterator(const std::string& idx_name) override;
-    const uint64_t GetCount() override;
-    Row At(uint64_t pos) override;
     const std::string GetHandlerTypeName() override {
         return "TabletSegmentHandler";
     }
@@ -79,7 +76,7 @@ class TabletSegmentHandler : public TableHandler {
     std::string key_;
 };
 
-class TabletPartitionHandler
+class TabletPartitionHandler final
     : public PartitionHandler,
       public std::enable_shared_from_this<PartitionHandler> {
  public:
@@ -90,6 +87,8 @@ class TabletPartitionHandler
           index_name_(index_name) {}
 
     ~TabletPartitionHandler() {}
+
+    RowIterator* GetRawIterator() override { return table_handler_->GetRawIterator(); }
 
     const OrderType GetOrderType() const override { return OrderType::kDescOrder; }
 
@@ -104,6 +103,7 @@ class TabletPartitionHandler
     std::unique_ptr<codec::WindowIterator> GetWindowIterator() override {
         return table_handler_->GetWindowIterator(index_name_);
     }
+
     const uint64_t GetCount() override;
 
     std::shared_ptr<TableHandler> GetSegment(const std::string& key) override {
@@ -119,7 +119,7 @@ class TabletPartitionHandler
     vm::IndexHint index_hint_;
 };
 
-class TabletTableHandler
+class TabletTableHandler final
     : public vm::TableHandler,
       public std::enable_shared_from_this<vm::TableHandler> {
  public:
@@ -135,28 +135,23 @@ class TabletTableHandler
 
     bool Init();
 
-    inline const vm::Schema* GetSchema() { return &schema_; }
+    const vm::Schema* GetSchema() override { return &schema_; }
 
-    inline const std::string& GetName() { return name_; }
+    const std::string& GetName() override { return name_; }
 
-    inline const std::string& GetDatabase() { return db_; }
+    const std::string& GetDatabase() override { return db_; }
 
-    inline const vm::Types& GetTypes() { return types_; }
+    const vm::Types& GetTypes() override { return types_; }
 
-    inline const vm::IndexHint& GetIndex() { return index_hint_; }
+    const vm::IndexHint& GetIndex() override { return index_hint_; }
 
     const Row Get(int32_t pos);
 
-    inline std::shared_ptr<storage::Table> GetTable() { return table_; }
-    std::unique_ptr<RowIterator> GetIterator();
+    std::shared_ptr<storage::Table> GetTable() { return table_; }
     RowIterator* GetRawIterator() override;
-    std::unique_ptr<codec::WindowIterator> GetWindowIterator(
-        const std::string& idx_name);
-    virtual const uint64_t GetCount();
-    Row At(uint64_t pos) override;
+    std::unique_ptr<codec::WindowIterator> GetWindowIterator(const std::string& idx_name) override;
 
-    virtual std::shared_ptr<PartitionHandler> GetPartition(
-        const std::string& index_name) {
+    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override {
         if (index_hint_.find(index_name) == index_hint_.cend()) {
             LOG(WARNING)
                 << "fail to get partition for tablet table handler, index name "
@@ -169,12 +164,12 @@ class TabletTableHandler
     const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
     }
-    virtual std::shared_ptr<hybridse::vm::Tablet> GetTablet(
-        const std::string& index_name, const std::string& pk) {
+    std::shared_ptr<hybridse::vm::Tablet> GetTablet(const std::string& index_name,
+                                                            const std::string& pk) override {
         return tablet_;
     }
-    virtual std::shared_ptr<hybridse::vm::Tablet> GetTablet(
-        const std::string& index_name, const std::vector<std::string>& pks) {
+    std::shared_ptr<hybridse::vm::Tablet> GetTablet(const std::string& index_name,
+                                                    const std::vector<std::string>& pks) override {
         return tablet_;
     }
 

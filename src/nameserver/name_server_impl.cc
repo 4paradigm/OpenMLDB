@@ -51,6 +51,8 @@
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_string(tablet);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
@@ -1411,7 +1413,8 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         zone_info_.set_replica_alias("");
         zone_info_.set_zone_term(1);
         LOG(INFO) << "zone name " << zone_info_.zone_name();
-        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path,
+                FLAGS_zk_auth_schema, FLAGS_zk_cert);
         if (!zk_client_->Init()) {
             PDLOG(WARNING, "fail to init zookeeper with cluster[%s]", zk_cluster.c_str());
             return false;
@@ -3711,6 +3714,69 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
+}
+
+void NameServerImpl::TruncateTable(RpcController* controller, const TruncateTableRequest* request,
+        TruncateTableResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const std::string& db = request->db();
+    const std::string& name = request->name();
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
+            PDLOG(WARNING, "table[%s] does not exist in db [%s]", name.c_str(), db.c_str());
+            response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+            response->set_msg("table does not exist");
+            return;
+        }
+        if (IsExistActiveOp(db, name)) {
+            PDLOG(WARNING, "there is active op. db [%s] name [%s]", db.c_str(), name.c_str());
+            response->set_code(::openmldb::base::ReturnCode::kOPAlreadyExists);
+            response->set_msg("there is active op");
+            return;
+        }
+    }
+    uint32_t tid = table_info->tid();
+    for (const auto& partition : table_info->table_partition()) {
+        uint32_t offset = 0;
+        for (const auto& partition_meta : partition.partition_meta()) {
+            if (partition_meta.offset() != offset) {
+                if (offset == 0) {
+                    offset = partition_meta.offset();
+                } else {
+                    PDLOG(WARNING, "table[%s] partition [%d] offset mismatch", name.c_str(), partition.pid());
+                    response->set_code(::openmldb::base::ReturnCode::kOffsetMismatch);
+                    response->set_msg("partition offset mismatch");
+                    return;
+                }
+            }
+        }
+    }
+    for (const auto& partition : table_info->table_partition()) {
+        uint32_t pid = partition.pid();
+        for (const auto& partition_meta : partition.partition_meta()) {
+            const auto& endpoint = partition_meta.endpoint();
+            auto tablet_ptr = GetTablet(endpoint);
+            if (!tablet_ptr) {
+                PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                response->set_code(::openmldb::base::ReturnCode::kGetTabletFailed);
+                response->set_msg("fail to get client, endpint " + endpoint);
+                return;
+            }
+            auto status = tablet_ptr->client_->TruncateTable(tid, pid);
+            if (!status.OK()) {
+                PDLOG(WARNING, "truncate failed, tid[%u] pid[%u] endpoint[%s] msg [%s]",
+                        tid, pid, endpoint.c_str(), status.GetMsg().c_str());
+                response->set_code(::openmldb::base::ReturnCode::kTruncateTableFailed);
+                response->set_msg(status.GetMsg());
+                return;
+            }
+        }
+    }
+    PDLOG(INFO, "truncate success, db[%s] name[%s]", db.c_str(), name.c_str());
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
@@ -10553,6 +10619,27 @@ bool NameServerImpl::IsExistActiveOp(const std::string& db, const std::string& n
             if (op_data->op_info_.op_type() != op_type) {
                 continue;
             }
+            if (!db.empty() && op_data->op_info_.db() != db) {
+                continue;
+            }
+            if (!name.empty() && op_data->op_info_.name() != name) {
+                continue;
+            }
+            if (op_data->op_info_.task_status() == api::TaskStatus::kInited ||
+                    op_data->op_info_.task_status() == api::TaskStatus::kDoing) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool NameServerImpl::IsExistActiveOp(const std::string& db, const std::string& name) {
+    for (const auto& op_list : task_vec_) {
+        if (op_list.empty()) {
+            continue;
+        }
+        for (const auto& op_data : op_list) {
             if (!db.empty() && op_data->op_info_.db() != db) {
                 continue;
             }

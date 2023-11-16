@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -309,15 +310,24 @@ inline const std::string StorageModeName(StorageMode mode) {
 }
 
 inline const StorageMode NameToStorageMode(const std::string& name) {
-    if (boost::iequals(name, "memory")) {
+    if (absl::EqualsIgnoreCase(name, "memory")) {
         return kMemory;
-    } else if (boost::iequals(name, "hdd")) {
+    } else if (absl::EqualsIgnoreCase(name, "hdd")) {
         return kHDD;
-    } else if (boost::iequals(name, "ssd")) {
+    } else if (absl::EqualsIgnoreCase(name, "ssd")) {
         return kSSD;
     } else {
         return kUnknown;
     }
+}
+
+inline absl::StatusOr<CompressType> NameToCompressType(const std::string& name) {
+    if (absl::EqualsIgnoreCase(name, "snappy")) {
+        return CompressType::kSnappy;
+    } else if (absl::EqualsIgnoreCase(name, "nocompress")) {
+        return CompressType::kNoCompress;
+    }
+    return absl::Status(absl::StatusCode::kInvalidArgument, absl::StrCat("invalid compress type: ", name));
 }
 
 inline const std::string RoleTypeName(RoleType type) {
@@ -1166,6 +1176,9 @@ class FrameBound : public SqlNode {
     int64_t GetOffset() const { return offset_; }
     void SetOffset(int64_t v) { offset_ = v; }
 
+    // is offset [OPEN] PRECEDING/FOLLOWING
+    bool is_offset_bound() const;
+
 
     /// \brief get the inclusive frame bound offset value that has signed symbol
     ///
@@ -1879,6 +1892,23 @@ class StorageModeNode : public SqlNode {
 
  private:
     StorageMode storage_mode_;
+};
+
+class CompressTypeNode : public SqlNode {
+ public:
+    CompressTypeNode() : SqlNode(kCompressType, 0, 0), compress_type_(kNoCompress) {}
+
+    explicit CompressTypeNode(CompressType compress_type)
+        : SqlNode(kCompressType, 0, 0), compress_type_(compress_type) {}
+
+    ~CompressTypeNode() {}
+
+    CompressType GetCompressType() const { return compress_type_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    CompressType compress_type_;
 };
 
 class CreateTableLikeClause {

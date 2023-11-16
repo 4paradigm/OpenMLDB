@@ -18,13 +18,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/fe_strings.h"
 #include "boost/none.hpp"
-#include "boost/optional.hpp"
 #include "codec/fe_row_codec.h"
-#include "codec/fe_schema_codec.h"
-#include "codec/list_iterator_codec.h"
-#include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "udf/default_udf_library.h"
@@ -32,6 +27,7 @@
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/internal/node_helper.h"
+#include "vm/runner_ctx.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -153,7 +149,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     DLOG(INFO) << "Compile Engine ...";
     status = base::Status::OK();
     std::shared_ptr<SqlCompileInfo> info = std::make_shared<SqlCompileInfo>();
-    auto& sql_context = std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
+    auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();

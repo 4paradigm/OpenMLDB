@@ -112,6 +112,8 @@ class NsClient : public Client {
     bool DropTable(const std::string& db, const std::string& name,
                    std::string& msg);  // NOLINT
 
+    base::Status TruncateTable(const std::string& db, const std::string& name);
+
     bool SyncTable(const std::string& name, const std::string& cluster_alias, uint32_t pid,
                    std::string& msg);  // NOLINT
 
@@ -192,6 +194,9 @@ class NsClient : public Client {
 
     bool UpdateTTL(const std::string& name, const ::openmldb::type::TTLType& type, uint64_t abs_ttl, uint64_t lat_ttl,
                    const std::string& ts_name, std::string& msg);  // NOLINT
+
+    bool UpdateTTL(const std::string& db, const std::string& name, const ::openmldb::type::TTLType& type,
+            uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name, std::string& msg);  // NOLINT
 
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, uint64_t term,
                                std::string& msg);  // NOLINT

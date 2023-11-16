@@ -153,6 +153,20 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     return true;
 }
 
+base::Status TabletClient::TruncateTable(uint32_t tid, uint32_t pid) {
+    ::openmldb::api::TruncateTableRequest request;
+    ::openmldb::api::TruncateTableResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::TruncateTable, &request, &response,
+                                  FLAGS_request_timeout_ms, 1)) {
+        return {base::ReturnCode::kRPCError, "send request failed!"};
+    } else if (response.code() == 0) {
+        return {};
+    }
+    return {response.code(), response.msg()};
+}
+
 base::Status TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_meta) {
     ::openmldb::api::CreateTableRequest request;
     ::openmldb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
@@ -189,16 +203,23 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
                        const std::vector<std::pair<std::string, uint32_t>>& dimensions) {
-    ::openmldb::api::PutRequest request;
-    request.set_time(time);
-    request.set_value(value);
-    request.set_tid(tid);
-    request.set_pid(pid);
+    ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> pb_dimensions;
     for (size_t i = 0; i < dimensions.size(); i++) {
-        ::openmldb::api::Dimension* d = request.add_dimensions();
+        ::openmldb::api::Dimension* d = pb_dimensions.Add();
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
+    return Put(tid, pid, time, base::Slice(value), &pb_dimensions);
+}
+
+bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
+            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions) {
+    ::openmldb::api::PutRequest request;
+    request.set_time(time);
+    request.set_value(value.data(), value.size());
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.mutable_dimensions()->Swap(dimensions);
     ::openmldb::api::PutResponse response;
     bool ok =
         client_.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &request, &response, FLAGS_request_timeout_ms, 1);

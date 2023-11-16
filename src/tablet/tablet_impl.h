@@ -109,6 +109,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void DropTable(RpcController* controller, const ::openmldb::api::DropTableRequest* request,
                    ::openmldb::api::DropTableResponse* response, Closure* done);
 
+    void TruncateTable(RpcController* controller, const ::openmldb::api::TruncateTableRequest* request,
+                   ::openmldb::api::TruncateTableResponse* response, Closure* done);
+
     void Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
                  ::openmldb::api::GeneralResponse* response, Closure* done);
 
@@ -239,14 +242,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
                      std::string* value, uint64_t* ts);
 
-    // scan specified ttl type index
     int32_t ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
-                      std::string* pairs, uint32_t* count, bool* is_finish);
-
-    int32_t ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, CombineIterator* combine_it,
-                      butil::IOBuf* buf, uint32_t* count, bool* is_finish);
+                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, bool use_attachment,
+                      CombineIterator* combine_it, butil::IOBuf* buf, uint32_t* count, bool* is_finish);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt, ::openmldb::storage::TTLType ttl_type,
                        ::openmldb::storage::TableIterator* it, const ::openmldb::api::CountRequest* request,
@@ -313,7 +311,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
-                              std::shared_ptr<::openmldb::api::TaskInfo> task);
+                              std::shared_ptr<::openmldb::api::TaskInfo> task, bool is_force);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, uint32_t remote_tid,
                               std::shared_ptr<::openmldb::api::TaskInfo> task);
@@ -331,6 +329,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid,
             uint32_t partition_num, uint64_t last_time,
             std::shared_ptr<::openmldb::api::TaskInfo> task);
+
+    base::Status TruncateTableInternal(uint32_t tid, uint32_t pid);
 
     void ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
             std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,

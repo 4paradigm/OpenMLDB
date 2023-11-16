@@ -450,6 +450,11 @@ StorageMode
 						::= 'Memory'
 						    | 'HDD'
 						    | 'SSD'
+CompressTypeOption
+						::= 'COMPRESS_TYPE' '=' CompressType
+CompressType
+						::= 'NoCompress'
+						    | 'Snappy'
 ```
 
 
@@ -460,6 +465,7 @@ StorageMode
 | `REPLICANUM`   | 配置表的副本数。请注意，副本数只有在集群版中才可以配置。                                                                                                                                     | `OPTIONS (REPLICANUM=3)`                                                      |
 | `DISTRIBUTION` | 配置分布式的节点endpoint。一般包含一个Leader节点和若干Follower节点。`(leader, [follower1, follower2, ..])`。不显式配置时，OpenMLDB会自动根据环境和节点来配置`DISTRIBUTION`。                                  | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE` | 表的存储模式，支持的模式有`Memory`、`HDD`或`SSD`。不显式配置时，默认为`Memory`。<br/>如果需要支持非`Memory`模式的存储模式，`tablet`需要额外的配置选项，具体可参考[tablet配置文件 conf/tablet.flags](../../../deploy/conf.md)。 | `OPTIONS (STORAGE_MODE='HDD')`                                                |
+| `COMPRESS_TYPE` | 指定表的压缩类型。目前只支持Snappy压缩, 。默认为 `NoCompress` 即不压缩。                                               | `OPTIONS (COMPRESS_TYPE='Snappy')`
 
 #### 磁盘表与内存表区别
 - 磁盘表对应`STORAGE_MODE`的取值为`HDD`或`SSD`。内存表对应的`STORAGE_MODE`取值为`Memory`。
@@ -488,11 +494,11 @@ DESC t1;
  --- -------------------- ------ ---------- ------ ---------------
   1   INDEX_0_1651143735   col1   std_time   0min   kAbsoluteTime
  --- -------------------- ------ ---------- ------ ---------------
- --------------
-  storage_mode
- --------------
-  HDD
- --------------
+ --------------- --------------
+  compress_type   storage_mode
+ --------------- --------------
+  NoCompress      HDD
+ --------------- --------------
 ```
 创建一张表，指定分片的分布状态
 ```sql

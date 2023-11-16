@@ -76,6 +76,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdDropFunction, "drop function"},
         {CmdType::kCmdShowFunctions, "show functions"},
         {CmdType::kCmdShowJobLog, "show joblog"},
+        {CmdType::kCmdTruncate, "truncate table"},
     };
     for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
         DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());
@@ -1168,6 +1169,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kReplicaNum, "kReplicaNum"},
         {kPartitionNum, "kPartitionNum"},
         {kStorageMode, "kStorageMode"},
+        {kCompressType, "kCompressType"},
         {kFn, "kFn"},
         {kFnParaList, "kFnParaList"},
         {kCreateSpStmt, "kCreateSpStmt"},
@@ -2100,6 +2102,11 @@ void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
     }
 }
 
+bool FrameBound::is_offset_bound() const {
+    return bound_type_ == kPreceding || bound_type_ == kOpenPreceding || bound_type_ == kFollowing ||
+           bound_type_ == kOpenFollowing;
+}
+
 int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
     if (SqlEquals(bound1, bound2)) {
         return 0;
@@ -2596,6 +2603,17 @@ void StorageModeNode::Print(std::ostream &output, const std::string &org_tab) co
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", true);
+}
+
+void CompressTypeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    if (compress_type_ == CompressType::kSnappy) {
+        PrintValue(output, tab, "snappy", "compress_type", true);
+    }  else {
+        PrintValue(output, tab, "nocompress", "compress_type", true);
+    }
 }
 
 void PartitionNumNode::Print(std::ostream &output, const std::string &org_tab) const {

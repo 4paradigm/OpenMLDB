@@ -175,20 +175,19 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
     }
 
     valid_value_ = true;
+    base::Slice slice_row;
     if (it_ && it_->Valid()) {
-        value_ = ::hybridse::codec::Row(
-            ::hybridse::base::RefCountedSlice::Create(it_->GetValue().data(), it_->GetValue().size()));
-        return value_;
+        slice_row = it_->GetValue();
     } else {
-        auto slice_row = kv_it_->GetValue();
-        size_t sz = slice_row.size();
-        int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(sz));
-        memcpy(copyed_row_data, slice_row.data(), sz);
-        auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
-        buffered_slices_.push_back(shared_slice);
-        value_.Reset(shared_slice);
-        return value_;
+        slice_row = kv_it_->GetValue();
     }
+    size_t sz = slice_row.size();
+    int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(sz));
+    memcpy(copyed_row_data, slice_row.data(), sz);
+    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+    buffered_slices_.push_back(shared_slice);
+    value_.Reset(shared_slice);
+    return value_;
 }
 
 DistributeWindowIterator::DistributeWindowIterator(uint32_t tid, uint32_t pid_num, std::shared_ptr<Tables> tables,
@@ -424,7 +423,7 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
     row_.Reset(shared_slice);
-    DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
+    LOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
     valid_value_ = true;
     return row_;
 }
