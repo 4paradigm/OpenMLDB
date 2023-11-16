@@ -32,6 +32,7 @@
 #include "apiserver/json_helper.h"
 #include "brpc/http_method.h"  // HttpMethod
 #include "butil/iobuf.h"       // IOBuf
+#include "bvar/bvar.h"         // latency recorder
 #include "proto/api_server.pb.h"
 
 namespace openmldb {
@@ -111,7 +112,7 @@ class ReducedUrlParser {
 
 class InterfaceProvider {
  public:
-    InterfaceProvider() = default;
+    explicit InterfaceProvider(const std::string& metric_prefix) : route_recorder_(metric_prefix, "http_route") {}
     InterfaceProvider& operator=(InterfaceProvider const&) = delete;
     InterfaceProvider(InterfaceProvider const&) = delete;
 
@@ -160,6 +161,9 @@ class InterfaceProvider {
     void registerRequest(brpc::HttpMethod, const std::string& path, std::function<func>&& callback);
 
  private:
+    // we only record route latency, method latency is recorded in callback(you may need record in parts), defined in
+    // api server impl
+    bvar::LatencyRecorder route_recorder_;
     std::unordered_map<int, std::vector<BuiltRequest>> requests_;
 };
 

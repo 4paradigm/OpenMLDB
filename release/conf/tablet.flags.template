@@ -99,3 +99,5 @@
 
 # turn this option on to export openmldb metric status
 # --enable_status_service=false
+--bvar_max_dump_multi_dimension_metric_number=10
+--bvar_dump_interval=75

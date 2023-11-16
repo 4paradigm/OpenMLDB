@@ -33,9 +33,9 @@
 #include "nameserver/system_table.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
-#include "storage/aggregator.h"
 #include "sdk/sql_cluster_router.h"
-#include "statistics/query_response_time/deploy_query_response_time.h"
+#include "statistics/query_response_time/deployment_metric_collector.h"
+#include "storage/aggregator.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "tablet/bulk_load_mgr.h"
@@ -219,10 +219,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                openmldb::api::QueryResponse* response, Closure* done);
 
     void CreateFunction(RpcController* controller, const openmldb::api::CreateFunctionRequest* request,
-               openmldb::api::CreateFunctionResponse* response, Closure* done);
+                        openmldb::api::CreateFunctionResponse* response, Closure* done);
 
     void DropFunction(RpcController* controller, const openmldb::api::DropFunctionRequest* request,
-               openmldb::api::DropFunctionResponse* response, Closure* done);
+                      openmldb::api::DropFunctionResponse* response, Closure* done);
 
     void SubQuery(RpcController* controller, const openmldb::api::QueryRequest* request,
                   openmldb::api::QueryResponse* response, Closure* done);
@@ -279,9 +279,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
      public:
         explicit UpdateAggrClosure(const std::function<void()>& callback) : callback_(callback) {}
 
-        void Run() override {
-            callback_();
-        }
+        void Run() override { callback_(); }
 
      private:
         std::function<void()> callback_;
@@ -318,25 +316,22 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
                                std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
-                               uint32_t partition_num,
-                               const std::vector<::openmldb::common::ColumnKey>& column_keys,
+                               uint32_t partition_num, const std::vector<::openmldb::common::ColumnKey>& column_keys,
                                uint64_t offset, std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     void SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
                                const std::map<uint32_t, std::string>& pid_endpoint_map,
                                std::shared_ptr<::openmldb::api::TaskInfo> task);
 
-    void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid,
-            uint32_t partition_num, uint64_t last_time,
-            std::shared_ptr<::openmldb::api::TaskInfo> task);
+    void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid, uint32_t partition_num, uint64_t last_time,
+                               std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     base::Status TruncateTableInternal(uint32_t tid, uint32_t pid);
 
     void ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-            std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
-            const std::vector<::openmldb::common::ColumnKey>& column_key,
-            uint32_t partition_num, uint64_t offset, bool contain_dump,
-            std::shared_ptr<::openmldb::api::TaskInfo> task);
+                                  std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+                                  const std::vector<::openmldb::common::ColumnKey>& column_key, uint32_t partition_num,
+                                  uint64_t offset, bool contain_dump, std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 
@@ -360,7 +355,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
     int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openmldb::api::TableMeta& table_meta,
-                                      std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
+                              std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path, const ::openmldb::api::TableMeta* table_meta);
 
     int UpdateTableMeta(const std::string& path, ::openmldb::api::TableMeta* table_meta, bool for_add_column);
@@ -373,8 +368,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void SetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,  // NOLINT
                        ::openmldb::api::TaskStatus status);
 
-    int GetTaskStatus(const std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
-                      ::openmldb::api::TaskStatus* status);
+    int GetTaskStatus(const std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr, ::openmldb::api::TaskStatus* status);
 
     bool IsExistTaskUnLock(const ::openmldb::api::TaskInfo& task);
 
@@ -400,8 +394,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     bool GetTableRootSize(uint32_t tid, uint32_t pid, const ::openmldb::common::StorageMode& mode,
                           uint64_t& size);  // NOLINT
 
-    int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid,
-                              ::openmldb::common::StorageMode storageMode,
+    int32_t GetSnapshotOffset(uint32_t tid, uint32_t pid, ::openmldb::common::StorageMode storageMode,
                               std::string& msg,                   // NOLINT
                               uint64_t& term, uint64_t& offset);  // NOLINT
 
@@ -411,9 +404,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool GetRealEp(uint64_t tid, uint64_t pid, std::map<std::string, std::string>* real_ep_map);
 
-    void ProcessQuery(RpcController* controller, const openmldb::api::QueryRequest* request,
+    void ProcessQuery(bool is_sub, RpcController* controller, const openmldb::api::QueryRequest* request,
                       ::openmldb::api::QueryResponse* response, butil::IOBuf* buf);
-    void ProcessBatchRequestQuery(RpcController* controller, const openmldb::api::SQLBatchRequestQueryRequest* request,
+    void ProcessBatchRequestQuery(bool is_sub, RpcController* controller,
+                                  const openmldb::api::SQLBatchRequestQueryRequest* request,
                                   openmldb::api::SQLBatchRequestQueryResponse* response,
                                   butil::IOBuf& buf);  // NOLINT
 
@@ -421,11 +415,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                      const ::openmldb::storage::Dimensions& dimensions, uint64_t log_offset);
 
     bool CreateAggregatorInternal(const ::openmldb::api::CreateAggregatorRequest* request,
-                                  std::string& msg); //NOLINT
+                                  std::string& msg);  // NOLINT
 
-    inline bool IsClusterMode() const {
-        return startup_mode_ == ::openmldb::type::StartupMode::kCluster;
-    }
+    inline bool IsClusterMode() const { return startup_mode_ == ::openmldb::type::StartupMode::kCluster; }
 
     std::string GetDBPath(const std::string& root_path, uint32_t tid, uint32_t pid);
 
@@ -460,10 +452,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     BulkLoadMgr bulk_load_mgr_;
-    std::map<::openmldb::common::StorageMode, std::vector<std::string>>
-        mode_root_paths_;
-    std::map<::openmldb::common::StorageMode, std::vector<std::string>>
-        mode_recycle_root_paths_;
+    std::map<::openmldb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
+    std::map<::openmldb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
     std::atomic<bool> follower_;
     std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
@@ -482,7 +472,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 
-    std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
+    std::unique_ptr<openmldb::statistics::DeploymentMetricCollector> deploy_collector_;
     std::atomic<uint64_t> memory_used_ = 0;
 };
 

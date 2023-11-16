@@ -50,7 +50,7 @@ class APIServerTestEnv : public testing::Environment {
         // Owned by queue_svc
         cluster_sdk = new ::openmldb::sdk::ClusterSDK(cluster_options);
         ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";
-        queue_svc = std::make_shared<APIServerImpl>();
+        queue_svc = std::make_shared<APIServerImpl>("127.0.0.1:8010");  // fake endpoint for metrics
         ASSERT_TRUE(queue_svc->Init(cluster_sdk));
 
         sdk::SQLRouterOptions sql_opt;
@@ -1236,7 +1236,8 @@ TEST_F(APIServerTest, jsonInput) {
     ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
     LOG(INFO) << "get sp resp: " << show_cntl.response_attachment();
 
-    // call deployment in json style input(won't check if it's a sp or deployment)
+    // call sp in deployment api with json style input(won't check if it's a sp or deployment), so it'll have field
+    // `common_cols_data`
     {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);

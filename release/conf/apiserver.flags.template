@@ -9,3 +9,5 @@
 --log_level=info
 
 #--thread_pool_size=16
+--bvar_max_dump_multi_dimension_metric_number=10
+--bvar_dump_interval=75

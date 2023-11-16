@@ -46,7 +46,6 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(system_table_replica_num);
-DECLARE_uint32(sync_deploy_stats_timeout);
 DECLARE_bool(auto_failover);
 
 using brpc::Server;
@@ -1297,6 +1296,5 @@ int main(int argc, char** argv) {
     FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
     FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
     FLAGS_system_table_replica_num = 0;
-    FLAGS_sync_deploy_stats_timeout = 1000000;
     return RUN_ALL_TESTS();
 }
