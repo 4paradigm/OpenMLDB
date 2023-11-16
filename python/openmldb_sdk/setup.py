@@ -28,9 +28,10 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     install_requires=[
+        "importlib-metadata < 5.0",
         "sqlalchemy <= 1.4.9",
-        "IPython",
-        "prettytable",
+        "IPython <= 7.30.1",
+        "prettytable <= 3.1.0",
     ],
     extras_require={'test': [
         "pytest",
