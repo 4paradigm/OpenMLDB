@@ -12,12 +12,12 @@ In Java SDK, the default execution mode for JDBC Statements is online, while the
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.8.3</version>
+    <version>0.8.4</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.8.3</version>
+    <version>0.8.4</version>
 </dependency>
 ```
 
@@ -29,16 +29,16 @@ In Java SDK, the default execution mode for JDBC Statements is online, while the
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.8.3</version>
+    <version>0.8.4</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.8.3-macos</version>
+    <version>0.8.4-macos</version>
 </dependency>
 ```
 
-Note: Since the openmldb-native package contains the C++ static library compiled for OpenMLDB, it defaults to the Linux static library. For macOS, the version of openmldb-native should be changed to `0.8.3-macos`, while the version of openmldb-jdbc remains unchanged.
+Note: Since the openmldb-native package contains the C++ static library compiled for OpenMLDB, it defaults to the Linux static library. For macOS, the version of openmldb-native should be changed to `0.8.4-macos`, while the version of openmldb-jdbc remains unchanged.
 
 The macOS version of openmldb-native only supports macOS 12. To run it on macOS 11 or macOS 10.15, the openmldb-native package needs to be compiled from the source code on the corresponding OS. For detailed compilation methods, please refer to [Java SDK](../../deploy/compile.md#Build-java-sdk-with-multi-processes). 
 When using a self-compiled openmldb-native package, it is recommended to install it into your local Maven repository using `mvn install`. After that, you can reference it in your project's pom.xml file. It's not advisable to reference it using `scope=system`.
