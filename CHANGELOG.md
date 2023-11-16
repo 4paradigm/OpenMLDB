@@ -22,7 +22,7 @@
 - Tablet may crash after deleting an index in certain cases (#3561 @dl239)
 - There are some syntax errors in maintenance tools (#3545 @vagetablechicken)
 - Updating TTL fails if the deployment SQL contains multpile databases (#3503 @dl239)
-- Other minor bug fixes (#3518 #3567 @dl239, #3543 @aceforeverd, #3521 #3580 @vagetablechicken)
+- Other minor bug fixes (#3518 #3567 @dl239, #3543 @aceforeverd, #3521 #3580 @vagetablechicken, #3594 #3597 @tobegit3hub)
 
 ### Code Refactoring
 #3547 @aceforeverd
