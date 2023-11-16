@@ -1,14 +1,14 @@
 # Changelog
 
-## [0.8.4] - 2023-11-15
+## [0.8.4] - 2023-11-16
 
 ### Features
-- Support new SQL statements `SHOW CREATE TABLE`, `TRUNCATE` and `LEFT JOIN`(#3500 #3542 @dl239, #3576 @aceforeverd)
+- Support new SQL statements `SHOW CREATE TABLE`, `TRUNCATE` and [Alpha] `LEFT JOIN` (#3500 #3542 @dl239, #3576 @aceforeverd)
 - Support specifying the compression option during table creation (#3572 @dl239)
 - Optimize the insertion performance of Java SDK (#3525 @dl239)
 - Support defining a window without `ORDER BY` clause (#3554 @aceforeverd)
 - Support the authentication for Zookeeper connection (#3581 @dl239)
-- Support `LAST JOIN` on a window clause (#3533 #3565 @aceforeverd)
+- [Alpha] Support `LAST JOIN` on a window clause (#3533 #3565 @aceforeverd)
 - Enhance the monitoring module (#3588 @vagetablechicken)
 - Support the date before 1900 in `datediff` (#3499 @aceforeverd)
 - Enhance the diagnostic tool (#3559 @vagetablechicken)
