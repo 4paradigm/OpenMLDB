@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "absl/strings/str_cat.h"
+
 #include "base/slice.h"
 #include "version.h"  // NOLINT
 
@@ -189,6 +191,7 @@ struct Status {
     inline bool OK() const { return code == ReturnCode::kOk; }
     inline const std::string& GetMsg() const { return msg; }
     inline int GetCode() const { return code; }
+    inline std::string ToString() const { return absl::StrCat("ReturnCode[", code, "]", msg); }
     int code;
     std::string msg;
 };

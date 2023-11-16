@@ -94,12 +94,11 @@ class NsClient : public Client {
     bool MakeSnapshot(const std::string& name, const std::string& db, uint32_t pid, uint64_t end_offset,
                       std::string& msg);  // NOLINT
 
-    base::Status ShowOPStatus(const std::string& name, uint32_t pid,
-            nameserver::ShowOPStatusResponse* response);
+    base::Status ShowOPStatus(const std::string& name, uint32_t pid, nameserver::ShowOPStatusResponse* response);
 
     base::Status ShowOPStatus(uint64_t op_id, ::openmldb::nameserver::ShowOPStatusResponse* response);
 
-    bool CancelOP(uint64_t op_id, std::string& msg);  // NOLINT
+    base::Status CancelOP(uint64_t op_id);
 
     bool AddTableField(const std::string& table_name, const ::openmldb::common::ColumnDesc& column_desc,
                        std::string& msg);  // NOLINT
@@ -146,14 +145,12 @@ class NsClient : public Client {
                            const ::openmldb::nameserver::ZoneInfo& zone_info,
                            std::string& msg);  // NOLINT
 
-    bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint,
-                    std::string& msg);  // NOLINT
+    base::Status AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint);
 
     bool AddReplicaNS(const std::string& name, const std::vector<std::string>& endpoint_vec, uint32_t pid,
                       const ::openmldb::nameserver::ZoneInfo& zone_info, const ::openmldb::api::TaskInfo& task_info);
 
-    bool DelReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint,
-                    std::string& msg);  // NOLINT
+    base::Status DelReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint);
 
     bool ConfSet(const std::string& key, const std::string& value,
                  std::string& msg);  // NOLINT
@@ -161,20 +158,19 @@ class NsClient : public Client {
     bool ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map,  // NOLINT
                  std::string& msg);                                                     // NOLINT
 
-    bool ChangeLeader(const std::string& name, uint32_t pid,
-                      std::string& candidate_leader,  // NOLINT
-                      std::string& msg);              // NOLINT
+    base::Status ChangeLeader(const std::string& name, uint32_t pid,
+                              std::string& candidate_leader);  // NOLINT
 
     bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency,
                          std::string& msg);  // NOLINT
 
-    bool Migrate(const std::string& src_endpoint, const std::string& name, const std::set<uint32_t>& pid_set,
-                 const std::string& des_endpoint, std::string& msg);  // NOLINT
+    base::Status Migrate(const std::string& src_endpoint, const std::string& name, const std::set<uint32_t>& pid_set,
+                         const std::string& des_endpoint);
 
     bool RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency,
                          std::string& msg);  // NOLINT
 
-    bool RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);  // NOLINT
+    base::Status RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint);
 
     bool ConnectZK(std::string& msg);  // NOLINT
 
@@ -187,10 +183,8 @@ class NsClient : public Client {
                            ::openmldb::nameserver::TablePartition& table_partition,  // NOLINT
                            std::string& msg);                                        // NOLINT
 
-    bool UpdateTableAliveStatus(const std::string& endpoint,
-                                std::string& name,  // NOLINT
-                                uint32_t pid, bool is_alive,
-                                std::string& msg);  // NOLINT
+    base::Status UpdateTableAliveStatus(const std::string& endpoint, const std::string& name, uint32_t pid,
+                                        bool is_alive);
 
     bool UpdateTTL(const std::string& name, const ::openmldb::type::TTLType& type, uint64_t abs_ttl, uint64_t lat_ttl,
                    const std::string& ts_name, std::string& msg);  // NOLINT
