@@ -59,13 +59,13 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 1. 仅支持`LAST JOIN`类型。
 2. 至少有一个JOIN条件是形如`left_source.column=right_source.column`的EQUAL条件，**并且`right_source.column`列需要命中右表的索引（key 列）**。
-3. 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，列类型为 int16, int32, int64 or timestamp, **并且列需要命中右表索引的时间列**。满足条件 2 和 3 的情况我们简单称做表能被 LAST JOIN 的 JOIN  条件优化
+3. 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，列类型为 int64 或 timestamp, **并且列需要命中右表索引的时间列**。满足条件 2 和 3 的情况我们简单称做表能被 LAST JOIN 的 JOIN  条件优化
 4. 右表 TableRef
   - 可以指一张物理表, 或者子查询语句
   - 子查询情况, 目前支持
     - 简单列筛选 (`select * from tb` or `select id, val from tb`)
     - 窗口聚合子查询, 例如 `select id, count(val) over w as cnt from t1 window w as (...)`. 
-      - OpenMLDB 0.8.4 之前, LAST JOIN 的窗口聚合子查询需要和 LAST JOIN 的左边输入 source 有相同的主表
+      - OpenMLDB 0.8.4 之前, 如果 LAST JOIN 的右表是窗口聚合子查询, 需要和 LAST JOIN 的左表输入有相同的主表
       - [ALPHA] OpenMLDB >= 0.8.4, 允许 LAST JOIN 下的窗口聚合子查询不带主表. 详细见下面的例子
     - **OpenMLDB >= 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
     - **[ALPHA] OpenMLDB >= 0.8.4** 右表是带 LAST JOIN 的子查询 `subquery`, 要求 `subquery` 最左的表能被 JOIN 条件优化, `subquery`剩余表能被自身 LAST JOIN 的 JOIN 条件优化 
