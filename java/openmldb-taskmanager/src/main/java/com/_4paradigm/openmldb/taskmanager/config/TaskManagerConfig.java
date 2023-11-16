@@ -291,7 +291,7 @@ public class TaskManagerConfig {
             props.setProperty("", "");
         }
 
-        if (getZkCluster().isEmpty()) {
+        if (isEmpty(getZkCluster())) {
             throw new ConfigException("zookeeper.cluster", "should not be empty");
         }
 
@@ -343,12 +343,12 @@ public class TaskManagerConfig {
             props.setProperty("spark.yarn.jars", "");
         }
 
-        if (isYarn() && !getSparkYarnJars().isEmpty() && getSparkYarnJars().startsWith("file://")) {
+        if (isYarn() && !isEmpty(getSparkYarnJars()) && getSparkYarnJars().startsWith("file://")) {
             throw new ConfigException("spark.yarn.jars", "should not use local filesystem for yarn mode");
         }
 
 
-        if (props.getProperty("spark.home", "").isEmpty()) {
+        if (isEmpty(props.getProperty("spark.home", ""))) {
             if (System.getenv("SPARK_HOME") == null) {
                 throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
             } else {
@@ -423,10 +423,10 @@ public class TaskManagerConfig {
             props.setProperty("spark.default.conf", "");
         }
 
-        if (!getSparkDefaultConf().isEmpty()) {
+        if (!isEmpty(getSparkDefaultConf())) {
             String[] defaultSparkConfs = getSparkDefaultConf().split(";");
             for (String sparkConfMap : defaultSparkConfs) {
-                if (!sparkConfMap.isEmpty()) {
+                if (!isEmpty(sparkConfMap)) {
                     String[] kv = sparkConfMap.split("=");
                     if (kv.length < 2) {
                         throw new ConfigException("spark.default.conf", String.format("error format of %s", sparkConfMap));
@@ -441,7 +441,7 @@ public class TaskManagerConfig {
             props.setProperty("spark.eventLog.dir", "");
         }
 
-        if (!getSparkEventlogDir().isEmpty() && isYarn()) {
+        if (!isEmpty(getSparkEventlogDir()) && isYarn()) {
             if (getSparkEventlogDir().startsWith("file://")) {
                 throw new ConfigException("spark.eventLog.dir", "should not use local filesystem for yarn mode");
             }
@@ -460,7 +460,7 @@ public class TaskManagerConfig {
             props.setProperty("offline.data.prefix", "file:///tmp/openmldb_offline_storage/");
         }
 
-        if (getOfflineDataPrefix().isEmpty()) {
+        if (isEmpty(getOfflineDataPrefix())) {
             throw new ConfigException("offline.data.prefix", "should not be null");
         } else {
             if (isYarn() || isK8s()) {
@@ -470,11 +470,11 @@ public class TaskManagerConfig {
             }
         }
 
-        if (props.getProperty("batchjob.jar.path", "").isEmpty()) {
+        if (isEmpty(props.getProperty("batchjob.jar.path", ""))) {
             props.setProperty("batchjob.jar.path", BatchJobUtil.findLocalBatchJobJar());
         }
 
-        if (isYarn() && getHadoopConfDir().isEmpty()) {
+        if (isYarn() && isEmpty(getHadoopConfDir())) {
             if (System.getenv("HADOOP_CONF_DIR") == null) {
                 throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
             } else {
@@ -531,8 +531,6 @@ public class TaskManagerConfig {
     public static boolean isEmpty(String s) {
         return s == null || s.isEmpty();
     }
-
-
 
 }
 
