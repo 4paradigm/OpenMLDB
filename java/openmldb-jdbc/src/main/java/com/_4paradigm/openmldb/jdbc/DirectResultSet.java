@@ -151,6 +151,9 @@ public abstract class DirectResultSet extends SQLResultSet {
     public String getNString(int i) throws SQLException {
         int realIdx = i - 1;
         try {
+            if (rowView.isNull(realIdx)) {
+                return null;
+            }
             return rowView.getString(realIdx);
         } catch (Exception e) {
             throw new SQLException(e.getMessage());
