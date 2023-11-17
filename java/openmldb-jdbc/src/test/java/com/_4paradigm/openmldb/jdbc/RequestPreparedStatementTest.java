@@ -461,7 +461,9 @@ public class RequestPreparedStatementTest {
             Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
             while (resultSet.next()) {
                 Assert.assertEquals(resultSet.getString(1), "aa");
+                Assert.assertEquals(resultSet.getNString(1), "aa");
                 Assert.assertEquals(resultSet.getInt(2), 20);
+                Assert.assertEquals(resultSet.getNString(2), "20");
                 Assert.assertTrue(resultSet.getNString(3) == null);
             }
 

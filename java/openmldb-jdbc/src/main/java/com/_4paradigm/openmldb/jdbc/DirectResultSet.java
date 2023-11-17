@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.common.codec.RowView;
 import com._4paradigm.openmldb.sdk.Schema;
+import com._4paradigm.openmldb.sdk.Common;
 
 import java.nio.ByteBuffer;
 import java.sql.*;
@@ -154,7 +155,7 @@ public abstract class DirectResultSet extends SQLResultSet {
             if (rowView.isNull(realIdx)) {
                 return null;
             }
-            return rowView.getString(realIdx);
+            return rowView.getValue(realIdx, Common.sqlTypeToDataType(schema.getColumnType(realIdx))).toString();
         } catch (Exception e) {
             throw new SQLException(e.getMessage());
         }
