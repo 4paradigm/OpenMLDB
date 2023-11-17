@@ -65,15 +65,15 @@ class ExprReplacer {
     void AddReplacement(const node::ExprIdNode* arg, node::ExprNode* repl);
     void AddReplacement(const node::ExprNode* expr, node::ExprNode* repl);
     void AddReplacement(size_t column_id, node::ExprNode* repl);
-    void AddReplacement(const std::string& relation_name,
-                        const std::string& column_name, node::ExprNode* repl);
+    void AddReplacement(const std::string& relation_name, const std::string& column_name, node::ExprNode* repl);
 
-    hybridse::base::Status Replace(node::ExprNode* root,
-                                   node::ExprNode** output) const;
+    // For the given `ExprNode` tree, do the in-place replacements specified by `AddReplacement` calls.
+    // Returns new ExprNode if `root` is ExprIdNode/ColumnIdNode/ColumnRefNode, `root` with its descendants replaced
+    // otherwise
+    hybridse::base::Status Replace(node::ExprNode* root, node::ExprNode** output) const;
 
  private:
-    hybridse::base::Status DoReplace(node::ExprNode* root,
-                                     std::unordered_set<size_t>* visited,
+    hybridse::base::Status DoReplace(node::ExprNode* root, std::unordered_set<size_t>* visited,
                                      node::ExprNode** output) const;
 
     std::unordered_map<size_t, node::ExprNode*> arg_id_map_;

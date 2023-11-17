@@ -223,7 +223,7 @@ IndexOption ::=
 | 配置项        | 描述                                                                                                      | expr                                                                                                           | 用法示例                                                                                   |
 |------------|---------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | `KEY`      | 索引列（必选）。OpenMLDB支持单列索引，也支持联合索引。当`KEY`后只有一列时，仅在该列上建立索引。当`KEY`后有多列时，建立这几列的联合索引：将多列按顺序拼接成一个字符串作为索引。        | 支持单列索引：`ColumnName`<br/>或联合索引：<br/>`(ColumnName (, ColumnName)* ) `                                            | 单列索引：`INDEX(KEY=col1)`<br />联合索引：`INDEX(KEY=(col1, col2))`                             |
-| `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。                                             | `ColumnName`                                                                                                   | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。                         |
+| `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。时间列的类型只能为BigInt或者Timestamp                                             | `ColumnName`                                                                                                   | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。                         |
 | `TTL_TYPE` | 淘汰规则（可选）。包括四种类型，当不显式配置`TTL_TYPE`时，默认使用`ABSOLUTE`过期配置。                                                   | 支持的expr如下：`ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                           | 具体用法可以参考下文“TTL和TTL_TYPE的配置细则”                                                          |
 | `TTL`      | 最大存活时间/条数（可选）。依赖于`TTL_TYPE`，不同的`TTL_TYPE`有不同的`TTL` 配置方式。当不显式配置`TTL`时，`TTL=0`，表示不设置淘汰规则，OpenMLDB将不会淘汰记录。 | 支持数值：`int_literal`<br/>  或数值带时间单位(`S,M,H,D`)：`interval_literal`<br/>或元组形式：`( interval_literal , int_literal )` |具体用法可以参考下文“TTL和TTL_TYPE的配置细则” |
 
@@ -450,6 +450,11 @@ StorageMode
 						::= 'Memory'
 						    | 'HDD'
 						    | 'SSD'
+CompressTypeOption
+						::= 'COMPRESS_TYPE' '=' CompressType
+CompressType
+						::= 'NoCompress'
+						    | 'Snappy'
 ```
 
 
@@ -460,6 +465,7 @@ StorageMode
 | `REPLICANUM`   | 配置表的副本数。请注意，副本数只有在集群版中才可以配置。                                                                                                                                     | `OPTIONS (REPLICANUM=3)`                                                      |
 | `DISTRIBUTION` | 配置分布式的节点endpoint。一般包含一个Leader节点和若干Follower节点。`(leader, [follower1, follower2, ..])`。不显式配置时，OpenMLDB会自动根据环境和节点来配置`DISTRIBUTION`。                                  | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE` | 表的存储模式，支持的模式有`Memory`、`HDD`或`SSD`。不显式配置时，默认为`Memory`。<br/>如果需要支持非`Memory`模式的存储模式，`tablet`需要额外的配置选项，具体可参考[tablet配置文件 conf/tablet.flags](../../../deploy/conf.md)。 | `OPTIONS (STORAGE_MODE='HDD')`                                                |
+| `COMPRESS_TYPE` | 指定表的压缩类型。目前只支持Snappy压缩, 。默认为 `NoCompress` 即不压缩。                                               | `OPTIONS (COMPRESS_TYPE='Snappy')`
 
 #### 磁盘表与内存表区别
 - 磁盘表对应`STORAGE_MODE`的取值为`HDD`或`SSD`。内存表对应的`STORAGE_MODE`取值为`Memory`。
@@ -488,11 +494,11 @@ DESC t1;
  --- -------------------- ------ ---------- ------ ---------------
   1   INDEX_0_1651143735   col1   std_time   0min   kAbsoluteTime
  --- -------------------- ------ ---------- ------ ---------------
- --------------
-  storage_mode
- --------------
-  HDD
- --------------
+ --------------- --------------
+  compress_type   storage_mode
+ --------------- --------------
+  NoCompress      HDD
+ --------------- --------------
 ```
 创建一张表，指定分片的分布状态
 ```sql

@@ -30,7 +30,7 @@ conf["zk_root_path"] = "/openmldb"
 conf["base_dir"] = path.dirname(path.dirname(path.dirname(path.dirname(dirname))))
 conf["components"] = {}
 cf = configparser.ConfigParser(strict=False, delimiters=" ", allow_no_value=True)
-host_file = conf["base_dir"] + "/openmldb/conf/hosts"
+host_file = conf["base_dir"] + "/test/test-tool/openmldb-deploy/hosts"
 cf.read(host_file)
 for sec in cf.sections():
     if sec != "zookeeper":

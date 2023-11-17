@@ -20,8 +20,6 @@
 #include <stdlib.h>
 #include <filesystem>
 #include <memory>
-#include "absl/time/clock.h"
-#include "absl/time/time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
@@ -34,12 +32,10 @@
 #include <vector>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
-#include "config.h"  // NOLINT
-#ifdef TCMALLOC_ENABLE
-#include "gperftools/malloc_extension.h"
-#endif
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/hash.h"
@@ -53,8 +49,12 @@
 #include "codec/row_codec.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "common/timer.h"
+#include "config.h"  // NOLINT
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#ifdef TCMALLOC_ENABLE
+#include "gperftools/malloc_extension.h"
+#endif
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "nameserver/task.h"
@@ -66,11 +66,8 @@
 #include "tablet/file_sender.h"
 
 using ::openmldb::base::ReturnCode;
-using ::openmldb::codec::SchemaCodec;
-using ::openmldb::storage::DataBlock;
 using ::openmldb::storage::DiskTable;
 using ::openmldb::storage::Table;
-using google::protobuf::RepeatedPtrField;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
@@ -110,6 +107,8 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
@@ -125,7 +124,6 @@ DECLARE_int32(snapshot_pool_size);
 namespace openmldb {
 namespace tablet {
 
-static const std::string SERVER_CONCURRENCY_KEY = "server";  // NOLINT
 static const uint32_t SEED = 0xe17a1465;
 
 static constexpr const char DEPLOY_STATS[] = "deploy_stats";
@@ -191,10 +189,14 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
                                   mode_recycle_root_paths_[::openmldb::common::kSSD]);
     ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",",
                                   mode_recycle_root_paths_[::openmldb::common::kHDD]);
-    deploy_collector_ = std::make_unique<::openmldb::statistics::DeployQueryTimeCollector>();
+    // if want /brpc_metrics, prefix should be g_server_info_prefix+<port>(when no server_info_name), means
+    // rpc_server_<port> if standalone, diy
+    deploy_collector_ = std::make_unique<::openmldb::statistics::DeploymentMetricCollector>(
+        "rpc_server_" + endpoint.substr(endpoint.find(":") + 1));
 
     if (!zk_cluster.empty()) {
-        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path);
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint, FLAGS_zk_session_timeout, endpoint, zk_path,
+                FLAGS_zk_auth_schema, FLAGS_zk_cert);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(ERROR, "fail to init zookeeper with cluster %s", zk_cluster.c_str());
@@ -212,9 +214,8 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     } else {
         options.SetClusterOptimized(false);
     }
-    engine_ = std::unique_ptr<::hybridse::vm::Engine>(new ::hybridse::vm::Engine(catalog_, options));
-    catalog_->SetLocalTablet(
-        std::shared_ptr<::hybridse::vm::Tablet>(new ::hybridse::vm::LocalTablet(engine_.get(), sp_cache_)));
+    engine_ = std::make_unique<::hybridse::vm::Engine>(catalog_, options);
+    catalog_->SetLocalTablet(std::make_shared<::hybridse::vm::LocalTablet>(engine_.get(), sp_cache_));
     std::set<std::string> snapshot_compression_set{"off", "zlib", "snappy"};
     if (snapshot_compression_set.find(FLAGS_snapshot_compression) == snapshot_compression_set.end()) {
         LOG(ERROR) << "wrong snapshot_compression: " << FLAGS_snapshot_compression;
@@ -463,9 +464,6 @@ int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const :
     bool enable_project = false;
     openmldb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            return -1;
-        }
         bool ok = row_project.Init();
         if (!ok) {
             PDLOG(WARNING, "invalid project list");
@@ -724,6 +722,22 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         response->set_msg("exceed max memory");
         return;
     }
+    ::openmldb::api::LogEntry entry;
+    entry.set_pk(request->pk());
+    entry.set_ts(request->time());
+    if (table->GetCompressType() == openmldb::type::CompressType::kSnappy) {
+        const auto& raw_val = request->value();
+        std::string* val = entry.mutable_value();
+        ::snappy::Compress(raw_val.c_str(), raw_val.length(), val);
+    } else {
+        entry.set_value(request->value());
+    }
+    if (request->dimensions_size() > 0) {
+        entry.mutable_dimensions()->CopyFrom(request->dimensions());
+    }
+    if (request->ts_dimensions_size() > 0) {
+        entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
+    }
     bool ok = false;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
@@ -733,7 +747,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             return;
         }
         DLOG(INFO) << "put data to tid " << tid << " pid " << pid << " with key " << request->dimensions(0).key();
-        ok = table->Put(request->time(), request->value(), request->dimensions());
+        ok = table->Put(entry.ts(), entry.value(), entry.dimensions());
     }
     if (!ok) {
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);
@@ -743,23 +757,13 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
-    ::openmldb::api::LogEntry entry;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
             PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", tid, pid);
             break;
         }
-        entry.set_pk(request->pk());
-        entry.set_ts(request->time());
-        entry.set_value(request->value());
         entry.set_term(replicator->GetLeaderTerm());
-        if (request->dimensions_size() > 0) {
-            entry.mutable_dimensions()->CopyFrom(request->dimensions());
-        }
-        if (request->ts_dimensions_size() > 0) {
-            entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
-        }
 
         // Aggregator update assumes that binlog_offset is strictly increasing
         // so the update should be protected within the replicator lock
@@ -885,7 +889,7 @@ int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::
 }
 
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, bool use_attachment,
                               CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count, bool* is_finish) {
     uint32_t limit = request->limit();
     if (combine_it == nullptr || io_buf == nullptr || count == nullptr || is_finish == nullptr) {
@@ -909,12 +913,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
     bool enable_project = false;
     ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data do not eing supported";
-            return -1;
-        }
-        bool ok = row_project.Init();
-        if (!ok) {
+        if (!row_project.Init()) {
             PDLOG(WARNING, "invalid project list");
             return -1;
         }
@@ -955,11 +954,19 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            io_buf->append(reinterpret_cast<void*>(ptr), size);
+            if (use_attachment) {
+                io_buf->append(reinterpret_cast<void*>(ptr), size);
+            } else {
+                ::openmldb::codec::Encode(ts, reinterpret_cast<char*>(ptr), size, io_buf);
+            }
             total_block_size += size;
         } else {
             openmldb::base::Slice data = combine_it->GetValue();
-            io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            if (use_attachment) {
+                io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
+            } else {
+                ::openmldb::codec::Encode(ts, data.data(), data.size(), io_buf);
+            }
             total_block_size += data.size();
         }
         record_count++;
@@ -970,98 +977,6 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
         combine_it->Next();
     }
     *count = record_count;
-    return 0;
-}
-int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
-                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-                              CombineIterator* combine_it, std::string* pairs, uint32_t* count, bool* is_finish) {
-    uint32_t limit = request->limit();
-    if (combine_it == nullptr || pairs == nullptr || count == nullptr || is_finish == nullptr) {
-        PDLOG(WARNING, "invalid args");
-        return -1;
-    }
-    uint64_t st = request->st();
-    uint64_t et = request->et();
-    uint64_t expire_time = combine_it->GetExpireTime();
-    ::openmldb::storage::TTLType ttl_type = combine_it->GetTTLType();
-    if (ttl_type == ::openmldb::storage::TTLType::kAbsoluteTime ||
-        ttl_type == ::openmldb::storage::TTLType::kAbsOrLat) {
-        et = std::max(et, expire_time);
-    }
-    if (st > 0 && st < et) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_time);
-        return -1;
-    }
-
-    bool enable_project = false;
-    ::openmldb::codec::RowProject row_project(vers_schema, request->projection());
-    if (!request->projection().empty()) {
-        if (meta.compress_type() == ::openmldb::type::kSnappy) {
-            LOG(WARNING) << "project on compress row data, not supported";
-            return -1;
-        }
-        bool ok = row_project.Init();
-        if (!ok) {
-            PDLOG(WARNING, "invalid project list");
-            return -1;
-        }
-        enable_project = true;
-    }
-    bool remove_duplicated_record = request->enable_remove_duplicated_record();
-    uint64_t last_time = 0;
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> tmp;
-    uint32_t total_block_size = 0;
-    combine_it->SeekToFirst();
-    uint32_t skip_record_num = request->skip_record_num();
-    while (combine_it->Valid()) {
-        if (limit > 0 && tmp.size() >= limit) {
-            *is_finish = false;
-            break;
-        }
-        if (remove_duplicated_record && !tmp.empty() && last_time == combine_it->GetTs()) {
-            combine_it->Next();
-            continue;
-        }
-        if (combine_it->GetTs() == st && skip_record_num > 0) {
-            skip_record_num--;
-            combine_it->Next();
-            continue;
-        }
-        uint64_t ts = combine_it->GetTs();
-        if (ts <= et) {
-            break;
-        }
-        last_time = ts;
-        if (enable_project) {
-            int8_t* ptr = nullptr;
-            uint32_t size = 0;
-            openmldb::base::Slice data = combine_it->GetValue();
-            const auto* row_ptr = reinterpret_cast<const int8_t*>(data.data());
-            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
-            if (!ok) {
-                PDLOG(WARNING, "fail to make a projection");
-                return -4;
-            }
-            tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
-            total_block_size += size;
-        } else {
-            openmldb::base::Slice data = combine_it->GetValue();
-            total_block_size += data.size();
-            tmp.emplace_back(ts, data);
-        }
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
-            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
-            *is_finish = false;
-            break;
-        }
-        combine_it->Next();
-    }
-    int32_t ok = ::openmldb::codec::EncodeRows(tmp, total_block_size, pairs);
-    if (ok == -1) {
-        PDLOG(WARNING, "fail to encode rows");
-        return -4;
-    }
-    *count = tmp.size();
     return 0;
 }
 
@@ -1252,12 +1167,13 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
     int32_t code = 0;
     bool is_finish = true;
     if (!request->has_use_attachment() || !request->use_attachment()) {
-        std::string* pairs = response->mutable_pairs();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, pairs, &count, &is_finish);
+        butil::IOBuf buf;
+        code = ScanIndex(request, *table_meta, vers_schema, false, &combine_it, &buf, &count, &is_finish);
+        buf.copy_to(response->mutable_pairs());
     } else {
         auto* cntl = dynamic_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
-        code = ScanIndex(request, *table_meta, vers_schema, &combine_it, &buf, &count, &is_finish);
+        code = ScanIndex(request, *table_meta, vers_schema, true, &combine_it, &buf, &count, &is_finish);
         response->set_buf_size(buf.size());
         DLOG(INFO) << " scan " << request->pk() << " with buf size " << buf.size();
     }
@@ -1440,14 +1356,12 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         DEBUGLOG("tid %u, pid %u seek to first", tid, pid);
         it->SeekToFirst();
     }
-    std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
-    std::vector<std::string> key_seq;
-    uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     uint32_t scount = 0;
+    butil::IOBuf buf;
     for (; it->Valid(); it->Next()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             DEBUGLOG("reache the limit %u ", request->limit());
@@ -1469,16 +1383,9 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
                 continue;
             }
         }
-        auto map_it = value_map.find(last_pk);
-        if (map_it == value_map.end()) {
-            auto pair = value_map.emplace(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>());
-            map_it = pair.first;
-            map_it->second.reserve(request->limit());
-            key_seq.emplace_back(map_it->first);
-        }
         openmldb::base::Slice value = it->GetValue();
-        map_it->second.emplace_back(it->GetKey(), value);
-        total_block_size += last_pk.length() + value.size();
+        DLOG(INFO) << "encode pk " << it->GetPK() << " ts " << it->GetKey() << " size " << value.size();
+        ::openmldb::codec::EncodeFull(it->GetPK(), it->GetKey(), value.data(), value.size(), &buf);
         scount++;
         if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
@@ -1498,26 +1405,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     } else if (scount < request->limit()) {
         is_finish = true;
     }
-    uint32_t total_size = scount * (8 + 4 + 4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (scount <= 0) {
-        pairs->resize(0);
-    } else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(&((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& key : key_seq) {
-        auto iter = value_map.find(key);
-        if (iter == value_map.end()) {
-            continue;
-        }
-        for (const auto& pair : iter->second) {
-            DLOG(INFO) << "encode pk " << key << " ts " << pair.first << " size " << pair.second.size();
-            ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
-            offset += (4 + 4 + 8 + key.length() + pair.second.size());
-        }
-    }
+    buf.copy_to(response->mutable_pairs());
     delete it;
     DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
                << " last_time " << last_time << " ts_pos " << ts_pos;
@@ -1602,34 +1490,80 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         PDLOG(WARNING, "invalid args. tid %u, pid %u", tid, pid);
         return;
     }
-    if (table->Delete(entry)) {
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-        DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, request->key().c_str());
-    } else {
-        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-        response->set_msg("delete failed");
-        return;
-    }
-
-    // delete the entries from pre-aggr table
     auto aggrs = GetAggregators(tid, pid);
-    if (aggrs) {
-        for (const auto& aggr : *aggrs) {
-            if (aggr->GetIndexPos() != idx) {
-                continue;
+    if (!aggrs) {
+        if (table->Delete(entry)) {
+            DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, request->key().c_str());
+        } else {
+            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("delete failed");
+            return;
+        }
+    } else {
+        auto get_aggregator = [this](std::shared_ptr<Aggrs> aggrs, uint32_t idx) -> std::shared_ptr<Aggregator> {
+            if (aggrs) {
+                for (const auto& aggr : *aggrs) {
+                    if (aggr->GetIndexPos() == idx) {
+                        return aggr;
+                    }
+                }
             }
-            auto ok = aggr->Delete(request->key());
-            if (!ok) {
-                PDLOG(WARNING,
-                      "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
-                      tid, pid, idx, request->key().c_str(), aggr->GetAggrTid());
-                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                response->set_msg("delete from associated pre-aggr table failed");
-                return;
+            return {};
+        };
+        std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()} : std::nullopt;
+        std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()} : std::nullopt;
+        if (entry.dimensions_size() > 0) {
+            for (const auto& dimension : entry.dimensions()) {
+                if (!table->Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
+                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                    response->set_msg("delete failed");
+                    return;
+                }
+                auto aggr = get_aggregator(aggrs, dimension.idx());
+                if (aggr) {
+                    if (!aggr->Delete(dimension.key(), start_ts, end_ts)) {
+                        PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
+                                "aggr table: tid[%u]",
+                              tid, pid, idx, dimension.key().c_str(), aggr->GetAggrTid());
+                        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                        response->set_msg("delete from associated pre-aggr table failed");
+                        return;
+                    }
+                }
+                DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, dimension.key().c_str());
+            }
+        } else {
+            for (const auto& index_def : table->GetAllIndex()) {
+                if (!index_def || !index_def->IsReady()) {
+                    continue;
+                }
+                uint32_t idx = index_def->GetId();
+                std::unique_ptr<storage::TraverseIterator> iter(table->NewTraverseIterator(idx));
+                iter->SeekToFirst();
+                while (iter->Valid()) {
+                    auto pk = iter->GetPK();
+                    iter->NextPK();
+                    if (!table->Delete(idx, pk, start_ts, end_ts)) {
+                        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                        response->set_msg("delete failed");
+                        return;
+                    }
+                    auto aggr = get_aggregator(aggrs, idx);
+                    if (aggr) {
+                        if (!aggr->Delete(pk, start_ts, end_ts)) {
+                            PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
+                                    "aggr table: tid[%u]", tid, pid, idx, pk.c_str(), aggr->GetAggrTid());
+                            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                            response->set_msg("delete from associated pre-aggr table failed");
+                            return;
+                        }
+                    }
+                }
             }
         }
     }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 
     replicator->AppendEntry(entry);
     if (FLAGS_binlog_notify_on_put) {
@@ -1643,15 +1577,15 @@ void TabletImpl::Query(RpcController* ctrl, const openmldb::api::QueryRequest* r
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ProcessQuery(ctrl, request, response, &buf);
+    ProcessQuery(true, ctrl, request, response, &buf);
 }
 
-void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryRequest* request,
+void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::api::QueryRequest* request,
                               ::openmldb::api::QueryResponse* response, butil::IOBuf* buf) {
     auto start = absl::Now();
-    absl::Cleanup deploy_collect_task = [this, request, start]() {
+    absl::Cleanup deploy_collect_task = [this, is_sub, request, start]() {
         if (this->IsCollectDeployStatsEnabled()) {
-            if (request->is_procedure() && request->has_db() && request->has_sp_name()) {
+            if (!is_sub && request->is_procedure() && request->has_db() && request->has_sp_name()) {
                 this->TryCollectDeployStats(request->db(), request->sp_name(), start);
             }
         }
@@ -1773,7 +1707,8 @@ void TabletImpl::SubQuery(RpcController* ctrl, const openmldb::api::QueryRequest
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ProcessQuery(ctrl, request, response, &buf);
+    // subquery don't need to collect deploy stats
+    ProcessQuery(true, ctrl, request, response, &buf);
 }
 
 void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const openmldb::api::SQLBatchRequestQueryRequest* request,
@@ -1782,15 +1717,15 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const openmldb::api::
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    return ProcessBatchRequestQuery(ctrl, request, response, buf);
+    return ProcessBatchRequestQuery(false, ctrl, request, response, buf);
 }
-void TabletImpl::ProcessBatchRequestQuery(RpcController* ctrl,
+void TabletImpl::ProcessBatchRequestQuery(bool is_sub, RpcController* ctrl,
                                           const openmldb::api::SQLBatchRequestQueryRequest* request,
                                           openmldb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
     absl::Time start = absl::Now();
-    absl::Cleanup deploy_collect_task = [this, request, start]() {
+    absl::Cleanup deploy_collect_task = [this, is_sub, request, start]() {
         if (this->IsCollectDeployStatsEnabled()) {
-            if (request->is_procedure() && request->has_db() && request->has_sp_name()) {
+            if (!is_sub && request->is_procedure() && request->has_db() && request->has_sp_name()) {
                 this->TryCollectDeployStats(request->db(), request->sp_name(), start);
             }
         }
@@ -1962,7 +1897,7 @@ void TabletImpl::SubBatchRequestQuery(RpcController* ctrl, const openmldb::api::
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    return ProcessBatchRequestQuery(ctrl, request, response, buf);
+    return ProcessBatchRequestQuery(true, ctrl, request, response, buf);
 }
 
 void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::ChangeRoleRequest* request,
@@ -2054,7 +1989,7 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
         }
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
         if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), tid, pid);
         }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -2481,7 +2416,7 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
 }
 
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
-                                      std::shared_ptr<::openmldb::api::TaskInfo> task) {
+        std::shared_ptr<::openmldb::api::TaskInfo> task, bool is_force) {
     PDLOG(INFO, "MakeSnapshotInternal begin, tid[%u] pid[%u]", tid, pid);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
@@ -2524,7 +2459,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
+    if (!is_force && cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
         PDLOG(INFO,
               "offset can't reach the threshold. tid[%u] pid[%u] "
               "cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
@@ -2597,7 +2532,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller, const ::openmldb::api::
                 break;
             }
         }
-        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr, false));
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
@@ -2631,7 +2566,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::openmldb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::openmldb::api::TaskInfo>(), false);
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000,
@@ -3033,10 +2968,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
 
         std::string db_path = GetDBPath(root_path, tid, pid);
         if (!::openmldb::base::IsExists(db_path)) {
-            PDLOG(WARNING, "table db path does not exist. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
-            response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
-            response->set_msg("table db path does not exist");
-            break;
+            PDLOG(WARNING, "table db path does not exist, but still load. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
         }
 
         std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -3304,7 +3236,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3318,12 +3249,13 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
                 snapshots_.erase(tid);
             }
         }
+        engine_->ClearCacheLocked("");
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
         if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), tid, pid);
         }
         // delete related aggregator
         uint32_t base_tid = table->GetTableMeta()->base_table_tid();
@@ -3456,6 +3388,110 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
     gc_pool_.DelayTask(gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api::TruncateTableRequest* request,
+        ::openmldb::api::TruncateTableResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    if (auto status = TruncateTableInternal(tid, pid); !status.OK()) {
+        base::SetResponseStatus(status, response);
+        return;
+    }
+    auto aggrs = GetAggregators(tid, pid);
+    if (aggrs) {
+        for (const auto& aggr : *aggrs) {
+            auto agg_table = aggr->GetAggTable();
+            if (!agg_table) {
+                PDLOG(WARNING, "aggrate table does not exist. tid[%u] pid[%u] index pos[%u]",
+                        tid, pid, aggr->GetIndexPos());
+                response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("aggrate table does not exist");
+                return;
+            }
+            uint32_t agg_tid = agg_table->GetId();
+            uint32_t agg_pid = agg_table->GetPid();
+            if (auto status = TruncateTableInternal(agg_tid, agg_pid); !status.OK()) {
+                PDLOG(WARNING, "truncate aggrate table failed. tid[%u] pid[%u] index pos[%u]",
+                        agg_tid, agg_pid, aggr->GetIndexPos());
+                base::SetResponseStatus(status, response);
+                return;
+            }
+            PDLOG(INFO, "truncate aggrate table success. tid[%u] pid[%u] index pos[%u]",
+                        agg_tid, agg_pid, aggr->GetIndexPos());
+        }
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
+    std::shared_ptr<LogReplicator> replicator;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        table = GetTableUnLock(tid, pid);
+        if (!table) {
+            DEBUGLOG("table does not exist. tid %u pid %u", tid, pid);
+            return {::openmldb::base::ReturnCode::kTableIsNotExist, "table not found"};
+        }
+        snapshot = GetSnapshotUnLock(tid, pid);
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
+            return {::openmldb::base::ReturnCode::kSnapshotIsNotExist, "snapshot not found"};
+        }
+        replicator = GetReplicatorUnLock(tid, pid);
+        if (!replicator) {
+            PDLOG(WARNING, "replicator does not exist. tid[%u] pid[%u]", tid, pid);
+            return {::openmldb::base::ReturnCode::kReplicatorIsNotExist, "replicator not found"};
+        }
+    }
+    if (replicator->GetOffset() == 0) {
+        PDLOG(INFO, "table is empty, truncate success. tid[%u] pid[%u]", tid, pid);
+        return {};
+    }
+    if (table->GetTableStat() == ::openmldb::storage::kMakingSnapshot) {
+        PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+        return {::openmldb::base::ReturnCode::kTableStatusIsKmakingsnapshot, "table status is kMakingSnapshot"};
+    } else if (table->GetTableStat() == ::openmldb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading now. tid[%u] pid[%u]", tid, pid);
+        return {::openmldb::base::ReturnCode::kTableIsLoading, "table is loading data"};
+    }
+    if (table->GetStorageMode() == openmldb::common::kMemory) {
+        auto table_meta = table->GetTableMeta();
+        std::shared_ptr<Table> new_table;
+        new_table = std::make_shared<MemTable>(*table_meta);
+        if (!new_table->Init()) {
+            PDLOG(WARNING, "fail to init table. tid %u, pid %u", tid, pid);
+            return {::openmldb::base::ReturnCode::kTableMetaIsIllegal, "fail to init table"};
+        }
+        new_table->SetTableStat(::openmldb::storage::kNormal);
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            tables_[tid].insert_or_assign(pid, new_table);
+        }
+        auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
+        mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
+        if (table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
+            if (catalog_->AddTable(*table_meta, new_table)) {
+                LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
+            } else {
+                LOG(WARNING) << "fail to add table " << table_meta->name()
+                    << " to catalog with db " << table_meta->db();
+                return {::openmldb::base::ReturnCode::kCatalogUpdateFailed, "fail to update catalog"};
+            }
+        }
+    } else {
+        auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
+        if (auto status = disk_table->Truncate(); !status.OK()) {
+            return {::openmldb::base::ReturnCode::kTruncateTableFailed, status.GetMsg()};
+        }
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, 0, nullptr, true));
+    }
+    PDLOG(INFO, "truncate table success. tid[%u] pid[%u]", tid, pid);
+    return {};
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller, const ::openmldb::api::ExecuteGcRequest* request,
@@ -3867,13 +3903,11 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         return -1;
     }
     std::string table_db_path = GetDBPath(db_root_path, tid, pid);
-    Table* table_ptr;
     if (table_meta->storage_mode() == openmldb::common::kMemory) {
-        table_ptr = new MemTable(*table_meta);
+        table = std::make_shared<MemTable>(*table_meta);
     } else {
-        table_ptr = new DiskTable(*table_meta, table_db_path);
+        table = std::make_shared<DiskTable>(*table_meta, table_db_path);
     }
-    table.reset(table_ptr);
 
     if (!table->Init()) {
         PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
@@ -3927,7 +3961,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         }
-        engine_->ClearCacheLocked(table_meta->db());
+        engine_->ClearCacheLocked("");
 
         // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
         if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
@@ -4247,7 +4281,12 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
         LOG(WARNING) << "fail to parse table proto. tid: " << tid << " value: " << value;
         return false;
     }
-    return catalog_->UpdateTableInfo(table_info);
+    if (bool index_updated = false; !catalog_->UpdateTableInfo(table_info, &index_updated)) {
+        return false;
+    } else if (index_updated) {
+        engine_->ClearCacheLocked("");
+    }
+    return true;
 }
 
 void TabletImpl::UpdateGlobalVarTable() {
@@ -4281,6 +4320,12 @@ void TabletImpl::UpdateGlobalVarTable() {
         it->Next();
     }
     std::atomic_store_explicit(&global_variables_, new_global_var, std::memory_order_relaxed);
+
+    // no DEPLOY_STATS when init, so we can get the first DEPLOY_STATS value here, and all changes will be handled in
+    // and we assume that global vars change is low frequency, so we reset here instead of in the repeated task
+    if (!IsCollectDeployStatsEnabled()) {
+        deploy_collector_->Reset();
+    }
     return;
 }
 
@@ -4369,7 +4414,11 @@ void TabletImpl::RefreshTableInfo() {
         }
     }
     auto old_db_sp_map = catalog_->GetProcedures();
-    catalog_->Refresh(table_info_vec, version, db_sp_map);
+    bool updated = false;
+    catalog_->Refresh(table_info_vec, version, db_sp_map, &updated);
+    if (updated) {
+        engine_->ClearCacheLocked("");
+    }
     // skip exist procedure, don`t need recompile
     for (const auto& db_sp_map_kv : db_sp_map) {
         const auto& db = db_sp_map_kv.first;
@@ -5302,7 +5351,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
 
     if (is_deployment_procedure) {
         auto collector_key = absl::StrCat(db_name, ".", sp_name);
-        auto s = deploy_collector_->DeleteDeploy(collector_key);
+        auto s = deploy_collector_->DeleteDeploy(db_name, sp_name);
         if (!s.ok()) {
             LOG(ERROR) << "[ERROR] delete deploy collector: " << s;
         } else {
@@ -5455,31 +5504,12 @@ bool TabletImpl::IsCollectDeployStatsEnabled() const {
 }
 
 // try collect the cost time for a deployment procedure into collector
-// if the procedure found in collector, it is colelcted directly
-// if not, the function will try find the procedure info from procedure cache, and if turns out is a deployment
-// procedure, retry collecting by firstly adding the missing deployment procedure into collector
+// if failed, log inside, no extra handle
 void TabletImpl::TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time) {
     absl::Time now = absl::Now();
     absl::Duration time = now - start_time;
-    const std::string deploy_name = absl::StrCat(db, ".", name);
-    auto s = deploy_collector_->Collect(deploy_name, time);
-    if (absl::IsNotFound(s)) {
-        // deploy collector is regarded as non-update-to-date cache for sp_info (sp_cache_ should be up-to-date)
-        // so when Not Found error happens, retry once again by AddDeploy first, with the help of sp_cache_
-        auto sp_info = sp_cache_->FindSpProcedureInfo(db, name);
-        if (sp_info.ok() && sp_info.value()->GetType() == hybridse::sdk::kReqDeployment) {
-            s = deploy_collector_->AddDeploy(deploy_name);
-            if (!s.ok()) {
-                LOG(ERROR) << "[ERROR] add deploy collector: " << s;
-                return;
-            }
-            s = deploy_collector_->Collect(deploy_name, time);
-        }
-    }
-    if (!s.ok()) {
-        LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
-    }
-    DLOG(INFO) << "collected " << deploy_name << " for " << time;
+    auto st = deploy_collector_->Collect(db, name, time);
+    DLOG(INFO) << "collect " << db << "." << name << " latency " << time;
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
@@ -5706,9 +5736,14 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
         return false;
     }
     auto aggr_replicator = GetReplicator(request->aggr_table_tid(), request->aggr_table_pid());
-    auto aggregator = ::openmldb::storage::CreateAggregator(
-        base_meta, *aggr_table->GetTableMeta(), aggr_table, aggr_replicator, request->index_pos(), request->aggr_col(),
-        request->aggr_func(), request->order_by_col(), request->bucket_size(), request->filter_col());
+    auto base_table = GetTable(base_meta.tid(), base_meta.pid());
+    if (!base_table) {
+        PDLOG(WARNING, "base table does not exist. tid %u, pid %u", base_meta.tid(), base_meta.pid());
+        return false;
+    }
+    auto aggregator = ::openmldb::storage::CreateAggregator(base_meta, base_table,
+            *aggr_table->GetTableMeta(), aggr_table, aggr_replicator, request->index_pos(), request->aggr_col(),
+            request->aggr_func(), request->order_by_col(), request->bucket_size(), request->filter_col());
     if (!aggregator) {
         msg.assign("create aggregator failed");
         return false;
@@ -5736,14 +5771,7 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
                                         ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
 
-    auto rs = deploy_collector_->Flush();
-    for (auto& r : rs) {
-        auto new_row = response->add_rows();
-        new_row->set_deploy_name(r.deploy_name_);
-        new_row->set_time(r.GetTimeAsStr(statistics::TimeUnit::MICRO_SECOND));
-        new_row->set_count(r.count_);
-        new_row->set_total(r.GetTotalAsStr(statistics::TimeUnit::MICRO_SECOND));
-    }
+    // TODO(hw): delete rpc?
     response->set_code(ReturnCode::kOk);
 }
 

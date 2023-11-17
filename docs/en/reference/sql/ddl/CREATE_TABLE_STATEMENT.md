@@ -226,7 +226,7 @@ The index key must be configured, and other configuration items are optional. Th
 | Configuration Item        | Note                                                                                                                                                                                                                                                                                                                        | Expression                                                                                      | Example                                                                                                                    |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
 | `KEY`      | It defines the index column (required). OpenMLDB supports single-column indexes as well as joint indexes. When `KEY`=one column, a single-column index is configured. When `KEY`=multiple columns, the joint index of these columns is configured: several columns are concatenated into a new string as an index in order. | Single-column index: `ColumnName`<br/>Joint index: <br/>`(ColumnName (, ColumnName)* ) `        | Single-column index: `INDEX(KEY=col1)`<br />Joint index: `INDEX(KEY=(col1, col2))`                                         |
-| `TS`       | It defines the index time column (optional). Data on the same index will be sorted by the index time column. When `TS` is not explicitly configured, the timestamp of data insertion is used as the index time.                                                                                                             | `ColumnName`                                                                                    | `INDEX(KEY=col1, TS=std_time)`。 The index column is col1, and the data rows with the same col1 value are sorted by std_time. |
+| `TS`       | It defines the index time column (optional). Data on the same index will be sorted by the index time column. When `TS` is not explicitly configured, the timestamp of data insertion is used as the index time. The data type of time column should be BigInt or Timestamp                                                                                                             | `ColumnName`                                                                                    | `INDEX(KEY=col1, TS=std_time)`。 The index column is col1, and the data rows with the same col1 value are sorted by std_time. |
 | `TTL_TYPE` | It defines the elimination rules (optional). Including four types. When `TTL_TYPE` is not explicitly configured, the `ABSOLUTE` expiration configuration is used by default.                                                                                                                                                | Supported expr: `ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                      | For specific usage, please refer to **Configuration Rules for TTL and TTL_TYP** below.                                     |
 | `TTL`      | It defines the maximum survival time/number. Different TTL_TYPEs determines different `TTL` configuration methods. When `TTL` is not explicitly configured, `TTL=0` which means OpenMLDB will not evict records.                                                                                                            | Supported expr: `int_literal`<br/>  `interval_literal`<br/>`( interval_literal , int_literal )` | For specific usage, please refer to "Configuration Rules for TTL and TTL_TYPE" below.                                      |
 
@@ -473,6 +473,11 @@ StorageMode
 						::= 'Memory'
 						    | 'HDD'
 						    | 'SSD'
+CompressTypeOption
+						::= 'COMPRESS_TYPE' '=' CompressType
+CompressType
+						::= 'NoCompress'
+						    | 'Snappy
 ```
 
 
@@ -484,6 +489,7 @@ StorageMode
 | `REPLICANUM`       | It defines the number of replicas for the table. Note that the number of replicas is only configurable in Cluster version.                                                                                                                                                                                                                                                                                                                      | `OPTIONS (REPLICANUM=3)`                                                      |
 | `DISTRIBUTION`     | It defines the distributed node endpoint configuration. Generally, it contains a Leader node and several followers. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and nodes.                                                                                                                                                        | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE`     | It defines the storage mode of the table. The supported modes are `Memory`, `HDD` and `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file **conf/tablet.flags**](../../../deploy/conf.md#the-configuration-file-for-apiserver:-conf/tablet.flags). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
+| `COMPRESS_TYPE` | It defines the compress types of the table. The supported compress type are `NoCompress` and `Snappy`. The default value is `NoCompress`                                               | `OPTIONS (COMPRESS_TYPE='Snappy')`
 
 
 #### The Difference between Disk Table and Memory Table
@@ -515,11 +521,11 @@ DESC t1;
  --- -------------------- ------ ---------- ------ ---------------
   1   INDEX_0_1651143735   col1   std_time   0min   kAbsoluteTime
  --- -------------------- ------ ---------- ------ ---------------
- --------------
-  storage_mode
- --------------
-  HDD
- --------------
+ --------------- --------------
+  compress_type   storage_mode
+ --------------- --------------
+  NoCompress      HDD
+ --------------- --------------
 ```
 The following sql command create a table with specified distribution.
 ```sql

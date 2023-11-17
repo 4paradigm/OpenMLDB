@@ -73,6 +73,11 @@ class TestAddIndex:
 
         time.sleep(2)
         result = self.cursor.execute(f"create index index2 on {table_name} (col2) options (ts=col3)")
+        try:
+            result = self.cursor.execute(f"create index index3 on {table_name} (col1, col2) options (ts=col3)")
+            assert False
+        except Exception as e:
+            assert True
         time.sleep(1)
         assert self.executor.WaitingOP(database, table_name, 0).OK()
         status, indexs = self.executor.GetIndexs(database, table_name)

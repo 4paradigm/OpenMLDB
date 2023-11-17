@@ -85,11 +85,13 @@ public class SyncToolImpl implements SyncToolInterface {
         this.zkClient = new ZKClient(ZKConfig.builder()
                 .cluster(SyncToolConfig.ZK_CLUSTER)
                 .namespace(SyncToolConfig.ZK_ROOT_PATH)
+                .cert(SyncToolConfig.ZK_CERT)
                 .build());
         Preconditions.checkState(zkClient.connect(), "zk connect failed");
         SdkOption option = new SdkOption();
         option.setZkCluster(SyncToolConfig.ZK_CLUSTER);
         option.setZkPath(SyncToolConfig.ZK_ROOT_PATH);
+        option.setZkCert(SyncToolConfig.ZK_CERT);
         this.router = new SqlClusterExecutor(option);
         this.zkCollectorPath = SyncToolConfig.ZK_ROOT_PATH + "/sync_tool/collector";
 

@@ -102,12 +102,20 @@ CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
 
 - 离线和在线引擎均可以导入 Hive 数据源
 - Hive 导入支持软连接，可以减少硬拷贝并且保证 OpenMLDB 随时读取到 Hive 的最新数据。启用软链接方式进行数据导入：使用参数 `deep_copy=false` 
-- `OPTIONS` 参数仅有 `deep_copy` 和 `mode` 有效
+- `OPTIONS` 参数仅有 `deep_copy` 、`mode` 和 `sql` 有效
 
 举例：
 
 ```sql
 LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=false);
+```
+
+加载数据还支持使用 SQL 语句筛选 Hive 数据表特定数据，注意 SQL 必须符合 SparkSQL 语法，数据表为注册后的表名，不带 `hive://` 前缀。
+
+举例：
+
+```sql
+LOAD DATA INFILE 'hive://db1.t1' INTO TABLE db1.t1 OPTIONS(deep_copy=true, sql='SELECT * FROM db1.t1 where key=\"foo\"')
 ```
 
 ## 导出 OpenMLDB 数据到 Hive

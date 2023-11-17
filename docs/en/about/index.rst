@@ -5,7 +5,8 @@ About
 .. toctree::
     :maxdepth: 1
 
-    intro    
-    milestones
-    release_notes
+    intro
+    community
+    milestones <https://openmldb.ai/en/history/>
+    change_logs <https://github.com/4paradigm/OpenMLDB/blob/main/CHANGELOG.md>
 

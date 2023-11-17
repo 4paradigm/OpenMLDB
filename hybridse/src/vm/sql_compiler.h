@@ -18,15 +18,13 @@
 #define HYBRIDSE_SRC_VM_SQL_COMPILER_H_
 
 #include <memory>
-#include <set>
 #include <string>
-#include <vector>
 #include <unordered_map>
 #include "base/fe_status.h"
 #include "llvm/IR/Module.h"
-#include "proto/fe_common.pb.h"
 #include "udf/udf_library.h"
 #include "vm/catalog.h"
+#include "vm/cluster_task.h"
 #include "vm/engine_context.h"
 #include "vm/jit_wrapper.h"
 #include "vm/physical_op.h"

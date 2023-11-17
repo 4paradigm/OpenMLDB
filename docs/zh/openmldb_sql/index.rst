@@ -10,6 +10,7 @@ OpenMLDB SQL
     language_structure/index 
     data_types/index
     functions_and_operators/index
+    udfs_8h
     dql/index
     dml/index
     ddl/index

@@ -20,8 +20,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.api.ACLProvider;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.data.ACL;
 
 import java.util.concurrent.TimeUnit;
 import java.util.List;
@@ -46,12 +49,26 @@ public class ZKClient {
     public boolean connect() throws InterruptedException {
         log.info("ZKClient connect with config: {}", config);
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(config.getBaseSleepTime(), config.getMaxRetries());
-        CuratorFramework client = CuratorFrameworkFactory.builder()
+        CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder()
                 .connectString(config.getCluster())
                 .sessionTimeoutMs(config.getSessionTimeout())
                 .connectionTimeoutMs(config.getConnectionTimeout())
-                .retryPolicy(retryPolicy)
-                .build();
+                .retryPolicy(retryPolicy);
+        if (!config.getCert().isEmpty()) {
+           builder.authorization("digest", config.getCert().getBytes())
+                .aclProvider(new ACLProvider() {
+                    @Override
+                    public List<ACL> getDefaultAcl() {
+                        return ZooDefs.Ids.CREATOR_ALL_ACL;
+                    }
+
+                    @Override
+                    public List<ACL> getAclForPath(String s) {
+                        return ZooDefs.Ids.CREATOR_ALL_ACL;
+                    }
+                });
+        }
+        CuratorFramework client = builder.build();
         client.start();
         if (!client.blockUntilConnected(config.getMaxConnectWaitTime(), TimeUnit.MILLISECONDS)) {
             return false;

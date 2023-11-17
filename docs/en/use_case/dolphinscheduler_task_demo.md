@@ -33,7 +33,7 @@ In addition to the feature engineering done by OpenMLDB, the prediction also req
 
 The demo can run on MacOS or Linux, the OpenMLDB docker image is recommended. We'll start OpenMLDB and DolphinScheduler in the same container, expose the DolphinScheduler web port:
 ```
-docker run -it -p 12345:12345 4pdosc/openmldb:0.8.2 bash
+docker run -it -p 12345:12345 4pdosc/openmldb:0.8.4 bash
 ```
 
 ```{attention}

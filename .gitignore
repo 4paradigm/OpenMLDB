@@ -108,3 +108,10 @@ allure-results/
 /python/openmldb_autofe/*.egg-info/
 # go sdk
 !go.mod
+
+# tag files
+**/tags
+**/GPATH
+**/GRTAGS
+**/GTAGS
+**/cscope.out

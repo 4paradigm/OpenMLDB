@@ -31,10 +31,10 @@ object YarnClientUtil {
 
   def createYarnClient(): YarnClient = {
     val config = new Configuration()
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "core-site.xml"))
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "hdfs-site.xml"))
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "yarn-site.xml"))
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "mapred-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "core-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "hdfs-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "yarn-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "mapred-site.xml"))
 
     // Create yarn client
     val yarnClient = YarnClient.createYarnClient()
@@ -90,10 +90,10 @@ object YarnClientUtil {
 
     val config = new YarnConfiguration()
     // TODO: Load config file in better way
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "core-site.xml"))
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "hdfs-site.xml"))
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "yarn-site.xml"))
-    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "mapred-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "core-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "hdfs-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "yarn-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "mapred-site.xml"))
 
     val logCliHelper = new LogCLIHelpers
     logCliHelper.setConf(config)

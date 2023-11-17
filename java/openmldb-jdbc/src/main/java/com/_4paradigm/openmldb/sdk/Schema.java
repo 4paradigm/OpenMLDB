@@ -24,9 +24,11 @@ import com._4paradigm.openmldb.sdk.impl.Util;
 
 public class Schema {
     private List<Column> columnList;
+    private int size;
 
     public Schema(List<Column> columnList) {
         this.columnList = columnList;
+        this.size = columnList.size();
     }
 
     public List<Column> getColumnList() {
@@ -45,5 +47,21 @@ public class Schema {
                 return t.getColumnName() + ":unknown";
             }
         }).collect(Collectors.joining(","));
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public String getColumnName(int idx) {
+        return columnList.get(idx).getColumnName();
+    }
+
+    public int getColumnType(int idx) {
+        return columnList.get(idx).getSqlType();
+    }
+
+    public boolean isNullable(int idx) {
+        return !columnList.get(idx).isNotNull();
     }
 }

@@ -121,30 +121,37 @@ do
 done
 
 # deploy openmldbspark
-if [[ -z "${SPARK_HOME}" ]]; then
-  echo "[ERROR] SPARK_HOME is not set"
-else
-  if [[ ! -e "${SPARK_HOME}" ]]; then
-    echo "Downloading openmldbspark..."
-    spark_name=spark-3.2.1-bin-openmldbspark
-    spark_tar="${spark_name}".tgz
-    if [[ -e "${spark_tar}" ]]; then
-      echo "Skip downloading openmldbspark as ${spark_tar} already exists"
-    else
-      url="https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${OPENMLDB_VERSION}/${spark_tar}"
-      echo "Download spark from $url"
-      curl -SLo ${spark_tar} "$url"
-    fi
-    tar -xzf ${spark_tar}
-    ln -s "$(pwd)"/"${spark_name}" "${SPARK_HOME}"
+function download_spark {
+  if [[ -z "${SPARK_HOME}" ]]; then
+    echo "[ERROR] SPARK_HOME is not set"
   else
-    echo "${SPARK_HOME} already exists. Skip deploy spark locally"
+    if [[ ! -e "${SPARK_HOME}" ]]; then
+      echo "Downloading openmldbspark..."
+      spark_name=spark-3.2.1-bin-openmldbspark
+      spark_tar="${spark_name}".tgz
+      if [[ -e "${spark_tar}" ]]; then
+        echo "Skip downloading openmldbspark as ${spark_tar} already exists"
+      else
+        url="https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${OPENMLDB_VERSION}/${spark_tar}"
+        echo "Download spark from $url"
+        curl -SLo ${spark_tar} "$url"
+      fi
+      tar -xzf ${spark_tar}
+      ln -s "$(pwd)"/"${spark_name}" "${SPARK_HOME}"
+    else
+      echo "${SPARK_HOME} already exists. Skip deploy spark locally"
+    fi
   fi
-fi
+}
 
 # deploy taskmanagers
+downloaded=false
 for line in $(parse_host conf/hosts taskmanager)
 do
+  if ! $downloaded; then
+    download_spark
+    downloaded=true
+  fi
   host=$(echo "$line" | awk -F ' ' '{print $1}')
   port=$(echo "$line" | awk -F ' ' '{print $2}')
   dir=$(echo "$line" | awk -F ' ' '{print $3}')

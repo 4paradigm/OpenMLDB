@@ -24,6 +24,7 @@
 
 #include "base/status.h"
 #include "boost/container/deque.hpp"
+#include "butil/iobuf.h"
 #include "codec/codec.h"
 #include "storage/segment.h"
 
@@ -70,23 +71,15 @@ bool DecodeRows(const std::string& data, uint32_t count, const Schema& schema,
 
 void Encode(uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset);
 
+void Encode(uint64_t time, const char* data, const size_t size, butil::IOBuf* buf);
+
 void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset);
 
 void Encode(const char* data, const size_t size, char* buffer, uint32_t offset);
 
 void Encode(const DataBlock* data, char* buffer, uint32_t offset);
 
-int32_t EncodeRows(const std::vector<::openmldb::base::Slice>& rows, uint32_t total_block_size,
-                                 std::string* body);
-
-int32_t EncodeRows(const boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>>& rows,
-                                 uint32_t total_block_size, std::string* pairs);
-// encode pk, ts and value
-void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, char* buffer,
-                              uint32_t offset);
-
-void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer,
-                              uint32_t offset);
+void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, butil::IOBuf* buf);
 
 void Decode(const std::string* str, std::vector<std::pair<uint64_t, std::string*>>& pairs);  // NOLINT
 

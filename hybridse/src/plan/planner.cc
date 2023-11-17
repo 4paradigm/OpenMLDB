@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <map>
-#include <random>
 #include <set>
 #include <string>
 #include <utility>
@@ -273,7 +272,7 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
         auto first_window_project = dynamic_cast<node::ProjectListNode *>(project_list_vec[1]);
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(), true);
-        if (!is_cluster_optimized_ && !enable_batch_window_parallelization_ &&
+        if  (!is_cluster_optimized_ && !enable_batch_window_parallelization_ &&
             node::ProjectListNode::MergeProjectList(simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
             project_list_vec[1] = merged_project;
@@ -490,6 +489,7 @@ absl::StatusOr<node::TablePlanNode*> Planner::IsTable(node::PlanNode *node) {
 //   - SELECT
 //   - JOIN
 //   - WINDOW
+//   - CONST PROJECT
 // - UnSupport Ops::
 //   - CREATE TABLE
 //   - INSERT TABLE
@@ -500,8 +500,10 @@ absl::StatusOr<node::TablePlanNode*> Planner::IsTable(node::PlanNode *node) {
 // - Not Impl
 //   - Order By
 base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
-    CHECK_TRUE(nullptr != node, common::kNullInputPointer,
-               "Fail to validate request table: input node is null")
+    if (node == nullptr) {
+        // null is fine, e.g the const project
+        return {};
+    }
     switch (node->type_) {
         case node::kPlanTypeProject: {
             auto project_node = dynamic_cast<node::ProjectPlanNode *>(node);

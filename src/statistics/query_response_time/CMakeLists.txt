@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(LINK_LIBS absl::time absl::random_random absl::strings absl::status absl::statusor absl::synchronization ${GTEST_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
+set(LINK_LIBS absl::time absl::random_random absl::strings absl::status absl::statusor absl::synchronization ${BRPC_LIBS} ${GTEST_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
 link_libraries(${LINK_LIBS})
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "(AppleClang)|(Clang)")
   add_definitions(-Wthread-safety)
 endif()
 
-add_library(query_response_time STATIC ${CMAKE_CURRENT_SOURCE_DIR}/deploy_query_response_time.cc ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time.cc)
+add_library(query_response_time STATIC ${CMAKE_CURRENT_SOURCE_DIR}/deployment_metric_collector.cc)
 
 function(add_test_file TARGET_NAME SOURCE_NAME)
   add_executable(${TARGET_NAME} ${SOURCE_NAME})
@@ -40,8 +40,7 @@ function(add_test_file TARGET_NAME SOURCE_NAME)
 endfunction(add_test_file)
 
 if(TESTING_ENABLE)
-  add_test_file(query_response_time_test ${CMAKE_CURRENT_SOURCE_DIR}/query_response_time_test.cc)
-  add_test_file(deploy_query_response_time_test ${CMAKE_CURRENT_SOURCE_DIR}/deploy_query_response_time_test.cc)
+  add_test_file(deployment_metric_collector_test ${CMAKE_CURRENT_SOURCE_DIR}/deployment_metric_collector_test.cc)
 
   if(CMAKE_PROJECT_NAME STREQUAL "openmldb")
     set(test_list ${test_list} PARENT_SCOPE)

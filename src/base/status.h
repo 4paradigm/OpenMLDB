@@ -19,10 +19,16 @@
 
 #include <string>
 
+#include "absl/strings/str_cat.h"
+
 #include "base/slice.h"
+#include "version.h"  // NOLINT
 
 namespace openmldb {
 namespace base {
+
+inline const std::string NOTICE_URL = "https://openmldb.ai/docs/zh/v" + std::to_string(OPENMLDB_VERSION_MAJOR) + "." +
+    std::to_string(OPENMLDB_VERSION_MINOR) + "/openmldb_sql/notice.html";
 
 enum ReturnCode {
     kError = -1,
@@ -88,6 +94,8 @@ enum ReturnCode {
     kCreateFunctionFailed = 159,
     kExceedMaxMemory = 160,
     kInvalidArgs = 161,
+    kCheckIndexFailed = 162,
+    kCatalogUpdateFailed = 163,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -122,6 +130,10 @@ enum ReturnCode {
     kCheckParameterFailed = 331,
     kCreateProcedureFailedOnTablet = 332,
     kCreateFunctionFailedOnTablet = 333,
+    kOPAlreadyExists = 334,
+    kOffsetMismatch = 335,
+    kGetTabletFailed = 336,
+    kTruncateTableFailed = 337,
     kReplicaClusterAliasDuplicate = 400,
     kConnectRelicaClusterZkFailed = 401,
     kNotSameReplicaName = 402,
@@ -179,6 +191,7 @@ struct Status {
     inline bool OK() const { return code == ReturnCode::kOk; }
     inline const std::string& GetMsg() const { return msg; }
     inline int GetCode() const { return code; }
+    inline std::string ToString() const { return absl::StrCat("ReturnCode[", code, "]", msg); }
     int code;
     std::string msg;
 };

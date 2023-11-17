@@ -17,15 +17,17 @@ debugs: []
 version: 0.5.0
 cases:
   - id: 0
-    desc: no order by
+    desc: RANGE-type WINDOW with offset PRECEDING/FOLLOWING requires ORDER BY
     inputs:
       - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c8:c4" ]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
     sql: |
-      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c8 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c8 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
+      msg: RANGE/ROWS_RANGE-type FRAME with offset PRECEDING/FOLLOWING requires exactly one ORDER BY column
       success: false
   - id: 1
     desc: no partition by
@@ -300,4 +302,30 @@ cases:
     sql: |
       SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c33 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
     expect:
+      success: false
+  - id: 17
+    desc: ROWS WINDOW + EXCLUDE CURRENT_TIME requires order by
+    inputs:
+      - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c8:c4" ]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c8 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      msg: WINDOW with EXCLUDE CURRENT_TIME requires exactly one ORDER BY column
+      success: false
+  - id: 18
+    desc: RANGE WINDOW + EXCLUDE CURRENT_TIME requires order by
+    inputs:
+      - columns: [ "id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c8:c4" ]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+    sql: |
+      SELECT id, c1, c4, count(c4) OVER w1 as w1_c4_count FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c8 ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME);
+    expect:
+      msg: WINDOW with EXCLUDE CURRENT_TIME requires exactly one ORDER BY column
       success: false

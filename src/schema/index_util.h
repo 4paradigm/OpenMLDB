@@ -42,9 +42,11 @@ class IndexUtil {
 
     static std::vector<::openmldb::common::ColumnKey> Convert2Vector(const PBIndex& index);
 
+    static PBIndex Convert2PB(const std::vector<::openmldb::common::ColumnKey>& index);
+
     static base::Status CheckUnique(const PBIndex& index);
 
-    static bool CheckTTL(const ::openmldb::common::TTLSt& ttl);
+    static base::Status CheckTTL(const ::openmldb::common::TTLSt& ttl);
 
     static bool AddDefaultIndex(openmldb::nameserver::TableInfo* table_info);
 

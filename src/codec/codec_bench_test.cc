@@ -41,8 +41,10 @@ void RunHasTs(::openmldb::storage::DataBlock* db) {
         datas.emplace_back(1000, std::move(::openmldb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
-    std::string pairs;
-    ::openmldb::codec::EncodeRows(datas, total_block_size, &pairs);
+    butil::IOBuf buf;
+    for (const auto& pair : datas) {
+        Encode(pair.first, pair.second.data(), pair.second.size(), &buf);
+    }
 }
 
 void RunNoneTs(::openmldb::storage::DataBlock* db) {
@@ -53,8 +55,10 @@ void RunNoneTs(::openmldb::storage::DataBlock* db) {
         datas.push_back(::openmldb::base::Slice(db->data, db->size));
         total_block_size += db->size;
     }
-    std::string pairs;
-    ::openmldb::codec::EncodeRows(datas, total_block_size, &pairs);
+    butil::IOBuf buf;
+    for (const auto& v : datas) {
+        Encode(0, v.data(), v.size(), &buf);
+    }
 }
 
 TEST_F(CodecBenchmarkTest, ProjectTest) {

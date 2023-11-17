@@ -86,19 +86,19 @@ TEST_F(BinlogTest, DeleteBinlog) {
     ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
-    bool ret =
-        client.CreateTable("table1", tid, pid, 100000, 0, true, endpoints, ::openmldb::type::TTLType::kAbsoluteTime, 16,
-                           0, ::openmldb::type::CompressType::kNoCompress);
-    ASSERT_TRUE(ret);
+    auto status = client.CreateTable(test::CreateTableMeta("table1", tid, pid, 100000, 0, true, endpoints,
+                ::openmldb::type::TTLType::kAbsoluteTime, 16,
+                0, ::openmldb::type::CompressType::kNoCompress));
+    ASSERT_TRUE(status.OK());
 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     int count = 1000;
     while (count) {
         std::string key = "testkey_" + std::to_string(count);
-        ret = client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, std::string(10 * 1024, 'a')));
+        client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, std::string(10 * 1024, 'a')));
         count--;
     }
-    ret = client.MakeSnapshot(tid, pid, 0);
+    auto ret = client.MakeSnapshot(tid, pid, 0);
     std::string binlog_path = FLAGS_db_root_path + "/2_123/binlog";
     std::vector<std::string> vec;
     ASSERT_TRUE(ret);
