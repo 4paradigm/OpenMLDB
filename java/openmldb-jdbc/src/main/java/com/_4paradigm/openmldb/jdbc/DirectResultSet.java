@@ -155,7 +155,7 @@ public abstract class DirectResultSet extends SQLResultSet {
             if (rowView.isNull(realIdx)) {
                 return null;
             }
-            return rowView.getValue(realIdx, Common.sqlTypeToDataType(schema.getColumnType(realIdx))).toString();
+            return rowView.getValue(realIdx, Common.sqlType2ProtoType(schema.getColumnType(realIdx))).toString();
         } catch (Exception e) {
             throw new SQLException(e.getMessage());
         }
