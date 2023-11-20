@@ -29,7 +29,7 @@ setup(
     ],
     install_requires=[
         "importlib-metadata < 5.0",
-        "sqlalchemy <= 1.4.9",
+        "sqlalchemy <= 1.4.50",
         "IPython <= 7.30.1",
         "prettytable <= 3.1.0",
     ],
