@@ -34,6 +34,8 @@ DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(request_timeout_ms);
@@ -108,7 +110,8 @@ void SetSdkEndpoint(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stu
 
 void ShowNameServer(std::map<std::string, std::string>* map) {
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
-    zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+    zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path,
+            FLAGS_zk_auth_schema, FLAGS_zk_cert);
     if (!zk_client->Init()) {
         ASSERT_TRUE(false);
     }

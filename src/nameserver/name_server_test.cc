@@ -38,13 +38,14 @@ DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(system_table_replica_num);
-DECLARE_uint32(sync_deploy_stats_timeout);
 DECLARE_bool(auto_failover);
 
 using brpc::Server;
@@ -171,7 +172,8 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
 
     sleep(5);
 
-    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint, FLAGS_zk_root_path);
+    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint, FLAGS_zk_root_path,
+            FLAGS_zk_auth_schema, FLAGS_zk_cert);
     ok = zk_client.Init();
     ASSERT_TRUE(ok);
     std::string op_index_node = FLAGS_zk_root_path + "/op/op_index";
@@ -1294,6 +1296,5 @@ int main(int argc, char** argv) {
     FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
     FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
     FLAGS_system_table_replica_num = 0;
-    FLAGS_sync_deploy_stats_timeout = 1000000;
     return RUN_ALL_TESTS();
 }

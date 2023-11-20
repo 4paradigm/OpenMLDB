@@ -18,35 +18,52 @@ package com._4paradigm.openmldb.sdk.impl;
 
 import com._4paradigm.openmldb.*;
 
+import com._4paradigm.openmldb.common.codec.FlexibleRowBuilder;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class BatchCallablePreparedStatementImpl extends CallablePreparedStatement {
-    private ColumnIndicesSet commonColumnIndices;
-    private SQLRequestRowBatch currentRowBatch;
 
-    public BatchCallablePreparedStatementImpl(String db, String spName, SQLRouter router) throws SQLException {
-        super(db, spName, router);
-        this.commonColumnIndices = new ColumnIndicesSet(this.currentSchema);
-        for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
-            if (this.currentSchema.IsConstant(i)) {
-                this.commonColumnIndices.AddCommonColumnIdx(i);
-            }
+    private List<ByteBuffer> datas = new ArrayList<>();
+    private ByteBuffer meta;
+    private ByteBuffer result;
+    private int totalSize = 0;
+
+    public BatchCallablePreparedStatementImpl(Deployment deployment, SQLRouter router) throws SQLException {
+        super(deployment, router);
+        rowBuilder = new FlexibleRowBuilder(deployment.getInputMetaData());
+    }
+
+    private void build() throws SQLException {
+        if (datas.isEmpty()) {
+            throw new SQLException("no data");
         }
-        this.currentRowBatch = new SQLRequestRowBatch(this.currentSchema, this.commonColumnIndices);
+        meta = ByteBuffer.allocate(4 * (datas.size() + 1)).order(ByteOrder.LITTLE_ENDIAN);
+        meta.putInt(0);  // reserved for common slice
+        result = ByteBuffer.allocate(totalSize);
+        for (ByteBuffer buf : datas) {
+            meta.putInt(buf.capacity());
+            result.put(buf.array());
+        }
     }
 
     @Override
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
+        build();
         Status status = new Status();
-        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
-                db, currentSql, currentRowBatch, status);
+        com._4paradigm.openmldb.ResultSet resultSet = router.CallSQLBatchRequestProcedure(
+                db, deploymentName, meta.array(), meta.capacity(), result.array(), result.capacity(), status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();
@@ -56,10 +73,16 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new SQLException("execute sql fail: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        int totalRows = resultSet.Size();
+        int dataLength = resultSet.GetDataLength();
+        ByteBuffer dataBuf = ByteBuffer.allocate(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf.array());
+        resultSet.delete();
+        SQLResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
         if (closeOnComplete) {
             closed = true;
         }
+        clearParameters();
         return rs;
     }
 
@@ -67,41 +90,37 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         checkClosed();
         checkExecutorClosed();
+        build();
         Status status = new Status();
-        com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
+        com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, deploymentName, unit.toMillis(timeOut),
+                meta.array(), meta.capacity(), result.array(), result.capacity(), status);
         if (status.getCode() != 0 || queryFuture == null) {
             String msg = status.ToString();
             status.delete();
             if (queryFuture != null) {
                 queryFuture.delete();
             }
-            throw new SQLException("call procedure fail, msg: " + msg);
+            throw new SQLException("call deployment failed, msg: " + msg);
         }
         status.delete();
-        return new QueryFuture(queryFuture);
+        clearParameters();
+        return new QueryFuture(queryFuture, deployment.getOutputSchema(), deployment.getOutputMetaData());
     }
 
     @Override
     public void addBatch() throws SQLException {
-        dataBuild();
-        if (!this.currentRow.OK()) {
-            throw new RuntimeException("not ok row");
+        if (!rowBuilder.build()) {
+            throw new SQLException("failed to encode data");
         }
-        currentRowBatch.AddRow(this.currentRow);
-        this.currentRow.delete();
-        Status status = new Status();
-        this.currentRow = router.GetRequestRow(db, currentSql, status);
-        if (status.getCode() != 0 || this.currentRow == null) {
-            String msg = status.ToString();
-            status.delete();
-            throw new SQLException("getRequestRow failed!, msg: " + msg);
-        }
-        status.delete();
+        ByteBuffer buf = rowBuilder.getValue();
+        datas.add(buf);
+        totalSize += buf.capacity();
+        rowBuilder.clear();
     }
 
     @Override
     public void clearBatch() throws SQLException {
-        currentRowBatch.Clear();
+        clearParameters();
     }
 
     @Override
@@ -110,15 +129,91 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     }
 
     @Override
-    public void close() throws SQLException {
-        super.close();
-        if (commonColumnIndices != null) {
-            commonColumnIndices.delete();
-            commonColumnIndices = null;
+    public void clearParameters() {
+        datas.clear();
+        rowBuilder.clear();
+        result = null;
+        meta = null;
+        totalSize = 0;
+    }
+
+    @Override
+    public void setNull(int i, int i1) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setNULL(realIdx)) {
+            throw new SQLException("set null failed. idx is " + i);
         }
-        if (currentRowBatch != null) {
-            currentRowBatch.delete();
-            currentRowBatch = null;
+    }
+
+    @Override
+    public void setBoolean(int i, boolean b) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setBool(realIdx, b)) {
+            throw new SQLException("set bool failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setShort(int i, short i1) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setSmallInt(realIdx, i1)) {
+            throw new SQLException("set short failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setInt(int i, int i1) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setInt(realIdx, i1)) {
+            throw new SQLException("set int failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setLong(int i, long l) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setBigInt(realIdx, l)) {
+            throw new SQLException("set long failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setFloat(int i, float v) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setFloat(realIdx, v)) {
+            throw new SQLException("set float failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setDouble(int i, double v) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setDouble(realIdx, v)) {
+            throw new SQLException("set double failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setDate(int i, java.sql.Date date) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setDate(realIdx, date)) {
+            throw new SQLException("set date failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setTimestamp(int i, Timestamp timestamp) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setTimestamp(realIdx, timestamp)) {
+            throw new SQLException("set timestamp failed. idx is " + i);
+        }
+    }
+
+    @Override
+    public void setString(int i, String s) throws SQLException {
+        int realIdx = i - 1;
+        if (!rowBuilder.setString(realIdx, s)) {
+            throw new SQLException("set string failed. idx is " + i);
         }
     }
 }

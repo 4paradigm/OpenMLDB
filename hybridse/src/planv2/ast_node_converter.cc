@@ -611,6 +611,16 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node;
             break;
         }
+        case zetasql::AST_TRUNCATE_STATEMENT: {
+            const zetasql::ASTTruncateStatement* truncate_statement =
+                statement->GetAsOrNull<zetasql::ASTTruncateStatement>();
+            std::vector<std::string> names;
+            CHECK_STATUS(AstPathExpressionToStringList(truncate_statement->target_path(), names));
+            auto node =
+                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdTruncate, names));
+            *output = node;
+            break;
+        }
         case zetasql::AST_DROP_FUNCTION_STATEMENT: {
             const zetasql::ASTDropFunctionStatement* drop_fun_statement =
                 statement->GetAsOrNull<zetasql::ASTDropFunctionStatement>();
@@ -1113,13 +1123,13 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
             node::TableRefNode* right = nullptr;
             node::OrderByNode* order_by = nullptr;
             node::ExprNode* condition = nullptr;
-            node::JoinType join_type = node::JoinType::kJoinTypeInner;
             CHECK_STATUS(ConvertTableExpressionNode(join->lhs(), node_manager, &left))
             CHECK_STATUS(ConvertTableExpressionNode(join->rhs(), node_manager, &right))
             CHECK_STATUS(ConvertOrderBy(join->order_by(), node_manager, &order_by))
             if (nullptr != join->on_clause()) {
                 CHECK_STATUS(ConvertExprNode(join->on_clause()->expression(), node_manager, &condition))
             }
+            node::JoinType join_type = node::JoinType::kJoinTypeInner;
             switch (join->join_type()) {
                 case zetasql::ASTJoin::JoinType::FULL: {
                     join_type = node::JoinType::kJoinTypeFull;
@@ -1137,12 +1147,14 @@ base::Status ConvertTableExpressionNode(const zetasql::ASTTableExpression* root,
                     join_type = node::JoinType::kJoinTypeLast;
                     break;
                 }
-                case zetasql::ASTJoin::JoinType::INNER: {
+                case zetasql::ASTJoin::JoinType::INNER:
+                case zetasql::ASTJoin::JoinType::DEFAULT_JOIN_TYPE: {
                     join_type = node::JoinType::kJoinTypeInner;
                     break;
                 }
-                case zetasql::ASTJoin::JoinType::COMMA: {
-                    join_type = node::JoinType::kJoinTypeComma;
+                case zetasql::ASTJoin::JoinType::COMMA:
+                case zetasql::ASTJoin::JoinType::CROSS: {
+                    join_type = node::JoinType::kJoinTypeCross;
                     break;
                 }
                 default: {
@@ -1290,6 +1302,7 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
             if (nullptr != select_query->from_clause()) {
                 CHECK_STATUS(ConvertTableExpressionNode(select_query->from_clause()->table_expression(), node_manager,
                                                         &table_ref_node))
+                // TODO(.): dont mark table ref as a list, it never happens
                 if (nullptr != table_ref_node) {
                     tableref_list_ptr = node_manager->MakeNodeList();
                     tableref_list_ptr->PushBack(table_ref_node);
@@ -1761,8 +1774,18 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
     } else if (absl::EqualsIgnoreCase("storage_mode", identifier_v)) {
         std::string storage_mode;
         CHECK_STATUS(AstStringLiteralToString(entry->value(), &storage_mode));
-        boost::to_lower(storage_mode);
-        *output = node_manager->MakeStorageModeNode(node::NameToStorageMode(storage_mode));
+        absl::AsciiStrToLower(&storage_mode);
+        *output = node_manager->MakeNode<node::StorageModeNode>(node::NameToStorageMode(storage_mode));
+    } else if (absl::EqualsIgnoreCase("compress_type", identifier_v)) {
+        std::string compress_type;
+        CHECK_STATUS(AstStringLiteralToString(entry->value(), &compress_type));
+        absl::AsciiStrToLower(&compress_type);
+        auto ret = node::NameToCompressType(compress_type);
+        if (ret.ok()) {
+            *output = node_manager->MakeNode<node::CompressTypeNode>(*ret);
+        } else {
+            return base::Status(common::kSqlAstError, ret.status().ToString());
+        }
     } else {
         return base::Status(common::kSqlAstError, absl::StrCat("invalid option ", identifier));
     }
@@ -2172,6 +2195,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"SESSION VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
     {"GLOBAL VARIABLES", {node::CmdType::kCmdShowGlobalVariables}},
     {"CREATE PROCEDURE", {node::CmdType::kCmdShowCreateSp, true}},
+    {"CREATE TABLE", {node::CmdType::kCmdShowCreateTable, true}},
     {"DEPLOYMENT", {node::CmdType::kCmdShowDeployment, true}},
     {"JOB", {node::CmdType::kCmdShowJob, true}},
     {"COMPONENTS", {node::CmdType::kCmdShowComponents}},

@@ -22,7 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"

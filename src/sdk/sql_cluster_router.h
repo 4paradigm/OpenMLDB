@@ -34,6 +34,7 @@
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
 #include "sdk/file_option_parser.h"
+#include "sdk/interactive.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
@@ -83,6 +84,10 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ExecuteInsert(const std::string& db, const std::string& sql, std::shared_ptr<SQLInsertRows> rows,
                        hybridse::sdk::Status* status) override;
+
+    bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) override;
 
     bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
 
@@ -152,8 +157,17 @@ class SQLClusterRouter : public SQLRouter {
                                                             std::shared_ptr<SQLRequestRow> row,
                                                             hybridse::sdk::Status* status) override;
 
+    std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
+            hybridse::sdk::ByteArrayPtr buf, int len, const std::string& router_col,
+            hybridse::sdk::Status* status) override;
+
     std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, std::shared_ptr<SQLRequestRowBatch> row_batch,
+        hybridse::sdk::Status* status) override;
+
+    std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, hybridse::sdk::ByteArrayPtr meta, int meta_len,
+        hybridse::sdk::ByteArrayPtr buf, int len,
         hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(const std::string& db, const std::string& sp_name,
@@ -168,9 +182,19 @@ class SQLClusterRouter : public SQLRouter {
                                                               int64_t timeout_ms, std::shared_ptr<SQLRequestRow> row,
                                                               hybridse::sdk::Status* status) override;
 
+    std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
+            int64_t timeout_ms, hybridse::sdk::ByteArrayPtr buf, int len,
+            const std::string& router_col, hybridse::sdk::Status* status) override;
+
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) override;
+
+    std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+        hybridse::sdk::ByteArrayPtr meta, int meta_len,
+        hybridse::sdk::ByteArrayPtr buf, int len,
+        hybridse::sdk::Status* status) override;
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
                                                                       ::hybridse::vm::EngineMode engine_mode,
@@ -300,7 +324,7 @@ class SQLClusterRouter : public SQLRouter {
     inline bool CheckSQLSyntax(const std::string& sql);
 
     std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
-                                                              hybridse::sdk::Status* status);
+            const std::string& router_col, hybridse::sdk::Status* status);
 
     bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
                         std::vector<openmldb::type::DataType>* parameter_types);
@@ -386,12 +410,19 @@ class SQLClusterRouter : public SQLRouter {
                           const nameserver::TablePartition& partition_info, uint32_t replica_num,
                           const TableStatusMap& statuses, std::string* msg);
 
+    std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& row, const std::string& router_col, hybridse::sdk::Status* status);
+
+    std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
+            int64_t timeout_ms, const base::Slice& row,
+            const std::string& router_col, hybridse::sdk::Status* status);
+
  private:
     std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;
-    bool interactive_;
+    InteractiveValidator interactive_validator_;
     DBSDK* cluster_sdk_;
     std::map<std::string, std::map<hybridse::vm::EngineMode, base::lru_cache<std::string, std::shared_ptr<SQLCache>>>>
         input_lru_cache_;

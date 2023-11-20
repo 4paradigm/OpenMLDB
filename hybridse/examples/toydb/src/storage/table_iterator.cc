@@ -62,7 +62,7 @@ WindowTableIterator::WindowTableIterator(Segment*** segments, uint32_t seg_cnt,
       seg_idx_(0),
       pk_it_(),
       table_(table) {
-    GoToStart();
+    SeekToFirst();
 }
 
 WindowTableIterator::~WindowTableIterator() {}
@@ -80,7 +80,7 @@ void WindowTableIterator::Seek(const std::string& key) {
     pk_it_->Seek(pk);
 }
 
-void WindowTableIterator::SeekToFirst() {}
+void WindowTableIterator::SeekToFirst() { GoToStart(); }
 
 std::unique_ptr<RowIterator> WindowTableIterator::GetValue() {
     if (!pk_it_)

@@ -13,7 +13,7 @@
 
 执行命令如下：
 ```
-docker run --network host -dit --name openmldb -v /mlsql/admin/:/byzermnt 4pdosc/openmldb:0.8.2 bash
+docker run --network host -dit --name openmldb -v /mlsql/admin/:/byzermnt 4pdosc/openmldb:0.8.4 bash
 docker exec -it openmldb bash
 /work/init.sh
 echo "create database db1;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
@@ -232,7 +232,7 @@ and `sql-0`='''
 SET @@execute_mode='online';
 '''
 and `sql-1`='''
-DEPLOY d1 SELECT trip_duration, passenger_count,
+DEPLOY d1 OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') SELECT trip_duration, passenger_count,
 sum(pickup_latitude) OVER w AS vendor_sum_pl,
 max(pickup_latitude) OVER w AS vendor_max_pl,
 min(pickup_latitude) OVER w AS vendor_min_pl,

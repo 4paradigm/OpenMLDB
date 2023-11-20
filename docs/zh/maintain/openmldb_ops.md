@@ -1,4 +1,4 @@
-# OpenMLDB运维工具
+# 运维工具
 
 ## 概述
 
@@ -31,9 +31,13 @@
 
 **使用示例**
 ```
-python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=scaleout
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=0.0.0.0:2181 --zk_root_path=/openmldb --cmd=scaleout
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=0.0.0.0:2181 --zk_root_path=/openmldb --cmd=recoverdata
 ```
 
+运行结果可以只关注是否存在ERROR级日志，如果存在，请保留完整的日志记录，便于技术人员查找问题。
+
 ### 系统要求
-- 要求python3.6及以上版本
+- 要求python2.7及以上版本
+- 理论上openmldb_ops不要求与OpenMLDB集群的版本匹配，高版本openmldb_ops可以操作低版本的OpenMLDB集群。
 - `showopstatus`和`showtablestatus`需要`prettytable`依赖

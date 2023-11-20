@@ -17,7 +17,6 @@
 #include "codegen/ir_base_builder.h"
 
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -625,20 +624,24 @@ bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
                 return false;
             }
 
-            if (pointee_ty->getStructName().startswith("fe.list_ref_")) {
+            auto struct_name = pointee_ty->getStructName();
+            if (struct_name.startswith("fe.list_ref_")) {
                 *output = hybridse::node::kList;
                 return true;
-            } else if (pointee_ty->getStructName().startswith("fe.iterator_ref_")) {
+            } else if (struct_name.startswith("fe.iterator_ref_")) {
                 *output = hybridse::node::kIterator;
                 return true;
-            } else if (pointee_ty->getStructName().equals("fe.string_ref")) {
+            } else if (struct_name.equals("fe.string_ref")) {
                 *output = hybridse::node::kVarchar;
                 return true;
-            } else if (pointee_ty->getStructName().equals("fe.timestamp")) {
+            } else if (struct_name.equals("fe.timestamp")) {
                 *output = hybridse::node::kTimestamp;
                 return true;
-            } else if (pointee_ty->getStructName().equals("fe.date")) {
+            } else if (struct_name.equals("fe.date")) {
                 *output = hybridse::node::kDate;
+                return true;
+            } else if (struct_name.startswith("fe.array_")) {
+                *output = hybridse::node::kArray;
                 return true;
             }
             LOG(WARNING) << "no mapping pointee_ty for llvm pointee_ty "

@@ -676,7 +676,7 @@ TEST_F(SqlNodeTest, CreateIndexNodeTest) {
          node_manager_->MakeColumnDescNode("col4", node::kVarchar, true),
          node_manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
         {node_manager_->MakeReplicaNumNode(3), node_manager_->MakePartitionNumNode(8),
-         node_manager_->MakeStorageModeNode(kMemory)},
+         node_manager_->MakeNode<StorageModeNode>(kMemory)},
         false);
     ASSERT_TRUE(nullptr != node);
     std::vector<std::string> columns;

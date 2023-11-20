@@ -15,14 +15,15 @@
  */
 
 #include "codegen/timestamp_ir_builder.h"
+
 #include <string>
 #include <vector>
+
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/null_ir_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
 #include "glog/logging.h"
-#include "node/sql_node.h"
 
 using hybridse::common::kCodegenError;
 
@@ -43,9 +44,7 @@ void TimestampIRBuilder::InitStructType() {
         return;
     }
     stype = ::llvm::StructType::create(m_->getContext(), name);
-    ::llvm::Type* ts_ty = (::llvm::Type::getInt64Ty(m_->getContext()));
-    std::vector<::llvm::Type*> elements;
-    elements.push_back(ts_ty);
+    std::vector<::llvm::Type*> elements = {::llvm::Type::getInt64Ty(m_->getContext())};
     stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
     struct_type_ = stype;
     return;
@@ -60,39 +59,36 @@ base::Status TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block,
         return Status::OK();
     }
 
-    if (src.IsConstNull()) {
-        *output = NativeValue::CreateNull(GetType());
-        return Status::OK();
-    }
     ::llvm::IRBuilder<> builder(block);
     NativeValue ts;
     CastExprIRBuilder cast_builder(block);
     CondSelectIRBuilder cond_ir_builder;
     PredicateIRBuilder predicate_ir_builder(block);
     NullIRBuilder null_ir_builder;
+
+    // always allocate for returned timestmap even it is null
+    ::llvm::Value* dist = nullptr;
+    if (!CreateDefault(block, &dist)) {
+        status.code = common::kCodegenError;
+        status.msg = "Fail to cast date: create default date fail";
+        return status;
+    }
+
     if (IsNumber(src.GetType())) {
         CHECK_STATUS(cast_builder.Cast(src, builder.getInt64Ty(), &ts));
         NativeValue cond;
         CHECK_STATUS(predicate_ir_builder.BuildGeExpr(
             ts, NativeValue::Create(builder.getInt64(0)), &cond));
-        ::llvm::Value* timestamp;
-        CHECK_TRUE(NewTimestamp(block, ts.GetValue(&builder), &timestamp),
+        CHECK_TRUE(SetTs(block, dist, ts.GetValue(&builder)),
                    kCodegenError,
                    "Fail to cast timestamp: new timestamp(ts) fail");
-        CHECK_STATUS(
-            cond_ir_builder.Select(block, cond, NativeValue::Create(timestamp),
-                                   NativeValue::CreateNull(GetType()), output));
+        CHECK_STATUS(cond_ir_builder.Select(block, cond, NativeValue::Create(dist),
+                                            NativeValue::CreateWithFlag(dist, builder.getInt1(true)), output));
 
     } else if (IsStringPtr(src.GetType()) || IsDatePtr(src.GetType())) {
         ::llvm::IRBuilder<> builder(block);
-        ::llvm::Value* dist = nullptr;
         ::llvm::Value* is_null_ptr = CreateAllocaAtHead(
             &builder, builder.getInt1Ty(), "timestamp_is_null_alloca");
-        if (!CreateDefault(block, &dist)) {
-            status.code = common::kCodegenError;
-            status.msg = "Fail to cast date: create default date fail";
-            return status;
-        }
         ::std::string fn_name = "timestamp." + TypeName(src.GetType());
 
         auto cast_func = m_->getOrInsertFunction(

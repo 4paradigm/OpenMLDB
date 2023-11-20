@@ -21,7 +21,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
@@ -29,7 +28,6 @@
 #include "base/fe_status.h"
 #include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -141,7 +139,6 @@ class BatchModeTransformer {
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
     static bool isSourceFromTableOrPartition(PhysicalOpNode* in);
-    bool isSourceFromTable(PhysicalOpNode* in);
     std::string ExtractSchemaName(PhysicalOpNode* in);
 
     static Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
@@ -319,7 +316,10 @@ class RequestModeTransformer : public BatchModeTransformer {
 
     absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name) override;
 
-    Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
+    // Valid the final optimized PhysicalOpNode is either:
+    // - has one and only one request table
+    // - do not has any physical table refered
+    Status ValidateRequestTable(PhysicalOpNode* in);
 
  private:
     // Optimize simple project node which is the producer of window project

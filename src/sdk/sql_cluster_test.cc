@@ -257,6 +257,24 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     ASSERT_TRUE(router->DropDB(db2, &status));
 }
 
+TEST_F(SQLClusterDDLTest, ShowCreateTable) {
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists t1;", &status));
+    std::string ddl = "CREATE TABLE `t1` (\n"
+        "`col1` varchar,\n"
+        "`col2` int,\n"
+        "`col3` bigInt NOT NULL,\n"
+        "INDEX (KEY=`col1`, TTL_TYPE=ABSOLUTE, TTL=100m)\n"
+        ") OPTIONS (PARTITIONNUM=1, REPLICANUM=1, STORAGE_MODE='Memory', COMPRESS_TYPE='NoCompress');";
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->RefreshCatalog());
+    auto rs = router->ExecuteSQL(db, "show create table t1;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(ddl, rs->GetStringUnsafe(1));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
@@ -626,6 +644,40 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     }
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
     ASSERT_TRUE(router->DropDB(db, &status));
+}
+
+TEST_F(SQLClusterTest, DeployWithMultiDB) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    SetOnlineMode(router);
+    ASSERT_TRUE(router != nullptr);
+    std::string base_table = "test" + GenRand();
+    std::string db1 = "db1";
+    std::string db2 = "db2";
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop table if exists db1.t1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop table if exists db2.t1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop database if exists db1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop database if exists db2;", &status));
+    ASSERT_TRUE(router->CreateDB(db1, &status));
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    std::string sql1 = "create table db1.t1 (c1 string, c2 int, c3 bigint, c4 timestamp, index(key=c1, ts=c4));";
+    std::string sql2 = "create table db2.t1 (c1 string, c2 int, c3 bigint, c4 timestamp, index(key=c1, ts=c3));";
+    ASSERT_TRUE(router->ExecuteDDL(db1, sql1, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, sql2, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db1, "use " + db1 + ";", &status));
+    std::string sql = "deploy demo select db1.t1.c1,db1.t1.c2,db2.t1.c3,db2.t1.c4 from db1.t1 "
+        "last join db2.t1 ORDER BY db2.t1.c3 on db1.t1.c1=db2.t1.c1;";
+    ASSERT_TRUE(router->RefreshCatalog());
+    router->ExecuteSQL(sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop deployment demo;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop table t1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop table t1;", &status));
+    ASSERT_TRUE(router->DropDB(db1, &status));
+    ASSERT_TRUE(router->DropDB(db2, &status));
 }
 
 TEST_F(SQLClusterTest, CreatePreAggrTable) {
@@ -1012,7 +1064,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionT
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -1030,7 +1082,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -1041,7 +1093,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureTest) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -1059,7 +1111,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestProcedureAsyncTe
 TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }

@@ -49,12 +49,12 @@ class ArrayIRBuilder  : public StructTypeIRBuilder {
 
     void InitStructType() override;
 
-    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) override { return true; }
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) override;
 
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) override { return true; }
 
     base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src, NativeValue* output) override {
-        return base::Status::OK();
+        CHECK_TRUE(false, common::kCodegenError, "casting to array un-implemented");
     };
 
  private:

@@ -97,6 +97,7 @@ enum SqlNodeType {
     kWithClauseEntry,
     kAlterTableStmt,
     kShowStmt,
+    kCompressType,
     kSqlNodeTypeLast,  // debug type
 };
 
@@ -251,7 +252,7 @@ enum JoinType {
     kJoinTypeRight,
     kJoinTypeInner,
     kJoinTypeConcat,
-    kJoinTypeComma
+    kJoinTypeCross,  // AKA commma join
 };
 
 enum UnionType { kUnionTypeDistinct, kUnionTypeAll };
@@ -283,6 +284,8 @@ enum CmdType {
     kCmdShowFunctions,
     kCmdDropFunction,
     kCmdShowJobLog,
+    kCmdShowCreateTable,
+    kCmdTruncate,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };
@@ -339,6 +342,11 @@ enum StorageMode {
     kMemory = 1,
     kSSD = 2,
     kHDD = 3,
+};
+
+enum CompressType {
+    kNoCompress = 0,
+    kSnappy = 1,
 };
 
 // batch plan node type

@@ -27,8 +27,9 @@ namespace storage {
 class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
-                           uint64_t expire_cnt)
-        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
+            uint64_t expire_cnt, type::CompressType compress_type)
+        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type),
+        row_(), compress_type_(compress_type) {}
 
     ~MemTableWindowIterator();
 
@@ -51,12 +52,15 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
     uint32_t record_idx_;
     TTLSt expire_value_;
     ::hybridse::codec::Row row_;
+    type::CompressType compress_type_;
+    std::string tmp_buf_;
 };
 
 class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
  public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
+                        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index,
+                        type::CompressType compress_type);
 
     ~MemTableKeyIterator() override;
 
@@ -87,12 +91,14 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     uint64_t expire_cnt_;
     Ticket ticket_;
     uint32_t ts_idx_;
+    type::CompressType compress_type_;
 };
 
 class MemTableTraverseIterator : public TraverseIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                             uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
+            uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index,
+            type::CompressType compress_type);
     ~MemTableTraverseIterator() override;
     inline bool Valid() override;
     void Next() override;
@@ -115,6 +121,8 @@ class MemTableTraverseIterator : public TraverseIterator {
     TTLSt expire_value_;
     Ticket ticket_;
     uint64_t traverse_cnt_;
+    type::CompressType compress_type_;
+    mutable std::string tmp_buf_;
 };
 
 }  // namespace storage

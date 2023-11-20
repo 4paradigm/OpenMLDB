@@ -43,8 +43,6 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(system_table_replica_num);
 DECLARE_bool(auto_failover);
 
-using ::openmldb::zk::ZkClient;
-
 namespace openmldb {
 namespace nameserver {
 

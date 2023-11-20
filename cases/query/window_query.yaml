@@ -833,3 +833,302 @@ cases:
         200, 1, 1, 1
         300, 0, 0, 0
         400, 1, 0, 0
+
+  - id: 23
+    sql: |
+      select
+        gp_id,
+        count(gp_id) over w as cnt,
+        -- t2 matches and t3 not matches
+        count_where(gp_id, not is_null(lcond) and is_null(cond)) over w as feat1,
+      from (select id as gp_id, 0 as lcond, 0 as cond, cast(90000 as timestamp) as ts from request)
+      window w as (
+         union (select t1.gp_id, t2.cond as lcond, t3.cond as cond, t1.ts from
+             t1 last join t2 on t1.gp_id = t2.account
+             last join t3 on t1.cond = t3.cond)
+         partition by gp_id order by ts
+         rows between unbounded preceding and current row
+         exclude current_row instance_not_in_window
+      )
+    inputs:
+      - name: request
+        columns: ["id int"]
+        indexs: ['idx:id']
+        data: |
+          100
+          200
+          300
+          400
+      - name: t1
+        columns:
+          - gp_id int
+          - cond int
+          - ts timestamp
+        indexs:
+          - idx2:gp_id:ts
+        data: |
+          100, 201, 10000
+          100, 201, 10000
+          200, 203, 10000
+          400, 204, 10000
+          400, 205, 10000
+      - name: t2
+        columns:
+          - account int
+          - cond int
+          - ts timestamp
+        indexs: ["idx1:account:ts"]
+        data: |
+          100, 201, 1000
+          200, 203, 4000
+          400, 209, 4000
+      - name: t3
+        columns:
+          - cond int
+          - ts timestamp
+        indexs: ["idx3:cond:ts"]
+        data: |
+          201, 1000
+          208, 1000
+    expect:
+      columns:
+        - gp_id int
+        - cnt int64
+        - feat1 int64
+      order: gp_id
+      data: |
+        100, 2, 0
+        200, 1, 1
+        300, 0, 0
+        400, 2, 2
+
+  # ======================================================================
+  # WINDOW without ORDER BY
+  # ======================================================================
+  - id: 24
+    desc: ROWS WINDOW WITHOUT ORDER BY
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - gp int
+          - ts timestamp
+        indexs:
+          - idx:gp:ts
+        data: |
+          1, 100, 20000
+          2, 100, 10000
+          3, 400, 20000
+          4, 400, 10000
+          5, 400, 15000
+          6, 400, 40000
+    sql: |
+      select id, count(ts) over w as agg
+      from t1
+      window w as (
+        partition by gp
+        rows between 2 open preceding and current row
+      )
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(partition_keys=(), orders=, rows=(, 2 OPEN PRECEDING, 0 CURRENT), index_keys=(gp))
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(id, agg))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          SIMPLE_PROJECT(sources=(id))
+            DATA_PROVIDER(request=t1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=, rows=(, 2 OPEN PRECEDING, 0 CURRENT), index_keys=(gp))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns: ["id int", "agg int64"]
+      order: id
+      data: |
+        1, 1
+        2, 2
+        3, 1
+        4, 2
+        5, 2
+        6, 2
+  - id: 25
+    desc: RANGE WINDOW WITHOUT ORDER BY
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - gp int
+          - ts timestamp
+        indexs:
+          - idx:gp:ts
+        data: |
+          1, 100, 20000
+          2, 100, 10000
+          3, 400, 20000
+          4, 400, 10
+          5, 400, 15000
+    sql: |
+      select id, count(ts) over w as agg
+      from t1
+      window w as (
+        partition by gp
+        rows_range between unbounded preceding and current row
+      )
+    request_plan: |
+      PROJECT(type=Aggregation)
+        REQUEST_UNION(partition_keys=(), orders=, range=(, 0 PRECEDING UNBOUND, 0 CURRENT), index_keys=(gp))
+          DATA_PROVIDER(request=t1)
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(id, agg))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          SIMPLE_PROJECT(sources=(id))
+            DATA_PROVIDER(request=t1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=, range=(, 0 PRECEDING UNBOUND, 0 CURRENT), index_keys=(gp))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns: ["id int", "agg int64"]
+      order: id
+      data: |
+        1, 1
+        2, 2
+        3, 1
+        4, 2
+        5, 3
+  - id: 26
+    desc: RANGE-type WINDOW WITHOUT ORDER BY + WINDOW attributes
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - gp int
+          - ts timestamp
+        indexs:
+          - idx:gp:ts
+        data: |
+          1, 100, 20000
+          2, 100, 10000
+          3, 400, 20000
+          4, 400, 10000
+          5, 400, 15000
+      - name: t2
+        columns:
+          - id int
+          - gp int
+          - ts timestamp
+        indexs:
+          - idx:gp:ts
+        data: |
+          1, 100, 20000
+          2, 100, 10000
+          3, 400, 20000
+          4, 400, 10000
+          5, 400, 15000
+    sql: |
+      select id,
+        count(ts) over w1 as agg1,
+        count(ts) over w2 as agg2,
+        count(ts) over w3 as agg3,
+        count(ts) over w4 as agg4,
+        count(ts) over w5 as agg5,
+        count(ts) over w6 as agg6,
+        count(ts) over w7 as agg7,
+      from t1
+      window w1 as (
+        PARTITION by gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+      w2 as (partition by gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW),
+      w3 as (PARTITION BY gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW MAXSIZE 1),
+      w4 as (
+        UNION (select * from t2)
+        PARTITION BY gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW),
+      w5 as (
+        UNION (select * from t2)
+        PARTITION BY gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_ROW),
+      w6 as (
+        UNION (select * from t2)
+        PARTITION BY gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW MAXSIZE 2 INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_ROW),
+      w7 as (
+        UNION (select * from t2)
+        PARTITION BY gp
+        ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW)
+    expect:
+      columns: ["id int", "agg1 int64", "agg2 int64", "agg3 int64", "agg4 int64", "agg5 int64", "agg6 int64", "agg7 int64"]
+      order: id
+      data: |
+        1, 1, 0, 1, 3, 2, 2, 2
+        2, 2, 1, 1, 3, 2, 2, 3
+        3, 1, 0, 1, 4, 3, 2, 3
+        4, 2, 1, 1, 4, 3, 2, 4
+        5, 3, 2, 1, 4, 3, 2, 5
+  - id: 27
+    desc: ROWS-type WINDOW WITHOUT ORDER BY + WINDOW attributes
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - gp int
+          - ts timestamp
+        indexs:
+          - idx:gp:ts
+        data: |
+          1, 100, 20000
+          2, 100, 10000
+          3, 400, 20000
+          4, 400, 10000
+          5, 400, 15000
+      - name: t2
+        columns:
+          - id int
+          - gp int
+          - ts timestamp
+        indexs:
+          - idx:gp:ts
+        data: |
+          1, 100, 20000
+          2, 100, 10000
+          3, 400, 20000
+          4, 400, 10000
+          5, 400, 15000
+    sql: |
+      select id,
+        count(ts) over w1 as agg1,
+        count(ts) over w2 as agg2,
+        count(ts) over w3 as agg3,
+        count(ts) over w4 as agg4,
+      from t1
+      window w1 as (
+        PARTITION by gp
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 as (partition by gp
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW),
+      w3 as (
+        UNION (select * from t2)
+        PARTITION BY gp
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW),
+      w4 as (
+        UNION (select * from t2)
+        PARTITION BY gp
+        ROWS BETWEEN 3 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_ROW)
+    expect:
+      columns: ["id int", "agg1 int64", "agg2 int64", "agg3 int64", "agg4 int64"]
+      order: id
+      data: |
+        1, 1, 0, 3, 2
+        2, 2, 1, 3, 2
+        3, 1, 0, 3, 3
+        4, 2, 1, 3, 3
+        5, 3, 2, 3, 3

@@ -5,7 +5,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.8.2-SNAPSHOT</version>
+        <version>0.8.3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -38,6 +38,11 @@
             <artifactId>openmldb-native</artifactId>
             <version>${variant.native.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-log4j12 -->
         <dependency>
@@ -51,6 +56,16 @@
             <artifactId>log4j-core</artifactId>
             <version>2.17.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+            <version>1.1.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>2.9.3</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.testng/testng -->
         <dependency>
@@ -59,7 +74,6 @@
             <version>6.14.3</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>

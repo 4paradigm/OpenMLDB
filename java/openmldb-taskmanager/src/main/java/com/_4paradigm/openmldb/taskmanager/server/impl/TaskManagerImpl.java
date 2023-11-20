@@ -73,17 +73,18 @@ public class TaskManagerImpl implements TaskManagerInterface {
      */
     private void initExternalFunction() throws InterruptedException {
         ZKClient zkClient = new ZKClient(ZKConfig.builder()
-                .cluster(TaskManagerConfig.ZK_CLUSTER)
-                .namespace(TaskManagerConfig.ZK_ROOT_PATH)
-                .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
-                .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
-                .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
-                .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
-                .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                .cluster(TaskManagerConfig.getZkCluster())
+                .namespace(TaskManagerConfig.getZkRootPath())
+                .sessionTimeout(TaskManagerConfig.getZkSessionTimeout())
+                .baseSleepTime(TaskManagerConfig.getZkBaseSleepTime())
+                .connectionTimeout(TaskManagerConfig.getZkConnectionTimeout())
+                .maxConnectWaitTime(TaskManagerConfig.getZkMaxConnectWaitTime())
+                .maxRetries(TaskManagerConfig.getZkMaxRetries())
+                .cert(TaskManagerConfig.getZkCert())
                 .build());
         zkClient.connect();
 
-        String funPath = TaskManagerConfig.ZK_ROOT_PATH + "/data/function";
+        String funPath = TaskManagerConfig.getZkRootPath() + "/data/function";
         try {
             List<String> funNames = zkClient.getChildren(funPath);
             for (String name : funNames) {
@@ -220,7 +221,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             // HOST can't be 0.0.0.0 if distributed or spark is not local
             confMap.put("spark.openmldb.savejobresult.http",
                     String.format("http://%s:%d/openmldb.taskmanager.TaskManagerServer/SaveJobResult",
-                            TaskManagerConfig.HOST, TaskManagerConfig.PORT));
+                            TaskManagerConfig.getServerHost(), TaskManagerConfig.getServerPort()));
             // we can't get spark job id here, so we use JobResultSaver id, != spark job id
             // if too much running jobs to save result, throw exception
             int resultId = jobResultSaver.genResultId();
@@ -234,7 +235,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             if (finalJobInfo.isSuccess()) {
                 // wait for all files of result saved and read them, large timeout
                 // TODO: Test for K8S backend
-                String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
+                String output = jobResultSaver.readResult(resultId, TaskManagerConfig.getBatchJobResultMaxWaitTime());
                 return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output)
                         .build();
             } else {
@@ -253,7 +254,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
     // rpc max time is CHANNEL_KEEP_ALIVE_TIME, so we don't need to wait too long
     private JobInfo busyWaitJobInfo(int jobId, int waitSeconds) throws InterruptedException {
         long maxWaitEnd = System.currentTimeMillis()
-                + (waitSeconds == 0 ? TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME : waitSeconds) * 1000;
+                + (waitSeconds == 0 ? TaskManagerConfig.getChannelKeepAliveTime() : waitSeconds) * 1000;
         while (System.currentTimeMillis() < maxWaitEnd) {
             Option<JobInfo> info = JobInfoManager.getJob(jobId);
             if (info.isEmpty()) {

@@ -93,7 +93,8 @@ TEST_P(SnapshotReplicaTest, AddReplicate) {
     sleep(1);
 
     ::openmldb::api::TableStatus table_status;
-    ASSERT_TRUE(client.GetTableStatus(tid, pid, table_status));
+    auto st = client.GetTableStatus(tid, pid, table_status);
+    ASSERT_TRUE(st.OK()) << st.ToString();
     ASSERT_EQ(::openmldb::api::kTableNormal, table_status.state());
 
     ret = client.DelReplica(tid, pid, end_point);

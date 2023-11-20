@@ -175,15 +175,21 @@ deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as 
     WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
-#### 设置偏移
+#### 设置偏移BIAS
 
-如果你并不希望数据根据deploy的索引淘汰，或者希望晚一点淘汰，可以在deploy时设置偏移，常用于数据时间戳并不实时的情况、测试等情况。如果deploy后的索引ttl为abs 3h，但是数据的时间戳是3h前的(以系统时间为基准)，那么这条数据就会被淘汰，无法参与计算。设置一定时间或永久的偏移，则可以让数据更久的停留在在线表中。
+如果你并不希望数据根据deploy的索引淘汰，或者希望晚一点淘汰，可以在deploy时设置偏移BIAS，常用于数据时间戳并不实时的情况、测试等情况。如果deploy后的索引ttl为abs 3h，但是数据的时间戳是3h前的(以系统时间为基准)，那么这条数据就会被淘汰，无法参与计算。设置一定时间或永久的偏移，则可以让数据更久的停留在在线表中。
 
 时间偏移，单位可以是`s`、`m`、`h`、`d`，也可以是整数，单位为`ms`，也可以是`inf`，表示永不淘汰；如果是行数偏移，可以是整数，单位是`row`，也可以是`inf`，表示永不淘汰。两种偏移中，0均表示不偏移。
 
 注意，我们只将偏移加在deploy的解析索引中，也就是新索引，它们并不是最终索引。最终索引的计算方式是，如果是创建索引，最终索引是`解析索引 + 偏移`；如果是更新索引，最终索引是`merge(旧索引, 新索引 + 偏移)`。
 
 而时间偏移的单位是`min`，我们会在内部将其转换为`min`，并且取上界。比如，新索引ttl是abs 2min，加上偏移20s，结果是`2min + ub(20s) = 3min`，然后和旧索引1min取上界，最终索引ttl是`max(1min, 3min) = 3min`。
+
+**Example**
+```sql
+DEPLOY demo OPTIONS(RANGE_BIAS="inf", ROWS_BIAS="inf") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+```
 
 ## 相关SQL
 

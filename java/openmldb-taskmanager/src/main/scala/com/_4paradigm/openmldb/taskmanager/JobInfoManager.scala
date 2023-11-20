@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
+import com._4paradigm.openmldb.taskmanager.util.HdfsUtil
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.slf4j.LoggerFactory
 import org.apache.hadoop.fs.{FileSystem, LocalFileSystem, Path}
@@ -42,8 +43,8 @@ object JobInfoManager {
   private val JOB_INFO_TABLE_NAME = "JOB_INFO"
 
   private val option = new SdkOption
-  option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-  option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
+  option.setZkCluster(TaskManagerConfig.getZkCluster)
+  option.setZkPath(TaskManagerConfig.getZkRootPath)
   val sqlExecutor = new SqlClusterExecutor(option)
   sqlExecutor.executeSQL("", "set @@execute_mode='online';")
 
@@ -52,7 +53,7 @@ object JobInfoManager {
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
     val initialState = "Submitted"
     val parameter = if (args != null && args.length>0) args.mkString(",") else ""
-    val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.SPARK_MASTER)
+    val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.getSparkMaster)
 
     // TODO: Parse if run in yarn or local
     val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, null, parameter, cluster, "", "")
@@ -210,12 +211,8 @@ object JobInfoManager {
           FileUtils.deleteDirectory(dir)
 
         } else if (filePath.startsWith("hdfs://")) {
-          val conf = new Configuration();
-          // TODO: Get namenode uri from config file
-          val namenodeUri = TaskManagerConfig.NAMENODE_URI
-          val hdfs = FileSystem.get(URI.create(s"hdfs://$namenodeUri"), conf)
-          hdfs.delete(new Path(filePath), true)
-
+          logger.info(s"Try to delete the HDFS path ${filePath}")
+          HdfsUtil.deleteHdfsDir(filePath)
         } else {
           throw new Exception(s"Get unsupported file path: $filePath")
         }

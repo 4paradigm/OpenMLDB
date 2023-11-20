@@ -34,6 +34,7 @@ public class BenchmarkConfig {
     public static long TS_BASE = System.currentTimeMillis();
     public static String DEPLOY_NAME;
     public static String CSV_PATH;
+    public static int PUT_BACH_SIZE = 1;
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
@@ -58,6 +59,7 @@ public class BenchmarkConfig {
 //            if(!CSV_PATH.startsWith("/")){
 //                CSV_PATH=Util.getRootPath()+CSV_PATH;
 //            }
+            PUT_BACH_SIZE = Integer.valueOf(prop.getProperty("PUT_BACH_SIZE", "1"));
         } catch (Exception e) {
             e.printStackTrace();
         }
