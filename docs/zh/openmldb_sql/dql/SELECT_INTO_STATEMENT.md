@@ -5,21 +5,14 @@
 ```
 ## Syntax
 
-```sql
-SelectIntoStmt
-						::= SelectStmt 'INTO' 'OUTFILE' filePath SelectIntoOptionList
-						
-filePath 
-						::= string_literal
-SelectIntoOptionList
-						::= 'OPTIONS' '(' SelectInfoOptionItem (',' SelectInfoOptionItem)* ')'
+```yacc
+select_into_statement:
+  query INTO OUTFILE string_file_path
+  [ OPTIONS options_list ]
+  [ CONFIG options_list ]
 
-SelectInfoOptionItem
-						::= 'DELIMITER' '=' string_literal
-						|'HEADER' '=' bool_literal
-						|'NULL_VALUE' '=' string_literal
-						|'FORMAT' '=' string_literal
-						|'MODE' '=' string_literal
+options_list:
+  ( { key = value } [, ...] )
 ```
 
 `SELECT INTO OUTFILE`分为三个部分。
