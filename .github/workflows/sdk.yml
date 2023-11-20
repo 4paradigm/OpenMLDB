@@ -298,7 +298,6 @@ jobs:
 
   python-sdk-mac:
     runs-on: macos-12
-    if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_python_sdk_so openmldb"
