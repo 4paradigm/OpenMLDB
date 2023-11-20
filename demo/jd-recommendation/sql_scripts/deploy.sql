@@ -1,6 +1,6 @@
 USE JD_db;
 SET @@execute_mode='online';
-DEPLOY demo select * from
+DEPLOY demo OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') select * from
 (
 select
 `reqId` as reqId_1,

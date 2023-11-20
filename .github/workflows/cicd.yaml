@@ -107,9 +107,11 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
+          # exclude _deps xml
           path: |
             build/**/*.xml
             reports/*.xml
+            !build/_deps/*
 
       - name: install
         if: ${{ github.event_name == 'push' }}

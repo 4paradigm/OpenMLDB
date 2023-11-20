@@ -22,6 +22,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "base/skiplist.h"
@@ -40,7 +41,7 @@ using ::openmldb::base::Slice;
 
 class MemTableIterator : public TableIterator {
  public:
-    explicit MemTableIterator(TimeEntries::Iterator* it);
+    explicit MemTableIterator(TimeEntries::Iterator* it, type::CompressType compress_type);
     virtual ~MemTableIterator();
     void Seek(const uint64_t time) override;
     bool Valid() override;
@@ -52,6 +53,8 @@ class MemTableIterator : public TableIterator {
 
  private:
     TimeEntries::Iterator* it_;
+    type::CompressType compress_type_;
+    mutable std::string tmp_buf_;
 };
 
 struct SliceComparator {
@@ -93,9 +96,9 @@ class Segment {
     void Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info);
     void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info);
 
-    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);                   // NOLINT
+    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket, type::CompressType compress_type);  // NOLINT
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
-                                  Ticket& ticket);  // NOLINT
+                                  Ticket& ticket, type::CompressType compress_type);  // NOLINT
 
     uint64_t GetIdxCnt() const {
         return idx_cnt_vec_[0]->load(std::memory_order_relaxed);

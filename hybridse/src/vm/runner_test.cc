@@ -15,26 +15,11 @@
  */
 
 #include <memory>
-#include <utility>
 
 #include "absl/strings/match.h"
-#include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
-#include "llvm/ExecutionEngine/Orc/LLJIT.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
-#include "plan/plan_api.h"
 #include "testing/test_base.h"
 #include "vm/sql_compiler.h"
 

@@ -19,13 +19,13 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "base/fe_status.h"
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
-#include "passes/expression/expr_pass.h"
-#include "passes/lambdafy_projects.h"
 #include "passes/physical/batch_request_optimize.h"
 #include "passes/physical/cluster_optimized.h"
 #include "passes/physical/condition_optimized.h"
@@ -38,6 +38,7 @@
 #include "passes/physical/transform_up_physical_pass.h"
 #include "passes/physical/window_column_pruning.h"
 #include "plan/planner.h"
+#include "proto/fe_common.pb.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
 #include "vm/internal/node_helper.h"
@@ -639,16 +640,13 @@ Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         }
         case kPhysicalOpDataProvider: {
             auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
-            CHECK_TRUE(data_op->provider_type_ == kProviderTypeRequest,
-                       kPlanError,
-                       "Do not support window on non-request input");
+            CHECK_TRUE(data_op->provider_type_ != kProviderTypePartition, kPlanError, "data node already a partition");
 
             auto name = data_op->table_handler_->GetName();
             auto db_name = data_op->table_handler_->GetDatabase();
             auto table = catalog_->GetTable(db_name, name);
-            CHECK_TRUE(table != nullptr, kPlanError,
-                       "Fail to transform data provider op: table " + name +
-                           "not exists");
+            CHECK_TRUE(table != nullptr, kPlanError, "Fail to transform data provider op: table ", name, "not exists");
+
             PhysicalTableProviderNode* right = nullptr;
             CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&right, table));
 
@@ -656,6 +654,12 @@ Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
             CHECK_STATUS(CreateRequestUnionNode(
                 data_op, right, table->GetDatabase(), table->GetName(), table->GetSchema(), nullptr,
                 w_ptr, &request_union_op));
+
+            if (data_op->provider_type_ == kProviderTypeTable && !request_union_op->instance_not_in_window()) {
+                // REQUEST_UNION(t1, t1) do not has request table, dont output reqeust row,
+                // but should output if REQUEST_UNION(t1, t1, unions=xxx, instance_not_in_window)
+                request_union_op->set_output_request_row(false);
+            }
 
             if (!w_ptr->union_tables().empty()) {
                 for (auto iter = w_ptr->union_tables().cbegin();
@@ -822,6 +826,7 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
     return Status::OK();
 }
 
+// From window (t1 last join t2 [ last join t3]...)
 // Optimize
 //   RequestJoin(Request(left_table), DataSource(right_table))
 // ->
@@ -905,7 +910,8 @@ Status FixupWindowOverSimpleNLastJoin(const node::WindowPlanNode* w_ptr, const S
 
                     size_t id = 0;
                     CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
-                                                                   ref->GetColumnName(), &id));
+                                                                   ref->GetColumnName(), &id),
+                                 "fail to resolve ", ref->GetExprString());
                     std::string name;
                     CHECK_STATUS(
                         left_join_sc->ResolveColumnNameByID(id, &name),
@@ -930,7 +936,8 @@ Status FixupWindowOverSimpleNLastJoin(const node::WindowPlanNode* w_ptr, const S
 
                     size_t id = 0;
                     CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
-                                                                   ref->GetColumnName(), &id));
+                                                                   ref->GetColumnName(), &id),
+                                 "fail to resolve ", ref->GetExprString());
                     std::string name;
                     CHECK_STATUS(left_join_sc->ResolveColumnNameByID(id, &name),
                                  "Fail to handle window: window order expression should belong to left table of join");
@@ -1400,19 +1407,24 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
         }
         case kAggregation: {
             PhysicalAggregationNode* agg_op = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend,
-                                                           column_projects, having_condition));
+            CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend, column_projects, having_condition));
             *output = agg_op;
             break;
         }
         case kGroupAggregation: {
-            CHECK_TRUE(!node::ExprListNullOrEmpty(group_keys), kPlanError,
-                       "Can not create group agg with non group keys");
+            if (node::ExprListNullOrEmpty(group_keys)) {
+                PhysicalAggregationNode* agg_op = nullptr;
+                CHECK_STATUS(CreateOp<PhysicalAggregationNode>(&agg_op, depend, column_projects, having_condition));
+                *output = agg_op;
+            } else {
+                // CHECK_TRUE(!node::ExprListNullOrEmpty(group_keys), kPlanError,
+                //            "Can not create group agg with non group keys");
 
-            PhysicalGroupAggrerationNode* agg_op = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalGroupAggrerationNode>(
-                &agg_op, depend, column_projects, having_condition, group_keys));
-            *output = agg_op;
+                PhysicalGroupAggrerationNode* agg_op = nullptr;
+                CHECK_STATUS(CreateOp<PhysicalGroupAggrerationNode>(&agg_op, depend, column_projects, having_condition,
+                                                                    group_keys));
+                *output = agg_op;
+            }
             break;
         }
         case kWindowAggregation: {
@@ -1450,6 +1462,10 @@ base::Status BatchModeTransformer::ExtractGroupKeys(vm::PhysicalOpNode* depend, 
     CHECK_TRUE(nullptr != depend, common::kNullPointer, "Invalid op, is null")
     if (depend->GetOpType() == kPhysicalOpFilter) {
         CHECK_STATUS(ExtractGroupKeys(depend->GetProducer(0), keys))
+        return base::Status::OK();
+    }
+
+    if (depend->GetOpType() == kPhysicalOpRequestUnion) {
         return base::Status::OK();
     }
     CHECK_TRUE(depend->GetOpType() == kPhysicalOpGroupBy, kPlanError, "Fail to extract group keys from op ",
@@ -1603,28 +1619,12 @@ bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
         kPhysicalOpFilter == in->GetOpType()) {
         return isSourceFromTableOrPartition(in->GetProducer(0));
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
-        return kProviderTypePartition ==
-                   dynamic_cast<PhysicalDataProviderNode*>(in)
-                       ->provider_type_ ||
-               kProviderTypeTable ==
-                   dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
+        return kProviderTypePartition == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_ ||
+               kProviderTypeTable == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
     }
     return false;
 }
-bool BatchModeTransformer::isSourceFromTable(PhysicalOpNode* in) {
-    if (nullptr == in) {
-        DLOG(WARNING) << "Invalid physical node: null";
-        return false;
-    }
-    if (kPhysicalOpSimpleProject == in->GetOpType() ||
-        kPhysicalOpRename == in->GetOpType()) {
-        return isSourceFromTableOrPartition(in->GetProducer(0));
-    } else if (kPhysicalOpDataProvider == in->GetOpType()) {
-        return kProviderTypeTable ==
-               dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
-    }
-    return false;
-}
+
 Status BatchModeTransformer::ValidateTableProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     CHECK_TRUE(isSourceFromTableOrPartition(in), kPlanError,
@@ -1650,15 +1650,27 @@ Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
         kPhysicalOpRename == in->GetOpType() || kPhysicalOpFilter == in->GetOpType()) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
+    } else if (kPhysicalOpProject == in->GetOpType()) {
+        auto* prj = dynamic_cast<vm::PhysicalProjectNode*>(in);
+        CHECK_TRUE(prj->project_type_ == kAggregation, kPlanError,
+                   "can't optimize project node: ", in->GetTreeString());
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
     } else if (kPhysicalOpRequestJoin == in->GetOpType()) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(1)));
+    } else if (kPhysicalOpRequestUnion == in->GetOpType()) {
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
+        auto n = dynamic_cast<PhysicalRequestUnionNode*>(in);
+        if (!n->instance_not_in_window()) {
+            CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(1)));
+        }
+        for (auto& window_union : n->window_unions().window_unions_) {
+            CHECK_STATUS(ValidateWindowIndexOptimization(window_union.second, window_union.first));
+        }
     } else {
-        CHECK_TRUE(
-            kPhysicalOpDataProvider == in->GetOpType() &&
-                kProviderTypePartition ==
-                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
-            kPlanError, "Isn't partition provider:", in->GetTreeString());
+        CHECK_TRUE(kPhysicalOpDataProvider == in->GetOpType() &&
+                       kProviderTypeTable != dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
+                   kPlanError, "Isn't partition provider:", in->GetTreeString());
     }
     return Status::OK();
 }
@@ -1682,7 +1694,7 @@ Status BatchModeTransformer::ValidateJoinIndexOptimization(
         return Status::OK();
     } else {
         CHECK_STATUS(ValidatePartitionDataProvider(right),
-                     "Join node hasn't been optimized");
+                     "Join node hasn't been optimized: right=", right->GetTreeString());
     }
     return Status::OK();
 }
@@ -1725,8 +1737,11 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
                     CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
                     break;
                 }
-                default: {
+                case node::kJoinTypeConcat:
                     break;
+                default: {
+                    FAIL_STATUS(common::kUnsupportSql, "unsupport join type ",
+                                node::JoinTypeName(join_op->join_.join_type()))
                 }
             }
             break;
@@ -1739,8 +1754,11 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
                     CHECK_STATUS(CheckPartitionColumn(join_op->join().right_key().keys(), join_op->schemas_ctx()));
                     break;
                 }
-                default: {
+                case node::kJoinTypeConcat:
                     break;
+                default: {
+                    FAIL_STATUS(common::kUnsupportSql, "unsupport join type ",
+                                node::JoinTypeName(join_op->join_.join_type()))
                 }
             }
             break;
@@ -1795,10 +1813,13 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
 //  - ValidateNotAggregationOverTable
 Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_STATUS(BatchModeTransformer::ValidatePlan(node))
-    PhysicalOpNode* primary_source = nullptr;
+
+    // output is reqeust
+    CHECK_TRUE(node->GetOutputType() == kSchemaTypeRow, kPlanError,
+               "unsupport non-row output type for online-request mode");
 
     // OnlineServing restriction: Expect to infer one and only one request table from given SQL
-    CHECK_STATUS(ValidateRequestTable(node, &primary_source), "Fail to validate physical plan")
+    CHECK_STATUS(ValidateRequestTable(node), "Fail to validate physical plan")
 
     // For Online serving, SQL queries should be designed extremely performance-sensitive to satisfy the real-time
     // requirements. Thus, we need to Validate if the SQL has been optimized well enough
@@ -2244,12 +2265,28 @@ Status BatchModeTransformer::CheckWindow(
     const node::WindowPlanNode* w_ptr, const vm::SchemasContext* schemas_ctx) {
     CHECK_TRUE(w_ptr != nullptr, common::kPlanError, "NULL Window");
     CHECK_TRUE(!node::ExprListNullOrEmpty(w_ptr->GetKeys()), common::kPlanError,
-               "Invalid Window: Do not support window on non-partition");
-    CHECK_TRUE(nullptr != w_ptr->GetOrders() &&
-                   !node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_expressions_),
-               common::kPlanError,
-               "Invalid Window: Do not support window on non-order");
+               "un-implemented: WINDOW without PARTITION BY clause");
     CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
+
+    //  without ORDER BY clause:
+    if (w_ptr->GetOrders() == nullptr || node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_expressions())) {
+        //  1. forbidden: RANGE/ROWS_RANGE WINDOW WITH offset PRECEDING/FOLLOWING
+        if (w_ptr->frame_node()->frame_type() != node::FrameType::kFrameRows) {
+            auto* range = w_ptr->frame_node()->frame_range();
+            if ((range->start() && range->start()->is_offset_bound()) ||
+                (range->end() && range->end()->is_offset_bound())) {
+                CHECK_TRUE(
+                    false, common::kPlanError,
+                    "RANGE/ROWS_RANGE-type FRAME with offset PRECEDING/FOLLOWING requires exactly one ORDER BY column")
+            }
+        }
+
+        // 2. forbidden: WINDOW without ORDER BY + EXCLUDE CURRENT_TIME
+        if (w_ptr->exclude_current_time()) {
+            CHECK_TRUE(false, common::kPlanError,
+                       "WINDOW with EXCLUDE CURRENT_TIME requires exactly one ORDER BY column");
+        }
+    }
 
     CHECK_STATUS(CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
 
@@ -2422,65 +2459,17 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         return BatchModeTransformer::TransformScanOp(node, output);
     }
 }
-Status RequestModeTransformer::ValidateRequestTable(
-    PhysicalOpNode* in, PhysicalOpNode** request_table) {
-    CHECK_TRUE(in != NULL, kPlanError, "NULL Physical Node");
+Status RequestModeTransformer::ValidateRequestTable(PhysicalOpNode* in) {
+    auto req = internal::ExtractRequestNode(in);
+    CHECK_TRUE(req.ok(), kPlanError, req.status());
 
-    switch (in->GetOpType()) {
-        case vm::kPhysicalOpDataProvider: {
-            CHECK_TRUE(kProviderTypeRequest == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_, kPlanError,
-                       "Expect a request table but a ",
-                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_), " ",
-                       in->GetTreeString())
-            *request_table = in;
-            return Status::OK();
-        }
-        case vm::kPhysicalOpJoin:
-        case vm::kPhysicalOpUnion:
-        case vm::kPhysicalOpPostRequestUnion:
-        case vm::kPhysicalOpRequestUnion:
-        case vm::kPhysicalOpRequestAggUnion:
-        case vm::kPhysicalOpRequestJoin: {
-            vm::PhysicalOpNode* left_primary_source = nullptr;
-            CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), &left_primary_source))
-            CHECK_TRUE(
-                nullptr != left_primary_source, kPlanError,
-                "Fail to infer a request table")
-            // Case 1:
-            // binary_node
-            //    + Left - PrimarySource
-            //    + Right - TableProvider
-            if (isSourceFromTableOrPartition(in->GetProducer(1))) {
-                *request_table = left_primary_source;
-                return Status::OK();
-            }
+    std::set<std::pair<std::string, std::string>> db_tables;
+    CHECK_STATUS(internal::GetDependentTables(in, &db_tables));
+    CHECK_TRUE(req.value() != nullptr || db_tables.empty(), kPlanError, "no request node found");
 
-            vm::PhysicalOpNode* right_primary_source = nullptr;
-            CHECK_STATUS(ValidateRequestTable(in->GetProducer(1), &right_primary_source))
-            CHECK_TRUE(
-                nullptr != right_primary_source, kPlanError,
-                "Fail to infer a request table")
-            // Case 2:
-            // binary_node
-            //      + Left <-- SamePrimarySource1
-            //      + Right <-- SamePrimarySource1
-            CHECK_TRUE(left_primary_source->Equals(right_primary_source), kPlanError,
-                       "left path and right path has different request table")
-            *request_table = left_primary_source;
-            return Status::OK();
-        }
-        case vm::kPhysicalOpConstProject: {
-            break;
-        }
-        default: {
-            CHECK_TRUE(in->GetProducerCnt() == 1, kPlanError,
-                       "Non-support Op ", PhysicalOpTypeName(in->GetOpType()))
-            CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), request_table));
-            return Status::OK();
-        }
-    }
     return Status::OK();
 }
+
 
 // transform a single `ProjectListNode` of `ProjectPlanNode`
 Status RequestModeTransformer::TransformProjectOp(

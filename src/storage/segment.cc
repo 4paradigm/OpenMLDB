@@ -15,7 +15,7 @@
  */
 
 #include "storage/segment.h"
-
+#include <snappy.h>
 #include <memory>
 
 #include "base/glog_wrapper.h"
@@ -742,36 +742,38 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
     return 0;
 }
 
-MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
+MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket, type::CompressType compress_type) {
     if (entries_ == nullptr || ts_cnt_ > 1) {
-        return new MemTableIterator(nullptr);
+        return new MemTableIterator(nullptr, compress_type);
     }
     void* entry = nullptr;
     if (entries_->Get(key, entry) < 0 || entry == nullptr) {
-        return new MemTableIterator(nullptr);
+        return new MemTableIterator(nullptr, compress_type);
     }
     ticket.Push(reinterpret_cast<KeyEntry*>(entry));
-    return new MemTableIterator(reinterpret_cast<KeyEntry*>(entry)->entries.NewIterator());
+    return new MemTableIterator(reinterpret_cast<KeyEntry*>(entry)->entries.NewIterator(), compress_type);
 }
 
-MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
+MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx,
+        Ticket& ticket, type::CompressType compress_type) {
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
-        return new MemTableIterator(nullptr);
+        return new MemTableIterator(nullptr, compress_type);
     }
     if (ts_cnt_ == 1) {
-        return NewIterator(key, ticket);
+        return NewIterator(key, ticket, compress_type);
     }
     void* entry_arr = nullptr;
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == nullptr) {
-        return new MemTableIterator(nullptr);
+        return new MemTableIterator(nullptr, compress_type);
     }
     auto entry = reinterpret_cast<KeyEntry**>(entry_arr)[pos->second];
     ticket.Push(entry);
-    return new MemTableIterator(entry->entries.NewIterator());
+    return new MemTableIterator(entry->entries.NewIterator(), compress_type);
 }
 
-MemTableIterator::MemTableIterator(TimeEntries::Iterator* it) : it_(it) {}
+MemTableIterator::MemTableIterator(TimeEntries::Iterator* it, type::CompressType compress_type)
+    : it_(it), compress_type_(compress_type) {}
 
 MemTableIterator::~MemTableIterator() {
     if (it_ != nullptr) {
@@ -797,6 +799,11 @@ void MemTableIterator::Next() {
 }
 
 ::openmldb::base::Slice MemTableIterator::GetValue() const {
+    if (compress_type_ == type::CompressType::kSnappy) {
+        tmp_buf_.clear();
+        snappy::Uncompress(it_->GetValue()->data, it_->GetValue()->size, &tmp_buf_);
+        return openmldb::base::Slice(tmp_buf_);
+    }
     return ::openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
 }
 

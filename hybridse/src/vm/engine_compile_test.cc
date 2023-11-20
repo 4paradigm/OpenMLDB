@@ -251,12 +251,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
 
     {
         std::vector<std::string> sql_str_list = {
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 full join t2 on "
-            "t1.col1 = t2.col2;",
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 left join t2 on "
-            "t1.col1 = t2.col2;",
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
-            "on "
             "t1.col1 = t2.col2;",
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 last join t2 "
             "order by t2.col5 on t1.col1 = t2.col2;"};
@@ -277,7 +272,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
         std::vector<std::string> sql_str_list = {
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 full join t2 on "
             "t1.col1 = t2.col2;",
-            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 left join t2 on "
+            "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 inner join t2 on "
             "t1.col1 = t2.col2;",
             "SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 right join t2 "
             "on "

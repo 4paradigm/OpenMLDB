@@ -151,7 +151,7 @@ class NodeManager {
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderExpression* MakeOrderExpression(const ExprNode* expr, const bool is_asc);
-    OrderByNode *MakeOrderByNode(const ExprListNode *order_expressions);
+    OrderByNode *MakeOrderByNode(ExprListNode *order_expressions);
     FrameExtent *MakeFrameExtent(SqlNode *start, SqlNode *end);
     SqlNode *MakeFrameBound(BoundType bound_type);
     SqlNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
@@ -398,8 +398,6 @@ class NodeManager {
                                    const std::string &endpoint);
 
     SqlNode *MakeReplicaNumNode(int num);
-
-    SqlNode *MakeStorageModeNode(StorageMode storage_mode);
 
     SqlNode *MakePartitionNumNode(int num);
 

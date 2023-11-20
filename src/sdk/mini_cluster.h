@@ -105,7 +105,7 @@ class MiniCluster {
             }
         }
         sleep(4);
-        ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
+        nameserver = new ::openmldb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {
             return false;
@@ -135,6 +135,7 @@ class MiniCluster {
     }
 
     void Close() {
+        nameserver->CloseThreadpool();
         ns_.Stop(10);
         ns_.Join();
 
@@ -207,7 +208,7 @@ class MiniCluster {
         tb_clients_.emplace(tb_endpoint, client);
         return true;
     }
-
+    ::openmldb::nameserver::NameServerImpl* nameserver;
     int32_t zk_port_;
     brpc::Server ns_;
     int32_t tablet_num_;
@@ -250,7 +251,7 @@ class StandaloneEnv {
         FLAGS_sync_deploy_stats_timeout = 2000;
         ns_port_ = GenRand();
         std::string ns_endpoint = "127.0.0.1:" + std::to_string(ns_port_);
-        ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
+        nameserver = new ::openmldb::nameserver::NameServerImpl();
         bool ok = nameserver->Init("", "", ns_endpoint, "");
         if (!ok) {
             return false;
@@ -278,6 +279,7 @@ class StandaloneEnv {
     }
 
     void Close() {
+        nameserver->CloseThreadpool();
         ns_.Stop(10);
         ns_.Join();
         tb_server_.Stop(10);
@@ -323,7 +325,7 @@ class StandaloneEnv {
         tb_client_ = client;
         return true;
     }
-
+    ::openmldb::nameserver::NameServerImpl* nameserver;
     brpc::Server ns_;
     brpc::Server tb_server_;
     std::string ns_endpoint_;

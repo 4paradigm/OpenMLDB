@@ -16,12 +16,13 @@
 #ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 #define HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
-#include <list>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "passes/physical/transform_up_physical_pass.h"
 
@@ -85,11 +86,32 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
         Container* c_;
     };
 
+    // info to a physical table
+    struct SrcColInfo {
+        std::string col_name;
+        std::string tb_name;
+        std::string db_name;
+    };
+
+    struct OptimizeInfo {
+        OptimizeInfo(const Key* left_key, const Key* index_key, const Key* right_key, const Sort* s,
+                     vm::PhysicalPartitionProviderNode* optimized)
+            : left_key(left_key), index_key(index_key), right_key(right_key), sort_key(s), optimized(optimized) {}
+        const Key* left_key;
+        const Key* index_key;
+        const Key* right_key;
+        const Sort* sort_key;
+        vm::PhysicalPartitionProviderNode* optimized;
+    };
+
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
     bool KeysOptimized(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
                        Key* right_key, Sort* sort, PhysicalOpNode** new_in);
+
+    bool KeysOptimizedImpl(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
+                           Key* right_key, Sort* sort, PhysicalOpNode** new_in);
 
     bool FilterAndOrderOptimized(const SchemasContext* root_schemas_ctx,
                                  PhysicalOpNode* in, Filter* filter, Sort* sort,
@@ -115,12 +137,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     bool GroupOptimized(const SchemasContext* root_schemas_ctx,
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
-    bool SortOptimized(const SchemasContext* root_schemas_ctx,
-                       PhysicalOpNode* in, Sort* sort);
-    bool TransformOrderExpr(const SchemasContext* schemas_ctx,
-                            const node::OrderByNode* order,
-                            const Schema& schema, const IndexSt& index_st,
-                            const node::OrderByNode** output);
+
     bool TransformKeysAndOrderExpr(const SchemasContext* schemas_ctx,
                                    const node::ExprListNode* groups,
                                    const node::OrderByNode* order,
@@ -134,8 +151,17 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::string* index_name,
                         IndexBitMap* best_bitmap);
 
+    absl::Status BuildExprCache(const node::ExprNode* node, const SchemasContext* sc);
+
  private:
     std::list<KeysInfo> ctx_;
+
+    // Map ExprNode to source column name
+    // A source column name is the column name in string that refers to a physical table,
+    // only one table got optimized each time
+    std::unordered_map<const node::ColumnRefNode*, SrcColInfo> expr_cache_;
+
+    std::unique_ptr<OptimizeInfo> optimize_info_;
 };
 }  // namespace passes
 }  // namespace hybridse

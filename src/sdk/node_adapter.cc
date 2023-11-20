@@ -225,6 +225,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     hybridse::node::NodePointVector distribution_list;
 
     hybridse::node::StorageMode storage_mode = hybridse::node::kMemory;
+    hybridse::node::CompressType compress_type = hybridse::node::kNoCompress;
     // different default value for cluster and standalone mode
     int replica_num = 1;
     int partition_num = 1;
@@ -251,6 +252,10 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
                 case hybridse::node::kStorageMode: {
                     storage_mode = dynamic_cast<hybridse::node::StorageModeNode *>(table_option)->GetStorageMode();
+                    break;
+                }
+                case hybridse::node::kCompressType: {
+                    compress_type = dynamic_cast<hybridse::node::CompressTypeNode *>(table_option)->GetCompressType();
                     break;
                 }
                 case hybridse::node::kDistributions: {
@@ -293,6 +298,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     table->set_replica_num(replica_num);
     table->set_partition_num(partition_num);
     table->set_storage_mode(static_cast<common::StorageMode>(storage_mode));
+    table->set_compress_type(static_cast<type::CompressType>(compress_type));
     bool has_generate_index = false;
     std::set<std::string> index_names;
     std::map<std::string, ::openmldb::common::ColumnDesc*> column_names;

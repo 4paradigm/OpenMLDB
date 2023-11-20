@@ -46,10 +46,12 @@ class ZkClient {
     // session_timeout, the session timeout
     // endpoint, the client endpoint
     ZkClient(const std::string& hosts, const std::string& real_endpoint, int32_t session_timeout,
-             const std::string& endpoint, const std::string& zk_root_path);
+             const std::string& endpoint, const std::string& zk_root_path,
+             const std::string& auth_schema, const std::string& cert);
 
     ZkClient(const std::string& hosts, int32_t session_timeout, const std::string& endpoint,
-             const std::string& zk_root_path, const std::string& zone_path);
+             const std::string& zk_root_path, const std::string& zone_path,
+             const std::string& auth_schema, const std::string& cert);
     ~ZkClient();
 
     // init zookeeper connections
@@ -145,6 +147,9 @@ class ZkClient {
     int32_t session_timeout_;
     std::string endpoint_;
     std::string zk_root_path_;
+    std::string auth_schema_;
+    std::string cert_;
+    struct ACL_vector acl_vector_;
     std::string real_endpoint_;
 
     FILE* zk_log_stream_file_ = NULL;

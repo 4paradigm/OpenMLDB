@@ -7,5 +7,8 @@ Quickstart
 
     openmldb_quickstart
     concepts/index
-    cli_tutorial
+    cli
     sdk/index
+    beginner_must_read
+    function_boundary
+

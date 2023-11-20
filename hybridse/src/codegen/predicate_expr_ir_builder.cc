@@ -17,6 +17,7 @@
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/null_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
