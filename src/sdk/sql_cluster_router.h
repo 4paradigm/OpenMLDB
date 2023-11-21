@@ -283,6 +283,12 @@ class SQLClusterRouter : public SQLRouter {
     // get job timeout from the session variables, we will use the timeout when sending requests to the taskmanager
     int GetJobTimeout();
 
+    std::string GetSparkConfig();
+
+    std::map<std::string, std::string> ParseSparkConfigString(const std::string& input);
+    
+    bool CheckSparkConfigString(const std::string& input);
+
     ::openmldb::base::Status ExecuteOfflineQueryAsync(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db, int job_timeout,
