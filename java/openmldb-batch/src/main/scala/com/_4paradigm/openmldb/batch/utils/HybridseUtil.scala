@@ -213,6 +213,8 @@ object HybridseUtil {
     // load data: read format, select into: write format
     val format = if (file.toLowerCase().startsWith("hive://")) {
       "hive"
+    } else if (file.toLowerCase().startsWith("openmldb://")) {
+      "openmldb"
     } else {
       parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
     }
@@ -253,6 +255,8 @@ object HybridseUtil {
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
     extraOptions += ("sql" -> parseOption(getOptionFromNode(node, "sql"), "", getStringOrDefault))
     extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single", getStringOrDefault)
+
+    extraOptions += ("create_if_not_exists" -> parseOption(getOptionFromNode(node, "create_if_not_exists"), "true", getBoolOrDefault))
 
     (format, options.toMap, mode, extraOptions.toMap)
   }
@@ -449,6 +453,23 @@ object HybridseUtil {
     // hive://<table_pattern>
     val tableStartPos = 7
     path.substring(tableStartPos)
+  }
+
+  def getOpenmldbDbAndTable(path: String): (String, String) = {
+    require(path.toLowerCase.startsWith("openmldb://"))
+    // openmldb://<table_pattern>
+    val tableStartPos = 11
+    val dbAndTableString = path.substring(tableStartPos)
+
+
+    System.out.println("input path: " + path);
+    System.out.println("format path: " + dbAndTableString);
+
+    require(dbAndTableString.split("\\.").size == 2)
+
+    val db = dbAndTableString.split("\\.")(0)
+    val table = dbAndTableString.split("\\.")(1)
+    (db, table)
   }
 
   private def hiveLoad(openmldbSession: OpenmldbSession, file: String, columns: util.List[Common.ColumnDesc],
