@@ -15,7 +15,7 @@
  */
 
 #include "storage/disk_table_iterator.h"
-
+#include <snappy.h>
 #include <string>
 #include "gflags/gflags.h"
 #include "storage/key_transform.h"
@@ -26,12 +26,12 @@ namespace openmldb {
 namespace storage {
 
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                                     const std::string& pk)
-    : db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0) {}
+        const std::string& pk, type::CompressType compress_type)
+    : db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0), compress_type_(compress_type) {}
 
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
-                                     const std::string& pk, uint32_t ts_idx)
-    : db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0), ts_idx_(ts_idx) {
+        const std::string& pk, uint32_t ts_idx, type::CompressType compress_type)
+    : db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0), ts_idx_(ts_idx), compress_type_(compress_type) {
     has_ts_idx_ = true;
 }
 
@@ -55,7 +55,13 @@ void DiskTableIterator::Next() { return it_->Next(); }
 
 openmldb::base::Slice DiskTableIterator::GetValue() const {
     rocksdb::Slice value = it_->value();
-    return openmldb::base::Slice(value.data(), value.size());
+    if (compress_type_ == type::CompressType::kSnappy) {
+        tmp_buf_.clear();
+        snappy::Uncompress(value.data(), value.size(), &tmp_buf_);
+        return openmldb::base::Slice(tmp_buf_);
+    } else {
+        return openmldb::base::Slice(value.data(), value.size());
+    }
 }
 
 std::string DiskTableIterator::GetPK() const { return pk_; }
@@ -85,7 +91,8 @@ void DiskTableIterator::Seek(const uint64_t ts) {
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                                                      const rocksdb::Snapshot* snapshot,
                                                      ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                                                     const uint64_t& expire_cnt)
+                                                     const uint64_t& expire_cnt,
+                                                     type::CompressType compress_type)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -93,12 +100,14 @@ DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::I
       expire_value_(expire_time, expire_cnt, ttl_type),
       has_ts_idx_(false),
       ts_idx_(0),
-      traverse_cnt_(0) {}
+      traverse_cnt_(0),
+      compress_type_(compress_type) {}
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                                                      const rocksdb::Snapshot* snapshot,
                                                      ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                                                     const uint64_t& expire_cnt, int32_t ts_idx)
+                                                     const uint64_t& expire_cnt, int32_t ts_idx,
+                                                     type::CompressType compress_type)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -106,7 +115,8 @@ DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::I
       expire_value_(expire_time, expire_cnt, ttl_type),
       has_ts_idx_(true),
       ts_idx_(ts_idx),
-      traverse_cnt_(0) {}
+      traverse_cnt_(0),
+      compress_type_(compress_type) {}
 
 DiskTableTraverseIterator::~DiskTableTraverseIterator() {
     delete it_;
@@ -154,6 +164,11 @@ void DiskTableTraverseIterator::Next() {
 
 openmldb::base::Slice DiskTableTraverseIterator::GetValue() const {
     rocksdb::Slice value = it_->value();
+    if (compress_type_ == type::CompressType::kSnappy) {
+        tmp_buf_.clear();
+        snappy::Uncompress(value.data(), value.size(), &tmp_buf_);
+        return openmldb::base::Slice(tmp_buf_);
+    }
     return openmldb::base::Slice(value.data(), value.size());
 }
 
@@ -297,7 +312,8 @@ void DiskTableTraverseIterator::NextPK() {
 DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                                            const rocksdb::Snapshot* snapshot, ::openmldb::storage::TTLType ttl_type,
                                            const uint64_t& expire_time, const uint64_t& expire_cnt,
-                                           rocksdb::ColumnFamilyHandle* column_handle)
+                                           rocksdb::ColumnFamilyHandle* column_handle,
+                                           type::CompressType compress_type)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -306,12 +322,14 @@ DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* i
       expire_cnt_(expire_cnt),
       has_ts_idx_(false),
       ts_idx_(0),
-      column_handle_(column_handle) {}
+      column_handle_(column_handle),
+      compress_type_(compress_type) {}
 
 DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it,
                                            const rocksdb::Snapshot* snapshot, ::openmldb::storage::TTLType ttl_type,
                                            const uint64_t& expire_time, const uint64_t& expire_cnt, int32_t ts_idx,
-                                           rocksdb::ColumnFamilyHandle* column_handle)
+                                           rocksdb::ColumnFamilyHandle* column_handle,
+                                           type::CompressType compress_type)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -320,7 +338,8 @@ DiskTableKeyIterator::DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* i
       expire_cnt_(expire_cnt),
       has_ts_idx_(true),
       ts_idx_(ts_idx),
-      column_handle_(column_handle) {}
+      column_handle_(column_handle),
+      compress_type_(compress_type) {}
 
 DiskTableKeyIterator::~DiskTableKeyIterator() {
     delete it_;
@@ -398,7 +417,7 @@ std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, column_handle_);
     return std::make_unique<DiskTableRowIterator>(db_, it, snapshot, ttl_type_, expire_time_,
-                                                  expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_);
+            expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_, compress_type_);
 }
 
 ::hybridse::vm::RowIterator* DiskTableKeyIterator::GetRawValue() {
@@ -408,14 +427,14 @@ std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, column_handle_);
-    return new DiskTableRowIterator(db_, it, snapshot, ttl_type_, expire_time_, expire_cnt_, pk_, ts_, has_ts_idx_,
-                                    ts_idx_);
+    return new DiskTableRowIterator(db_, it, snapshot, ttl_type_, expire_time_,
+            expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_, compress_type_);
 }
 
 DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                                            ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                                            uint64_t expire_cnt, std::string pk, uint64_t ts, bool has_ts_idx,
-                                           uint32_t ts_idx)
+                                           uint32_t ts_idx, type::CompressType compress_type)
     : db_(db),
       it_(it),
       snapshot_(snapshot),
@@ -426,7 +445,8 @@ DiskTableRowIterator::DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* i
       ts_(ts),
       has_ts_idx_(has_ts_idx),
       ts_idx_(ts_idx),
-      row_() {}
+      row_(),
+      compress_type_(compress_type) {}
 
 DiskTableRowIterator::~DiskTableRowIterator() {
     delete it_;
@@ -470,9 +490,17 @@ const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
     }
     valid_value_ = true;
     size_t size = it_->value().size();
-    int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(size));
-    memcpy(copyed_row_data, it_->value().data(), size);
-    row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, size));
+    if (compress_type_ == type::CompressType::kSnappy) {
+        tmp_buf_.clear();
+        snappy::Uncompress(it_->value().data(), size, &tmp_buf_);
+        int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(tmp_buf_.size()));
+        memcpy(copyed_row_data, tmp_buf_.data(), tmp_buf_.size());
+        row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, tmp_buf_.size()));
+    } else {
+        int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(size));
+        memcpy(copyed_row_data, it_->value().data(), size);
+        row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, size));
+    }
     return row_;
 }
 

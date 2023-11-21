@@ -18,12 +18,15 @@
 #ifndef HYBRIDSE_SRC_VM_INTERNAL_NODE_HELPER_H_
 #define HYBRIDSE_SRC_VM_INTERNAL_NODE_HELPER_H_
 
+#include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "vm/physical_op.h"
 #include "vm/physical_plan_context.h"
 
+/// PhysicalOpNode related utility functions
 namespace hybridse {
 namespace vm {
 namespace internal {
@@ -63,6 +66,15 @@ State ReduceNode(const PhysicalOpNode* root, State state, BinOp&& op, GetKids&& 
     return state;
 }
 
+// Get all dependent (db, table) info from physical plan
+Status GetDependentTables(const PhysicalOpNode*, std::set<std::pair<std::string, std::string>>*);
+
+// Extract request node of the node tree.
+// Returns
+// - Request node on success
+// - NULL if tree do not has request table but sufficient as as input tree of the big one
+// - Error status otherwise
+absl::StatusOr<PhysicalOpNode*> ExtractRequestNode(PhysicalOpNode* in);
 }  // namespace internal
 }  // namespace vm
 }  // namespace hybridse

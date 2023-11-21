@@ -36,7 +36,7 @@ endif()
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 8)
-set(OPENMLDB_VERSION_BUG 2)
+set(OPENMLDB_VERSION_BUG 3)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -136,6 +136,7 @@ endif()
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 include(farmhash)
+include(rapidjson)
 
 # contrib libs
 add_subdirectory(contrib EXCLUDE_FROM_ALL)

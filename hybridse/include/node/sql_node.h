@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -309,15 +310,24 @@ inline const std::string StorageModeName(StorageMode mode) {
 }
 
 inline const StorageMode NameToStorageMode(const std::string& name) {
-    if (boost::iequals(name, "memory")) {
+    if (absl::EqualsIgnoreCase(name, "memory")) {
         return kMemory;
-    } else if (boost::iequals(name, "hdd")) {
+    } else if (absl::EqualsIgnoreCase(name, "hdd")) {
         return kHDD;
-    } else if (boost::iequals(name, "ssd")) {
+    } else if (absl::EqualsIgnoreCase(name, "ssd")) {
         return kSSD;
     } else {
         return kUnknown;
     }
+}
+
+inline absl::StatusOr<CompressType> NameToCompressType(const std::string& name) {
+    if (absl::EqualsIgnoreCase(name, "snappy")) {
+        return CompressType::kSnappy;
+    } else if (absl::EqualsIgnoreCase(name, "nocompress")) {
+        return CompressType::kNoCompress;
+    }
+    return absl::Status(absl::StatusCode::kInvalidArgument, absl::StrCat("invalid compress type: ", name));
 }
 
 inline const std::string RoleTypeName(RoleType type) {
@@ -476,9 +486,10 @@ class ExprNode : public SqlNode {
     virtual bool IsListReturn(ExprAnalysisContext *ctx) const { return false; }
 
     /**
-     * Default expression node deep copy implementation
+     * Returns new ExprNode with all of fields copyed, excepting descendants ExprNodes.
      */
     virtual ExprNode *ShadowCopy(NodeManager *) const = 0;
+
     ExprNode *DeepCopy(NodeManager *) const override;
 
     // Get the compatible type that lhs and rhs can both casted into
@@ -581,8 +592,13 @@ class FnNodeList : public FnNode {
 };
 class OrderExpression : public ExprNode {
  public:
+    // expr maybe null
     OrderExpression(const ExprNode *expr, const bool is_asc)
-        : ExprNode(kExprOrderExpression), expr_(expr), is_asc_(is_asc) {}
+        : ExprNode(kExprOrderExpression), expr_(expr), is_asc_(is_asc) {
+        if (expr != nullptr) {
+            AddChild(const_cast<ExprNode *>(expr));
+        }
+    }
     ~OrderExpression() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
@@ -597,8 +613,10 @@ class OrderExpression : public ExprNode {
 };
 class OrderByNode : public ExprNode {
  public:
-    explicit OrderByNode(const ExprListNode *order_expressions)
-        : ExprNode(kExprOrder), order_expressions_(order_expressions) {}
+    explicit OrderByNode(ExprListNode *order_expressions)
+        : ExprNode(kExprOrder), order_expressions_(order_expressions) {
+        AddChild(order_expressions);
+    }
     ~OrderByNode() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -623,7 +641,7 @@ class OrderByNode : public ExprNode {
         return order_expression->expr();
     }
     bool is_asc() const { return false; }
-    const ExprListNode *order_expressions_;
+    ExprListNode *order_expressions_;
 };
 class TableRefNode : public SqlNode {
  public:
@@ -1158,6 +1176,9 @@ class FrameBound : public SqlNode {
     int64_t GetOffset() const { return offset_; }
     void SetOffset(int64_t v) { offset_ = v; }
 
+    // is offset [OPEN] PRECEDING/FOLLOWING
+    bool is_offset_bound() const;
+
 
     /// \brief get the inclusive frame bound offset value that has signed symbol
     ///
@@ -1648,7 +1669,7 @@ class ColumnRefNode : public ExprNode {
 
     static ColumnRefNode *CastFrom(ExprNode *node);
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
+    const std::string GetExprString() const override;
     const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
     ColumnRefNode *ShadowCopy(NodeManager *) const override;
@@ -1871,6 +1892,23 @@ class StorageModeNode : public SqlNode {
 
  private:
     StorageMode storage_mode_;
+};
+
+class CompressTypeNode : public SqlNode {
+ public:
+    CompressTypeNode() : SqlNode(kCompressType, 0, 0), compress_type_(kNoCompress) {}
+
+    explicit CompressTypeNode(CompressType compress_type)
+        : SqlNode(kCompressType, 0, 0), compress_type_(compress_type) {}
+
+    ~CompressTypeNode() {}
+
+    CompressType GetCompressType() const { return compress_type_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    CompressType compress_type_;
 };
 
 class CreateTableLikeClause {

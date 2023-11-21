@@ -207,7 +207,9 @@ void ClusterSDK::CheckZk() {
 bool ClusterSDK::Init() {
     zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "",
                                               options_.zk_session_timeout, "",
-                                              options_.zk_path);
+                                              options_.zk_path,
+                                              options_.zk_auth_schema,
+                                              options_.zk_cert);
 
     bool ok = zk_client_->Init(options_.zk_log_level, options_.zk_log_file);
     if (!ok) {

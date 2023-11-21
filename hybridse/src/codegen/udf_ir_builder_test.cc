@@ -1078,14 +1078,21 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 44924, "2022-12-31", "1900-01-01");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 50, "20220620",
                                                                           "2022-05-01 11:11:11");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 0, "2022-05-01", "20220501");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 0,
+                                                                          "2022-05-01", "20220501");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2022-02-29", "20220501");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1899-05-20",
-                                                                          "2020-05-20");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, 9, "1899-05-20", "1899-05-11");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2022-05-40",
                                                                           "2020-05-20");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2020-05-20",
-                                                                          "1899-05-20");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, -30, "1199-10-12", "1199-11-11");
+    // rfc3399 full format
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
+        func_name, 20, "2000-01-01t00:12:00.1+08:00", "1999-12-12T12:12:12+08:00");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
+        func_name, 19, "2000-01-01t00:12:00.1+08:00", "1999-12-12T20:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
+        func_name, 20, "2000-01-01t06:12:00.1+08:00", "1999-12-12T12:12:12Z");
+
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, nullptr, "20220501");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "2022-05-01", nullptr);
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, nullptr, nullptr);
@@ -1093,6 +1100,8 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     // mix types
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, -19, "2022-05-01", Date(2022, 5, 20));
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, 19, Date(2022, 5, 20), "2022-05-01");
+    CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, 3, Date(1900, 1, 1), "1899-12-29");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, -3, "1899-12-29", Date(1900, 1, 1));
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, nullptr, nullptr, "2022-05-01");
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, nullptr, Date(2022, 5, 20), nullptr);
     CheckUdf<Nullable<int32_t>, Nullable<Date>, Nullable<StringRef>>(func_name, nullptr, nullptr, nullptr);
@@ -1101,6 +1110,29 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, nullptr, nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, DateDiffNull) {
+    auto func_name = "datediff";
+
+    // out-of-range format
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1900-01-00",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1977-13-01",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "19771232",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T25:12:12Z",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:66:12Z",
+                                                                          "1999-12-12T12:12:12Z");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:00:61Z",
+                                                                          "1999-12-12T12:12:12Z");
+
+    // invalid format
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:12:12Z",
+                                                                          "202 2-12-2 9");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(func_name, nullptr, "1999-12-12T12:12:12Z",
+                                                                          "12:30:30");
+}
 
 class UdfIRCastTest : public ::testing::TestWithParam<std::pair<absl::string_view, Nullable<int64_t>>> {};
 

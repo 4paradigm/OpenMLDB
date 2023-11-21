@@ -9,7 +9,6 @@
     data_import_guide
     tutorial_sql_1
     tutorial_sql_2
-    modes
     openmldbspark_distribution
     data_import
     data_export

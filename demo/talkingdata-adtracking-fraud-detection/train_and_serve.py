@@ -166,7 +166,8 @@ print('Deploy sql')
 connection.execute("SET @@execute_mode='online';")
 connection.execute(f'USE {DB_NAME}')
 nothrow_execute(f'DROP DEPLOYMENT {DEPLOY_NAME}')
-deploy_sql = f"""DEPLOY {DEPLOY_NAME} {sql_part}"""
+# to avoid data expired by abs ttl, set inf
+deploy_sql = f"""DEPLOY {DEPLOY_NAME} OPTIONS(RANGE_BIAS="inf", ROWS_BIAS="inf") {sql_part}"""
 print(deploy_sql)
 connection.execute(deploy_sql)
 print('Import data to online')

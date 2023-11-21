@@ -331,6 +331,45 @@ TEST_P(DBSDKTest, Select) {
     ASSERT_TRUE(status.IsOK());
 }
 
+TEST_P(DBSDKTest, SelectSnappy) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    if (cs->IsClusterMode()) {
+        sr->ExecuteSQL("SET @@execute_mode='online';", &status);
+        ASSERT_TRUE(status.IsOK()) << "error msg: " + status.msg;
+    }
+    std::string db = "db" + GenRand();
+    sr->ExecuteSQL("create database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("use " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string create_sql =
+        "create table trans (c1 string, c2 bigint, c3 date,"
+        "index(key=c1, ts=c2, abs_ttl=0, ttl_type=absolute)) options (compress_type='snappy');";
+    sr->ExecuteSQL(create_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    int insert_num = 100;
+    for (int i = 0; i < insert_num; i++) {
+        auto insert_sql = absl::StrCat("insert into trans values ('aaa", i, "', 1635247427000, \"2021-05-20\");");
+        sr->ExecuteSQL(insert_sql, &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+    auto rs = sr->ExecuteSQL("select * from trans", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(insert_num, rs->Size());
+    int count = 0;
+    while (rs->Next()) {
+        count++;
+    }
+    EXPECT_EQ(count, insert_num);
+    sr->ExecuteSQL("drop table trans;", &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL("drop database " + db + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
 TEST_F(SqlCmdTest, SelectMultiPartition) {
     auto sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
@@ -461,11 +500,11 @@ TEST_P(DBSDKTest, Desc) {
         " --- ------- ----------- ------ --------- \n";
 
     std::string expect_options =
-        " -------------- \n"
-        "  storage_mode  \n"
-        " -------------- \n"
-        "  Memory        \n"
-        " -------------- \n\n";
+        " --------------- -------------- \n"
+        "  compress_type   storage_mode  \n"
+        " --------------- -------------- \n"
+        "  NoCompress      Memory        \n"
+        " --------------- -------------- \n\n";
 
     // index name is dynamically assigned. do not check here
     std::vector<std::string> expect = {expect_schema, "", expect_options};
@@ -1037,6 +1076,47 @@ TEST_P(DBSDKTest, DeployWithBias) {
     ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "t1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "t2", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase(db, msg));
+}
+
+TEST_P(DBSDKTest, Truncate) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, INDEX(KEY=c1, ts=c3));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("truncate table ", table_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 0);
+    for (int i = 0; i < 10; i++) {
+        std::string key = absl::StrCat("key", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
+        }
+    }
+
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    sr->ExecuteSQL(absl::StrCat("truncate table ", table_name, ";"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 0);
+    sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('aa', 11, 100);"), &status);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 1);
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
 }
 
 TEST_P(DBSDKTest, DeletetRange) {
@@ -3697,7 +3777,7 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
 
 // --------------------------------------------------------------------------------------
 // basic functional UTs to test if it is correct for deploy query response time collection
-// see NameServerImpl::SyncDeployStats & TabletImpl::TryCollectDeployStats
+// see TabletImpl::CollectDeployStats
 // --------------------------------------------------------------------------------------
 
 // a proxy class to create and cleanup deployment stats more gracefully
@@ -3770,12 +3850,6 @@ struct DeploymentEnv {
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
-    void EnableDeployStats() {
-        ProcessSQLs(sr_, {
-                             "set global deploy_stats = 'on'",
-                         });
-    }
-
     sdk::SQLClusterRouter* sr_;
     absl::BitGen gen_;
     // variables generate randomly in SetUp
@@ -3801,111 +3875,6 @@ struct DeploymentEnv {
         *rs = res;
     }
 };
-
-static const char QueryDeployResponseTime[] = "select * from INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME";
-
-TEST_P(DBSDKTest, DeployStatsNotEnableByDefault) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-
-    DeploymentEnv env(sr);
-    env.SetUp();
-    env.CallDeployProcedureBatch();
-    env.CallDeployProcedure();
-
-    absl::SleepFor(absl::Seconds(3));
-
-    hybridse::sdk::Status status;
-    auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(0, rs->Size());
-
-    env.EnableDeployStats();
-
-    absl::SleepFor(absl::Seconds(3));
-
-    // HandleSQL exists only for purpose of printing
-    HandleSQL(QueryDeployResponseTime);
-    rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(0, rs->Size());
-}
-
-TEST_P(DBSDKTest, DeployStatsEnabledAfterSetGlobal) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-
-    // FIXME(#1547): test skiped due to Deploy Response Time can't enable in standalone mode
-    if (cs->IsClusterMode()) {
-        DeploymentEnv env(sr);
-        env.SetUp();
-        env.EnableDeployStats();
-        // sleep a while for global variable notification
-        absl::SleepFor(absl::Seconds(2));
-
-        hybridse::sdk::Status status;
-        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-        ASSERT_TRUE(status.IsOK());
-        // as deploy stats in tablet is lazy managed, the deploy stats will stay empty util the first procedure call
-        // happens
-        ASSERT_EQ(0, rs->Size());
-
-        // warm up deploy stats
-        env.CallDeployProcedureBatch();
-        env.CallDeployProcedure();
-
-        absl::SleepFor(absl::Seconds(3));
-
-        HandleSQL(QueryDeployResponseTime);
-        rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-        ASSERT_TRUE(status.IsOK());
-        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
-
-        int cnt = 0;
-        while (rs->Next()) {
-            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
-            cnt += rs->GetInt32Unsafe(2);
-        }
-        EXPECT_EQ(2, cnt);
-    }
-}
-
-TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    if (cs->IsClusterMode()) {
-        DeploymentEnv env(sr);
-        env.SetUp();
-
-        env.EnableDeployStats();
-        absl::SleepFor(absl::Seconds(2));
-
-        for (int i = 0; i < 5; ++i) {
-            env.CallProcedure();
-        }
-
-        for (int i = 0; i < 10; ++i) {
-            env.CallDeployProcedureBatch();
-            env.CallDeployProcedure();
-        }
-        absl::SleepFor(absl::Seconds(3));
-
-        HandleSQL(QueryDeployResponseTime);
-        hybridse::sdk::Status status;
-        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-        ASSERT_TRUE(status.IsOK());
-        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
-        int cnt = 0;
-        while (rs->Next()) {
-            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
-            cnt += rs->GetInt32Unsafe(2);
-        }
-        EXPECT_EQ(10 + 10, cnt);
-    }
-}
 
 class StripSpaceTest : public ::testing::TestWithParam<std::pair<std::string_view, std::string_view>> {};
 

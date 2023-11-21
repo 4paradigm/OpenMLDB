@@ -41,6 +41,8 @@ DEFINE_string(spark_conf, "", "The config file of Spark job");
 // cluster mode
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_string(zk_auth_schema);
+DECLARE_string(zk_cert);
 DECLARE_int32(zk_session_timeout);
 DECLARE_uint32(zk_log_level);
 DECLARE_string(zk_log_file);
@@ -141,14 +143,59 @@ std::string ExecFetch(const std::string& sql) {
     return ss.str();
 }
 
-void HandleSQL(const std::string& sql) {
-    std::cout << ExecFetch(sql);
+void HandleSQL(const std::string& sql) { std::cout << ExecFetch(sql); }
+
+std::string SafeGetString(std::shared_ptr<hybridse::sdk::ResultSet> rs, int idx) {
+    std::string tmp;
+    if (!rs->GetString(idx, &tmp)) {
+        LOG(WARNING) << "fail to get string in col " << idx;
+        return "";
+    }
+    return tmp;
+}
+
+bool CheckAllTableStatus() {
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status like '%'", &status);
+    bool is_ok = true;
+    if (status.IsOK()) {
+        // ref GetTableStatusSchema, just use idx to get column
+        while (rs->Next()) {
+            auto table = SafeGetString(rs, 1);
+            auto db = SafeGetString(rs, 2);
+            auto pu = SafeGetString(rs, 8);
+            auto warnings = SafeGetString(rs, 13);
+            std::string msg = absl::StrCat("table ", db, ".", table, " is broken, `show table status` to check detail");
+            bool is_broken = false;
+            if (pu != "0") {
+                is_broken = true;
+                msg.append(", unalive partition: ").append(pu);
+            }
+            if (!warnings.empty()) {
+                is_broken = true;
+                msg.append(", warning preview: ").append(warnings.substr(0, 100));
+            }
+            if (is_broken) {
+                is_ok = false;
+                std::cout << "ERROR: " << msg << std::endl;
+            }
+        }
+    } else {
+        std::cout << "ERROR: fail to get all table status, " << status.ToString() << std::endl;
+        is_ok = false;
+    }
+    return is_ok;
 }
 
 // cluster mode if zk_cluster is not empty, otherwise standalone mode
 void Shell() {
     DCHECK(cs);
     DCHECK(sr);
+    // before all, check all table status
+    if (!CheckAllTableStatus()) {
+        std::cout << "HINT: Use `openmldb_tool inspect` to get full report." << std::endl;
+    }
+
     // If use FLAGS_cmd, non-interactive. No Logo and make sure router interactive is false
     if (!FLAGS_cmd.empty()) {
         std::string db = FLAGS_database;
@@ -222,6 +269,8 @@ bool InitClusterSDK() {
     copt.zk_session_timeout = FLAGS_zk_session_timeout;
     copt.zk_log_level = FLAGS_zk_log_level;
     copt.zk_log_file = FLAGS_zk_log_file;
+    copt.zk_auth_schema = FLAGS_zk_auth_schema;
+    copt.zk_cert = FLAGS_zk_cert;
 
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     if (!cs->Init()) {

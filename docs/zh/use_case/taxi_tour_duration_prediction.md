@@ -15,7 +15,7 @@
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.3 bash
+docker run -it 4pdosc/openmldb:0.8.4 bash
 ```
 
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。
@@ -151,7 +151,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
     --OpenMLDB CLI
     USE demo_db;
     SET @@execute_mode='online';
-    DEPLOY demo SELECT trip_duration, passenger_count,
+    DEPLOY demo OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') SELECT trip_duration, passenger_count,
     sum(pickup_latitude) OVER w AS vendor_sum_pl,
     max(pickup_latitude) OVER w AS vendor_max_pl,
     min(pickup_latitude) OVER w AS vendor_min_pl,
@@ -166,6 +166,10 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
     WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
     w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
     ```
+
+```{note}
+此处DEPLOY包含BIAS OPTIONS，是因为导入在线存储的数据文件不会更新，对于当前时间来讲，可能会超过DEPLOY后的表索引的时间TTL，导致表淘汰掉这些数据。时间淘汰，只看每个索引的ts列和ttl，只要数据中该列的值<(当前时间-abs_ttl)，在该索引上就会被淘汰，与其他因素无关，各个索引也互相不影响。如果你的数据不是实时产生的新timestamp，也需要考虑带上BIAS OPTIONS。
+```
 
 ### 步骤 7：导入在线数据
 

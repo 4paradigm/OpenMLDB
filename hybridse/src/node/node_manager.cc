@@ -301,7 +301,7 @@ OrderExpression *NodeManager::MakeOrderExpression(const ExprNode *expr, const bo
     OrderExpression *node_ptr = new OrderExpression(expr, is_asc);
     return RegisterNode(node_ptr);
 }
-OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order_expressions) {
+OrderByNode *NodeManager::MakeOrderByNode(ExprListNode *order_expressions) {
     OrderByNode *node_ptr = new OrderByNode(order_expressions);
     return RegisterNode(node_ptr);
 }
@@ -1028,11 +1028,6 @@ SqlNode *NodeManager::MakePartitionMetaNode(RoleType role_type, const std::strin
 
 SqlNode *NodeManager::MakeReplicaNumNode(int num) {
     SqlNode *node_ptr = new ReplicaNumNode(num);
-    return RegisterNode(node_ptr);
-}
-
-SqlNode *NodeManager::MakeStorageModeNode(StorageMode storage_mode) {
-    SqlNode *node_ptr = new StorageModeNode(storage_mode);
     return RegisterNode(node_ptr);
 }
 

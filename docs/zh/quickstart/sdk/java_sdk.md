@@ -12,12 +12,12 @@ Java SDK中，JDBC Statement的默认执行模式为在线，SqlClusterExecutor�
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.3</version>
+        <version>0.8.4</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.3</version>
+        <version>0.8.4</version>
     </dependency>
     ```
 
@@ -29,16 +29,16 @@ Java SDK中，JDBC Statement的默认执行模式为在线，SqlClusterExecutor�
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.3</version>
+        <version>0.8.4</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.3-macos</version>
+        <version>0.8.4-macos</version>
     </dependency>
     ```
 
-注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.3-macos`，openmldb-jdbc 的版本保持不变。
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.4-macos`，openmldb-jdbc 的版本保持不变。
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。使用自编译的 openmldb-native 包，推荐使用`mvn install`安装到本地仓库，然后在 pom 中引用本地仓库的 openmldb-native 包，不建议用`scope=system`的方式引用。
 
@@ -403,7 +403,7 @@ try {
             "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS_RANGE BETWEEN 2d PRECEDING AND CURRENT ROW);", table,
             table, table);
     // 上线一个Deployment
-    String deploySql = String.format("DEPLOY %s %s", deploymentName, selectSql);
+    String deploySql = String.format("DEPLOY %s OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') %s", deploymentName, selectSql);
     // set return null rs, don't check the returned value, it's false
     state.execute(deploySql);
 } catch (Exception e) {
