@@ -32,7 +32,7 @@ object SelectIntoPlan {
       logger.debug("select {} rows", input.getDf().count())
       input.getDf().show(10)
     }
-    
+
     // write options don't need deepCopy, may have coalesce
     val (format, options, mode, extra) = HybridseUtil.parseOptions(outPath, node)
     if (input.getSchema.size == 0 && input.getDf().isEmpty) {

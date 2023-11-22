@@ -254,9 +254,11 @@ object HybridseUtil {
     // only for select into, "" means N/A
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
     extraOptions += ("sql" -> parseOption(getOptionFromNode(node, "sql"), "", getStringOrDefault))
-    extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single", getStringOrDefault)
+    extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single",
+      getStringOrDefault)
 
-    extraOptions += ("create_if_not_exists" -> parseOption(getOptionFromNode(node, "create_if_not_exists"), "true", getBoolOrDefault))
+    extraOptions += ("create_if_not_exists" -> parseOption(getOptionFromNode(node, "create_if_not_exists"),
+      "true", getBoolOrDefault))
 
     (format, options.toMap, mode, extraOptions.toMap)
   }
