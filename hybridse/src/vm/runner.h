@@ -553,6 +553,8 @@ class WindowAggRunner : public Runner {
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
 
+    bool without_order_by() const { return !instance_window_gen_.sort_gen_.Valid(); }
+
     // slice size outputed of the first producer node
     const size_t append_slices_;
     WindowGenerator instance_window_gen_;

@@ -651,6 +651,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     HistoryWindow window(instance_window_gen_.range_gen_->window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
     window.set_exclude_current_time(exclude_current_time_);
+    window.set_without_order_by(without_order_by());
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_.has_value() && cnt >= limit_cnt_) {
