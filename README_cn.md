@@ -80,7 +80,7 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
 
 ## 5. 下载和安装
 
-- 下载：[GitHub 发布页面](https://github.com/4paradigm/OpenMLDB/releases)，[镜像网站（中国）](http://43.138.115.238/download/)
+- 下载：[GitHub 发布页面](https://github.com/4paradigm/OpenMLDB/releases)，[镜像网站（中国）](https://www.openmldb.com/download/)
 - [安装和部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart

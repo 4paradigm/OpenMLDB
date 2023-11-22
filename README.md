@@ -83,7 +83,7 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 ## 5. Download and Install
 
-- Download: [GitHub release](https://github.com/4paradigm/OpenMLDB/releases), [mirror site (China)](http://43.138.115.238/download/)
+- Download: [GitHub release](https://github.com/4paradigm/OpenMLDB/releases), [mirror site (China)](https://www.openmldb.com/download/)
 - Install and deploy: [English](https://openmldb.ai/docs/en/main/deploy/install_deploy.html), [Chinese](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart
