@@ -3098,8 +3098,10 @@ std::string SQLClusterRouter::GetSparkConfig() {
         }
     } else if (key == "spark_config") {
         if (!CheckSparkConfigString(value)) {
-            return {StatusCode::kCmdError, "Fail to parse spark config, 
-                set like 'spark.executor.memory=2g;spark.executor.cores=2'"};
+            return {
+                StatusCode::kCmdError,
+                "Fail to parse spark config, set like 'spark.executor.memory=2g;spark.executor.cores=2'"
+            };
         }
     } else {
         return {};
