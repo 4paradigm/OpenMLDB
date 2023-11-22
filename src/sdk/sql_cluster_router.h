@@ -286,7 +286,7 @@ class SQLClusterRouter : public SQLRouter {
     std::string GetSparkConfig();
 
     std::map<std::string, std::string> ParseSparkConfigString(const std::string& input);
-    
+
     bool CheckSparkConfigString(const std::string& input);
 
     ::openmldb::base::Status ExecuteOfflineQueryAsync(const std::string& sql,

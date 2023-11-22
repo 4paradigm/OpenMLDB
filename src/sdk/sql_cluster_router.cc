@@ -3097,8 +3097,9 @@ std::string SQLClusterRouter::GetSparkConfig() {
             return {StatusCode::kCmdError, "Fail to parse value, can't set the request timeout"};
         }
     } else if (key == "spark_config") {
-        if(!CheckSparkConfigString(value)) {
-            return {StatusCode::kCmdError, "Fail to parse spark config, set like 'spark.executor.memory=2g;spark.executor.cores=2'"};
+        if (!CheckSparkConfigString(value)) {
+            return {StatusCode::kCmdError, "Fail to parse spark config, 
+                set like 'spark.executor.memory=2g;spark.executor.cores=2'"};
         }
     } else {
         return {};
