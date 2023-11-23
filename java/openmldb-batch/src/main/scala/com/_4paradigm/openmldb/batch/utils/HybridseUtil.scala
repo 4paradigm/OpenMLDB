@@ -463,10 +463,6 @@ object HybridseUtil {
     val tableStartPos = 11
     val dbAndTableString = path.substring(tableStartPos)
 
-
-    System.out.println("input path: " + path);
-    System.out.println("format path: " + dbAndTableString);
-
     require(dbAndTableString.split("\\.").size == 2)
 
     val db = dbAndTableString.split("\\.")(0)
