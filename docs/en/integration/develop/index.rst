@@ -1,10 +1,8 @@
 =============================
-Expressions, Functions, and Operations
+Develop
 =============================
-
 
 .. toctree::
     :maxdepth: 1
 
-    operators
-    Files/udfs_8h
+    jupyter_notebook

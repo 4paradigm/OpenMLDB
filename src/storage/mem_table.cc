@@ -170,14 +170,18 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
         return false;
     }
-    std::map<int32_t, uint64_t> ts_map;
+    std::map<uint32_t, std::map<int32_t, uint64_t>> ts_value_map;
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
         if (!inner_index) {
             PDLOG(WARNING, "invalid inner index pos %d. tid %u pid %u", kv.first, id_, pid_);
             return false;
         }
+        std::map<int32_t, uint64_t> ts_map;
         for (const auto& index_def : inner_index->GetIndex()) {
+            if (!index_def->IsReady()) {
+                continue;
+            }
             auto ts_col = index_def->GetTsColumn();
             if (ts_col) {
                 int64_t ts = 0;
@@ -192,65 +196,42 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                     return false;
                 }
                 ts_map.emplace(ts_col->GetId(), ts);
-            }
-            if (index_def->IsReady()) {
                 real_ref_cnt++;
             }
         }
+        if (!ts_map.empty()) {
+            ts_value_map.emplace(kv.first, std::move(ts_map));
+        }
     }
-    if (ts_map.empty()) {
+    if (ts_value_map.empty()) {
         return false;
     }
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
-        auto inner_index = table_index_.GetInnerIndex(kv.first);
-        bool need_put = false;
-        for (const auto& index_def : inner_index->GetIndex()) {
-            if (index_def->IsReady()) {
-                // TODO(hw): if we don't find this ts(has_found_ts==false), but it's ready, will put too?
-                need_put = true;
-                break;
-            }
+        auto iter = ts_value_map.find(kv.first);
+        if (iter == ts_value_map.end()) {
+            continue;
         }
-        if (need_put) {
-            uint32_t seg_idx = 0;
-            if (seg_cnt_ > 1) {
-                seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
-            }
-            Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block);
+        uint32_t seg_idx = 0;
+        if (seg_cnt_ > 1) {
+            seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
         }
+        Segment* segment = segments_[kv.first][seg_idx];
+        segment->Put(::openmldb::base::Slice(kv.second), iter->second, block);
     }
     record_byte_size_.fetch_add(GetRecordSize(value.length()));
     return true;
 }
 
 bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
+    std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()}
+                                                         : std::nullopt;
+    std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
+                                                         : std::nullopt;
     if (entry.dimensions_size() > 0) {
         for (const auto& dimension : entry.dimensions()) {
-            auto index_def = GetIndex(dimension.idx());
-            if (!index_def || !index_def->IsReady()) {
+            if (!Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
                 return false;
-            }
-            auto ts_col = index_def->GetTsColumn();
-            std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
-            Slice spk(dimension.key());
-            uint32_t seg_idx = 0;
-            if (seg_cnt_ > 1) {
-                seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
-            }
-            uint32_t real_idx = index_def->GetInnerPos();
-            if (entry.has_ts() || entry.has_end_ts()) {
-                uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
-                std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
-                                                                     : std::nullopt;
-                if (!segments_[real_idx][seg_idx]->Delete(ts_idx, spk, start_ts, end_ts)) {
-                    return false;
-                }
-            } else {
-                if (!segments_[real_idx][seg_idx]->Delete(ts_idx, spk)) {
-                    return false;
-                }
             }
         }
         return true;
@@ -259,33 +240,42 @@ bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
             if (!index_def || !index_def->IsReady()) {
                 continue;
             }
-            uint32_t real_idx = index_def->GetInnerPos();
             auto ts_col = index_def->GetTsColumn();
             if (!ts_col->IsAutoGenTs() && ts_col->GetName() != entry.ts_name()) {
                 continue;
             }
-            std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
             uint32_t idx = index_def->GetId();
             std::unique_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
             iter->SeekToFirst();
             while (iter->Valid()) {
                 auto pk = iter->GetPK();
                 iter->NextPK();
-                Slice spk(pk);
-                uint32_t seg_idx = 0;
-                if (seg_cnt_ > 1) {
-                    seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
-                }
-                if (entry.has_ts() || entry.has_end_ts()) {
-                    uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
-                    std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
-                                                                        : std::nullopt;
-                    segments_[real_idx][seg_idx]->Delete(ts_idx, spk, start_ts, end_ts);
-                } else {
-                    segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
-                }
+                Delete(idx, pk, start_ts, end_ts);
             }
         }
+    }
+    return true;
+}
+
+bool MemTable::Delete(uint32_t idx, const std::string& key,
+        const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) {
+    auto index_def = GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
+        return false;
+    }
+    uint32_t real_idx = index_def->GetInnerPos();
+    auto ts_col = index_def->GetTsColumn();
+    std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
+    Slice spk(key);
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+    }
+    if (!start_ts.has_value() && !end_ts.has_value()) {
+        return segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
+    } else {
+        uint64_t real_start_ts = start_ts.has_value() ? start_ts.value() : UINT64_MAX;
+        return segments_[real_idx][seg_idx]->Delete(ts_idx, spk, real_start_ts, end_ts);
     }
     return true;
 }
@@ -433,6 +423,11 @@ bool MemTable::IsExpire(const LogEntry& entry) {
         }
     }
     const int8_t* data = reinterpret_cast<const int8_t*>(entry.value().data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(entry.value().data(), entry.value().size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
@@ -523,9 +518,9 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     Segment* segment = segments_[real_idx][seg_idx];
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return segment->NewIterator(spk, ts_col->GetId(), ticket);
+        return segment->NewIterator(spk, ts_col->GetId(), ticket, GetCompressType());
     }
-    return segment->NewIterator(spk, ticket);
+    return segment->NewIterator(spk, ticket, GetCompressType());
 }
 
 uint64_t MemTable::GetRecordIdxByteSize() {
@@ -749,7 +744,8 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     if (ts_col) {
         ts_idx = ts_col->GetId();
     }
-    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx);
+    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+            expire_time, expire_cnt, ts_idx, GetCompressType());
 }
 
 TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
@@ -768,10 +764,11 @@ TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     uint32_t real_idx = index_def->GetInnerPos();
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
-                                            ts_col->GetId());
+        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+                expire_time, expire_cnt, ts_col->GetId(), GetCompressType());
     }
-    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0);
+    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
+            expire_time, expire_cnt, 0, GetCompressType());
 }
 
 bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) {

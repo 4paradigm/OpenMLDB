@@ -157,6 +157,9 @@ class RowView {
     const Schema* GetSchema() const { return &schema_; }
 
     inline bool IsNULL(const int8_t* row, uint32_t idx) const {
+        if (row == nullptr) {
+            return true;
+        }
         const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
         return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
     }

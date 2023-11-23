@@ -380,7 +380,7 @@ public class SQLRouterSmokeTest {
             try {
                 impl2.setString(2, "c");
             } catch (Exception e) {
-                Assert.assertTrue(e.getMessage().contains("data type not match"));
+                Assert.assertTrue(e.getMessage().contains("set string failed"));
             }
             impl2.setString(1, "sandong");
             impl2.setDate(2, d3);
@@ -390,11 +390,16 @@ public class SQLRouterSmokeTest {
             insert = "insert into tsql1010 values(?, ?, ?, ?, ?);";
             PreparedStatement impl3 = router.getInsertPreparedStmt(dbname, insert);
             impl3.setLong(1, 1003);
-            impl3.setString(3, "zhejiangxx");
             impl3.setString(3, "zhejiang");
-            impl3.setString(4, "xxhangzhou");
+            try {
+                impl3.setString(3, "zhejiangxx");
+                Assert.fail();
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
             impl3.setString(4, "hangzhou");
             impl3.setDate(2, d4);
+            impl3.setInt(5, 3);
             impl3.setInt(5, 4);
             impl3.closeOnCompletion();
             Assert.assertTrue(impl3.isCloseOnCompletion());
@@ -500,7 +505,7 @@ public class SQLRouterSmokeTest {
                 try {
                     impl.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertTrue(e.getMessage().contains("data type not match"));
+                    Assert.assertTrue(e.getMessage().contains("set int failed"));
                 }
                 try {
                     // set failed, so the row is uncompleted, appending row will be failed
@@ -510,7 +515,7 @@ public class SQLRouterSmokeTest {
                         // j > 0, addBatch has been called
                         Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertTrue(e.getMessage().contains("append failed"));
+                        Assert.assertTrue(e.getMessage().contains("cannot get index value"));
                     }
                 }
                 impl.setLong(1, (Long) datas1[j][0]);
@@ -536,7 +541,7 @@ public class SQLRouterSmokeTest {
                 try {
                     impl2.setInt(2, 1002);
                 } catch (Exception e) {
-                    Assert.assertTrue(e.getMessage().contains("data type not match"));
+                    Assert.assertTrue(e.getMessage().contains("set int failed"));
                 }
                 try {
                     impl2.execute();
@@ -544,7 +549,7 @@ public class SQLRouterSmokeTest {
                     if (j > 0) {
                         Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertTrue(e.getMessage().contains("append failed"));
+                        Assert.assertTrue(e.getMessage().contains("cannot get index value"));
                     }
                 }
                 impl2.setLong(1, (Long) datas1[j][0]);
@@ -562,8 +567,9 @@ public class SQLRouterSmokeTest {
             Object[] datas2 = batchData[i];
             try {
                 impl2.addBatch((String) datas2[0]);
+                Assert.fail();
             } catch (Exception e) {
-                Assert.assertEquals(e.getMessage(), "cannot take arguments in PreparedStatement");
+                Assert.assertTrue(true);
             }
 
             int[] result = impl.executeBatch();

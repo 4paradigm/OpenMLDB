@@ -34,31 +34,21 @@ class CodecTest : public ::testing::Test {
     ~CodecTest() {}
 };
 
-TEST_F(CodecTest, EncodeRows_empty) {
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
-    std::string pairs;
-    int32_t size = ::openmldb::codec::EncodeRows(data, 0, &pairs);
-    ASSERT_EQ(size, 0);
-}
-
-TEST_F(CodecTest, EncodeRows_invalid) {
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
-    int32_t size = ::openmldb::codec::EncodeRows(data, 0, NULL);
-    ASSERT_EQ(size, -1);
-}
-
 TEST_F(CodecTest, EncodeRows) {
     boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
-    uint32_t total_block_size = test1.length() + test2.length() + empty.length();
     data.emplace_back(1, std::move(::openmldb::base::Slice(test1.c_str(), test1.length())));
     data.emplace_back(2, std::move(::openmldb::base::Slice(test2.c_str(), test2.length())));
     data.emplace_back(3, std::move(::openmldb::base::Slice(empty.c_str(), empty.length())));
+    butil::IOBuf buf;
+    for (const auto& pair : data) {
+        Encode(pair.first, pair.second.data(), pair.second.size(), &buf);
+    }
     std::string pairs;
-    int32_t size = ::openmldb::codec::EncodeRows(data, total_block_size, &pairs);
-    ASSERT_EQ(size, 3 * 12 + 6 + 6);
+    buf.copy_to(&pairs);
+    ASSERT_EQ(pairs.size(), 3 * 12 + 6 + 6);
     std::vector<std::pair<uint64_t, std::string*>> new_data;
     ::openmldb::codec::Decode(&pairs, new_data);
     ASSERT_EQ(data.size(), new_data.size());

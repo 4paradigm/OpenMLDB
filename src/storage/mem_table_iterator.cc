@@ -15,7 +15,7 @@
  */
 
 #include "storage/mem_table_iterator.h"
-
+#include <snappy.h>
 #include <string>
 #include "base/hash.h"
 #include "gflags/gflags.h"
@@ -48,7 +48,13 @@ const uint64_t& MemTableWindowIterator::GetKey() const {
 }
 
 const ::hybridse::codec::Row& MemTableWindowIterator::GetValue() {
-    row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
+    if (compress_type_ == type::CompressType::kSnappy) {
+        tmp_buf_.clear();
+        snappy::Uncompress(it_->GetValue()->data, it_->GetValue()->size, &tmp_buf_);
+        row_.Reset(reinterpret_cast<const int8_t*>(tmp_buf_.data()), tmp_buf_.size());
+    } else {
+        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
+    }
     return row_;
 }
 
@@ -69,7 +75,8 @@ void MemTableWindowIterator::SeekToFirst() {
 }
 
 MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                                         uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index)
+        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index,
+        type::CompressType compress_type)
     : segments_(segments),
       seg_cnt_(seg_cnt),
       seg_idx_(0),
@@ -79,7 +86,8 @@ MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, :
       expire_time_(expire_time),
       expire_cnt_(expire_cnt),
       ticket_(),
-      ts_idx_(0) {
+      ts_idx_(0),
+      compress_type_(compress_type) {
     uint32_t idx = 0;
     if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
         ts_idx_ = idx;
@@ -142,7 +150,7 @@ void MemTableKeyIterator::Next() {
         ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
     }
     it->SeekToFirst();
-    return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
+    return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_, compress_type_);
 }
 
 std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
@@ -177,8 +185,9 @@ void MemTableKeyIterator::NextPK() {
 }
 
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
-                                                   ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
-                                                   uint64_t expire_cnt, uint32_t ts_index)
+        ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
+        uint64_t expire_cnt, uint32_t ts_index,
+        type::CompressType compress_type)
     : segments_(segments),
       seg_cnt_(seg_cnt),
       seg_idx_(0),
@@ -188,7 +197,8 @@ MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t 
       ts_idx_(0),
       expire_value_(expire_time, expire_cnt, ttl_type),
       ticket_(),
-      traverse_cnt_(0) {
+      traverse_cnt_(0),
+      compress_type_(compress_type) {
     uint32_t idx = 0;
     if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
         ts_idx_ = idx;
@@ -320,7 +330,13 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
 }
 
 openmldb::base::Slice MemTableTraverseIterator::GetValue() const {
-    return openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
+    if (compress_type_ == type::CompressType::kSnappy) {
+        tmp_buf_.clear();
+        snappy::Uncompress(it_->GetValue()->data, it_->GetValue()->size, &tmp_buf_);
+        return openmldb::base::Slice(tmp_buf_);
+    } else {
+        return openmldb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
+    }
 }
 
 uint64_t MemTableTraverseIterator::GetKey() const {

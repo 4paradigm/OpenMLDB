@@ -63,17 +63,7 @@ bool StringIRBuilder::CreateDefault(::llvm::BasicBlock* block,
                                     ::llvm::Value** output) {
     return NewString(block, output);
 }
-/// Create Const String Null
-/// \param block
-/// \param output
-/// \return
-base::Status StringIRBuilder::CreateNull(::llvm::BasicBlock* block, NativeValue* output) {
-    ::llvm::Value* value = nullptr;
-    CHECK_TRUE(NewString(block, &value), kCodegenError, "Fail to construct string")
-    ::llvm::IRBuilder<> builder(block);
-    *output = NativeValue::CreateWithFlag(value, builder.getInt1(true));
-    return base::Status::OK();
-}
+
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
                                 ::llvm::Value** output) {
     if (!Create(block, output)) {

@@ -80,6 +80,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
                 .connectionTimeout(TaskManagerConfig.getZkConnectionTimeout())
                 .maxConnectWaitTime(TaskManagerConfig.getZkMaxConnectWaitTime())
                 .maxRetries(TaskManagerConfig.getZkMaxRetries())
+                .cert(TaskManagerConfig.getZkCert())
                 .build());
         zkClient.connect();
 

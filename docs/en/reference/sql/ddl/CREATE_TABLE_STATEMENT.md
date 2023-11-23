@@ -473,6 +473,11 @@ StorageMode
 						::= 'Memory'
 						    | 'HDD'
 						    | 'SSD'
+CompressTypeOption
+						::= 'COMPRESS_TYPE' '=' CompressType
+CompressType
+						::= 'NoCompress'
+						    | 'Snappy
 ```
 
 
@@ -484,6 +489,7 @@ StorageMode
 | `REPLICANUM`       | It defines the number of replicas for the table. Note that the number of replicas is only configurable in Cluster version.                                                                                                                                                                                                                                                                                                                      | `OPTIONS (REPLICANUM=3)`                                                      |
 | `DISTRIBUTION`     | It defines the distributed node endpoint configuration. Generally, it contains a Leader node and several followers. `(leader, [follower1, follower2, ..])`. Without explicit configuration, OpenMLDB will automatically configure `DISTRIBUTION` according to the environment and nodes.                                                                                                                                                        | `DISTRIBUTION = [ ('127.0.0.1:6527', [ '127.0.0.1:6528','127.0.0.1:6529' ])]` |
 | `STORAGE_MODE`     | It defines the storage mode of the table. The supported modes are `Memory`, `HDD` and `SSD`. When not explicitly configured, it defaults to `Memory`. <br/>If you need to support a storage mode other than `Memory` mode, `tablet` requires additional configuration options. For details, please refer to [tablet configuration file **conf/tablet.flags**](../../../deploy/conf.md#the-configuration-file-for-apiserver:-conf/tablet.flags). | `OPTIONS (STORAGE_MODE='HDD')`                                                |
+| `COMPRESS_TYPE` | It defines the compress types of the table. The supported compress type are `NoCompress` and `Snappy`. The default value is `NoCompress`                                               | `OPTIONS (COMPRESS_TYPE='Snappy')`
 
 
 #### The Difference between Disk Table and Memory Table
@@ -515,11 +521,11 @@ DESC t1;
  --- -------------------- ------ ---------- ------ ---------------
   1   INDEX_0_1651143735   col1   std_time   0min   kAbsoluteTime
  --- -------------------- ------ ---------- ------ ---------------
- --------------
-  storage_mode
- --------------
-  HDD
- --------------
+ --------------- --------------
+  compress_type   storage_mode
+ --------------- --------------
+  NoCompress      HDD
+ --------------- --------------
 ```
 The following sql command create a table with specified distribution.
 ```sql

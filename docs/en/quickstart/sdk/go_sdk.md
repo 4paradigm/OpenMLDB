@@ -1,12 +1,14 @@
-# Go SDK
-
+# [Alpha] Go SDK
+```plain
+The current functionality support of the Go SDK is not yet complete. It is currently only recommended for development, testing, or specific use cases. It is not recommended for use in a production environment. For production use, we recommend using the Java SDK, which has the most comprehensive feature coverage and has undergone extensive testing for both functionality and performance.
+```
 ## Requirement
 
 - OpenMLDB version: >= v0.6.2
 
-- Deploy and run APIServer (refer to [APIServer deployment](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html#apiserver) document)
+- Deploy and run APIServer (refer to [APIServer deployment](../../main/deploy/install_deploy.html#apiserver) document)
 
-## Go SDK package installment
+## Go SDK installation
 
 ```bash
 go get github.com/4paradigm/OpenMLDB/go
@@ -76,7 +78,7 @@ import (
   "context"
   "database/sql"
 
-  // 加载 OpenMLDB SDK
+  // Load OpenMLDB SDK
   _ "github.com/4paradigm/OpenMLDB/go"
 )
 

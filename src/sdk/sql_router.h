@@ -58,6 +58,8 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string spark_conf_path;
     uint32_t zk_log_level = 3;  // PY/JAVA SDK default info log
     std::string zk_log_file;
+    std::string zk_auth_schema = "digest";
+    std::string zk_cert;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
@@ -109,6 +111,10 @@ class SQLRouter {
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                std::shared_ptr<openmldb::sdk::SQLInsertRows> row, hybridse::sdk::Status* status) = 0;
+
+    virtual bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteDelete(std::shared_ptr<openmldb::sdk::SQLDeleteRow> row, hybridse::sdk::Status* status) = 0;
 

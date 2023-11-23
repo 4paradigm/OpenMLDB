@@ -240,8 +240,7 @@ void DoEngineCheckExpect(const SqlCase& sql_case, std::shared_ptr<RunSession> se
         if (!output_common_column_indices.empty() &&
             output_common_column_indices.size() != static_cast<size_t>(schema.size()) &&
             sql_ctx.is_batch_request_optimized) {
-            LOG(INFO) << "Reorder batch request outputs for non-trival common "
-                         "columns";
+            DLOG(INFO) << "Reorder batch request outputs for non-trival columns";
 
             auto& expect_common_column_indices = sql_case.expect().common_column_indices_;
             if (!expect_common_column_indices.empty()) {
@@ -375,7 +374,7 @@ Status EngineTestRunner::Compile() {
         std::string placeholder = "{" + std::to_string(j) + "}";
         boost::replace_all(sql_str, placeholder, sql_case_.inputs_[j].name_);
     }
-    LOG(INFO) << "Compile SQL:\n" << sql_str;
+    DLOG(INFO) << "Compile SQL:\n" << sql_str;
     CHECK_TRUE(session_ != nullptr, common::kTestEngineError, "Session is not set");
     if (hybridse::sqlcase::SqlCase::IsDebug() || sql_case_.debug()) {
         session_->EnableDebug();
@@ -395,22 +394,23 @@ Status EngineTestRunner::Compile() {
     bool ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
     gettimeofday(&et, nullptr);
     double mill = (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
-    LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
+    DLOG(INFO) << "SQL Compile take " << mill << " milliseconds";
 
     if (!ok || !status.isOK()) {
-        LOG(INFO) << status;
+        DLOG(INFO) << status;
+        if (!sql_case_.expect().msg_.empty()) {
+            EXPECT_EQ(sql_case_.expect().msg_, status.msg);
+        }
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {
-        LOG(INFO) << "SQL output schema:";
+        DLOG(INFO) << "SQL output schema:";
         std::ostringstream oss;
         std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())->GetPhysicalPlan()->Print(oss, "");
-        LOG(INFO) << "Physical plan:";
-        std::cerr << oss.str() << std::endl;
+        DLOG(INFO) << "Physical plan:\n" << oss.str();
 
         std::ostringstream runner_oss;
         std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())->GetClusterJob().Print(runner_oss, "");
-        LOG(INFO) << "Runner plan:";
-        std::cerr << runner_oss.str() << std::endl;
+        DLOG(INFO) << "Runner plan:\n" << runner_oss.str();
     }
     return status;
 }
@@ -533,9 +533,13 @@ INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, EngineTest,
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLeftJoin, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/left_join.yml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLastJoinSubqueryWindow, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_subquery_window.yml")));
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWhere, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, EngineTest,

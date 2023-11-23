@@ -18,13 +18,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/fe_strings.h"
 #include "boost/none.hpp"
-#include "boost/optional.hpp"
 #include "codec/fe_row_codec.h"
-#include "codec/fe_schema_codec.h"
-#include "codec/list_iterator_codec.h"
-#include "codegen/buf_ir_builder.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "udf/default_udf_library.h"
@@ -32,6 +27,7 @@
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/internal/node_helper.h"
+#include "vm/runner_ctx.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -94,25 +90,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
         return false;
     }
 
-    status = GetDependentTables(physical_plan, db_tables);
+    status = internal::GetDependentTables(physical_plan, db_tables);
     return status.isOK();
-}
-
-Status Engine::GetDependentTables(const PhysicalOpNode* root, std::set<std::pair<std::string, std::string>>* db_tbs) {
-    using OUT = std::set<std::pair<std::string, std::string>>;
-    *db_tbs = internal::ReduceNode(
-        root, OUT{},
-        [](OUT init, const PhysicalOpNode* node) {
-            if (node->GetOpType() == kPhysicalOpDataProvider) {
-                auto* data_op = dynamic_cast<const PhysicalDataProviderNode*>(node);
-                if (data_op != nullptr) {
-                    init.emplace(data_op->GetDb(), data_op->GetName());
-                }
-            }
-            return init;
-        },
-        [](const PhysicalOpNode* node) { return node->GetDependents(); });
-    return Status::OK();
 }
 
 bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
@@ -170,7 +149,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     DLOG(INFO) << "Compile Engine ...";
     status = base::Status::OK();
     std::shared_ptr<SqlCompileInfo> info = std::make_shared<SqlCompileInfo>();
-    auto& sql_context = std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
+    auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
@@ -271,7 +250,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     explain_output->request_db_name = ctx.request_db_name;
     explain_output->limit_cnt = ctx.limit_cnt;
 
-    auto s = GetDependentTables(ctx.physical_plan, &explain_output->dependent_tables);
+    auto s = internal::GetDependentTables(ctx.physical_plan, &explain_output->dependent_tables);
     if (!s.isOK()) {
         LOG(ERROR) << s;
         status->code = common::kPhysicalPlanError;

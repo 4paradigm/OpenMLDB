@@ -104,14 +104,18 @@ static uint64_t MurmurHash64A(const void* key, int len, unsigned int seed) {
     return h;
 }
 
-static inline int64_t hash64(const std::string& key) {
-    uint64_t raw_value = MurmurHash64A(key.c_str(), key.length(), 0xe17a1465);
+static inline int64_t hash64(const void* ptr, int len) {
+    uint64_t raw_value = MurmurHash64A(ptr, len, 0xe17a1465);
     int64_t cur_value = (int64_t)raw_value;
     // convert to signed integer as same as java client
     if (cur_value < 0) {
         cur_value *= -1;
     }
     return cur_value;
+}
+
+static inline int64_t hash64(const std::string& key) {
+    return hash64(key.c_str(), key.length());
 }
 
 }  // namespace base

@@ -1041,5 +1041,39 @@ std::string MemTableSnapshot::GenSnapshotName() {
     return status;
 }
 
+int MemTableSnapshot::Truncate(uint64_t offset, uint64_t term) {
+    if (making_snapshot_.load(std::memory_order_acquire)) {
+        PDLOG(INFO, "snapshot is doing now!");
+        return -1;
+    }
+    if (offset < offset_) {
+        PDLOG(WARNING, "end_offset %lu less than offset_ %lu, do nothing", offset, offset_);
+        return -1;
+    }
+    making_snapshot_.store(true, std::memory_order_release);
+    absl::Cleanup clean = [this] {
+        this->making_snapshot_.store(false, std::memory_order_release);
+        this->delete_collector_.Clear();
+    };
+    MemSnapshotMeta snapshot_meta(GenSnapshotName(), snapshot_path_, FLAGS_snapshot_compression);
+    snapshot_meta.term = term;
+    snapshot_meta.count = 0;
+    snapshot_meta.offset = offset;
+    auto wh = ::openmldb::log::CreateWriteHandle(FLAGS_snapshot_compression,
+            snapshot_meta.snapshot_name, snapshot_meta.tmp_file_path);
+    if (!wh) {
+        PDLOG(WARNING, "fail to create file %s", snapshot_meta.tmp_file_path.c_str());
+        return -1;
+    }
+    wh->EndLog();
+    wh.reset();
+    auto status = WriteSnapshot(snapshot_meta);
+    if (!status.OK()) {
+        PDLOG(WARNING, "write snapshot failed. tid %u pid %u msg is %s ", tid_, pid_, status.GetMsg().c_str());
+        return -1;
+    }
+    return 0;
+}
+
 }  // namespace storage
 }  // namespace openmldb

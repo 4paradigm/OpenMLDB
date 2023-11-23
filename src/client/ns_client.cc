@@ -221,17 +221,16 @@ base::Status NsClient::ShowOPStatus(const std::string& name, uint32_t pid,
     return {base::ReturnCode::kError, response->msg()};
 }
 
-bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
+base::Status NsClient::CancelOP(uint64_t op_id) {
     ::openmldb::nameserver::CancelOPRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_op_id(op_id);
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::CancelOP, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::CancelOP, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::AddTableField(const std::string& table_name, const ::openmldb::common::ColumnDesc& column_desc,
@@ -297,6 +296,19 @@ bool NsClient::DropTable(const std::string& db, const std::string& name, std::st
     return false;
 }
 
+base::Status NsClient::TruncateTable(const std::string& db, const std::string& name) {
+    ::openmldb::nameserver::TruncateTableRequest request;
+    request.set_name(name);
+    request.set_db(db);
+    ::openmldb::nameserver::TruncateTableResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::TruncateTable, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return {};
+    }
+    return {response.code(), response.msg()};
+}
+
 bool NsClient::SyncTable(const std::string& name, const std::string& cluster_alias, uint32_t pid, std::string& msg) {
     ::openmldb::nameserver::SyncTableRequest request;
     request.set_name(name);
@@ -329,10 +341,10 @@ bool NsClient::SetSdkEndpoint(const std::string& server_name, const std::string&
     return false;
 }
 
-bool NsClient::AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint,
-                          std::string& msg) {
+base::Status NsClient::AddReplica(const std::string& name, const std::set<uint32_t>& pid_set,
+                                  const std::string& endpoint) {
     if (pid_set.empty()) {
-        return false;
+        return {base::ReturnCode::kError, "arg pid set is empty"};
     }
     ::openmldb::nameserver::AddReplicaNSRequest request;
     ::openmldb::nameserver::GeneralResponse response;
@@ -345,13 +357,12 @@ bool NsClient::AddReplica(const std::string& name, const std::set<uint32_t>& pid
             request.add_pid_group(pid);
         }
     }
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddReplicaNS, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::AddReplicaNS, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::AddReplicaNS(const std::string& name, const std::vector<std::string>& endpoint_vec, uint32_t pid,
@@ -380,10 +391,10 @@ bool NsClient::AddReplicaNS(const std::string& name, const std::vector<std::stri
     return false;
 }
 
-bool NsClient::DelReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint,
-                          std::string& msg) {
+base::Status NsClient::DelReplica(const std::string& name, const std::set<uint32_t>& pid_set,
+                                  const std::string& endpoint) {
     if (pid_set.empty()) {
-        return false;
+        return {base::ReturnCode::kError, "arg pid set is empty"};
     }
     ::openmldb::nameserver::DelReplicaNSRequest request;
     ::openmldb::nameserver::GeneralResponse response;
@@ -396,13 +407,12 @@ bool NsClient::DelReplica(const std::string& name, const std::set<uint32_t>& pid
             request.add_pid_group(pid);
         }
     }
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DelReplicaNS, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::DelReplicaNS, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::ConfSet(const std::string& key, const std::string& value, std::string& msg) {
@@ -445,7 +455,7 @@ bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string
     return false;
 }
 
-bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader, std::string& msg) {
+base::Status NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader) {
     ::openmldb::nameserver::ChangeLeaderRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_name(name);
@@ -454,13 +464,12 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& 
         request.set_candidate_leader(candidate_leader);
     }
     request.set_db(GetDb());
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ChangeLeader, &request, &response,
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::ChangeLeader, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency, std::string& msg) {
@@ -479,8 +488,8 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency
     return false;
 }
 
-bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name, const std::set<uint32_t>& pid_set,
-                       const std::string& des_endpoint, std::string& msg) {
+base::Status NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
+                               const std::set<uint32_t>& pid_set, const std::string& des_endpoint) {
     ::openmldb::nameserver::MigrateRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_src_endpoint(src_endpoint);
@@ -490,13 +499,12 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
     for (auto pid : pid_set) {
         request.add_pid(pid);
     }
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::Migrate, &request, &response,
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::Migrate, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency, std::string& msg) {
@@ -516,20 +524,19 @@ bool NsClient::RecoverEndpoint(const std::string& endpoint, bool need_restore, u
     return false;
 }
 
-bool NsClient::RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg) {
+base::Status NsClient::RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint) {
     ::openmldb::nameserver::RecoverTableRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
     request.set_db(GetDb());
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::RecoverTable, &request, &response,
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::RecoverTable, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::ConnectZK(std::string& msg) {
@@ -590,8 +597,8 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     return false;
 }
 
-bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& name, uint32_t pid, bool is_alive,
-                                      std::string& msg) {
+base::Status NsClient::UpdateTableAliveStatus(const std::string& endpoint, const std::string& name, uint32_t pid,
+                                              bool is_alive) {
     ::openmldb::nameserver::UpdateTableAliveRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
@@ -601,21 +608,29 @@ bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& 
     if (pid < UINT32_MAX) {
         request.set_pid(pid);
     }
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::UpdateTableAliveStatus, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::UpdateTableAliveStatus, &request,
+                                    &response, FLAGS_request_timeout_ms, 1);
+    if (st.OK()) {
+        return {response.code(), response.msg()};
     }
-    return false;
+    return st;
 }
 
 bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLType& type, uint64_t abs_ttl,
                          uint64_t lat_ttl, const std::string& index_name, std::string& msg) {
+    return UpdateTTL(GetDb(), name, type, abs_ttl, lat_ttl, index_name, msg);
+}
+
+bool NsClient::UpdateTTL(const std::string& db, const std::string& name, const ::openmldb::type::TTLType& type,
+        uint64_t abs_ttl, uint64_t lat_ttl, const std::string& index_name, std::string& msg) {
     ::openmldb::nameserver::UpdateTTLRequest request;
     ::openmldb::nameserver::UpdateTTLResponse response;
     request.set_name(name);
-    request.set_db(GetDb());
+    if (db.empty()) {
+        request.set_db(GetDb());
+    } else {
+        request.set_db(db);
+    }
     ::openmldb::common::TTLSt* ttl_desc = request.mutable_ttl_desc();
     ttl_desc->set_ttl_type(type);
     ttl_desc->set_abs_ttl(abs_ttl);
@@ -623,7 +638,6 @@ bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLTyp
     if (!index_name.empty()) {
         request.set_index_name(index_name);
     }
-    request.set_db(GetDb());
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::UpdateTTL, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();
