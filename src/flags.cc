@@ -71,7 +71,7 @@ DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
 DEFINE_bool(use_name, false, "enable or disable use server name");
 DEFINE_string(data_dir, "./data", "the path of data dir");
-DEFINE_bool(enable_distsql, false, "enable or disable distribute sql");
+DEFINE_bool(enable_distsql, true, "enable or disable distribute sql");
 DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when distribute sql circumstance");
 DEFINE_string(bucket_size, "1d", "the default bucket size in pre-aggr table");
 
