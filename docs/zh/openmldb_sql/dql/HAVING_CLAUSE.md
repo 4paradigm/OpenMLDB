@@ -4,9 +4,9 @@ Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各�
 
 ## Syntax
 
-```
-HavingClause
-         ::= 'HAVING' Expression 
+```yacc
+having_clause
+  HAVING bool_expression
 ```
 
 ## SQL语句模版
