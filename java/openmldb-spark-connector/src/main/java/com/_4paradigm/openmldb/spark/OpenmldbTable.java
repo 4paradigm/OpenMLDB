@@ -63,6 +63,7 @@ public class OpenmldbTable implements SupportsWrite, SupportsRead {
             // no need to check table exists, schema() will check it later
         } catch (SqlException e) {
             e.printStackTrace();
+            throw new RuntimeException("connect to openmldb failed", e); // abort immediately
         }
         // TODO: cache schema & delete executor?
     }

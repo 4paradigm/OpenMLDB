@@ -243,6 +243,7 @@ public class TaskManagerConfig {
         }
 
         // Get properties and check
+        // server.host will be used by RunBatchSql, it's not good to be null
         if (props.getProperty("server.host") == null) {
             props.setProperty("server.host", "0.0.0.0");
         }
