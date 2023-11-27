@@ -76,13 +76,21 @@ sdk日志（glog日志）：
 
 ## 离线命令Spark报错
 
-`java.lang.OutOfMemoryError: Java heap space`
+```
+java.lang.OutOfMemoryError: Java heap space
+```
 
-离线命令的Spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在TaskManager运行目录的`conf/taskmanager.properties`的`spark.default.conf`并重启TaskManager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)。
+```
+Container killed by YARN for exceeding memory limits. 5 GB of 5 GB physical memory used. Consider boosting spark.yarn.executor.memoryOverhead.
+```
+
+出现以上几种日志时，说明离线任务所需资源多于当前配置。一般是这几种情况：
+- 离线命令的Spark配置`local[*]`，机器核数较多，并发度很高，资源占用过大
+- memory配置较小
+
+如果是local模式，单机资源比较有限，可以考虑降低并发度。如果不降低并发，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在TaskManager运行目录的`conf/taskmanager.properties`的`spark.default.conf`并重启TaskManager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)。
 ```
 spark.default.conf=spark.driver.memory=16g;spark.executor.memory=16g
 ```
 
-Container killed by YARN for exceeding memory limits. 5 GB of 5 GB physical memory used. Consider boosting spark.yarn.executor.memoryOverhead.
-
-local时drivermemory
+master为local时，不是调整executor的，而是driver的memory，如果你不确定，可以两者都调节。

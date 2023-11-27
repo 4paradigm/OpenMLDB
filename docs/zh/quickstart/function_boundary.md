@@ -8,7 +8,7 @@
 
 ## 系统配置——TaskManager
 
-通过配置 TaskManager 可以决定离线存储地址 `offline.data.prefix`、离线  job 计算所需 Spark 模式 `spark.master` 等。
+通过配置 TaskManager 可以决定离线存储地址 `offline.data.prefix`、离线 job 计算所需 Spark 模式 `spark.master` 等。
 
 `offline.data.prefix`：可配置为文件路径或 HDFS 路径。生产环境建议配置 HDFS 路径，测试环境（特指 onebox 型，例如在 Docker 容器内启动）可以配置本地文件路径。文件路径作为离线存储，将无法支持多 TaskManager 分布式部署（TaskManager 之间不会传输数据）。如果想在多台主机上部署 TaskManager，请使用 HDFS 等多机可同时访问到的存储介质。如果想测试多 TaskManager 工作协同，可以在一台主机上部署多个 TaskManager，此时可以使用文件路径作为离线存储。
 
@@ -24,11 +24,15 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 `spark.port.maxRetries`：默认为 16，参考 [Spark 配置](https://spark.apache.org/docs/3.1.2/configuration.html)。每个离线 job 都会绑定 Spark UI，对应一个 port。每次 port 都是从默认初始端口开始尝试绑定，retry 即绑定下一个端口 port+1，如果同时运行的 job 大于 `spark.port.maxRetries`，retry 次数也就大于 `spark.port.maxRetries`，job 就会启动失败。如果你需要更大的 job 并发，请配置更大的 `spark.port.maxRetries`，重启 TaskManager 生效。
 
+### 临时Spark配置
+
+见[客户端Spark配置文件](../reference/client_config/client_spark_config.md)，CLI支持临时更改Spark配置，不需要重启TaskManager。但此配置方式不可以改变spark.master等配置。
+
 ## DDL 边界——DEPLOY 语句
 
 通过 `DEPLOY <deploy_name> <sql>` 可以部署上线 SQL 方案，这个操作也会自动解析 SQL 帮助创建索引（可以通过 `DESC <table_name>` 查看索引详情），详情可参考 [DEPLOY STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md)。
 
-部署上线操作是否成功，是否可以开始使用，跟表的在线数据有一定关系。
+部署上线操作成功后，可能会创建索引，索引还会后台进行数据复制。所以，如果要保证DEPLOYMENT可以开始使用，需要查看后台复制Nameserver OP的情况，或DEPLOY时添加SYNC配置，详情见语法文档。
 
 ### 长窗口 SQL
 
@@ -40,7 +44,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
     - 如果索引需要更新ttl，仅更新ttl value是可以成功的，但ttl更新生效需要2个gc interval，并且更新ttl前被淘汰的数据不会找回。如果ttl需要更新type，在<0.8.1的版本中将会失败，>=0.8.1的版本可以成功。
 - 如果部署时需要创建新的索引，而此时表中已有在线数据，版本<0.8.1将 `DEPLOY` 失败，>=0.8.1将在后台进行数据复制到新索引，需要等待一定时间。 
 
-对于旧版本解决方案有两种：
+对于**旧版本**解决方案有两种：
 
 - 严格保持先 `DEPLOY` 再导入在线数据，不要在表中有在线数据后做 `DEPLOY`。
 - `CRATE INDEX` 语句可以在创建新索引时，自动导入已存在的在线数据（已有索引里的数据）。如果一定需要在表已有在线数据的情况下 `DEPLOY`，可以先手动 `CREATE INDEX` 创建需要的索引（新索引就有数据了），再 `DEPLOY`（这时的 `DEPLOY` 不会创建新索引，计算时直接使用手动创建的那些索引）。
@@ -48,7 +52,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 ```{note}
 如果你只能使用旧版本，如何知道应该创建哪些索引？ 
 
-目前只有 Java SDK 支持，可以通过 `SqlClusterExecutor.genDDL` 获取需要创建的所有索引（静态方法，无需连接集群）。但 `genDDL` 是获得建表语句，所以需要手动转换为 `CREATE INDEX`。
+目前没有太直接的方法。推荐通过[OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator) genddl获得建表语句，其中有创建的索引配置。 Java SDK 也支持，可以通过 `SqlClusterExecutor.genDDL` 获取需要创建的所有索引（静态方法，无需连接集群），但需要额外编码。而且 `genDDL` 是获得建表语句，所以需要手动转换为 `CREATE INDEX`。
 ```
 
 ## DML 边界
@@ -72,11 +76,17 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 - TaskManager 是 local 模式，只有将源数据放在 TaskManager 进程的主机上才能顺利导入。
 - TaskManager 是 yarn (client and cluster) 模式时，由于不知道运行容器是哪台主机，不可使用文件路径作为源数据地址。
 
+#### ONLINE LOAD DATA
+
+在线导入还需要考虑并发问题，在线导入本质上是Spark中每个partition task启动一个Java SDK，每个SDK会创建一个与zk之间的session，如果并发过高，同时活跃的task过多，zk的session数量就会很大，可能超过其限制`maxClientCnxns`，具体问题现象见[issue 3219](https://github.com/4paradigm/OpenMLDB/issues/3219)。简单来说，请注意你的导入任务并发数和单个导入任务的并发数，如果你同时会进行多个导入任务，建议降低单个导入任务的并发数。
+
+单个任务最大的并发数限制为`spark.executor.instances`*`spark.executor.cores`，请调整这两个配置。当spark.master=local时，调整driver的，而不是executor的。
+
 ### DELETE
 
 在线存储的表有多索引，`DELETE` 可能无法删除所有索引中的对应数据，所以，可能出现删除了数据，却能查出已删除数据的情况。
 
-举例说明：
+举例：
 
 ```SQL
 create database db;
@@ -127,7 +137,7 @@ select * from t1 where c2=2;
 
 说明：
 
-表 `t1` 有多个索引（`DEPLOY` 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。所以 `select * from t1` 使用第一个索引，结果会有两条数据，并没有删除，`select * from t1 where c2=2` 使用第二个索引，结果为空，数据已被删除。
+表 `t1` 有多个索引（`DEPLOY` 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。这是因为delete的where condition只与第二个index相关，第一个index中没有任何该condition相关的key或ts。而 `select * from t1` 使用第一个索引，并非第二个，结果就会有两条数据，直观感受为delete失败了；`select * from t1 where c2=2` 使用第二个索引，结果为空，证明数据在该索引下已被删除。
 
 ## DQL 边界
 

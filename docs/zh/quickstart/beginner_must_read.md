@@ -31,20 +31,30 @@ docker创建OpenMLDB见[快速上手](./openmldb_quickstart.md)，请注意文�
 ```{seealso}
 如果我们还需要OpenMLDB服务端的配置和日志，可以使用诊断工具获取，见[下文](#提供配置与日志获得技术支持)。
 ```
+### 部署工具说明
 
-### 运维
+请确定你使用的是什么部署方式，通常我们只考虑两种部署方式，见[安装部署](../deploy/install_deploy.md)，“一键部署”也被称为sbin部署方式。配置文件如何修改，日志文件在何处，都与部署方式联系紧密，所以必须准确。
 
-集群各组件进程启动后，在使用过程中可能遇到各种变化，比如服务进程意外退出，需要重启服务进程，或者需要扩容服务进程。
+- sbin部署
+sbin部署会经过deploy（拷贝安装包至各个节点），再启动组件。需要明确的是，部署节点就是执行sbin的节点，尽量不要在运维中更换目录。deploy到hosts中各个节点的目录中，这些节点的目录我们称为运行目录。
 
-如果你需要保留已有的在线表，**不要主动地kill全部Tablet再重启**，保证Tablet只有单台在上下线。`stop-all.sh`和`start-all.sh`脚本是给快速重建集群用的，可能会导致在线表数据恢复失败，**不保证能修复**。
+配置文件会在deploy阶段，从template文件生成，所以，如果你要修改某组件的配置，不要在节点上修改，需要在部署地点修改template文件。如果你不进行deploy操作，可以在节点运行目录上原地修改配置文件（非template），但deploy将覆盖修改，需要谨慎处理。
 
-当你发现进程变化或者主动操作其变化后，需要使用诊断工具进行诊断，确认集群状态是否正常：
-```bash
-openmldb_tool inspect # 主要命令
-openmldb_tool status --diff hosts # 可检查TaskManager等是否掉线，当然，你也可以手动判断
-```
+出现任何非预期的情况，以sbin部署的最终配置文件，即组件节点的运行目录中的配置文件为准。运行目录查看`conf/hosts`，例如，`localhost:10921 /tmp/openmldb/tablet-1`说明tablet1的运行目录是`/tmp/openmldb/tablet-1`，`localhost:7527`目录为空说明该组件就运行在`$OPENMLDB_HOME`（如未指定，就是指部署目录）。如果你无法自行解决，提供最终配置文件给我们。
 
-如果诊断出server offline，或是TaskManager等掉线，需要先启动回来。如果启动失败，请查看对应日志，提供错误信息。如果诊断结果提示需要recoverdata，请参考[OpenMLDB运维工具](../maintain/openmldb_ops.md)执行recoverdata。如果recoverdata脚本提示recover失败，或recover成功后再次inpsect的结果仍然不正常，请提供日志给我们。
+sbin日志文件地址，需要先查看hosts确认组件节点的运行目录，TaskManager日志通常在`<dir>/taskmanager/bin/logs`中，其他组件日志均在`<dir>/logs`中。如有特别配置，以配置项为准。
+
+- 手动部署
+手动部署只要使用脚本`bin/start.sh`和`conf/`目录中的配置文件（非template结尾）。唯一需要注意的是，`spark.home`可以为空，那么会读取`SPARK_HOME`环境变量。如果你认为环境变量有问题，导致启动不了TaskManager，推荐写配置`spark.home`。
+
+手动部署的组件日志文件，以运行`bin/start.sh`的目录为准，TaskManager日志通常在`<dir>/taskmanager/bin/logs`中，其他组件日志均在`<dir>/logs`中。如有特别配置，以配置项为准。
+
+## 运维
+
+- 上文提到，inspect能帮我们检查集群状态，如果有问题，可使用recoverdata工具。但这是事后修复手段，通常情况下，我们应该通过正确的运维手段避免这类问题。需要上下线节点时，**不要主动地kill全部Tablet再重启**。请尽量用扩缩容的方式来操作，详情见[扩缩容](../maintain/scale.md)。
+    - 如果你认为已有数据不重要，更需要快速地上下线，那么可以直接重启节点。`stop-all.sh`和`start-all.sh`脚本是给快速重建集群用的，可能会导致在线表数据恢复失败，**不保证能修复**。
+
+- 各组件在长期服务中也可能出现网络抖动、慢节点等复杂问题，请开启[监控](../maintain/monitoring.md)。如果监控中服务端表现正常，可以怀疑是你的客户端或网络问题。如果监控中服务端就出现延迟高，qps低等情况，请向我们提供相关监控图。
 
 ## 源数据
 
