@@ -16,16 +16,16 @@ LAST JOIN 是 OpenMLDB SQL 拓展的 JOIN类型. 它的语法和 LEFT JOIN 基�
 
 ## Syntax
 
-```
-join:
-    TableRef "LAST" "JOIN" TableRef [OrderByClause] "ON" Expression 
-    | TableRef join_type "JOIN" TableRef "ON" Expression
+```yacc
+join_operation:
+  condition_join_operation
 
-join_type:
-    'LEFT' [OUTER]
+condition_join_operation:
+  from_item LEFT [ OUTER ] JOIN from_item join_condition
+  | from_item LAST JOIN [ ORDER BY ordering_expression ] from_item join_condition
 
-order_by_clause:
-    'ORDER' 'BY' <COLUMN_NAME>
+join_condition:
+  ON bool_expression
 ```
 
 ### 使用限制说明

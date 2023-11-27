@@ -2,122 +2,102 @@
 
 ## Syntax
 
-### SelectStmt
+### Syntax Notation
+
+- `[ expr ]`: 中括号，可选部分
+- `{}`: 手动分组
+- `a | b`: 逻辑或，表示 `a` 或 `b`
+- `...`: 重复之前的部分, 重复次数 >= 0
+- 大写变量，例如 `WITH`, 表示 SQL 关键词 "WITH"
+- 小写变量, 例如 `query`, 可以拓展成特定语法结构
+
+### Select Statement
 
 ```yacc
-SelectStmt
-         ::= WithClause ( NoTableSelectClause | SelectStmtFromTable) 
+query_statement:
+  query [ CONFIG ( { key = value }[, ...] )]
 
-WithClause
-         ::= 'WITH' non_recursive_cte [, ...]
+query:
+  [ WITH {non_recursive_cte}[, ...] ]
+  { select | ( query ) | set_operation }
+  [ ORDER BY ordering_expression ]
+  [ LIMIT count ]
 
-non_recursive_cte
-         ::= cte_name 'AS' '(' SelectStmt ')'
+select:
+  SELECT select_list
+  [ FROM from_item ]
+  [ WHERE bool_expression ]
+  [ GROUP BY group_by_specification ]
+  [ HAVING bool_expression ]
+  [ window_clause ]
 
-NoTableSelectClause
-         ::= 'SELECT' SelectExprList      
+set_operation:
+  query set_operator query
 
-SelectStmtFromTable
-         ::= SelectStmtBasic 'FROM' TableRefs [WhereClause] [GroupByClause] [HavingClause] [WindowClause] [OrderByClause] [LimitClause]
-           
-JoinClause
-         ::= TableRef JoinType 'JOIN' TableRef [OrderClause] 'ON' Expression 
-JoinType ::= 'LAST'           
-         
-WhereClause
-         ::= 'WHERE' Expression
-         
-GroupByClause
-         ::= 'GROUP' 'BY' ByList
+non_recursive_cte:
+  cte_name AS ( query )
 
-HavingClause
-         ::= 'HAVING' Expression 
-         
-WindowClause
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )   
-         
-OrderByClause  ::= 'ORDER' 'BY' ByList   
+set_operator:
+  UNION ALL
 
-ByList   ::= ByItem ( ',' ByItem )*
+from_item:
+  table_name [ as_alias ]
+  | { join_operation | ( join_operation ) }
+  | ( query ) [ as_alias ]
+  | cte_name [ as_alias ]
 
-ByItem   ::= Expression Order
+as_alias:
+  [ AS ] alias_name
 
-Order    ::= ( 'ASC' | 'DESC' )?
+join_operation:
+  condition_join_operation
 
-WindowClauseOptional
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
-WindowDefinition
-         ::= WindowName 'AS' WindowSpec
+condition_join_operation:
+  from_item LEFT [ OUTER ] JOIN from_item join_condition
+  | from_item LAST JOIN [ ORDER BY ordering_expression ] from_item join_condition
 
-WindowSpec
-         ::= '(' WindowSpecDetails ')'   
-         
-WindowSpecDetails
-         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
+join_condition:
+  ON bool_expression
 
-WindowUnionClause
-        :: = ( 'UNION' TableRefs)
+window_clause:
+  WINDOW named_window_expression [, ...]
 
-WindowPartitionClause
-         ::= ( 'PARTITION' 'BY' ByList ) 
+named_window_expression:
+  named_window AS { named_window | ( window_specification ) }
 
-WindowOrderByClause
-        ::= ( 'ORDER' 'BY' ByList )
+window_specification:
+  [ UNION ( from_item [, ...] ) ]
+  PARTITION BY expression [ ORDER BY ordering_expression ]
+  window_frame_clause [ window_attr [, ...] ]
 
-WindowFrameClause
-        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
+window_frame_clause:
+  frame_units BETWEEN frame_bound AND frame_bound [ MAXSIZE numeric_expression ] )
 
-WindowFrameUnits
-        ::= 'ROWS'
-          | 'ROWS_RANGE'
+frame_unit:
+  ROWS 
+  | ROWS_RANGE
 
-WindowFrameBounds
-        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+frame_boud:
+  { UNBOUNDED | numeric_expression | interval_expression } [ OPEN ] PRECEDING
+  | CURRENT ROW
 
-WindowFrameBound
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
+window_attr:
+  EXCLUDE CURRENT_TIME
+  | EXCLUDE CURRENT_ROW
+  | INSTANCE_NOT_IN_WINDOW
 
-WindowAttribute
-        ::= WindowExcludeCurrentTime
-          | WindowExcludeCurrentRow
-          | WindowInstanceNotInWindow
+// each item in select list is one of:
+// - *
+// - expression.*
+// - expression
+select_list:
+  { select_all | select_expression } [, ...]
 
-WindowExcludeCurrentTime
-        ::= 'EXCLUDE' 'CURRENT_TIME'
+select_all:
+  [ expression. ]*
 
-WindowExcludeCurrentRow
-        ::= 'EXCLUDE' 'CURRENT_ROW'
-
-WindowInstanceNotInWindow
-        :: = 'INSTANCE_NOT_IN_WINDOW'
-
-WindowFrameMaxSize
-        :: = 'MAXSIZE' NumLiteral
-```
-
-### SelectExprList
-
-```sql
-SelectExprList
-         ::= SelectExpr ( ',' SelectExpr )*
-SelectExpr    ::= ( Identifier '.' ( Identifier '.' )? )? '*'
-           | ( Expression | '{' Identifier Expression '}' ) ['AS' Identifier]
-                      
-```
-
-### TableRefs
-
-```sql
-TableRefs
-         ::= EscapedTableRef ( ',' EscapedTableRef )*
-TableRef ::= TableFactor
-           | JoinClause
-TableFactor
-         ::= TableName [TableAsName]
-           | '(' ( ( SelectStmt ) ')' TableAsName | TableRefs ')' )
-TableAsName
-         ::= 'AS'? Identifier
+select_expression:
+  expression [ [ AS ] alias ]
 ```
 
 ## SELECT语句元素
