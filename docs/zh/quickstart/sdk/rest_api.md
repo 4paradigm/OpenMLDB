@@ -320,6 +320,8 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 ## 刷新 APIServer 元数据缓存
 
+创建删除表、Deploymennt等操作后，元数据同步有一定的滞后性。如果你发现APIServer找不到新建的表或Deployment，请先尝试刷新缓存。
+
 请求地址：http://ip:port/refresh
 
 请求方式：POST
