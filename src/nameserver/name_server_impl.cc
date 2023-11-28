@@ -8521,7 +8521,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     for (const auto& column_key : column_key_vec) {
         if (schema::IndexUtil::IsExist(column_key, table_info->column_key())) {
             base::SetResponseStatus(ReturnCode::kIndexAlreadyExists, "index has already exist!", response);
-            LOG(WARNING) << "index" << column_key.index_name() << " has already exist! table " << name;
+            LOG(WARNING) << "index " << column_key.index_name() << " has already exist! table " << name;
             return;
         }
     }
