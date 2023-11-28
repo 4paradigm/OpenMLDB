@@ -27,14 +27,12 @@
 #include "absl/status/status.h"
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
-#include "rapidjson/document.h"  // raw rapidjson 1.1.0, not in butil
-#include "proto/api_server.pb.h"
-#include "sdk/sql_cluster_router.h"
-#include "sdk/sql_request_row.h"
-
-#include "absl/status/status.h"
 #include "bvar/bvar.h"
 #include "bvar/multi_dimension.h"  // latency recorder
+#include "proto/api_server.pb.h"
+#include "rapidjson/document.h"  // raw rapidjson 1.1.0, not in butil
+#include "sdk/sql_cluster_router.h"
+#include "sdk/sql_request_row.h"
 
 namespace openmldb {
 namespace apiserver {
