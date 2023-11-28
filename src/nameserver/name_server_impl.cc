@@ -9878,30 +9878,28 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     }
     // encode row && dimensions
     std::vector<std::string> rows;
-    std::vector<::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>> rows_dimensions;
+    std::vector<std::vector<std::pair<std::string, uint32_t>>> rows_dimensions;
     for (auto iter = default_value.begin(); iter != default_value.end(); iter++) {
         std::string row;
         std::vector<std::string> vec;
         vec.push_back(iter->first);
         vec.push_back(iter->second);
         codec::RowCodec::EncodeRow(vec, table_info->column_desc(), 1, row);
-        rows.emplace_back(std::move(row));
-        ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> dimensions;
+        rows.push_back(row);
+        std::vector<std::pair<std::string, uint32_t>> dimensions;
         // only one index in system table
-        auto dim = dimensions.Add();
-        dim->set_idx(0);
-        dim->set_key(iter->first);
-        rows_dimensions.emplace_back(std::move(dimensions));
+        dimensions.push_back(std::make_pair(iter->first, 0));
+        rows_dimensions.push_back(dimensions);
     }
     // insert value
     uint32_t tid = table_info->tid();
     uint32_t pid_num = table_info->table_partition_size();
     for (size_t i = 0; i < default_value.size(); i++) {
-        const std::string& row = rows[i];
-        auto dimensions = rows_dimensions[i];
+        std::string row = rows[i];
+        std::vector<std::pair<std::string, uint32_t>> dimensions = rows_dimensions[i];
         uint32_t pid = 0;
         if (pid_num > 0) {
-            pid = (uint32_t)(::openmldb::base::hash64(dimensions(0).key()) % pid_num);
+            pid = (uint32_t)(::openmldb::base::hash64(dimensions[0].first) % pid_num);
         }
         // system table only have one partition, so table_partition(0) can be used
         for (int meta_idx = 0; meta_idx < table_info->table_partition(0).partition_meta_size(); meta_idx++) {
