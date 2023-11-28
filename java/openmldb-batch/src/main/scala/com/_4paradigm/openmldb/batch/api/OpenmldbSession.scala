@@ -174,8 +174,6 @@ class OpenmldbSession {
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
-    logger.info("Try to execute OpenMLDB SQL: " + openmldbSql)
-
     if (config.enableSparksql) {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
