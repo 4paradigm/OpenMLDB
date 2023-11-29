@@ -46,7 +46,8 @@ jobs:
       - name: prepare release
         run: |
           VERSION="snapshot"
-          TAG=$(git tag -l | grep $(git describe HEAD))
+          # if not tag, return error, just ignore it to use snapshot as the version
+          TAG=$(git tag -l | grep $(git describe HEAD)) || true
           if [[ "${TAG}" == "v"* ]]; then
             VERSION=${TAG#v}
             bash steps/prepare_release.sh "$VERSION"
@@ -172,7 +173,7 @@ jobs:
         run: |
           VERSION="snapshot"
           # use repo ref not event ref
-          TAG=$(git tag -l | grep $(git describe HEAD))
+          TAG=$(git tag -l | grep $(git describe HEAD)) || true
           if [[ "${TAG}" == "v"* ]]; then
             VERSION=${TAG#v}
             bash steps/prepare_release.sh "$VERSION"
@@ -242,7 +243,7 @@ jobs:
       - name: prepare release
         run: |
           VERSION="snapshot"
-          TAG=$(git tag -l | grep $(git describe HEAD))
+          TAG=$(git tag -l | grep $(git describe HEAD)) || true
           if [[ "${TAG}" == "v"* ]]; then
             VERSION=${TAG#v}
             bash steps/prepare_release.sh "$VERSION"
