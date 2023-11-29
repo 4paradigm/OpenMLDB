@@ -71,7 +71,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
-            if (!option.getIsLight()) {
+            if (!option.isLight()) {
                 zkClient = new ZKClient(ZKConfig.builder()
                         .cluster(option.getZkCluster())
                         .namespace(option.getZkPath())
