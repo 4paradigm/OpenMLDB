@@ -14,13 +14,13 @@ Note: ✓ indicates that the statement is supported, while ✕ indicates that it
 | -------------- | ---------------------------- | -------------------------------- | -------------------------------- | ------------ | ------------------------------------------------------------ |
 | WHERE Clause | ✓                            | ✓                                | ✕                                | ✓            | Some functionalities can be achieved through built-in functions with the `_where` suffix. |
 | HAVING Clause | ✓                            | ✓                                | X                                | ✓            |                                                              |
-| JOIN Clause | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB only supports the unique **LAST JOIN**. |
-| GROUP BY Grouping | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
-| ORDER BY Keyword | ✓                           | ✓                                | ✓                               | ✓            | Support is limited to usage within the `WINDOW` and `LAST JOIN` clauses; it does not support reverse sorting in `DESC`. |
-| LIMIT the Number of Rows | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
-| WINDOW Clause | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB introduces unique **WINDOW ... UNION** and **WINDOW ATTRIBUTES** syntax. |
-| WITH Clause | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB support begins from version v0.7.2. |
-| Aggregate Function | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB offers a variety of extension functions. |
+| JOIN Clause | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB only supports **LAST JOIN**. |
+| GROUP BY  | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
+| ORDER BY  | ✓                           | ✓                                | ✓                               | ✓            | Support is limited to usage within the `WINDOW` and `LAST JOIN` clauses; it does not support reverse sorting in `DESC`. |
+| LIMIT  | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
+| WINDOW Clause | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB includes new syntac **WINDOW UNION** and **WINDOW ATTRIBUTES**. |
+| WITH Clause | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB supports begins from version v0.8.0. |
+| Aggregate Function | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB has more extension functions. |
 
 
 
