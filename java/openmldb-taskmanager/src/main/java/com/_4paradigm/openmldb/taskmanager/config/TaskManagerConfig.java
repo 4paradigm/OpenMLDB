@@ -358,14 +358,13 @@ public class TaskManagerConfig {
             }
         }
 
-        String SPARK_HOME = firstNonEmpty(props.getProperty("spark.home"), System.getenv("SPARK_HOME"));
+        String SPARK_HOME = firstNonEmpty(props.getProperty("spark.home"));
         // isEmpty checks null and empty
         if (isEmpty(SPARK_HOME)) {
             throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
         }
-        if (SPARK_HOME != null) {
-            props.setProperty("spark.home", SPARK_HOME);
-        }
+        // rewrite env for spark submit
+        props.setProperty("spark.home", SPARK_HOME);
 
         // TODO: Check if we can get spark-submit
 
