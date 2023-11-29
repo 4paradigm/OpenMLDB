@@ -28,7 +28,7 @@ FilePathPattern
 
 **Description**
 
-- `ALTER` only supports updateing offline table's symbolic paths currently.
+- `ALTER` only supports updating offline table's symbolic paths currently.
 
 ## Examples
 
