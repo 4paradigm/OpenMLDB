@@ -174,6 +174,8 @@ class OpenmldbSession {
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
+    logger.info("Try to execute OpenMLDB SQL: " + sqlText)
+
     if (config.enableSparksql) {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
@@ -323,7 +325,7 @@ class OpenmldbSession {
             }
           } catch {
             case e: Exception => {
-              logger.warn(s"Fail to register table $dbName.$tableName " + ExceptionUtils.getStackTrace(e))
+              logger.warn(s"Fail to register table $dbName.$tableName, exception: " + e.getMessage)
             }
           }
         }
