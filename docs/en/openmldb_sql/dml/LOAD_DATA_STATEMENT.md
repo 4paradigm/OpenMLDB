@@ -3,7 +3,7 @@
 The `LOAD DATA INFILE` statement load data efficiently from a file to a table. `LOAD DATA INFILE` is complementary to `SELECT INTO OUTFILE`. To export data from a table to a file, use [SELECT INTO OUTFILE](../dql/SELECT_INTO_STATEMENT.md). To import data into a table, please use `LOAD DATA INFILE`.
 
 ```{note}
-The filepath of INFILE can be a single file name or a directory. `*` can also be used. If multiple file format exists in the directory, only FORMAT specified in LoadDataInfileOptionsList will be chosen. The format is the same as `DataFrameReader.read.load(String)`. You can read the directory with spark-shell to confirm if the read is sucessful.
+The filepath of INFILE can be a single file name or a directory. `*` can also be used. If multiple file format exists in the directory, only FORMAT specified in LoadDataInfileOptionsList will be chosen. The format is the same as `DataFrameReader.read.load(String)`. You can read the directory with spark-shell to confirm if the read is successful.
 ```
 
 ## Syntax
