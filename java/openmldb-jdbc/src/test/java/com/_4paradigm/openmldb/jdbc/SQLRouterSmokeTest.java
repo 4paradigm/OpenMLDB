@@ -45,6 +45,7 @@ import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
     public static SqlExecutor clusterExecutor;
+    public static SqlExecutor lightClusterExecutor;
     public static SqlExecutor standaloneExecutor;
 
     static {
@@ -54,6 +55,8 @@ public class SQLRouterSmokeTest {
             option.setZkCluster(TestConfig.ZK_CLUSTER);
             option.setSessionTimeout(200000);
             clusterExecutor = new SqlClusterExecutor(option);
+            option.setIsLight(true);
+            lightClusterExecutor = new SqlClusterExecutor(option);
             java.sql.Statement state = clusterExecutor.getStatement();
             state.execute("SET @@execute_mode='online';");
             state.close();
@@ -82,7 +85,7 @@ public class SQLRouterSmokeTest {
 
     @DataProvider(name = "executor")
     public Object[] executor() {
-        return new Object[] { clusterExecutor, standaloneExecutor };
+        return new Object[] { clusterExecutor, lightClusterExecutor, standaloneExecutor };
     }
 
     @Test(dataProvider = "executor")
