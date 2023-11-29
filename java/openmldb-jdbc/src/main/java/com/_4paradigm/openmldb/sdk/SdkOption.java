@@ -45,7 +45,7 @@ public class SdkOption {
     private int glogLevel = 0;
     private String glogDir = "";
     private int maxSqlCacheSize = 50;
-    private Boolean isLight = false;
+    private boolean isLight = false;
 
     private void buildBaseOptions(BasicRouterOptions opt) {
         opt.setEnable_debug(getEnableDebug());
