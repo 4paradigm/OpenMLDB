@@ -44,6 +44,7 @@ public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
             SdkOption option = new SdkOption();
             option.setZkCluster(config.zkCluster);
             option.setZkPath(config.zkPath);
+            option.setIsLight(true);
             SqlClusterExecutor executor = new SqlClusterExecutor(option);
             String dbName = config.dbName;
             String tableName = config.tableName;
