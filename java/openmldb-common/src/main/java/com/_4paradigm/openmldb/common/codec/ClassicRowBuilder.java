@@ -266,14 +266,14 @@ public class ClassicRowBuilder implements RowBuilder {
 
     @Override
     public boolean appendString(String val) {
+        if (!check(DataType.kVarchar) && !check(DataType.kString)) {
+            return false;
+        }
         if (val == null) {
             return appendNULL();
         }
         byte[] bytes = val.getBytes(CodecUtil.CHARSET);
         int length = bytes.length;
-        if (!check(DataType.kVarchar) && !check(DataType.kString)) {
-            return false;
-        }
         if (strOffset + length > size) {
             return false;
         }
