@@ -55,11 +55,10 @@ public class SQLRouterSmokeTest {
             option.setZkCluster(TestConfig.ZK_CLUSTER);
             option.setSessionTimeout(200000);
             clusterExecutor = new SqlClusterExecutor(option);
+            setOnlineMode(clusterExecutor);
             option.setLight(true);
             lightClusterExecutor = new SqlClusterExecutor(option);
-            java.sql.Statement state = clusterExecutor.getStatement();
-            state.execute("SET @@execute_mode='online';");
-            state.close();
+            setOnlineMode(lightClusterExecutor);
             // create standalone router
             SdkOption standaloneOption = new SdkOption();
             standaloneOption.setHost(TestConfig.HOST);
@@ -67,6 +66,16 @@ public class SQLRouterSmokeTest {
             standaloneOption.setClusterMode(false);
             standaloneOption.setSessionTimeout(20000);
             standaloneExecutor = new SqlClusterExecutor(standaloneOption);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    static void setOnlineMode(SqlExecutor executor) {
+        java.sql.Statement state = executor.getStatement();
+        try {
+            state.execute("SET @@execute_mode='online';");
+            state.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -131,7 +140,7 @@ public class SQLRouterSmokeTest {
 
             // select
             String select1 = "select * from tsql1010;";
-            SQLResultSet rs1 = (SQLResultSet) router .executeSQL(dbname, select1);
+            SQLResultSet rs1 = (SQLResultSet) router.executeSQL(dbname, select1);
 
             Assert.assertEquals(2, rs1.GetInternalSchema().getColumnList().size());
             Assert.assertEquals(Types.BIGINT, rs1.GetInternalSchema().getColumnType(0));
