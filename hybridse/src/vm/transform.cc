@@ -340,8 +340,6 @@ Status BatchModeTransformer::TransformSetOperation(const node::SetOperationPlanN
                                                    PhysicalSetOperationNode** out) {
     CHECK_TRUE(node != nullptr && out != nullptr, kPlanError, "Input node or output node is null");
 
-    CHECK_TRUE(!node->distinct(), common::kPhysicalPlanError, "un-implemented: UNION DISTINCT");
-
     std::vector<PhysicalOpNode*> inputs;
     const SchemasContext* expect_sc = nullptr;
     for (auto n : node->inputs()) {
