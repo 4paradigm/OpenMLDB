@@ -2790,9 +2790,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 }
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
-                std::map<std::string, std::string> config;
-
+                std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
                     return this->GetJobResultSet(job_info.id(), status);
@@ -2837,7 +2837,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             } else {
                 // Load data using Spark
                 ::openmldb::taskmanager::JobInfo job_info;
-                std::map<std::string, std::string> config;
+                std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
 
                 ::openmldb::base::Status base_status;
