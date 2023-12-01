@@ -202,19 +202,26 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
 }
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-                       const std::vector<std::pair<std::string, uint32_t>>& dimensions) {
+                       const std::vector<std::pair<std::string, uint32_t>>& dimensions,
+                       int memory_usage_limit) {
     ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> pb_dimensions;
     for (size_t i = 0; i < dimensions.size(); i++) {
         ::openmldb::api::Dimension* d = pb_dimensions.Add();
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
-    return Put(tid, pid, time, base::Slice(value), &pb_dimensions);
+    return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit);
 }
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions) {
+            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
+            int memory_usage_limit) {
     ::openmldb::api::PutRequest request;
+    if (memory_usage_limit < 0 || memory_usage_limit > 100) {
+        return false;
+    } else if (memory_usage_limit > 0) {
+        request.set_memory_limit(memory_usage_limit);
+    }
     request.set_time(time);
     request.set_value(value.data(), value.size());
     request.set_tid(tid);

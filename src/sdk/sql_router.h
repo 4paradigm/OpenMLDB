@@ -49,7 +49,6 @@ struct BasicRouterOptions {
     int glog_level = 0;
     // empty means to stderr
     std::string glog_dir = "";
-    int insert_memory_usage_limit = 0;
 };
 
 struct SQLRouterOptions : BasicRouterOptions {

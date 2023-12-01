@@ -24,7 +24,6 @@ import java.io.Serializable;
 // Must serializable
 public class OpenmldbWriteConfig implements Serializable {
     public final String dbName, tableName, zkCluster, zkPath, writerType;
-    public final int insertMemoryUsageLimit;
 
     public OpenmldbWriteConfig(String dbName, String tableName, SdkOption option, String writerType) {
         this.dbName = dbName;
@@ -32,7 +31,6 @@ public class OpenmldbWriteConfig implements Serializable {
         this.zkCluster = option.getZkCluster();
         this.zkPath = option.getZkPath();
         this.writerType = writerType;
-        this.insertMemoryUsageLimit = option.getInsertMemoryUsageLimit();
         // TODO(hw): other configs in SdkOption
     }
 }

@@ -75,10 +75,12 @@ class TabletClient : public Client {
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-             const std::vector<std::pair<std::string, uint32_t>>& dimensions);
+             const std::vector<std::pair<std::string, uint32_t>>& dimensions,
+             int memory_usage_limit = 0);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions);
+            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
+            int memory_usage_limit = 0);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,  // NOLINT
              uint64_t& ts,                                                                          // NOLINT

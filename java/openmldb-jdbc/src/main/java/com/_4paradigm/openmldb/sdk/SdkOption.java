@@ -45,7 +45,6 @@ public class SdkOption {
     private int glogLevel = 0;
     private String glogDir = "";
     private int maxSqlCacheSize = 50;
-    private int insertMemoryUsageLimit = 0;  // [0-100], the default value 0 means unlimited
 
     private void buildBaseOptions(BasicRouterOptions opt) {
         opt.setEnable_debug(getEnableDebug());
@@ -53,7 +52,6 @@ public class SdkOption {
         opt.setGlog_level(getGlogLevel());
         opt.setGlog_dir(getGlogDir());
         opt.setMax_sql_cache_size(getMaxSqlCacheSize());
-        opt.setInsert_memory_usage_limit(getInsertMemoryUsageLimit());
     }
 
     public SQLRouterOptions buildSQLRouterOptions() throws SqlException {
