@@ -62,6 +62,7 @@ The following table introduces the parameters of `LOAD DATA INFILE`.
 - As metioned in the above table, online execution mode only supports append input mode.
 
 - When `deep_copy=false`, OpenMLDB doesn't support to modify the data in the soft link. Therefore, if the current offline data comes from a soft link, `append` import is no longer supported. Moreover, if current connection is soft copy, using the hard copy with `overwrite` will not delete the data of the soft connection.
+- If the `insert_memory_usage_limit` session variable is set, a failure will be returned if the server memory usage exceeds the set value during online import
 
 ```
 
