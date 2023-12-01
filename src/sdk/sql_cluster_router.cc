@@ -19,8 +19,10 @@
 #include <algorithm>
 #include <fstream>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <string>
+#include <sstream>
 #include <unordered_map>
 #include <utility>
 
@@ -320,6 +322,7 @@ bool SQLClusterRouter::Init() {
         session_variables_.emplace("sync_job", "false");
         session_variables_.emplace("job_timeout", "60000");  // rpc request timeout for taskmanager
         session_variables_.emplace("insert_memory_usage_limit", "0");
+        session_variables_.emplace("spark_config", "");
     }
     return true;
 }
@@ -2790,9 +2793,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 }
             } else {
                 ::openmldb::taskmanager::JobInfo job_info;
-                std::map<std::string, std::string> config;
-
+                std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
                     return this->GetJobResultSet(job_info.id(), status);
@@ -2837,7 +2840,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             } else {
                 // Load data using Spark
                 ::openmldb::taskmanager::JobInfo job_info;
-                std::map<std::string, std::string> config;
+                std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
 
                 ::openmldb::base::Status base_status;
@@ -2985,7 +2988,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
                                                                                 bool is_sync_job, int job_timeout,
                                                                                 ::hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
-    std::map<std::string, std::string> config;
+    std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
     ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
 
     if (is_sync_job) {
@@ -3054,6 +3057,16 @@ int SQLClusterRouter::GetJobTimeout() {
     return 60000;
 }
 
+std::string SQLClusterRouter::GetSparkConfig() {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    auto it = session_variables_.find("spark_config");
+    if (it != session_variables_.end()) {
+        return it->second;
+    }
+
+    return "";
+}
+
 ::hybridse::sdk::Status SQLClusterRouter::SetVariable(hybridse::node::SetPlanNode* node) {
     std::string key = node->Key();
     std::transform(key.begin(), key.end(), key.begin(), ::tolower);
@@ -3097,11 +3110,32 @@ int SQLClusterRouter::GetJobTimeout() {
             return {StatusCode::kCmdError, "Invalid value! The value must be between 0 and 100"};
         }
         insert_memory_usage_limit_.store(limit, std::memory_order_relaxed);
+    } else if (key == "spark_config") {
+        if (!CheckSparkConfigString(value)) {
+            return {
+                StatusCode::kCmdError,
+                "Fail to parse spark config, set like 'spark.executor.memory=2g;spark.executor.cores=2'"
+            };
+        }
     } else {
         return {};
     }
     session_variables_[key] = value;
     return {};
+}
+
+bool SQLClusterRouter::CheckSparkConfigString(const std::string& input) {
+    std::istringstream iss(input);
+    std::string keyValue;
+
+    while (std::getline(iss, keyValue, ';')) {
+        // Check if the substring starts with "spark."
+        if (keyValue.find("spark.") != 0) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::ParseNamesFromArgs(const std::string& db,
@@ -4535,6 +4569,34 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
     }
 
     return check_succeed;
+}
+
+std::map<std::string, std::string> SQLClusterRouter::ParseSparkConfigString(const std::string& input) {
+    std::map<std::string, std::string> configMap;
+
+    std::istringstream iss(input);
+    std::string keyValue;
+
+    while (std::getline(iss, keyValue, ';')) {
+        // Split the key-value pair
+        size_t equalPos = keyValue.find('=');
+        if (equalPos != std::string::npos) {
+            std::string key = keyValue.substr(0, equalPos);
+            std::string value = keyValue.substr(equalPos + 1);
+
+            // Check if the key starts with "spark."
+            if (key.find("spark.") == 0) {
+                // Add to the map
+                configMap[key] = value;
+            } else {
+                std::cerr << "Error: Key does not start with 'spark.' - " << key << std::endl;
+            }
+        } else {
+            std::cerr << "Error: Invalid key-value pair - " << keyValue << std::endl;
+        }
+    }
+
+    return configMap;
 }
 
 void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::map<std::string, std::string>* config) {

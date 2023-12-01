@@ -36,7 +36,7 @@ object OpenmldbTableUtil {
 
       val schema = df.schema
 
-      var createTableSql = s"CREATE TABLE $tableName ("
+      var createTableSql = s"CREATE TABLE IF NOT EXISTS $tableName ("
       schema.map(structField => {
         val colName = structField.name
         val colType = DataTypeUtil.sparkTypeToString(structField.dataType)
