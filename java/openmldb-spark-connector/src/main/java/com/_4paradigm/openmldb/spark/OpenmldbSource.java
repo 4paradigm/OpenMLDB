@@ -40,6 +40,7 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
     // single: insert when read one row
     // batch: insert when commit(after read a whole partition)
     private String writerType = "single";
+    private int insertMemoryUsageLimit = 0;
 
     @Override
     public StructType inferSchema(CaseInsensitiveStringMap options) {
@@ -70,12 +71,15 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
             writerType = options.get("writerType");
         }
 
+        if (options.containsKey("insert_memory_usage_limit")) {
+            insertMemoryUsageLimit = Integer.parseInt(options.get("insert_memory_usage_limit"));
+        }
         return null;
     }
 
     @Override
     public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> properties) {
-        return new OpenmldbTable(dbName, tableName, option, writerType);
+        return new OpenmldbTable(dbName, tableName, option, writerType, insertMemoryUsageLimit);
     }
 
     @Override
