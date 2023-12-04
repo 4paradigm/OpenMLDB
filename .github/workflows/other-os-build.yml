@@ -21,6 +21,10 @@ on:
         description: 'The branch, tag or SHA to checkout, otherwise use the branch'
         required: false
         default: ''
+      ZETASQL_LIB_URL:
+        description: 'zetasql lib url, default is built by src, if you want to use prebuilt, set it. Only for centos6'
+        required: false
+        default: ''
 
 env:
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
@@ -35,6 +39,7 @@ jobs:
       OS: linux
       SQL_JAVASDK_ENABLE: ${{ github.event.inputs.JAVA_SDK }}
       SQL_PYSDK_ENABLE: ${{ github.event.inputs.PYTHON_SDK }} # python whl will be built when make, no prerequirement
+      ZETASQL_LIB_URL: ${{ github.event.inputs.ZETASQL_LIB_URL }}
       TESTING_ENABLE: OFF
       NPROC: 8
     steps:
@@ -75,7 +80,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/4paradigm/centos6_gcc7_hybridsql
-          options: -v ${{ github.workspace }}:/root/OpenMLDB -e USE_DEPS_CACHE=${{ steps.deps-cache.outputs.cache-hit }} -e OPENMLDB_PREFIX=${{ env.OPENMLDB_PREFIX }} -e SQL_PYSDK_ENABLE=${{ env.SQL_PYSDK_ENABLE }} -e SQL_JAVASDK_ENABLE=${{ env.SQL_JAVASDK_ENABLE }}
+          options: -v ${{ github.workspace }}:/root/OpenMLDB -e USE_DEPS_CACHE=${{ steps.deps-cache.outputs.cache-hit }} -e OPENMLDB_PREFIX=${{ env.OPENMLDB_PREFIX }} -e SQL_PYSDK_ENABLE=${{ env.SQL_PYSDK_ENABLE }} -e SQL_JAVASDK_ENABLE=${{ env.SQL_JAVASDK_ENABLE }} -e ZETASQL_LIB_URL=${{ env.ZETASQL_LIB_URL }}
           shell: bash
           run: |
             cd /root/OpenMLDB
@@ -89,6 +94,10 @@ jobs:
               make thirdparty CMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX} BUILD_BUNDLE=ON THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8
               # 5.8G	./.deps, avail 8G
               rm -rf .deps/build # GitHub runner disk space is limited
+            fi
+            if [[ "${ZETASQL_LIB_URL}" != "" ]]; then
+              echo "replace zetasql lib by ${ZETASQL_LIB_URL}"
+              curl -SLo .deps/usr/lib/libzetasql.a ${ZETASQL_LIB_URL}
             fi
             echo "build"
             # 1.4G	./.deps, avail 13G
