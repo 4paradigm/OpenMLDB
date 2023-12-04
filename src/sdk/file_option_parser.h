@@ -40,6 +40,7 @@ class FileOptionsParser {
         check_map_.emplace("header", std::make_pair(CheckHeader(), hybridse::node::kBool));
         check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar));
         check_map_.emplace("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar));
+        check_map_.emplace("sql", std::make_pair(CheckSql(), hybridse::node::kVarchar));
     }
 
     ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
@@ -82,6 +83,7 @@ class FileOptionsParser {
     std::string null_value_ = "null";
     std::string delimiter_ = ",";
     bool header_ = true;
+    std::string sql_ = "";
 
     ::openmldb::base::Status GetOption(const hybridse::node::ConstNode* node, const std::string& option_name,
                                        std::function<bool(const hybridse::node::ConstNode* node)> const& f,
@@ -154,6 +156,12 @@ class FileOptionsParser {
             if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
                 return false;
             }
+            return true;
+        };
+    }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckSql() {
+        return [this](const hybridse::node::ConstNode* node) {
+            sql_ = node->GetAsString();
             return true;
         };
     }
