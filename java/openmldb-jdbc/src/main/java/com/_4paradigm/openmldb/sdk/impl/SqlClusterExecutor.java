@@ -82,7 +82,7 @@ public class SqlClusterExecutor implements SqlExecutor {
                         throw new SqlException("zk client connect failed.");
                     }
                 } catch (Exception e) {
-                    throw new SqlException("init zk client failed. " + e.getMessage());
+                    throw new SqlException("init zk client failed", e);
                 }
             }
         } else {
