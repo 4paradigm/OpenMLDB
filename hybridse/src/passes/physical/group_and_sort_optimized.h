@@ -107,7 +107,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool KeysOptimized(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
+    bool KeysOptimized(const vm::SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
                        Key* right_key, Sort* sort, PhysicalOpNode** new_in);
 
     bool KeysOptimizedImpl(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
@@ -138,11 +138,8 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
 
-    bool TransformKeysAndOrderExpr(const SchemasContext* schemas_ctx,
-                                   const node::ExprListNode* groups,
-                                   const node::OrderByNode* order,
-                                   std::shared_ptr<TableHandler> table_handler,
-                                   std::string* index,
+    bool TransformKeysAndOrderExpr(const node::ExprListNode* groups, const node::OrderByNode* order,
+                                   vm::PhysicalDataProviderNode* data_node, std::string* index,
                                    IndexBitMap* best_bitmap);
     bool MatchBestIndex(const std::vector<std::string>& columns,
                         const std::vector<std::string>& order_columns,
@@ -159,7 +156,8 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     // Map ExprNode to source column name
     // A source column name is the column name in string that refers to a physical table,
     // only one table got optimized each time
-    std::unordered_map<const node::ColumnRefNode*, SrcColInfo> expr_cache_;
+    std::unordered_map<const node::ColumnRefNode*, std::unordered_map<const vm::PhysicalDataProviderNode*, SrcColInfo>>
+        expr_cache_;
 
     std::unique_ptr<OptimizeInfo> optimize_info_;
 };

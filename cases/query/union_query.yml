@@ -1,0 +1,449 @@
+cases:
+  - id: 0
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    # Key + TS 完全相同情况下, SQL 语义上顺序是 undefined.
+    # 在线模式实现上遵守此隐式规则: 更右边的 <from_item> 排在输出临时表的更后面, 因此首先被 LAST JOIN 选中.
+    # 此规则不具有一致性, 离线模式不一定遵守.
+    # Segment 迭代器是从 TS 最大 -> 最小
+    sql: |
+      select t1.id as c1, tx.c1 as tx1, tx.val as val
+      from t1 last join (
+        select * from t2 union all select * from t3
+      ) tx
+      on t1.id = tx.c1
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.id))
+          DATA_PROVIDER(table=t1)
+          RENAME(name=tx)
+            SET_OPERATION(UNION ALL)
+              DATA_PROVIDER(type=Partition, table=t2, index=index1)
+              DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(#4))
+            SIMPLE_PROJECT(sources=(#4 -> t1.id))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SET_OPERATION(UNION ALL)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, aa, 4
+        bb, bb, 2
+        cc, cc, 6
+        dd, dd, 7
+  - id: 1
+    desc: select project over union
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    sql: |
+      select t1.id as c1, tx.key as tx1, tx.val as val
+      from t1 last join (
+        select c1 as key, val, c4 from
+        (select * from t2 union all select * from t3)
+      ) tx
+      on t1.id = tx.key
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.key -> tx1, tx.val))
+        JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.id))
+          DATA_PROVIDER(table=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(c1 -> key, val, c4))
+              SET_OPERATION(UNION ALL)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.key -> tx1, tx.val))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(#4))
+            SIMPLE_PROJECT(sources=(#4 -> t1.id))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              SIMPLE_PROJECT(sources=(c1 -> key, val, c4))
+                SET_OPERATION(UNION ALL)
+                  DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                  DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, aa, 4
+        bb, bb, 2
+        cc, cc, 6
+        dd, dd, 7
+  - id: 2
+    desc: lastjoin(union(filter(t2), t3))
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    # FILTER optimzed t2, LASTJOIN optimzed t3, optimized index key not match
+    sql: |
+      select t1.id as c1, tx.c1 as tx1, tx.val as val
+      from t1 last join (
+        select * from t2 where c1 = 'aa' union all select * from t3
+      ) tx
+      order by tx.c4
+      on t1.id = tx.c1
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        JOIN(type=LastJoin, right_sort=(tx.c4 ASC), condition=, left_keys=(t1.id), right_keys=(tx.c1), index_keys=)
+          DATA_PROVIDER(table=t1)
+          RENAME(name=tx)
+            SET_OPERATION(UNION ALL)
+              FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(aa))
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+              DATA_PROVIDER(table=t3)
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, aa, 4
+        bb, bb, 5
+        cc, cc, 6
+        dd, dd, 7
+  - id: 3
+    desc: lastjoin(filter<un-optimized>(union)
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    sql: |
+      select t1.id as c1, tx.c1 as tx1, tx.val as val
+      from t1 last join (
+        select * from
+        (select * from t2 union all select * from t3)
+        where val < 5
+      ) tx
+      on t1.id = tx.c1
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.id))
+          DATA_PROVIDER(table=t1)
+          RENAME(name=tx)
+            FILTER_BY(condition=val < 5, left_keys=, right_keys=, index_keys=)
+              SET_OPERATION(UNION ALL)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(#4))
+            SIMPLE_PROJECT(sources=(#4 -> t1.id))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=tx)
+              FILTER_BY(condition=val < 5, left_keys=, right_keys=, index_keys=)
+                SET_OPERATION(UNION ALL)
+                  DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                  DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, aa, 4
+        bb, bb, 2
+        cc, cc, 3
+        dd, NULL, NULL
+  - id: 4
+    desc: lastjoin(filter<optimized>(union)
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    sql: |
+      select t1.id as c1, tx.c1 as tx1, tx.val as val
+      from t1 last join (
+        select * from
+        (select * from t2 union all select * from t3)
+        where c1 = "bb"
+      ) tx
+      order by tx.c4
+      on t1.id = tx.c1
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(t1.id), right_keys=(tx.c1), index_keys=)
+          DATA_PROVIDER(table=t1)
+          RENAME(name=tx)
+            FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(bb))
+              SET_OPERATION(UNION ALL)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(t1.id), right_keys=(tx.c1), index_keys=)
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(bb))
+              SET_OPERATION(UNION ALL)
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, NULL, NULL
+        bb, bb, 2
+        cc, NULL, NULL
+        dd, NULL, NULL
+  - id: 5
+    desc: union(filter<un-optimized>(t2), filter<un-optimized>(t3))
+    inputs:
+      - name: t0
+        columns: ["c1 string","id int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4", "index2:c2:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    sql: |
+      select t0.id, tr.*
+      from t0
+      last join (
+        select t1.id as c1, t1.c2, tx.c1 as tx1, tx.val as val
+        from t1 left join (
+          select * from t2 where val != 1 union all select * from t3 where val < 6
+        ) tx
+        on t1.id = tx.c1
+      ) tr
+      on t0.id = tr.c2 and tr.val > 4
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t0.id, tr.c1, tr.c2, tr.tx1, tr.val))
+        REQUEST_JOIN(type=LastJoin, condition=tr.val > 4, left_keys=(), right_keys=(), index_keys=(t0.id))
+          DATA_PROVIDER(request=t0)
+          RENAME(name=tr)
+            SIMPLE_PROJECT(sources=(t1.id -> c1, t1.c2, tx.c1 -> tx1, tx.val))
+              REQUEST_JOIN(type=LeftJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.id))
+                DATA_PROVIDER(type=Partition, table=t1, index=index2)
+                RENAME(name=tx)
+                  SET_OPERATION(UNION ALL)
+                    FILTER_BY(condition=val != 1, left_keys=, right_keys=, index_keys=)
+                      DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                    FILTER_BY(condition=val < 6, left_keys=, right_keys=, index_keys=)
+                      DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: id
+      columns: ["id int", "c1 string", "c2 int", "tx1 string", "val int"]
+      data: |
+        20, NULL, NULL, NULL, NULL
+        30, bb, 30, bb, 5
+  - id: 6
+    desc: nested union
+    inputs:
+      - name: t1
+        columns: ["id string","c2 int","c4 timestamp"]
+        indexs: ["index1:id:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+          - ["cc",40,1000]
+          - ["dd",50,1000]
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+      - name: t4
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["bb",8, 10000]
+          - ["cc",9, 10000]
+    sql: |
+      select t1.id as c1, tx.c1 as tx1, tx.val as val
+      from t1 last join (
+        select * from t2 union all
+        (select * from t3 where val < 6 union all select * from t4)
+      ) tx
+      on t1.id = tx.c1
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.id -> c1, tx.c1 -> tx1, tx.val))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.id))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            SET_OPERATION(UNION ALL)
+              DATA_PROVIDER(type=Partition, table=t2, index=index1)
+              SET_OPERATION(UNION ALL)
+                FILTER_BY(condition=val < 6, left_keys=, right_keys=, index_keys=)
+                  DATA_PROVIDER(type=Partition, table=t3, index=index1)
+                DATA_PROVIDER(type=Partition, table=t4, index=index1)
+    expect:
+      order: c1
+      columns: ["c1 string", "tx1 string", "val int"]
+      data: |
+        aa, aa, 4
+        bb, bb, 8
+        cc, cc, 9
+        dd, NULL, NULL
+
+  # unsupported all modes
+  - id: 7
+    desc: window over union
+    mode: rtidb-unsupport
+    inputs:
+      - name: t2
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1, 2000]
+          - ["bb",2, 3000]
+          - ["cc",3, 3000]
+      - name: t3
+        columns: ["c1 string", "val int", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",4, 4000]
+          - ["bb",5, 2000]
+          - ["cc",6, 3000]
+          - ["dd",7, 3000]
+    sql: |
+      select c1, sum(val) over w as agg
+      from (
+        select * from t2 union all select * from t3
+      ) tx
+      window w as (partition by c1 order by c4
+        rows_range between 2s preceding and current row)
+

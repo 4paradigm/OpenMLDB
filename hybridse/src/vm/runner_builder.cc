@@ -332,7 +332,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                 return RegisterTask(node, BinaryInherit(left_task, right_task, runner,
                                                                         op->join().index_key(), kLeftBias));
                             } else {
-                                // optimize happens before, in left node
+                                // optimize happens before, in right node
                                 auto right_route_info = right_task.GetRouteInfo();
                                 runner->AddProducer(left_task.GetRoot());
                                 runner->AddProducer(right_task.GetRoot());
@@ -520,6 +520,31 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             PostRequestUnionRunner* runner =
                 CreateRunner<PostRequestUnionRunner>(id_++, node->schemas_ctx(), union_op->request_ts());
             return RegisterTask(node, BinaryInherit(left_task, right_task, runner, Key(), kRightBias));
+        }
+        case kPhysicalOpSetOperation: {
+            auto set = dynamic_cast<vm::PhysicalSetOperationNode*>(node);
+            auto set_runner =
+                CreateRunner<SetOperationRunner>(id_++, node->schemas_ctx(), set->op_type_, set->distinct_);
+            std::vector<ClusterTask> tasks;
+            for (auto n : node->GetProducers()) {
+                auto task = Build(n, status);
+                if (!status.isOK()) {
+                    LOG(WARNING) << status;
+                    return fail;
+                }
+                set_runner->AddProducer(task.GetRoot());
+
+                tasks.push_back(task);
+            }
+            if (support_cluster_optimized_) {
+                // first cluster task
+                for (auto & task : tasks) {
+                    if (task.IsClusterTask()) {
+                        return RegisterTask(node, ClusterTask(set_runner, {}, task.GetRouteInfo()));
+                    }
+                }
+            }
+            return RegisterTask(node, ClusterTask(set_runner));
         }
         default: {
             status.code = common::kExecutionPlanError;

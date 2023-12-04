@@ -181,6 +181,12 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
                 TransformWithClauseEntry(dynamic_cast<const ::hybridse::node::WithClauseEntryPlanNode*>(node), &op));
             break;
         }
+        case ::hybridse::node::kPlanTypeSetOperation: {
+            PhysicalSetOperationNode* set = nullptr;
+            CHECK_STATUS(TransformSetOperation(dynamic_cast<const node::SetOperationPlanNode*>(node), &set));
+            op = set;
+            break;
+        }
         default: {
             FAIL_STATUS(kPlanError,
                         "Fail to transform physical plan: "
@@ -327,6 +333,33 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
                      "th native function \"", fn_info->fn_name(),
                      "\" failed at node:\n", node->GetTreeString());
     }
+    return Status::OK();
+}
+
+Status BatchModeTransformer::TransformSetOperation(const node::SetOperationPlanNode* node,
+                                                   PhysicalSetOperationNode** out) {
+    CHECK_TRUE(node != nullptr && out != nullptr, kPlanError, "Input node or output node is null");
+
+    CHECK_TRUE(!node->distinct(), common::kPhysicalPlanError, "un-implemented: UNION DISTINCT");
+
+    std::vector<PhysicalOpNode*> inputs;
+    const SchemasContext* expect_sc = nullptr;
+    for (auto n : node->inputs()) {
+        PhysicalOpNode* query_out = nullptr;
+        CHECK_STATUS(TransformQueryPlan(n, &query_out));
+
+        if (expect_sc == nullptr) {
+            expect_sc = query_out->schemas_ctx();
+        } else {
+            CHECK_TRUE(PhysicalOpNode::IsSameSchema(expect_sc->GetOutputSchema(), query_out->GetOutputSchema()),
+                       common::kPlanError, "union sources have different schema: ", expect_sc->ReadableString(), " vs ",
+                       query_out->schemas_ctx()->ReadableString());
+        }
+        inputs.push_back(query_out);
+    }
+    PhysicalSetOperationNode* set = nullptr;
+    CHECK_STATUS(CreateOp(&set, node->op_type(), inputs, node->distinct()));
+    *out = set;
     return Status::OK();
 }
 
@@ -1667,6 +1700,10 @@ Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
         for (auto& window_union : n->window_unions().window_unions_) {
             CHECK_STATUS(ValidateWindowIndexOptimization(window_union.second, window_union.first));
         }
+    } else if (kPhysicalOpSetOperation == in->GetOpType()) {
+        for (auto n : in->GetProducers()) {
+            CHECK_STATUS(ValidatePartitionDataProvider(n));
+        }
     } else {
         CHECK_TRUE(kPhysicalOpDataProvider == in->GetOpType() &&
                        kProviderTypeTable != dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
@@ -1925,10 +1962,6 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                     dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
                 CHECK_STATUS(GenFnDef(func_def_plan), "Fail to compile user function def");
                 *output = nullptr;
-                break;
-            }
-            case ::hybridse::node::kPlanTypeUnion: {
-                FAIL_STATUS(kPlanError, "Non-support UNION OP");
                 break;
             }
             case node::kPlanTypeCreate: {

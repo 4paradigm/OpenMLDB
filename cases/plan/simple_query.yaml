@@ -466,53 +466,54 @@ cases:
       SELECT * FROM t1 UNION ALL SELECT * FROM t3 CONFIG ( zone = 'middle' );
     expect:
       node_tree_str: |
-        +-node[kQuery]: kQueryUnion
+        +-node[kQuery]: kQuerySetOperation
           +-config_options:
           |  +-zone:
           |    +-expr[primary]
           |      +-value: middle
           |      +-type: string
-          +-union_type: ALL UNION
-          +-left:
-          |  +-node[kQuery]: kQuerySelect
-          |    +-distinct_opt: false
-          |    +-where_expr: null
-          |    +-group_expr_list: null
-          |    +-having_expr: null
-          |    +-order_expr_list: null
-          |    +-limit: null
-          |    +-select_list[list]:
-          |    |  +-0:
-          |    |    +-node[kResTarget]
-          |    |      +-val:
-          |    |      |  +-expr[all]
-          |    |      +-name: <nil>
-          |    +-tableref_list[list]:
-          |    |  +-0:
-          |    |    +-node[kTableRef]: kTable
-          |    |      +-table: t1
-          |    |      +-alias: <nil>
-          |    +-window_list: []
-          +-right:
-            +-node[kQuery]: kQuerySelect
-              +-distinct_opt: false
-              +-where_expr: null
-              +-group_expr_list: null
-              +-having_expr: null
-              +-order_expr_list: null
-              +-limit: null
-              +-select_list[list]:
-              |  +-0:
-              |    +-node[kResTarget]
-              |      +-val:
-              |      |  +-expr[all]
-              |      +-name: <nil>
-              +-tableref_list[list]:
-              |  +-0:
-              |    +-node[kTableRef]: kTable
-              |      +-table: t3
-              |      +-alias: <nil>
-              +-window_list: []
+          +-operator: UNION ALL
+          +-inputs[list]:
+            +-0:
+            |  +-node[kQuery]: kQuerySelect
+            |    +-distinct_opt: false
+            |    +-where_expr: null
+            |    +-group_expr_list: null
+            |    +-having_expr: null
+            |    +-order_expr_list: null
+            |    +-limit: null
+            |    +-select_list[list]:
+            |    |  +-0:
+            |    |    +-node[kResTarget]
+            |    |      +-val:
+            |    |      |  +-expr[all]
+            |    |      +-name: <nil>
+            |    +-tableref_list[list]:
+            |    |  +-0:
+            |    |    +-node[kTableRef]: kTable
+            |    |      +-table: t1
+            |    |      +-alias: <nil>
+            |    +-window_list: []
+            +-1:
+              +-node[kQuery]: kQuerySelect
+                +-distinct_opt: false
+                +-where_expr: null
+                +-group_expr_list: null
+                +-having_expr: null
+                +-order_expr_list: null
+                +-limit: null
+                +-select_list[list]:
+                |  +-0:
+                |    +-node[kResTarget]
+                |      +-val:
+                |      |  +-expr[all]
+                |      +-name: <nil>
+                +-tableref_list[list]:
+                |  +-0:
+                |    +-node[kTableRef]: kTable
+                |      +-table: t3
+                |      +-alias: <nil>
+                +-window_list: []
   - id: array
     desc: |
       array query

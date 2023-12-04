@@ -48,8 +48,15 @@ using hybridse::vm::PhysicalSimpleProjectNode;
 using hybridse::vm::PhysicalWindowAggrerationNode;
 using hybridse::vm::ProjectType;
 
-static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                            std::string* db, std::string* table, std::string* source_col);
+template <typename T>
+T* ShadowCopy(T* in, std::vector<T>* ct) {
+    if (in != nullptr) {
+        auto copy = in->ShadowCopy();
+        ct->push_back(copy);
+        return &ct->back();
+    }
+    return nullptr;
+}
 
 // ExprNode may be resolving under different SchemasContext later (say one of its descendants context),
 // with column name etc it may not able to resvole since a column rename may happen in SimpleProject node.
@@ -63,18 +70,39 @@ absl::Status GroupAndSortOptimized::BuildExprCache(const node::ExprNode* node, c
         case node::kExprColumnRef: {
             auto ref = dynamic_cast<const node::ColumnRefNode*>(node);
 
-            if (expr_cache_.find(ref) != expr_cache_.end()) {
-                break;
+            auto& ref_map = expr_cache_[ref];
+
+            auto db = ref->GetDBName();
+            auto rel = ref->GetRelationName();
+            auto col_name = ref->GetColumnName();
+            size_t column_id;
+            Status status = sc->ResolveColumnID(db, rel, col_name, &column_id);
+            if (!status.isOK()) {
+                return absl::NotFoundError(absl::StrCat("Illegal index column: ", ref->GetExprString()));
             }
 
-            std::string source_col;
-            std::string source_db;
-            std::string source_table;
-            if (!ResolveColumnToSourceColumnName(ref, sc, &source_db, &source_table, &source_col)) {
-                return absl::InternalError(absl::StrCat("unable to resolve ", ref->GetExprString()));
+            auto descendants = sc->GetRoot()->TraceLastDescendants(column_id);
+            if (!descendants.ok()) {
+                return descendants.status();
             }
 
-            expr_cache_.emplace(ref, SrcColInfo{source_col, source_table, source_db});
+            for (auto& entry : descendants.value()) {
+                if (entry.first->GetOpType() != vm::kPhysicalOpDataProvider) {
+                    continue;
+                }
+                auto* data_node = dynamic_cast<const vm::PhysicalDataProviderNode*>(entry.first);
+                std::string source_col, source_table, source_db;
+                auto s = data_node->schemas_ctx()->ResolveDbTableColumnByID(entry.second, &source_db, &source_table,
+                                                                              &source_col);
+                if (!s.isOK()) {
+                    return absl::NotFoundError(s.msg);
+                }
+                if (ref_map.find(data_node) != ref_map.end()) {
+                    return absl::AlreadyExistsError(
+                        absl::StrCat("node ", entry.first->GetTreeString(), " already exists"));
+                }
+                ref_map[data_node] = {source_col, source_table, source_db};
+            }
             break;
         }
         default:
@@ -171,11 +199,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalOpNode* new_producer;
 
             if (!union_op->instance_not_in_window()) {
-                if (KeysAndOrderFilterOptimized(
-                        union_op->schemas_ctx(), union_op->GetProducer(1),
-                        &union_op->window_.partition_,
-                        &union_op->window_.index_key_, &union_op->window_.sort_,
-                        &new_producer)) {
+                if (KeysAndOrderFilterOptimized(union_op->GetProducer(1)->schemas_ctx(), union_op->GetProducer(1),
+                                                &union_op->window_.partition_, &union_op->window_.index_key_,
+                                                &union_op->window_.sort_, &new_producer)) {
                     if (!ResetProducer(plan_ctx_, union_op, 1, new_producer)) {
                         return false;
                     }
@@ -278,7 +304,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
     return false;
 }
 
-bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx,
+bool GroupAndSortOptimized::KeysOptimized(const vm::SchemasContext* root_schemas_ctx,
                                           PhysicalOpNode* in,
                                           Key* left_key,
                                           Key* index_key,
@@ -298,23 +324,29 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         optimize_info_ = nullptr;
     };
 
-    auto s = BuildExprCache(left_key->keys(), root_schemas_ctx);
+    auto s = BuildExprCache(index_key->keys(), root_schemas_ctx);
     if (!s.ok()) {
-        return false;
-    }
-    s = BuildExprCache(index_key->keys(), root_schemas_ctx);
-    if (!s.ok()) {
+        LOG(WARNING) << s;
         return false;
     }
     if (right_key != nullptr) {
         s = BuildExprCache(right_key->keys(), root_schemas_ctx);
         if (!s.ok()) {
+            LOG(WARNING) << s;
+            return false;
+        }
+    } else {
+        // build cache from left only right_key is empty
+        auto s = BuildExprCache(left_key->keys(), root_schemas_ctx);
+        if (!s.ok()) {
+            LOG(WARNING) << s;
             return false;
         }
     }
     if (sort != nullptr) {
         s = BuildExprCache(sort->orders(), root_schemas_ctx);
         if (!s.ok()) {
+            LOG(WARNING) << s;
             return false;
         }
     }
@@ -349,13 +381,12 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
 
         if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ ||
             DataProviderType::kProviderTypePartition == scan_op->provider_type_) {
-            auto* table_node = dynamic_cast<vm::PhysicalDataProviderNode*>(scan_op);
             if (optimize_info_) {
                 if (optimize_info_->left_key == left_key && optimize_info_->index_key == index_key &&
                     optimize_info_->right_key == right_key && optimize_info_->sort_key == sort) {
                     if (optimize_info_->optimized != nullptr &&
-                        table_node->GetDb() == optimize_info_->optimized->GetDb() &&
-                        table_node->GetName() == optimize_info_->optimized->GetName()) {
+                        scan_op->GetDb() == optimize_info_->optimized->GetDb() &&
+                        scan_op->GetName() == optimize_info_->optimized->GetName()) {
                         *new_in = optimize_info_->optimized;
                         return true;
                     }
@@ -371,8 +402,8 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
             if (DataProviderType::kProviderTypeTable == scan_op->provider_type_) {
                 // Apply key columns and order column optimization with all indexes binding to scan_op->table_handler_
                 // Return false if fail to find an appropriate index
-                if (!TransformKeysAndOrderExpr(root_schemas_ctx, right_partition,
-                                               nullptr == sort ? nullptr : sort->orders_, scan_op->table_handler_,
+                if (!TransformKeysAndOrderExpr( right_partition,
+                                               nullptr == sort ? nullptr : sort->orders_, scan_op,
                                                &index_name, &bitmap)) {
                     return false;
                 }
@@ -386,8 +417,8 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
                 index_name = partition_op->index_name_;
                 // Apply key columns and order column optimization with given index name
                 // Return false if given index do not match the keys and order column
-                if (!TransformKeysAndOrderExpr(root_schemas_ctx, right_partition,
-                                               nullptr == sort ? nullptr : sort->orders_, scan_op->table_handler_,
+                if (!TransformKeysAndOrderExpr( right_partition,
+                                               nullptr == sort ? nullptr : sort->orders_, scan_op,
                                                &index_name, &bitmap)) {
                     return false;
                 }
@@ -621,6 +652,91 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         }
         *new_in = new_union;
         return true;
+    } else if (PhysicalOpType::kPhysicalOpSetOperation == in->GetOpType()) {
+        auto set_op = dynamic_cast<vm::PhysicalSetOperationNode*>(in);
+        // keys optimize for each inputs for set operation
+        std::vector<PhysicalOpNode*> opt_inputs;
+        opt_inputs.reserve(in->GetProducerCnt());
+        bool opt_all = true;
+        Key* left_key_opt = nullptr;
+        Key* index_key_opt = nullptr;
+        Key* right_key_opt = nullptr;
+        Sort* sort_opt = nullptr;
+        std::vector<Key> alloca_keys;
+        alloca_keys.reserve(3 * in->GetProducerCnt());
+        std::vector<Sort> alloca_sort;
+        alloca_sort.reserve(in->GetProducerCnt());
+
+        for (size_t i = 0; i < in->GetProducerCnt(); i++) {
+            auto n = in->GetProducer(i);
+            // expr_cache_.clear();
+            // optimize_info_ = nullptr;
+            PhysicalOpNode* optimized = nullptr;
+            // copy keys
+            auto left_key_cp = ShadowCopy(left_key, &alloca_keys);
+            auto index_key_cp = ShadowCopy(index_key, &alloca_keys);
+            auto right_key_cp = ShadowCopy(right_key, &alloca_keys);
+            auto sort_cp = ShadowCopy(sort, &alloca_sort);
+
+            if (!KeysOptimizedImpl(n->schemas_ctx(), n, left_key_cp, index_key_cp, right_key_cp, sort_cp, &optimized)) {
+                LOG(WARNING) << "unable to optimize operation set input: " << n->GetTreeString();
+                opt_all = false;
+            }
+            opt_inputs.push_back(optimized == nullptr ? n : optimized);
+
+            if (i == 0) {
+                left_key_opt = left_key_cp;
+                index_key_opt = index_key_cp;
+                right_key_opt = right_key_cp;
+                sort_opt = sort_cp;
+            } else {
+                // check all optimized keys equals
+                if (!node::SqlEquals(left_key_opt->keys(), left_key_cp->keys())) {
+                    LOG(WARNING) << "[optimizing set operation] optimized left keys not equal: "
+                                 << node::ExprString(left_key_opt->keys()) << " vs "
+                                 << node::ExprString(left_key_cp->keys());
+                    return false;
+                }
+                if (!node::SqlEquals(index_key_opt->keys(), index_key_cp->keys())) {
+                    LOG(WARNING) << "[optimizing set operation] optimized index keys not equal: "
+                                 << node::ExprString(index_key_opt->keys()) << " vs "
+                                 << node::ExprString(index_key_cp->keys());
+                    return false;
+                }
+                if (right_key_opt && !node::SqlEquals(right_key_opt->keys(), right_key_cp->keys())) {
+                    LOG(WARNING) << "[optimizing set operation] optimized right keys not equal: "
+                                 << node::ExprString(right_key_opt->keys()) << " vs "
+                                 << node::ExprString(right_key_cp->keys());
+                    return false;
+                }
+                if (sort_opt && !node::SqlEquals(sort_opt->orders(), sort_cp->orders())) {
+                    LOG(WARNING) << "[optimizing set operation] optimized order keys not equal: "
+                                 << node::ExprString(sort_opt->orders()) << " vs "
+                                 << node::ExprString(sort_cp->orders());
+                    return false;
+                }
+            }
+        }
+        if (opt_all) {
+            // write keys
+            left_key->set_keys(left_key_opt->keys());
+            index_key->set_keys(index_key_opt->keys());
+            if (right_key && right_key_opt) {
+                right_key->set_keys(right_key_opt->keys());
+            }
+            if (sort && sort_opt) {
+                sort->set_orders(sort_opt->orders());
+            }
+            vm::PhysicalSetOperationNode* opt_set = nullptr;
+            if (!plan_ctx_
+                     ->CreateOp<vm::PhysicalSetOperationNode>(&opt_set, set_op->op_type_, opt_inputs, set_op->distinct_)
+                     .isOK()) {
+                return false;
+            }
+            *new_in = opt_set;
+        }
+
+        return opt_all;
     }
     return false;
 }
@@ -690,11 +806,8 @@ bool GroupAndSortOptimized::KeyAndOrderOptimized(
                                        sort, new_in);
 }
 
-bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root_schemas_ctx,
-                                                      const node::ExprListNode* groups,
-                                                      const node::OrderByNode* order,
-                                                      std::shared_ptr<TableHandler> table_handler,
-                                                      std::string* index_name,
+bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const node::ExprListNode* groups, const node::OrderByNode* order,
+                                                      vm::PhysicalDataProviderNode* data_node, std::string* index_name,
                                                       IndexBitMap* output_bitmap) {
     if (nullptr == groups || nullptr == output_bitmap || nullptr == index_name) {
         DLOG(WARNING) << "fail to transform keys expr : key expr or output "
@@ -717,13 +830,18 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
         switch (group->expr_type_) {
             case node::kExprColumnRef: {
                 auto column = dynamic_cast<node::ColumnRefNode*>(group);
-                auto op = expr_cache_.find(column);
-                if (op == expr_cache_.end()) {
+                auto oop = expr_cache_.find(column);
+                if (oop == expr_cache_.end()) {
                     return false;
                 }
 
-                if (table_handler->GetName() != op->second.tb_name ||
-                    table_handler->GetDatabase() != op->second.db_name) {
+                auto op = oop->second.find(data_node);
+                if (op == oop->second.end()) {
+                    return false;
+                }
+
+                if (data_node-> table_handler_->GetName() != op->second.tb_name ||
+                    data_node->table_handler_->GetDatabase() != op->second.db_name) {
                     return false;
                 }
 
@@ -742,13 +860,18 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
             auto expr = order->GetOrderExpressionExpr(i);
             if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
                 auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
-                auto op = expr_cache_.find(column);
-                if (op == expr_cache_.end()) {
+                auto oop = expr_cache_.find(column);
+                if (oop == expr_cache_.end()) {
                     return false;
                 }
 
-                if (table_handler->GetName() != op->second.tb_name ||
-                    table_handler->GetDatabase() != op->second.db_name) {
+                auto op = oop->second.find(data_node);
+                if (op == oop->second.end()) {
+                    return false;
+                }
+
+                if (data_node->table_handler_->GetName() != op->second.tb_name ||
+                    data_node->table_handler_->GetDatabase() != op->second.db_name) {
                     return false;
                 }
 
@@ -763,7 +886,7 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
     IndexBitMap match_bitmap;
     // internal structure for MatchBestIndex, initially turn every bit true
     IndexBitMap state_bitmap(std::vector<std::optional<ColIndexInfo>>(columns.size(), std::make_optional(0)));
-    if (!MatchBestIndex(columns, order_columns, table_handler, &state_bitmap, index_name, &match_bitmap)) {
+    if (!MatchBestIndex(columns, order_columns, data_node->table_handler_, &state_bitmap, index_name, &match_bitmap)) {
         return false;
     }
     if (match_bitmap.bitmap.size() != columns.size()) {
@@ -898,46 +1021,6 @@ bool GroupAndSortOptimized::MatchBestIndex(const std::vector<std::string>& colum
     *index_name = best_index_name;
     *index_bitmap = best_index_bitmap;
     return succ;
-}
-
-/**
- * Resolve column reference to possible source table's column name
- */
-static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                            std::string* src_db, std::string* src_table, std::string* src_col) {
-    auto db = col->GetDBName();
-    auto rel = col->GetRelationName();
-    auto col_name = col->GetColumnName();
-    size_t column_id;
-    int path_idx;
-    size_t child_column_id;
-    size_t source_column_id;
-    const PhysicalOpNode* source;
-    Status status = schemas_ctx->ResolveColumnID(db, rel, col_name, &column_id, &path_idx, &child_column_id,
-                                                 &source_column_id, &source);
-
-    if (!status.isOK()) {
-        LOG(WARNING) << "Illegal index column: " << col->GetExprString();
-        return false;
-    }
-    if (source == nullptr ||
-        source->GetOpType() != PhysicalOpType::kPhysicalOpDataProvider) {
-        LOG(WARNING) << "Index column is not from any source table: "
-                     << col->GetExprString();
-        return false;
-    }
-
-    std::string sc_db, sc_table, sc_column;
-    status = source->schemas_ctx()->ResolveDbTableColumnByID(source_column_id, &sc_db, &sc_table, &sc_column);
-    if (!status.isOK()) {
-        LOG(WARNING) << "Illegal source column id #" << source_column_id << " for index column "
-                     << col->GetExprString();
-        return false;
-    }
-    *src_db = sc_db;
-    *src_table = sc_table;
-    *src_col = sc_column;
-    return true;
 }
 
 }  // namespace passes
