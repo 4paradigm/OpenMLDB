@@ -20,6 +20,23 @@
 
 namespace hybridse {
 namespace vm {
+
+std::shared_ptr<TableHandler> TableHandler::Cast(std::shared_ptr<DataHandler> in) {
+    switch (in->GetHandlerType()) {
+        case kRowHandler: {
+            auto left_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            left_table->AddRow(std::dynamic_pointer_cast<RowHandler>(in)->GetValue());
+            return left_table;
+        }
+        default:
+            return std::dynamic_pointer_cast<TableHandler>(in);
+    }
+    return nullptr;
+}
+std::shared_ptr<PartitionHandler> PartitionHandler::Cast(std::shared_ptr<DataHandler> in) {
+    return std::dynamic_pointer_cast<PartitionHandler>(in);
+}
+
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
                                            const vm::Schema* schema)
     : table_(table),

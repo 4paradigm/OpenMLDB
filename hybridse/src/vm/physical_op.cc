@@ -44,7 +44,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpDistinct, "DISTINCT"},
         {kPhysicalOpWindow, "WINDOW"},
         {kPhysicalOpJoin, "JOIN"},
-        {kPhysicalOpUnion, "UNION"},
+        {kPhysicalOpSetOperation, "SET_OPERATION"},
         {kPhysicalOpPostRequestUnion, "POST_REQUEST_UNION"},
         {kPhysicalOpRequestUnion, "REQUEST_UNION"},
         {kPhysicalOpRequestAggUnion, "REQUEST_AGG_UNION"},
@@ -102,23 +102,23 @@ void PhysicalOpNode::Print(std::ostream& output, const std::string& tab) const {
     output << tab << PhysicalOpTypeName(type_);
 }
 
-bool PhysicalOpNode::IsSameSchema(const vm::Schema& schema, const vm::Schema& exp_schema) const {
-    if (schema.size() != exp_schema.size()) {
+bool PhysicalOpNode::IsSameSchema(const codec::Schema* schema, const codec::Schema* exp_schema) {
+    if (schema->size() != exp_schema->size()) {
         LOG(WARNING) << "Schemas size aren't consistent: "
-                     << "expect size " << exp_schema.size() << ", real size " << schema.size();
+                     << "expect size " << exp_schema->size() << ", real size " << schema->size();
         return false;
     }
-    for (int i = 0; i < schema.size(); i++) {
-        if (schema.Get(i).name() != exp_schema.Get(i).name()) {
+    for (int i = 0; i < schema->size(); i++) {
+        if (schema->Get(i).name() != exp_schema->Get(i).name()) {
             LOG(WARNING) << "Schemas aren't consistent:\n"
-                         << exp_schema.Get(i).DebugString() << "vs:\n"
-                         << schema.Get(i).DebugString();
+                         << exp_schema->Get(i).DebugString() << "vs:\n"
+                         << schema->Get(i).DebugString();
             return false;
         }
-        if (schema.Get(i).type() != exp_schema.Get(i).type()) {
+        if (schema->Get(i).type() != exp_schema->Get(i).type()) {
             LOG(WARNING) << "Schemas aren't consistent:\n"
-                         << exp_schema.Get(i).DebugString() << "vs:\n"
-                         << schema.Get(i).DebugString();
+                         << exp_schema->Get(i).DebugString() << "vs:\n"
+                         << schema->Get(i).DebugString();
             return false;
         }
     }
@@ -138,8 +138,14 @@ base::Status PhysicalOpNode::SchemaStartWith(const vm::Schema& lhs, const vm::Sc
 
 void PhysicalOpNode::Print() const { this->Print(std::cout, "    "); }
 
-void PhysicalOpNode::PrintChildren(std::ostream& output, const std::string& tab) const {}
-void PhysicalOpNode::UpdateProducer(int i, PhysicalOpNode* producer) { producers_[i] = producer; }
+void PhysicalOpNode::PrintChildren(std::ostream& output, const std::string& tab) const {
+    for (size_t i = 0; i < producers_.size(); ++i) {
+        producers_[i]->Print(output, tab + INDENT);
+        if (i + i < producers_.size()) {
+            output << "\n";
+        }
+    }
+}
 void PhysicalUnaryNode::PrintChildren(std::ostream& output, const std::string& tab) const {
     if (producers_.empty() || nullptr == producers_[0]) {
         LOG(WARNING) << "empty producers";
@@ -524,7 +530,9 @@ PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(PhysicalOpNode* n
     return dynamic_cast<PhysicalSimpleProjectNode*>(node);
 }
 
-PhysicalUnionNode* PhysicalUnionNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalUnionNode*>(node); }
+PhysicalSetOperationNode* PhysicalSetOperationNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalSetOperationNode*>(node);
+}
 
 PhysicalPostRequestUnionNode* PhysicalPostRequestUnionNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalPostRequestUnionNode*>(node);
@@ -861,7 +869,7 @@ bool PhysicalWindowAggrerationNode::AddWindowUnion(PhysicalOpNode* node) {
             return false;
         }
     } else {
-        if (!IsSameSchema(*node->GetOutputSchema(), *producers_[0]->GetOutputSchema())) {
+        if (!IsSameSchema(node->GetOutputSchema(), producers_[0]->GetOutputSchema())) {
             LOG(WARNING) << "Union Table and window input schema aren't consistent";
             return false;
         }
@@ -1215,7 +1223,7 @@ std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
 
 std::vector<PhysicalOpNode*> PhysicalOpNode::GetDependents() const { return GetProducers(); }
 
-Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
+Status PhysicalSetOperationNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty union");
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
@@ -1223,16 +1231,16 @@ Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
-Status PhysicalUnionNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
-                                          PhysicalOpNode** out) {
-    CHECK_TRUE(children.size() == 2, common::kPlanError);
-    *out = nm->RegisterNode(new PhysicalUnionNode(children[0], children[1], is_all_));
+Status PhysicalSetOperationNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
+                                                 PhysicalOpNode** out) {
+    absl::Span<PhysicalOpNode* const> sp = absl::MakeSpan(children);
+    *out = nm->RegisterNode(new PhysicalSetOperationNode(op_type_, sp, distinct_));
     return Status::OK();
 }
 
-void PhysicalUnionNode::Print(std::ostream& output, const std::string& tab) const {
+void PhysicalSetOperationNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "\n";
+    output << "(" << node::SetOperatorName(op_type_, distinct_) << ")\n";
     PrintChildren(output, tab);
 }
 
@@ -1643,5 +1651,81 @@ Status BuildColumnReplacement(const node::ExprNode* expr, const SchemasContext* 
     return Status::OK();
 }
 
+absl::StatusOr<ColProducerTraceInfo> PhysicalOpNode::TraceColID(size_t col_id) const {
+    size_t sc_idx;
+    size_t col_idx;
+    auto s = schemas_ctx()->ResolveColumnIndexByID(col_id, &sc_idx, &col_idx);
+    if (!s.isOK()) {
+        return absl::NotFoundError(s.msg);
+    }
+
+    auto source = schemas_ctx()->GetSchemaSource(sc_idx);
+    auto path_idx = source->GetSourceChildIdx(col_idx);
+    int child_col_id = source->GetSourceColumnID(col_idx);
+
+    return ColProducerTraceInfo{{path_idx, child_col_id}};
+}
+absl::StatusOr<ColProducerTraceInfo> PhysicalOpNode::TraceColID(absl::string_view col_name) const {
+    size_t sc_idx;
+    size_t col_idx;
+    auto s = schemas_ctx()->ResolveColumnIndexByName("", "", std::string(col_name), &sc_idx, &col_idx);
+    if (!s.isOK()) {
+        return absl::NotFoundError(s.msg);
+    }
+
+    auto source = schemas_ctx()->GetSchemaSource(sc_idx);
+    auto path_idx = source->GetSourceChildIdx(col_idx);
+    int child_col_id = source->GetSourceColumnID(col_idx);
+
+    return ColProducerTraceInfo{{path_idx, child_col_id}};
+}
+absl::StatusOr<ColLastDescendantTraceInfo> PhysicalOpNode::TraceLastDescendants(size_t col_id) const {
+    ColLastDescendantTraceInfo trace_info;
+    auto info = TraceColID(col_id);
+    if (!info.ok()) {
+        return info.status();
+    }
+    for (auto entry : info.value()) {
+        if (entry.first < 0) {
+            trace_info.emplace_back(this, col_id);
+            continue;
+        }
+
+        auto res = GetProducer(entry.first)->TraceLastDescendants(entry.second);
+        if (!res.ok()) {
+            return res.status();
+        }
+
+        for (auto& e : res.value()) {
+            trace_info.emplace_back(e.first, e.second);
+        }
+    }
+
+    return trace_info;
+}
+absl::StatusOr<ColProducerTraceInfo> PhysicalSetOperationNode::TraceColID(size_t col_id) const {
+    std::string col_name;
+    auto s = schemas_ctx()->ResolveColumnNameByID(col_id, &col_name);
+    if (!s.isOK()) {
+        return absl::NotFoundError(s.msg);
+    }
+
+    return TraceColID(col_name);
+}
+absl::StatusOr<ColProducerTraceInfo> PhysicalSetOperationNode::TraceColID(absl::string_view col_name) const {
+    ColProducerTraceInfo vec;
+
+    // every producer node in set operation is able to backtrace columns in current node context
+    for (int i = 0; i < GetProducerCnt(); ++i) {
+        size_t child_col_id = 0;
+        auto s = GetProducer(i)->schemas_ctx()->ResolveColumnID("", "", std::string(col_name), &child_col_id);
+        if (!s.isOK()) {
+            return absl::NotFoundError(s.msg);
+        }
+        vec.emplace_back(i, child_col_id);
+    }
+
+    return vec;
+}
 }  // namespace vm
 }  // namespace hybridse

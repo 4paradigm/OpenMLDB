@@ -112,9 +112,9 @@ enum TableRefType {
 };
 
 enum QueryType {
-    kQuerySelect,
+    kQuerySelect = 0,
     kQuerySub,
-    kQueryUnion,
+    kQuerySetOperation,
 };
 enum ExprType {
     kExprUnknow = -1,
@@ -255,8 +255,11 @@ enum JoinType {
     kJoinTypeCross,  // AKA commma join
 };
 
-enum UnionType { kUnionTypeDistinct, kUnionTypeAll };
-
+enum class SetOperationType {
+    UNION,
+    EXCEPT,
+    INTERSECT,
+};
 enum CmdType {
     kCmdCreateDatabase = 0,
     kCmdUseDatabase,
@@ -304,7 +307,7 @@ enum PlanType {
     kPlanTypeFilter,
     kPlanTypeTable,
     kPlanTypeJoin,
-    kPlanTypeUnion,
+    kPlanTypeSetOperation,
     kPlanTypeSort,
     kPlanTypeGroup,
     kPlanTypeDistinct,

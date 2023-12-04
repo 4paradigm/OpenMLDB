@@ -72,8 +72,8 @@ INSTANTIATE_TEST_SUITE_P(SqlOrderParse, PlannerV2Test,
 INSTANTIATE_TEST_SUITE_P(SqlJoinParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 
-// INSTANTIATE_TEST_SUITE_P(SqlUnionParse, PlannerV2Test,
-//                        testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(SqlUnionParse, PlannerV2Test,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
 
 INSTANTIATE_TEST_SUITE_P(SqlSubQueryParse, PlannerV2Test,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/sub_query.yaml", FILTERS)));
@@ -99,9 +99,15 @@ TEST_P(PlannerV2Test, PlannerSucessTest) {
     node::PlanNodeList plan_trees;
     EXPECT_EQ(param.expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
         << status;
-    if (!param.expect().plan_tree_str_.empty()) {
-        // HACK: weak implementation, but usually it works
-        EXPECT_EQ(param.expect().plan_tree_str_, plan_trees.at(0)->GetTreeString());
+    if (param.expect().success_) {
+        if (!param.expect().plan_tree_str_.empty()) {
+            // HACK: weak implementation, but usually it works
+            EXPECT_EQ(param.expect().plan_tree_str_, plan_trees.at(0)->GetTreeString());
+        }
+    } else {
+        if (!param.expect().msg_.empty()) {
+            EXPECT_EQ(absl::StripAsciiWhitespace(param.expect().msg_), status.msg);
+        }
     }
 }
 TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
@@ -1868,8 +1874,6 @@ INSTANTIATE_TEST_SUITE_P(SqlErrorQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlUnsupporQuery, PlannerV2ErrorTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/plan/error_unsupport_sql.yaml", FILTERS)));
-INSTANTIATE_TEST_SUITE_P(SqlErrorRequestQuery, PlannerV2ErrorTest,
-                        testing::ValuesIn(sqlcase::InitCases("cases/plan/error_request_query.yaml", FILTERS)));
 
 TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
     auto &sql_case = GetParam();

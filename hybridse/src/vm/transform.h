@@ -156,6 +156,8 @@ class BatchModeTransformer {
  protected:
     Status TransformPlanOp(const ::hybridse::node::PlanNode* node, ::hybridse::vm::PhysicalOpNode** ouput);
 
+    Status TransformSetOperation(const node::SetOperationPlanNode* node, PhysicalSetOperationNode** out);
+
     virtual Status TransformLimitOp(const node::LimitPlanNode* node,
                                     PhysicalOpNode** output);
     virtual Status TransformProjectPlanOp(const node::ProjectPlanNode*, PhysicalOpNode**);
