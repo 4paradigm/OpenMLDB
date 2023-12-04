@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="fedb-restful-test" parallel="false" thread-count="2">
-    <test name="standalone">
-        <parameter name="env" value="standalone"/>
-        <parameter name="version" value="0.2.3"/>
+    <test name="cluster">
+        <parameter name="env" value="deploy"/>
+        <parameter name="version" value="0.4.0"/>
         <parameter name="fedbPath" value=""/>
 <!--        <packages>-->
 <!--            <package name="com._4paradigm.hybridsql.fedb_restful_test.v230"/>-->
 <!--        </packages>-->
         <classes>
-<!--            <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestInsert"/>-->
-            <class name="com._4paradigm.openmldb.http_test.v230.TestProcedure"/>
-            <class name="com._4paradigm.openmldb.http_test.v030.TestDeployment"/>
-            <class name="com._4paradigm.openmldb.http_test.v040.TestDeployment"/>
-<!--            <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestShow"/>-->
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestTmp"/>
+           <!-- <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestInsert"/> -->
+            <!-- <class name="com._4paradigm.openmldb.http_test.v230.TestProcedure"/> -->
+            <!-- <class name="com._4paradigm.openmldb.http_test.v030.TestDeployment"/> -->
+            <!-- <class name="com._4paradigm.openmldb.http_test.v040.TestDeployment"/> -->
+           <!-- <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestShow"/> -->
         </classes>
     </test>
     <listeners>

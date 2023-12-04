@@ -29,6 +29,6 @@ public class HttpResult implements Serializable {
     private List<Cookie> cookies;
     private long beginTime;
     private long endTime;
-    private String data;
+    private HttpData data;
 
 }

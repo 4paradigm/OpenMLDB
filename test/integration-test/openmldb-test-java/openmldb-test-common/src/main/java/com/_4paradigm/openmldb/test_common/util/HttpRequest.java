@@ -15,7 +15,10 @@
  */
 package com._4paradigm.openmldb.test_common.util;
 
+import com._4paradigm.openmldb.test_common.restful.model.HttpData;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
+import com.google.gson.Gson;
+
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
 import org.apache.commons.collections4.MapUtils;
@@ -359,13 +362,15 @@ public class HttpRequest {
         httpResult.setCookies(cookies);
         httpResult.setBeginTime(beginTime);
         httpResult.setEndTime(endTime);
-        httpResult.setData(result);
-//        if(Tool.isJSONValid(result)) {
-//            JsonElement jsonElement = new JsonParser().parse(result);
-//            httpResult.setData(jsonElement);
-//        }else{
-//            httpResult.setData(result);
-//        }
+        Gson gson = new Gson();
+        HttpData data = gson.fromJson(result, HttpData.class);
+        httpResult.setData(data);
+    //    if(Tool.isJSONValid(result)) {
+    //        JsonElement jsonElement = new JsonParser().parse(result);
+    //        httpResult.setData(jsonElement);
+    //    }else{
+    //        httpResult.setData(result);
+    //    }
         return httpResult;
     }
 }
