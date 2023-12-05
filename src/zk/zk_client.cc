@@ -565,8 +565,8 @@ void ZkClient::LogEvent(int type, int state, const char* path) {
     if (type == ZOO_SESSION_EVENT) {
         if (state == ZOO_CONNECTED_STATE) {
             Connected();
-        } else if(state == ZOO_CONNECTING_STATE || state == ZOO_ASSOCIATING_STATE) {
-            //just wait
+        } else if (state == ZOO_CONNECTING_STATE || state == ZOO_ASSOCIATING_STATE) {
+            // just wait
         } else if (state == ZOO_EXPIRED_SESSION_STATE) {
             connected_ = false;
         } else {
@@ -617,7 +617,7 @@ bool ZkClient::Mkdir(const std::string& path) {
     return MkdirNoLock(path);
 }
 
-bool ZkClient::EnsureConnected() { 
+bool ZkClient::EnsureConnected() {
     if (!IsConnected()) {
         LOG(WARNING) << "reconnect zk";
         if (Reconnect()) {

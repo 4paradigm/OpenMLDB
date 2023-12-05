@@ -136,10 +136,10 @@ class ZkClient {
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
 
-   // ensure that zk client is connected:
-   // if not, try to reconnect, return false if reconnect failed
-   // DON'T use zk client if this function return false
-   bool EnsureConnected();
+    // ensure that zk client is connected:
+    // if not, try to reconnect, return false if reconnect failed
+    // DON'T use zk client if this function return false
+    bool EnsureConnected();
 
  private:
     void Connected();
