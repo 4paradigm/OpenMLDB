@@ -201,7 +201,7 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
     return false;
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
                        const std::vector<std::pair<std::string, uint32_t>>& dimensions,
                        int memory_usage_limit) {
     ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> pb_dimensions;
@@ -213,12 +213,12 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::str
     return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit);
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
             ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
             int memory_usage_limit) {
     ::openmldb::api::PutRequest request;
     if (memory_usage_limit < 0 || memory_usage_limit > 100) {
-        return false;
+        return {base::ReturnCode::kError, absl::StrCat("invalid memory_usage_limit ", memory_usage_limit)};
     } else if (memory_usage_limit > 0) {
         request.set_memory_limit(memory_usage_limit);
     }
@@ -228,16 +228,15 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Sl
     request.set_pid(pid);
     request.mutable_dimensions()->Swap(dimensions);
     ::openmldb::api::PutResponse response;
-    bool ok =
-        client_.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!st.OK()) {
+        return st;
     }
-    LOG(WARNING) << "fail to send write request for " << response.msg() << " and error code " << response.code();
-    return false;
+    return {response.code(), response.msg()};
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value) {
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value) {
     ::openmldb::api::PutRequest request;
     auto dim = request.add_dimensions();
     dim->set_key(pk);
@@ -247,14 +246,12 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64
     request.set_tid(tid);
     request.set_pid(pid);
     ::openmldb::api::PutResponse response;
-
-    bool ok =
-        client_.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!st.OK()) {
+        return st;
     }
-    LOG(WARNING) << "fail to put for error " << response.msg();
-    return false;
+    return {response.code(), response.msg()};
 }
 
 bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset, std::shared_ptr<TaskInfo> task_info) {

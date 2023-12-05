@@ -445,8 +445,12 @@ bool TabletImpl::CheckGetDone(::openmldb::api::GetType type, uint64_t ts, uint64
 void TabletImpl::UpdateMemoryUsage() {
     base::SysInfo info;
     if (auto status = base::GetSysMem(&info); status.OK()) {
-        system_memory_usage_rate_.store(info.mem_used * 100 / info.mem_total, std::memory_order_relaxed);
-        DEBUGLOG("system_memory_usage_rate is %u", system_memory_usage_rate_.load(std::memory_order_relaxed));
+        if (info.mem_total > 0) {
+            system_memory_usage_rate_.store(info.mem_used * 100 / info.mem_total, std::memory_order_relaxed);
+            DEBUGLOG("system_memory_usage_rate is %u", system_memory_usage_rate_.load(std::memory_order_relaxed));
+        } else {
+            PDLOG(WARNING, "total memory is zero");
+        }
     } else {
         PDLOG(WARNING, "GetSysMem run failed. error message %s", status.GetMsg().c_str());
     }

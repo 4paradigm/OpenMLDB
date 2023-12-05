@@ -9908,7 +9908,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
                 uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
                 std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
                 auto table_ptr = GetTablet(endpoint);
-                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
+                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions).OK()) {
                     return {ReturnCode::kPutFailed, "fail to make a put request to table"};
                 }
                 break;

@@ -1366,11 +1366,11 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
+                    auto ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
                             insert_memory_usage_limit_.load(std::memory_order_relaxed));
-                    if (!ret) {
+                    if (!ret.OK()) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "INSERT failed, tid " + std::to_string(tid) +
+                                "INSERT failed, tid " + std::to_string(tid) + ", error msg " + ret.GetMsg() +
                                 ". Note that data might have been partially inserted. "
                                 "You are encouraged to perform DELETE to remove any partially "
                                 "inserted data before trying INSERT again.");
@@ -1483,11 +1483,11 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = client->Put(tid, pid, cur_ts, row_value, &kv.second,
+                    auto ret = client->Put(tid, pid, cur_ts, row_value, &kv.second,
                             insert_memory_usage_limit_.load(std::memory_order_relaxed));
-                    if (!ret) {
+                    if (!ret.OK()) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "INSERT failed, tid " + std::to_string(tid) +
+                                "INSERT failed, tid " + std::to_string(tid) + ", error msg " + ret.GetMsg() +
                                 ". Note that data might have been partially inserted. "
                                 "You are encouraged to perform DELETE to remove any partially "
                                 "inserted data before trying INSERT again.");

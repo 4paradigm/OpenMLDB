@@ -34,9 +34,6 @@ TEST_F(SystemInfoTest, GetMemory) {
     ASSERT_GT(info.mem_used, 0);
     ASSERT_GT(info.mem_available, 0);
     ASSERT_EQ(info.mem_total, info.mem_used + info.mem_available);
-    printf("total:%lu\n", info.mem_total);
-    printf("used:%lu\n", info.mem_used);
-    printf("avl:%lu\n", info.mem_available);
 }
 
 }  // namespace base
