@@ -64,8 +64,8 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path, void* wat
 }
 
 ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint, int32_t session_timeout,
-                   const std::string& endpoint, const std::string& zk_root_path,
-                   const std::string& auth_schema, const std::string& cert)
+                   const std::string& endpoint, const std::string& zk_root_path, const std::string& auth_schema,
+                   const std::string& cert)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
@@ -92,8 +92,8 @@ ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint, i
 }
 
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout, const std::string& endpoint,
-                   const std::string& zk_root_path, const std::string& zone_path,
-                   const std::string& auth_schema, const std::string& cert)
+                   const std::string& zk_root_path, const std::string& zone_path, const std::string& auth_schema,
+                   const std::string& cert)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
@@ -296,8 +296,7 @@ bool ZkClient::CreateNode(const std::string& node, const std::string& value, int
     }
     uint32_t size = node.size() + 11;
     char path_buffer[size];  // NOLINT
-    int ret =
-        zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &acl_vector_, flags, path_buffer, size);
+    int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &acl_vector_, flags, path_buffer, size);
     if (ret == ZOK) {
         assigned_path_name.assign(path_buffer, size - 1);
         PDLOG(INFO, "create node %s ok and real node name %s", node.c_str(), assigned_path_name.c_str());
@@ -583,8 +582,8 @@ void ZkClient::LogEvent(int type, int state, const char* path) {
     if (type == ZOO_SESSION_EVENT) {
         if (state == ZOO_CONNECTED_STATE) {
             Connected();
-        } else if(state == ZOO_CONNECTING_STATE || state == ZOO_ASSOCIATING_STATE) {
-            //just wait
+        } else if (state == ZOO_CONNECTING_STATE || state == ZOO_ASSOCIATING_STATE) {
+            // just wait
         } else if (state == ZOO_EXPIRED_SESSION_STATE) {
             connected_ = false;
         } else {
@@ -635,7 +634,7 @@ bool ZkClient::Mkdir(const std::string& path) {
     return MkdirNoLock(path);
 }
 
-bool ZkClient::EnsureConnected() { 
+bool ZkClient::EnsureConnected() {
     if (!IsConnected()) {
         LOG(WARNING) << "reconnect zk";
         if (Reconnect()) {
