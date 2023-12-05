@@ -26,12 +26,17 @@
 namespace openmldb::base {
 
 constexpr const char* MEM_TOTAL = "MemTotal";
-constexpr const char* MEM_AVAILABLE = "MemAvailable";
+constexpr const char* MEM_BUFFERS = "Buffers";
+constexpr const char* MEM_CACHED = "Cached";
+constexpr const char* MEM_FREE = "MemFree";
+constexpr const char* SLAB = "Slab";
 
 struct SysInfo {
-    uint64_t mem_total = 0;       // unit is kB
-    uint64_t mem_used = 0;        // unit is kB
-    uint64_t mem_available = 0;   // unit is kB
+    uint64_t mem_total = 0;          // unit is kB
+    uint64_t mem_used = 0;           // unit is kB
+    uint64_t mem_free = 0;           // unit is kB
+    uint64_t mem_buffers = 0;        // unit is kB
+    uint64_t mem_cached = 0;         // unit is kB
 };
 
 base::Status GetSysMem(SysInfo* info) {
@@ -51,6 +56,7 @@ base::Status GetSysMem(SysInfo* info) {
         return {};
     };
     int parse_cnt = 0;
+    uint64_t slab = 0;
     while (fgets(line, sizeof(line), fd)) {
         absl::string_view str_view(line);
         str_view = absl::StripAsciiWhitespace(str_view);
@@ -59,20 +65,33 @@ base::Status GetSysMem(SysInfo* info) {
                 return status;
             }
             parse_cnt++;
-        } else if (absl::StartsWith(str_view, MEM_AVAILABLE)) {
-            if (auto status = parse(str_view, MEM_AVAILABLE, &info->mem_available); !status.OK()) {
+        } else if (absl::StartsWith(str_view, MEM_BUFFERS)) {
+            if (auto status = parse(str_view, MEM_BUFFERS, &info->mem_buffers); !status.OK()) {
+                return status;
+            }
+            parse_cnt++;
+        } else if (absl::StartsWith(str_view, MEM_CACHED)) {
+            if (auto status = parse(str_view, MEM_CACHED, &info->mem_cached); !status.OK()) {
+                return status;
+            }
+            parse_cnt++;
+        } else if (absl::StartsWith(str_view, MEM_FREE)) {
+            if (auto status = parse(str_view, MEM_FREE, &info->mem_free); !status.OK()) {
+                return status;
+            }
+            parse_cnt++;
+        } else if (absl::StartsWith(str_view, SLAB)) {
+            if (auto status = parse(str_view, SLAB, &slab); !status.OK()) {
                 return status;
             }
             parse_cnt++;
         }
-        if (parse_cnt >= 2) {
-            break;
-        }
     }
-    if (parse_cnt != 2) {
+    if (parse_cnt != 5) {
         return {ReturnCode::kError, "fail to parse meminfo"};
     }
-    info->mem_used = info->mem_total - info->mem_available;
+    info->mem_cached += slab;
+    info->mem_used = info->mem_total - info->mem_buffers - info->mem_cached - info->mem_free;
     fclose(fd);
 #endif
     return {};

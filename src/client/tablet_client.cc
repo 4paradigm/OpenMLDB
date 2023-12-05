@@ -236,7 +236,8 @@ base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const 
     return {response.code(), response.msg()};
 }
 
-base::Status TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value) {
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
+        const std::string& value) {
     ::openmldb::api::PutRequest request;
     auto dim = request.add_dimensions();
     dim->set_key(pk);

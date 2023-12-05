@@ -32,8 +32,13 @@ TEST_F(SystemInfoTest, GetMemory) {
     ASSERT_TRUE(status.OK());
     ASSERT_GT(info.mem_total, 0);
     ASSERT_GT(info.mem_used, 0);
-    ASSERT_GT(info.mem_available, 0);
-    ASSERT_EQ(info.mem_total, info.mem_used + info.mem_available);
+    ASSERT_GT(info.mem_free, 0);
+    ASSERT_EQ(info.mem_total, info.mem_used + info.mem_buffers + info.mem_free + info.mem_cached);
+    /*printf("total:%lu\n", info.mem_total);
+    printf("used:%lu\n", info.mem_used);
+    printf("free:%lu\n", info.mem_free);
+    printf("buffers:%lu\n", info.mem_buffers);
+    printf("cached:%lu\n", info.mem_cached);*/
 }
 
 }  // namespace base
