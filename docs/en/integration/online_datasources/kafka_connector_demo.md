@@ -23,8 +23,15 @@ This article will use Docker mode to start OpenMLDB, so there is no need to down
 We recommend that you bind all three downloaded file packages to the `kafka` directory. Alternatively, you can download the file packages after starting the container. For our demonstration, we assume that the file packages are all in the `/work/kafka` directory.
 
 ```
-docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.0 bash
+docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.4 bash
 ```
+
+### Note
+
+Timestamp is in ms, value is set to JsonConvertor, only integer is supported. Depends on different messages, other Convertor can be selected. 
+
+Connector can be used in earlier versions of Kafka Server, e.g. 1.1.1. However, note that the earlier versions may not have Kafka Broker "auto create topics" on. You will need to [enable it](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable).
+
 
 ### Process
 
@@ -162,7 +169,7 @@ Please confirm whether the connect worker is running and if the sink task is cor
 
 ## Step 4: Testing
 
-### Transmit Data
+### Send Message
 
 For testing, we will use the console producer provided by Kafka as the messaging tool.
 
@@ -182,7 +189,7 @@ To simplify the process, we will save the above information in the file `kafka_d
 If you prefer the messages not to contain a schema but do not have additional components like Schema Registry, you can first create a table in OpenMLDB and then configure `auto.schema=true` in the connector. For detailed configuration methods, please refer to the [kafka connect jdbc documentation](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md). Currently, this method only supports usage with JsonConverter.
 ```
 
-### Query
+### Check
 
 We can query whether the insertion was successful in OpenMLDB. Query script `kafka_demo_files/select.sql`, the content is as follows:
 
@@ -208,7 +215,7 @@ The logs of the Kafka server can be found in `log/server.log`. If Kafka itself i
 
 The log for the connector can be found in `log/connect.log`. If the producer is not running as expected or you encounter difficulties querying data in OpenMLDB, please check this log for any relevant information.
 
-### Reinitialize
+### Reinitialization
 
 If you encounter any problems during testing, you can reinitialize the environment to facilitate the retry process.
 
