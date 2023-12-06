@@ -20,13 +20,13 @@ For detailed information on Pulsar's OpenMLDB Connector, you can also refer to P
 
 ### The Process
 
-The overall process of using the connector is illustrated in the figure below. We will now provide a detailed introduction to each step. Additionally, we have recorded the complete steps, and the details can be found in [Sharing the terminalizer](https://terminalizer.com/view/be2309235671). You can also download the recorded script in [demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml).
+The overall process of using the connector is illustrated in the figure below. We will now provide a detailed introduction to each step. Additionally, we have recorded the complete steps, and the details can be found in [terminalizer](https://terminalizer.com/view/be2309235671). You can also download the script in [demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml).
 
 In summary, the usage process can be broken down into three steps:
 
 1. Create the relevant databases and tables in OpenMLDB.
 2. Create a sink in Pulsar to connect the Pulsar data stream with OpenMLDB and configure the corresponding schema in Pulsar to ensure that the data stream is correctly received by OpenMLDB and stored in the online database.
-3. Conduct testing or normal use.
+3. Conduct testing or normal usage.
 
 ![demo steps](images/demo_steps.png)
 
@@ -34,7 +34,7 @@ In summary, the usage process can be broken down into three steps:
 
 ### Start OpenMLDB Cluster
 
-Using Docker, you can quickly start OpenMLDB and create tables for testing. For more information on creating an OpenMLDB cluster, please refer to [The Quickstart of OpenMLDB Cluster Version](https://chat.openai.com/en/quickstart/openmldb_quickstart#3-the-quickstart-of-openmldb-cluster-version).
+Using Docker, you can quickly start OpenMLDB and create tables for testing. For more information on creating an OpenMLDB cluster, please refer to [Quickstart](../../quickstart/openmldb_quickstart.md).
 
 ```{caution}
 Currently, only the OpenMLDB cluster version can act as the receiver of sinks, and data will only be sunk to the online storage of the cluster.
@@ -43,7 +43,7 @@ Currently, only the OpenMLDB cluster version can act as the receiver of sinks, a
 We recommend using the 'host network' mode to run Docker and bind the file directory 'files' where the SQL script is located.
 
 ```
-docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.8.0 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.8.4 bash
 docker exec -it openmldb bash
 ```
 
@@ -68,7 +68,7 @@ create table connector_test(id string, vendor_id int, pickup_datetime bigint, dr
 desc connector_test;
 ```
 
-Executing script:
+Execute script:
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/create.sql
@@ -211,7 +211,7 @@ The command to upload and check the schema is as follows:
 
 ## Step 3: Testing
 
-### Sending Information
+### Send Message
 
 We use two OpenMLDB images with `data/taxi_tour_table_train_simple.csv` as the sample data of the testing message. The data is shown in the following figure:
 ![test data](images/test_data.png)
@@ -249,7 +249,7 @@ Known issue: If the value of a Long type in the message is relatively small, dur
 If you want to see which specific column has the data type issue, please open the function's debug level logs. The method is described in [Debugging](#debugging).
 ```
 
-### To Check
+### Check
 
 #### Check in Pulsar
 
@@ -298,7 +298,7 @@ Pulsar will repeatedly attempt to write messages that were not successfully writ
 
 If you have a self-named sink name, you can use `./bin/pulsar-admin topics list public/default` to query the full name of the topic.
 
-#### The debug log
+#### Debug Log
 
 If the sink log information is not sufficient to locate the issue, you can open the debug log. You will need to modify the configuration and restart the sink by editing `vim conf/functions_log4j2.xml` and making the following modifications:
 
@@ -325,7 +325,7 @@ Then, restart sink:
 ./bin/pulsar-admin sinks restart --name openmldb-test-sink
 ```
 
-#### Restarting pulsar
+#### Restart Pulsar
 
 ```
 bin/pulsar-daemon stop standalone --zookeeper-port 5181
