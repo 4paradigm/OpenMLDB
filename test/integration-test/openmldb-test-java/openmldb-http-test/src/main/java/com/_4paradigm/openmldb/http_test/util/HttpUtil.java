@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -60,6 +61,7 @@ public class HttpUtil {
         Object o;
         List<Map<String, Object>> resultLists = new ArrayList<Map<String, Object>>();
         List<Object> resultList = new ArrayList<Object>();
+        Collections.sort(rows, new RowsSort(0));
         for (int i=0;i<rowsLength;i++) {
             resultList = rows.get(i);
             int rowLength = resultList.size();

@@ -34,7 +34,7 @@ public class OpenMLDBCommandUtil {
     private static final Logger logger = new LogProxy(log);
 
     public static OpenMLDBResult createDB(OpenMLDBInfo openMLDBInfo, String dbName) {
-        String sql = String.format("create database %s ;",dbName);
+        String sql = String.format("create database if not exists %s ;",dbName);
         OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
         return openMLDBResult;
     }
@@ -43,6 +43,7 @@ public class OpenMLDBCommandUtil {
         HashSet<String> dbNames = new HashSet<>();
         if (StringUtils.isNotEmpty(defaultDBName)) {
             dbNames.add(defaultDBName);
+            OpenMLDBResult createDBResult = createDB(openMLDBInfo,defaultDBName);
         }
         if (!Objects.isNull(inputs)) {
             for (InputDesc input : inputs) {

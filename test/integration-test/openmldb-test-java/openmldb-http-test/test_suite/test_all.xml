@@ -5,16 +5,15 @@
         <parameter name="env" value="deploy"/>
         <parameter name="version" value="0.4.0"/>
         <parameter name="fedbPath" value=""/>
-<!--        <packages>-->
-<!--            <package name="com._4paradigm.hybridsql.fedb_restful_test.v230"/>-->
-<!--        </packages>-->
+
         <classes>
-           <class name="com._4paradigm.openmldb.http_test.tmp.TestTmp"/>
-           <!-- <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestInsert"/> -->
-            <!-- <class name="com._4paradigm.openmldb.http_test.v230.TestProcedure"/> -->
-            <!-- <class name="com._4paradigm.openmldb.http_test.v030.TestDeployment"/> -->
-            <!-- <class name="com._4paradigm.openmldb.http_test.v040.TestDeployment"/> -->
-           <!-- <class name="com._4paradigm.hybridsql.fedb_restful_test.v230.TestShow"/> -->
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestCluster"/>
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestExpression"/>
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestFunction"/>
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestIndexOptimized"/>
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestJoin"/>
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestLongWindow"/>
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestSelect"/>
         </classes>
     </test>
     <listeners>
