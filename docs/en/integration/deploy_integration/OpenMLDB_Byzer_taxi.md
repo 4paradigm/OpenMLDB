@@ -1,10 +1,10 @@
 # Byzer
 
-This article demonstrates how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [Byzer](https://www.byzer.org/home) together to accomplish a complete machine-learning application. In this example, OpenMLDB receives instructions and data sent by Byzer, performs real-time feature computation on the data, and returns the processed dataset through feature engineering to Byzer for subsequent machine learning training and prediction.
+This article demonstrates how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [Byzer](https://www.byzer.org/home) together to accomplish a complete machine-learning application. In this example, OpenMLDB receives instructions and data sent by Byzer, performs real-time feature computation on the data, and returns the processed dataset through feature engineering to Byzer for subsequent machine learning training and inference.
 
-## 1. Preparation Work
+## Preparation
 
-### 1.1 Install OpenMLDB Engine
+### Install OpenMLDB
 
 1. This example recommends using the OpenMLDB cluster version running in a Docker container. For installation steps, please refer to [OpenMLDB Quickstart](../../quickstart/openmldb_quickstart.md).
 2. In this example, although the Byzer engine is on the same host, it needs to access OpenMLDB services from outside the container. Therefore, the service port of the OpenMLDB cluster needs to be exposed. It is recommended to use the `--network host` method, as detailed in the [IP Configuration Documentation - CLI/SDK->containeronebox](../../reference/ip_tips.md#clisdk-containeronebox).
@@ -13,16 +13,16 @@ This article demonstrates how to use [OpenMLDB](https://github.com/4paradigm/Ope
 
 The command is as follows:
 ```
-docker run --network host -dit --name openmldb -v /mlsql/admin/:/byzermnt 4pdosc/openmldb:0.8.0 bash
+docker run --network host -dit --name openmldb -v /mlsql/admin/:/byzermnt 4pdosc/openmldb:0.8.4 bash
 docker exec -it openmldb bash
 /work/init.sh
 echo "create database db1;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 exit # exit container
 ```
 
-### 1.2 Install Byzer Engine and Byzer Notebook
+### Install Byzer Engine and Byzer Notebook
 
-The example uses [Byzer All In One Deployment](https://docs.byzer.org/#/byzer-lang/en-us/) and [Byzer Notebook Binary System Installation](https://docs.byzer.org/#/byzer-notebook/zh-cn/installation/install_uninstall) method to install Byzer component.
+The example uses [Byzer All In One Deployment](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/server/byzer-all-in-one-deployment) and [Byzer Notebook Binary System Installation](https://docs.byzer.org/#/byzer-notebook/zh-cn/installation/install_uninstall) method to install Byzer component.
 
 ```{note}
 If you only need to install the OpenMLDB plugin offline, you can also use the [Sandbox Container Deployment](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/containerized-deployment/sandbox-standalone), where you can start and install the OpenMLDB plugin offline with just one click.
@@ -44,7 +44,7 @@ export PATH=$JAVA_HOME/bin:$PATH
 ```
 You can visit `http://<ip>:9003/`.
 
-1. Install Byzer Notebook. As Byzer Notebook [Require mysql](https://docs.byzer.org/#/byzer-notebook/zh-cn/installation/prerequisites), if you do not have a MySQL engine, you can start one through Docker mode.
+2. Install Byzer Notebook. As Byzer Notebook [Requires mysql](https://docs.byzer.org/#/byzer-notebook/zh-cn/installation/prerequisites), if you do not have a MySQL engine, you can start one through Docker mode.
 ```
 docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=root -e MYSQL_ROOT_HOST=% -p 3306:3306 byzer/mysql:8.0-20.04_beta
 wget https://download.byzer.org/byzer-notebook/1.2.3/Byzer-Notebook-1.2.3.tar.gz
@@ -56,7 +56,7 @@ You can visit `http://<ip>:9002/`. The user id and password are admin/admin. The
 
 ![Byzer_Notebook](images/Byzer_Notebook.jpg)
 
-### 1.3  Byzer OpenMLDB Plugin
+### Byzer OpenMLDB Plugin
 
 This example requires the use of the [OpenMLDB Plugin](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) provided by Byzer to accomplish message delivery with OpenMLDB. We can install it in Byzer Notebook, create a Notebook, add Cells, and execute the following commands:
 
@@ -69,7 +69,7 @@ After running Cell, the plugin will be downloaded and installed. The process wil
 If the installation is not successful or the download is too slow, you can manually download the jar package and then go offline (https://docs.byzer.org/#/byzer-lang/zh-cn/extension/installation/offline_install) for installation and configuration.
 ```
 
-### 1.3 Prepare Dataset
+### Prepare Dataset
 
 This article utilizes the Kaggle taxi driving time dataset. For the sake of demonstration, we will only use a portion of the data, which can be downloaded from [here](https://openmldb.ai/download/taxi_tour_table_train_simple.csv) and then uploaded to Byzer Notebook.
 
@@ -79,13 +79,12 @@ After uploading, you can find it in the Data Catalog-File System of the Byzer No
 ```{note}
 If you prefer to use the full dataset, you can obtain it from the following website: [Kaggle Taxi Driving Time Prediction Problem](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview). After downloading the dataset locally, it needs to be imported into Byzer Notebook.
 ```
-## 2. The Entire Process of Machine Learning
+## Machine Learning Process
 
-By creating a Notebook in Byzer Notebook, you can start writing the entire process of machine learning.
+By creating a Notebook in Byzer Notebook, you can start writing the entire machine learning process.
 
-### 2.1 Check Dataset
-
-[1.3 Prepare Dataset](#13-preparedateset) has been imported into the File System with the path `tmp/upload`. Use the Byzer Lang `load` command to load the data.
+### Step 1: Check Dataset
+[Prepare Dataset](#prepare-dataset) has been imported into the File System with the path `tmp/upload`. Use the Byzer Lang `load` command to load the data.
 
 ```sql
 load csv.`tmp/upload/taxi_tour_table_train_simple.csv` where delimiter=","
@@ -95,7 +94,7 @@ as taxi_tour_table_train_simple;
 After running Cell, you can see the browsing result of the data.
 ![byzer load result](images/byzer-load-data.png)
 
-### 2.2 OpenMLDB Create Tables and Import Data
+### Step 2: OpenMLDB Create Tables and Import Data
 
 To connect to the OpenMLDB engine, we will use plugins. Since the OpenMLDB cluster and Byzer are deployed on the same host, we can access OpenMLDB using the local address `127.0.0.1:2181`. Before running this code block in Byzer Notebook, make sure that the OpenMLDB engine is started.
 
@@ -124,9 +123,9 @@ and action="ddl";
 ```
 After the task is completed, the Result should have a prompt of `FINISHED`. Please enter the openmldb container to check the job log if it is `FAILED`.
 
-### 2.3 Perform Offline Feature Computation
+### Step 3: Perform Offline Feature Computation
 
-Usually, this step involves feature design. However, in this example, we will skip the design phase and directly use the features designed in section 2.3 of [OpenMLDB + LightGBM: Taxi Travel Time Prediction](../../use_case/taxi_tour_duration_prediction.md) for offline feature computation. The processed dataset will be exported as a local parquet file (parquet format is recommended; CSV load requires additional schema).
+Usually, this step involves feature design. However, in this example, we will skip the design phase and directly use the features designed in [OpenMLDB + LightGBM: Taxi Travel Time Prediction](../../use_case/taxi_tour_duration_prediction.md) for offline feature computation. The processed dataset will be exported as a local parquet file (parquet format is recommended; CSV load requires additional schema).
 
 ```sql
 run command as FeatureStoreExt.`` where
@@ -162,7 +161,7 @@ and action="ddl";
 ```
 After the task is completed, the Result should show a prompt of `FINISHED`. If it shows `FAILED`, please enter the openmldb container to check the job log. Refresh the Data Catalog of the Byzer Notebook to see the generated feature file path and the `tmp/feature_data` in the File System.
 
-### 2.4 Load Data in Byzer and Vectorize
+### Step 4: Load Data in Byzer
 
 Load the feature data generated in the previous step into the Byzer environment:
 ```sql
@@ -201,7 +200,7 @@ as training_table;
 
 ```
 
-### 2.5 Model Training
+### Step 5: Model Training
 
 Use the `train` command with the [Built-In Linear Regression Algorithm]([https://docs.byzer.org/#/byzer-lang/en-us/](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression)) to train the model and save it to the specified path `/model/taxi-trip`.
 
@@ -218,7 +217,7 @@ and `fitParam.0.maxIter`="50";
 View the relevant parameters of Byzer's Built-In Linear Regression Model using the command `!show et/params/LinearRegression;`.
 ```
 
-### 2.6 Feature Deployment
+### Step 6: Feature Deployment
 
 Use `DEPLOY` (must be in online mode) to deploy the feature computation SQL to OpenMLDB. The SQL should be consistent with the offline feature calculation SQL and it will be named as `d1` for deployment.
 
@@ -253,7 +252,7 @@ and db="db1"
 and action="ddl";
 ```
 
-### 2.7 Import Online Data
+### Step 7: Import Online Data
 
 Online real-time prediction often involves importing recent historical data into online storage. In addition to importing data files, real-time data sources can also be accessed in the production environment. For simplicity, this example directly imports the original dataset (real-time prediction uses new real-time data as a request, so there will be no "feature data for prediction training").
 
@@ -278,7 +277,7 @@ and db="db1"
 and action="ddl";
 ```
 
-### 2.8 Model Deployment
+### Step 8: Model Deployment
 
 Register the previously saved and trained model as a function that can be used directly.
 
@@ -286,7 +285,7 @@ Register the previously saved and trained model as a function that can be used d
 register LinearRegression.`/model/taxi-trip` as taxi_trip_model_predict;
 ```
 
-### 2.9 Real-Time Predictive Testing
+### Step 9: Real-Time Predictive Testing
 
 Typically, real-time feature prediction is driven by real-time data. For the convenience of this demonstration, we will still perform "real-time feature computation + prediction" in the Notebook. We will use the [Python Environment]([https://docs.byzer.org/#/byzer-lang/en-us/](https://docs.byzer.org/#/byzer-lang/zh-cn/python/env)) for real-time feature computation by using the requirements file.
 
