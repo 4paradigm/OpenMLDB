@@ -2830,8 +2830,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 }
 
                 auto thread = options_parser.GetAs<int64_t>("thread");
-                if(!thread.ok()) {
-                    *status = {::hybridse::common::StatusCode::kCmdError, "thread is not set" + options_parser.ToString()};
+                if (!thread.ok()) {
+                    *status = {::hybridse::common::StatusCode::kCmdError,
+                               "thread is not set" + options_parser.ToString()};
                     return {};
                 }
                 if (thread.value() > static_cast<int64_t>(options_->max_sql_cache_size)) {
@@ -3183,7 +3184,7 @@ void SQLClusterRouter::SetInteractive(bool value) { interactive_validator_.SetIn
     if (!mode.ok() || !delimiter.ok() || !quote_or.ok() || !null_value.ok() || !header.ok()) {
         return {base::kInvalidParameter, "impossible: get options from map failed" + options_parser.ToString()};
     }
-    auto quote = quote_or.value().empty()? '\0': quote_or.value()[0];
+    auto quote = quote_or.value().empty() ? '\0' : quote_or.value()[0];
     // Check file
     std::ofstream fstream;
     if (mode.value() == "error_if_exists") {
@@ -3230,7 +3231,7 @@ void SQLClusterRouter::SetInteractive(bool value) { interactive_validator_.SetIn
                     if (!ok) {
                         return {openmldb::base::kSQLCmdRunError, "Failed to get result set value"};
                     }
-                    if ( quote != '\0' && schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                    if (quote != '\0' && schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
                         rowString.append(quote + val + quote);
                     } else {
                         rowString.append(val);
@@ -3391,7 +3392,8 @@ hybridse::sdk::Status SQLClusterRouter::LoadDataSingleFile(int id, int step, con
             auto quote = options_parser.GetAs<std::string>("quote");
             auto null_value = options_parser.GetAs<std::string>("null_value");
             if (!deli.ok() || !quote.ok() || !null_value.ok()) {
-                return {StatusCode::kCmdError, "delimiter/quote/null_value option get failed" + options_parser.ToString()};
+                return {StatusCode::kCmdError,
+                        "delimiter/quote/null_value option get failed" + options_parser.ToString()};
             }
             ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, deli.value(), &cols,
                                                               quote.value().empty() ? '\0' : quote.value()[0]);

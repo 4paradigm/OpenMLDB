@@ -39,7 +39,7 @@ std::shared_ptr<hybridse::node::OptionsMap> CvtMap(const OptionsMapParser::Optio
 
 TEST_F(OptionsMapParserTest, Load) {
     OptionsMapParser::OptionsMap m = {{"delimiter", hybridse::node::ConstNode("\t")},
-                                      {"header", hybridse::node::ConstNode(false)}}; // header will be false
+                                      {"header", hybridse::node::ConstNode(false)}};  // header will be false
     LoadOptionsMapParser parser(CvtMap(m));
     ASSERT_TRUE(parser.IsLocalMode().ok() && !parser.IsLocalMode().value()) << "default should be cluster mode";
     // if not local mode, don't validate

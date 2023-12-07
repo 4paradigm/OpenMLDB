@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_FILE_OPTION_PARSER_H_
-#define SRC_SDK_FILE_OPTION_PARSER_H_
+#ifndef SRC_SDK_OPTIONS_MAP_PARSER_H_
+#define SRC_SDK_OPTIONS_MAP_PARSER_H_
 
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/strings/ascii.h"
 #include "base/status.h"
@@ -110,7 +111,7 @@ class OptionsMapParser {
 // DO NOT use this class to validate for cluster loading
 class LoadOptionsMapParser : public OptionsMapParser {
  public:
-    LoadOptionsMapParser(const std::shared_ptr<hybridse::node::OptionsMap>& options_map)
+    explicit LoadOptionsMapParser(const std::shared_ptr<hybridse::node::OptionsMap>& options_map)
         : OptionsMapParser(options_map) {
         // emplace: default value if not exists
         options_map_.emplace("delimiter", hybridse::node::ConstNode(","));
@@ -204,7 +205,7 @@ class LoadOptionsMapParser : public OptionsMapParser {
 
 class WriteOptionsMapParser : public OptionsMapParser {
  public:
-    WriteOptionsMapParser(const std::shared_ptr<hybridse::node::OptionsMap>& options_map)
+    explicit WriteOptionsMapParser(const std::shared_ptr<hybridse::node::OptionsMap>& options_map)
         : OptionsMapParser(options_map) {
         // emplace: default value if not exists
         options_map_.emplace("delimiter", hybridse::node::ConstNode(","));
@@ -262,4 +263,4 @@ class WriteOptionsMapParser : public OptionsMapParser {
 
 }  // namespace sdk
 }  // namespace openmldb
-#endif  // SRC_SDK_FILE_OPTION_PARSER_H_
+#endif  // SRC_SDK_OPTIONS_MAP_PARSER_H_
