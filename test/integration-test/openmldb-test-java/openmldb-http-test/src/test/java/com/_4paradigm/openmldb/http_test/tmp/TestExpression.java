@@ -16,19 +16,14 @@
 package com._4paradigm.openmldb.http_test.tmp;
 
 
-import com._4paradigm.openmldb.http_test.common.ClusterTest;
 import com._4paradigm.openmldb.http_test.executor.RestfulOnlineExecutor;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
-import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.testng.annotations.Test;
 import com._4paradigm.openmldb.test_common.common.BaseTest;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.http_test.common.ClusterTest;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Feature("expression api request")
 // expression/id cast_string_正确
 public class TestExpression  {

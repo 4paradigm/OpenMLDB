@@ -22,9 +22,7 @@ import io.qameta.allure.Story;
 import org.testng.annotations.Test;
 import com._4paradigm.openmldb.test_common.common.BaseTest;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Feature("Tmp api request")
 public class TestTmp  {
     @Test(dataProvider = "getCase",dataProviderClass = BaseTest.class)

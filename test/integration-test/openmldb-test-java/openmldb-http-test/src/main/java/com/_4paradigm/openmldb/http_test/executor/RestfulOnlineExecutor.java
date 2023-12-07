@@ -19,11 +19,10 @@ import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.test_common.provider.YamlUtil;
 import com._4paradigm.openmldb.test_common.util.Tool;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
-import lombok.extern.slf4j.Slf4j;
 import com._4paradigm.openmldb.test_common.restful.model.HttpData;
 import com.google.gson.Gson;
 
-@Slf4j
+
 public class RestfulOnlineExecutor extends BaseExecutor  {
 
     public RestfulOnlineExecutor(SQLCase sqlCase) {
@@ -102,6 +101,7 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void execute(){  
         if(openMLDBResult.getMsg().equals("deploy fail")){
             openMLDBResult.setOk(false);
