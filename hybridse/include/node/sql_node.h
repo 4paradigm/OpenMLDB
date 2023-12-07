@@ -981,7 +981,7 @@ class ConstNode : public ExprNode {
             case kInt64:
                 return static_cast<int64_t>(val_.vlong);
             case kFloat:
-                return static_cast<int64_t>(val_.vfloat);
+                return static_cast<int64_t>(val_.vfloat); // TODO: why int64_t
             case kDouble:
                 return static_cast<int64_t>(val_.vdouble);
             default: {
