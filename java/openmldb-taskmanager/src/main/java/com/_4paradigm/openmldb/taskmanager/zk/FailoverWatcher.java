@@ -257,7 +257,6 @@ public class FailoverWatcher implements Watcher {
         while (true) {
             try {
                 if (ZooKeeperUtil.createEphemeralNodeAndWatch(this, masterZnode, hostPort.getHostPort().getBytes())) {
-
                     // We are the master, return
                     hasActiveServer.set(true);
                     becomeActiveServer.set(true);
@@ -351,6 +350,7 @@ public class FailoverWatcher implements Watcher {
     // Another way is reconnect after get expired exception when get/set from zk
     public void startReconnectThread() {
         // TODO: just create a thread now, if more threads for new tasks, should use thread pool
+        // becomeActiveServer will be set only in this thread
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -360,13 +360,19 @@ public class FailoverWatcher implements Watcher {
                         synchronized (connected) {
                             if (connected.get() == false) {
                                 LOG.info("Try to reconnect ZooKeeper");
+                                // set connected in event
                                 zooKeeper.reconnectAfterExpiration();
-                                connected.set(true);
-                                initZnode(); // test
-                                // won't init znode again, because it's already created in init. If znode is deleted, should
-                                // restart taskmanager
-                                LOG.info("Try to become active master after reconnecting ZooKeeper");
-                                blockUntilActive();
+                                becomeActiveServer.set(false);
+                                // Won't init znode again to avoid exit in initZnode, it's already created in init. 
+                                // If znode is deleted, should restart taskmanager
+                            }
+                        }
+                        synchronized(connected) {
+                            if (connected.get() == true && becomeActiveServer.get() == false) {
+                                LOG.info("Available cxn, try to become active master after reconnecting ZooKeeper");
+                                if(!blockUntilActive()) {
+                                    LOG.warn("block failed, try later");
+                                }
                             }
                         }
                     } catch (Exception e) {
