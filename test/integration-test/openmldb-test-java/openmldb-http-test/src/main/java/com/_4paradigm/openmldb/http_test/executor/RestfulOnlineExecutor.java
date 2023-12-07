@@ -4,16 +4,12 @@ package com._4paradigm.openmldb.http_test.executor;
 import com._4paradigm.openmldb.test_common.restful.common.OpenMLDBHttp;
 import com._4paradigm.openmldb.test_common.restful.model.HttpMethod;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.common.BaseExecutor;
-import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
 import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFactory;
 import com._4paradigm.openmldb.http_test.util.HttpUtil;
-import com._4paradigm.openmldb.http_test.util.RowsSort;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -23,7 +19,11 @@ import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandUtil;
 import com._4paradigm.openmldb.test_common.provider.YamlUtil;
 import com._4paradigm.openmldb.test_common.util.Tool;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
-import com._4paradigm.openmldb.http_test.common.ClusterTest;
+import lombok.extern.slf4j.Slf4j;
+import com._4paradigm.openmldb.test_common.restful.model.HttpData;
+import com.google.gson.Gson;
+
+@Slf4j
 public class RestfulOnlineExecutor extends BaseExecutor  {
 
     public RestfulOnlineExecutor(SQLCase sqlCase) {
@@ -33,10 +33,10 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
     protected List<InputDesc> tables = sqlCase.getInputs();
     protected HttpResult httpresult;
     protected String deploy;
-   
-    String dbName = "test_apiserver";
     protected OpenMLDBInfo openMLDBInfo= YamlUtil.getObject(Tool.openMLDBDir().getAbsolutePath()+"/out/openmldb_info.yaml",OpenMLDBInfo.class);
-    String apiServerUrl ;
+    String dbName = "test_apiserver";
+    String apiServerUrl;
+    OpenMLDBHttp openMLDBHttp = new OpenMLDBHttp();
 
     @Override
     public boolean verify(){
@@ -58,12 +58,9 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
         if(null != sqlCase.getMode() && sqlCase.getMode().contains("procedure-unsupport")){
             return false;
         }        
-        
 
         return true;
     }
-
-
 
     @Override
     public void prepare() {
@@ -71,30 +68,32 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
         List<InputDesc> tables = sqlCase.getInputs();
         OpenMLDBCommandUtil.createDatabases(openMLDBInfo,dbName,tables);
         OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo, dbName, "set @@global.execute_mode='online'");
-        for (int i = 0; i < tables.size(); i++ ) {
-            if (!CollectionUtils.isEmpty(tables)) {
-                OpenMLDBCommandUtil.createTables(openMLDBInfo, dbName, tables);       
-                for (InputDesc table : tables) {
-                    tableNames.add(table.getName());
-                }
+        if (!CollectionUtils.isEmpty(tables)) {
+            OpenMLDBCommandUtil.createTables(openMLDBInfo, dbName, tables);       
+            for (InputDesc table : tables) {
+                tableNames.add(table.getName());
             }
         }
         Random r = new Random(System.currentTimeMillis());
         deploy = tableNames.get(0)+String.valueOf(r.nextInt(1000000));
         String tmpSql = sqlCase.getSql().toString().replaceAll("\'","\"");
-        if (sqlCase.getLongWindow()!=null) {
-            tmpSql = String.format("OPTIONS(long_windows=\"%s\") ", sqlCase.getLongWindow())+tmpSql;
-        } else {
-            tmpSql = String.format("OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\") ")+tmpSql;
-        }
+        String options = sqlCase.getLongWindow()!=null? "OPTIONS(long_windows=\""+sqlCase.getLongWindow()+"\",RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\") "
+                                                        :"OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\") ";
+        tmpSql = options + tmpSql;                 
         OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo, dbName, "deploy "+deploy+" "+tmpSql);
+        String uri = "/dbs/"+dbName+"/deployments/"+deploy;
+        HttpResult result = openMLDBHttp.restfulJsonRequest(apiServerUrl,uri,"",HttpMethod.GET);
+        if(result.getData().contains("\"code\":-1")){
+            openMLDBResult.setMsg("deploy fail");
+            return;
+        }
 
         // first table and data set as request, skipped in prepare stage, other tables and data set as base, added
         if (tables.size()>1){
             for (int i=1;i<tables.size();i++){
                 for (int j=0;j<tables.get(i).getRows().size();j++){
                     String body = HttpUtil.formatInputs("value",tables.get(i),j,false);
-                    String uri = "/dbs/"+dbName+"/tables/"+tableNames.get(i);
+                    uri = "/dbs/"+dbName+"/tables/"+tableNames.get(i);
                     OpenMLDBHttp openMLDBHttp = new OpenMLDBHttp();
                     openMLDBHttp.restfulJsonRequest(apiServerUrl,uri,body,HttpMethod.PUT);
                 }
@@ -104,9 +103,11 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
 
     @Override
     public void execute(){  
-        OpenMLDBHttp openMLDBHttp = new OpenMLDBHttp();
+        if(openMLDBResult.getMsg().equals("deploy fail")){
+            openMLDBResult.setOk(false);
+            return;
+        }
         List<List<Object>> tmpResults = new ArrayList<List<Object>>();
-        boolean success = true;
         HttpResult result = new HttpResult();
 
         // set row i as request line, insert row i, repeat
@@ -114,12 +115,12 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
             String body = HttpUtil.formatInputs("input",tables.get(0),i,true);
             String uri = "/dbs/"+dbName+"/deployments/"+deploy;
             result = openMLDBHttp.restfulJsonRequest(apiServerUrl,uri,body,HttpMethod.POST);
-            if (result.getData().getCode().equals(0)){
-                List<Object> tmpResult = (List<Object>)result.getData().getData().get("data").get(0);
+            Gson gson = new Gson();
+            HttpData data = gson.fromJson(result.getData(), HttpData.class);
+            if (data.getCode().equals(0)){
+                List<Object> tmpResult = (List<Object>)data.getData().get("data").get(0);
                 tmpResults.add(tmpResult);
-            } else {
-                break;
-            }
+            } else {break;}
             body = HttpUtil.formatInputs("value",tables.get(0),i,false);
             uri = "/dbs/"+dbName+"/tables/"+tableNames.get(0);
             openMLDBHttp.restfulJsonRequest(apiServerUrl,uri,body,HttpMethod.PUT);
@@ -149,42 +150,27 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
             Map<String,Object> expectColumn = openMLDBResult.getFormattedExpectResults().get(i);
             expectColumn.forEach((k,v)-> {
                 Assert.assertTrue(realColumn.containsKey(k), "column "+k+"don't exist");
+                String errorMessage = String.format("key %s mismatch in case %s", k,sqlCase.getDesc().toString());
                 if (v==null){
-                    Assert.assertNull(realColumn.get(k), k+" is not null");
+                    Assert.assertNull(realColumn.get(k), errorMessage);
                 } else if (v instanceof Float ){
-                    Assert.assertEquals((float)realColumn.get(k),(float)v,1e-4,
-                        "error key value is "+ k);
+                    Assert.assertEquals((float)realColumn.get(k),(float)v,1e-4,errorMessage);
                 } else if (v instanceof Double){
-                    Assert.assertEquals((double)realColumn.get(k),(double)v,1e-4,
-                        "error key value is "+ k);
-                } 
-                 else {
-                    Assert.assertEquals(realColumn.get(k),v,
-                        "error key value is "+ k);
+                    Assert.assertEquals((double)realColumn.get(k),(double)v,1e-4,errorMessage);
+                }  else {
+                    Assert.assertEquals(realColumn.get(k),v,errorMessage);
                 }
             });
-
         }
     }
 
     @Override
     public void tearDown(){
-        String tableName = tableNames.get(0);
         OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo, dbName, "drop deployment "+deploy);
         for(InputDesc table:sqlCase.getInputs()){
             String curDb = table.getDb().length()>0? table.getDb(): dbName;
             OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo, curDb, "drop table "+table.getName());
         }
-        for (int i = 0; i < tables.size(); i++ ) {
-            if(tables.get(i).getDb().length()>0 ){
-                //dbName = tables.get(i).getDb();
-                tableName =tableNames.get(0);
-                OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo, dbName, "drop deployment "+deploy);
-                OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo, dbName, "drop table "+tableName);
-            }
-        }
     }
-
-
 
 }

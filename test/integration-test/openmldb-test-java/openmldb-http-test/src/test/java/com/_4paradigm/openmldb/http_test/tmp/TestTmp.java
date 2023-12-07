@@ -25,11 +25,11 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Feature("cluster api request")
-public class TestCluster  {
+@Feature("Tmp api request")
+public class TestTmp  {
     @Test(dataProvider = "getCase",dataProviderClass = BaseTest.class)
-    @Yaml(filePaths = "integration_test/cluster/")
-    @Story("cluster api request")
+    @Yaml(filePaths = "integration_test/tmp/")
+    @Story("Tmp api request")
      public void testBatch(SQLCase sqlCase){
         new RestfulOnlineExecutor(sqlCase).run();
     }

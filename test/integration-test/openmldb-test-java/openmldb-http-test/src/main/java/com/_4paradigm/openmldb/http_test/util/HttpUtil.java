@@ -29,6 +29,7 @@ import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
 import lombok.extern.slf4j.Slf4j;
+import com._4paradigm.openmldb.test_common.restful.model.HttpData;
 
 @Slf4j
 public class HttpUtil {
@@ -54,19 +55,18 @@ public class HttpUtil {
 
 
     public static List<Map<String, Object>> FormatOutputs(List<List<Object>> rows,List<String> columns){
-        int rowsLength = rows.size();
         String[] nameType;
-        String name = "";
-        String type = "";
         Object o;
         List<Map<String, Object>> resultLists = new ArrayList<Map<String, Object>>();
         List<Object> resultList = new ArrayList<Object>();
+        if (rows.equals(null)||rows==null||rows.size()==0){return resultLists;}
         Collections.sort(rows, new RowsSort(0));
-        for (int i=0;i<rowsLength;i++) {
+        for (int i=0;i<rows.size();i++) {
             resultList = rows.get(i);
-            int rowLength = resultList.size();
             Map<String, Object> tmp = new HashMap<>();
-            for (int j=0;j<rowLength;j++){
+            for (int j=0;j<resultList.size();j++){
+                String name = "";
+                String type = "";
                 nameType = columns.get(j).split(" ");
                 for (int k=0; k<nameType.length;k++){
                     if (k == nameType.length-1) {type = switchType(nameType[k]);break;}
@@ -120,11 +120,13 @@ public class HttpUtil {
     @SuppressWarnings("unchecked")
     public static OpenMLDBResult convertHttpResult(SQLCase sqlCase, HttpResult httpResult){
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
-        openMLDBResult.setMsg(sqlCase.getDesc()+httpResult.getData().getMsg());
-        if (httpResult.getHttpCode()==200 && httpResult.getData().getCode()==0 ){
+        Gson gson = new Gson();
+        HttpData data = gson.fromJson(httpResult.getData(), HttpData.class);
+        openMLDBResult.setMsg(sqlCase.getDesc()+data.getMsg());
+        if (httpResult.getHttpCode()==200 && data.getCode()==0 ){
             openMLDBResult.setOk(true);
             try {
-                List<Object> httpData =  httpResult.getData().getData().get("data");
+                List<Object> httpData =  data.getData().get("data");
                 List<List<Object>> resultList = new ArrayList<List<Object>>();
                 for (Object o : httpData) {
                     resultList.add((List<Object>)o);
@@ -133,7 +135,7 @@ public class HttpUtil {
                     openMLDBResult.setResult(resultList);
                 }
                 
-                httpData = httpResult.getData().getData().get("schema");
+                httpData = data.getData().get("schema");
                 List<String> schemaList = new ArrayList<String>();
                 for (int i = 0 ; i<httpData.size();i++) {
                     Map<String,String> mp = (Map<String,String>)httpData.get(i);
@@ -153,15 +155,17 @@ public class HttpUtil {
     @SuppressWarnings("unchecked")
     public static OpenMLDBResult convertHttpResult(SQLCase sqlCase, HttpResult httpResult, List<List<Object>> tmpResults){
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
-        openMLDBResult.setMsg(sqlCase.getDesc()+httpResult.getData().getMsg());
-        if (httpResult.getHttpCode()!=200 || httpResult.getData().getCode()!=0 ){
+        Gson gson = new Gson();
+        HttpData data = gson.fromJson(httpResult.getData(), HttpData.class);
+        openMLDBResult.setMsg(sqlCase.getDesc()+data.getMsg());
+        if (httpResult.getHttpCode()!=200 || data.getCode()!=0 ){
             openMLDBResult.setOk(false);
             return openMLDBResult;
         }
         try {
-            List<Object> httpData =  httpResult.getData().getData().get("data");
+            List<Object> httpData =  data.getData().get("data");
             openMLDBResult.setResult(tmpResults);               
-            httpData = httpResult.getData().getData().get("schema");
+            httpData = data.getData().get("schema");
             List<String> schemaList = new ArrayList<String>();
             for (int i = 0 ; i<httpData.size();i++) {
                 Map<String,String> mp = (Map<String,String>)httpData.get(i);
@@ -172,7 +176,7 @@ public class HttpUtil {
             openMLDBResult.setOk(true);
         } catch (Exception e) {
             e.printStackTrace();
-            log.info( "erro msg is "+httpResult.getData().getMsg());
+            log.info( "erro msg is "+data.getMsg());
             openMLDBResult.setOk(false);
         }
         return openMLDBResult;

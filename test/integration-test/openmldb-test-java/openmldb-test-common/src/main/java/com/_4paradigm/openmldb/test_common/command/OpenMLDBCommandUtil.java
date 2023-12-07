@@ -70,11 +70,6 @@ public class OpenMLDBCommandUtil {
                 createSql = SQLUtil.formatSql(createSql, openMLDBInfo);
                 if (!createSql.isEmpty()) {
                     openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,createSql);
-                    if (!openMLDBResult.isOk()) {
-                        logger.error("fail to create table");
-                        // reportLog.error("fail to create table");
-                        
-                    }
                 }
             }
         }

@@ -58,7 +58,7 @@ public abstract class BaseExecutor implements IExecutor{
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println(className+"."+methodName+":"+ sqlCase.getDesc() + " FAIL!");
-            Assert.fail("executor run with exception");
+            Assert.fail("executor run with exception "+sqlCase.getDesc());
         }finally {
             if(verify) {
                 tearDown();
