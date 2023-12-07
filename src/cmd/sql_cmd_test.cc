@@ -203,11 +203,11 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
-    // False - Option un-supported
+    // True - Option un-supported will be ignored
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite', test = 'null')";
     router->ExecuteSQL(select_into_sql, &status);
-    ASSERT_FALSE(status.IsOK());
+    ASSERT_TRUE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 1)";
@@ -647,7 +647,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='overwrite', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "online data load only supports 'append' mode");
+    ASSERT_EQ(status.msg, "INVALID_ARGUMENT: local load mode must be append\n");
 
     load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
