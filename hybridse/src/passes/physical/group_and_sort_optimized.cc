@@ -729,7 +729,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
             }
             vm::PhysicalSetOperationNode* opt_set = nullptr;
             if (!plan_ctx_
-                     ->CreateOp<vm::PhysicalSetOperationNode>(&opt_set, set_op->op_type_, opt_inputs, set_op->distinct_)
+                     ->CreateOp<vm::PhysicalSetOperationNode>(&opt_set, set_op->set_type_, opt_inputs, set_op->distinct_)
                      .isOK()) {
                 return false;
             }

@@ -1423,7 +1423,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
 class PhysicalSetOperationNode : public PhysicalOpNode {
  public:
     PhysicalSetOperationNode(node::SetOperationType type, absl::Span<PhysicalOpNode *const> inputs, bool distinct)
-        : PhysicalOpNode(kPhysicalOpSetOperation, false), op_type_(type), distinct_(distinct) {
+        : PhysicalOpNode(kPhysicalOpSetOperation, false), set_type_(type), distinct_(distinct) {
         for (auto n : inputs) {
             AddProducer(n);
         }
@@ -1435,7 +1435,7 @@ class PhysicalSetOperationNode : public PhysicalOpNode {
             }
         }
 
-        if (group_optimized && op_type_ == node::SetOperationType::UNION) {
+        if (group_optimized && set_type_ == node::SetOperationType::UNION) {
             output_type_ = kSchemaTypeGroup;
         } else {
             output_type_ = kSchemaTypeTable;
@@ -1452,7 +1452,7 @@ class PhysicalSetOperationNode : public PhysicalOpNode {
 
     absl::StatusOr<ColProducerTraceInfo> TraceColID(absl::string_view col_name) const override;
 
-    node::SetOperationType op_type_;
+    node::SetOperationType set_type_;
     const bool distinct_ = false;
     static PhysicalSetOperationNode *CastFrom(PhysicalOpNode *node);
 };

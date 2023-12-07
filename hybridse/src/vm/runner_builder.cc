@@ -523,8 +523,13 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         case kPhysicalOpSetOperation: {
             auto set = dynamic_cast<vm::PhysicalSetOperationNode*>(node);
+            if (set->distinct_) {
+                status.msg = "online un-implemented: UNION DISTINCT";
+                status.code = common::kExecutionPlanError;
+                return fail;
+            }
             auto set_runner =
-                CreateRunner<SetOperationRunner>(id_++, node->schemas_ctx(), set->op_type_, set->distinct_);
+                CreateRunner<SetOperationRunner>(id_++, node->schemas_ctx(), set->set_type_, set->distinct_);
             std::vector<ClusterTask> tasks;
             for (auto n : node->GetProducers()) {
                 auto task = Build(n, status);
