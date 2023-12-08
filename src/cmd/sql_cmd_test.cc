@@ -658,7 +658,7 @@ TEST_P(DBSDKTest, LoadDataError) {
     load_sql = "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "ERROR: parse option thread failed");
+    ASSERT_EQ(status.msg, "INVALID_ARGUMENT: thread must be positive\n");
 
     HandleSQL("SET @@execute_mode='offline';");
     load_sql =
