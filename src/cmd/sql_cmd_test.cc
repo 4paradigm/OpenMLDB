@@ -653,7 +653,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "local data load only supports 'csv' format");
+    ASSERT_EQ(status.msg, "INVALID_ARGUMENT: local load format must be csv\n");
 
     load_sql = "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
     sr->ExecuteSQL(load_sql, &status);
