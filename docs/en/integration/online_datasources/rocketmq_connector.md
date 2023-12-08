@@ -1,6 +1,6 @@
 # RocketMQ
 
-## 1. Why Choose RocketMQ OpenMLDB Connector
+## Why Choose RocketMQ OpenMLDB Connector
 
 To enable efficient and stable transmission channels between OpenMLDB and RocketMQ, the RocketMQ OpenMLDB Connector offers a range of outstanding features, including but not limited to:
   - **User-friendly setup**: No coding is required; a **straightforward configuration** allows for seamless flow of RocketMQ messages into OpenMLDB through the RocketMQ OpenMLDB Connector. This simplified data import process **significantly enhances** the effective utilization of enterprise data.
@@ -8,11 +8,11 @@ To enable efficient and stable transmission channels between OpenMLDB and Rocket
   - **Robust reliability**: The cluster deployment method of the RocketMQ OpenMLDB Connector incorporates Failover capability, ensuring smooth task scheduling from problematic nodes to normal nodes and maintaining cluster load balancing. This enhances the **focus and efficiency** of enterprises in exploring the commercial value of their data.
   - **Low latency**: With a capacity to meet real-time data and feature development scenarios with just a **second-level delay**, the RocketMQ OpenMLDB Connector facilitates timely and efficient data processing.
 
-## 2. RocketMQ OpenMLDB Connector
+## RocketMQ OpenMLDB Connector
 
-### 2.1. Connector Overview
+### Overview
 
-**Position**
+**Target**
 
 RocketMQ Connect plays a crucial role in facilitating data integration within the RocketMQ ecosystem. It boasts several key features, including low latency, reliability, high performance, low code requirements, and strong scalability. This versatile tool enables seamless connections between various heterogeneous data systems, enabling the construction of data pipelines, ETL (Extract, Transform, Load) processes, CDC (Change Data Capture) operations, data lakes, and more.
 
@@ -36,7 +36,7 @@ $ mvn clean package -Dmaven.test.skip=true
 
 Last but not least, place the compiled plugin package at the loading address specified by RocketMQ connect.
 
-### 2.2. Connector Usage Demonstration
+### Connector Usage Demonstration
 
 **Process Introduction**
 
@@ -221,9 +221,9 @@ curl -X POST -H "Content-Type: application/json" http://127.0.0.1:8082/connector
 ```
 
 Confirm task initiation and start pulling data:
-![img](https://pic3.zhimg.com/80/v2-80395baf4060f32bb0e86d959ad6ecae_1440w.webp)
+![img1](https://pic3.zhimg.com/80/v2-80395baf4060f32bb0e86d959ad6ecae_1440w.webp)
 
-![img](https://pic2.zhimg.com/80/v2-2e76f61a818c5bc31cdd18eca2a8b4ed_1440w.webp)
+![img2](https://pic2.zhimg.com/80/v2-2e76f61a818c5bc31cdd18eca2a8b4ed_1440w.webp)
 
 To create an OpenMLDB RocketMQ sink connector for writing data to the OpenMLDB table, please refer to the following information. (Note: The listening topic corresponds to the table name of the source pull table.)
 
