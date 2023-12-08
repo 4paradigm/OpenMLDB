@@ -29,7 +29,12 @@ constexpr const char* MEM_TOTAL = "MemTotal";
 constexpr const char* MEM_BUFFERS = "Buffers";
 constexpr const char* MEM_CACHED = "Cached";
 constexpr const char* MEM_FREE = "MemFree";
-constexpr const char* SLAB = "Slab";
+constexpr const char* SRECLAIMABLE = "SReclaimable";
+
+/* We calculate MemAvailable as follows
+ * MemAvailable = MemFree + Buffers + Cached + SReclaimable
+ * refer https://www.kernel.org/doc/Documentation/filesystems/proc.txt
+ * */
 
 struct SysInfo {
     uint64_t mem_total = 0;          // unit is kB
@@ -56,7 +61,7 @@ base::Status GetSysMem(SysInfo* info) {
         return {};
     };
     int parse_cnt = 0;
-    uint64_t slab = 0;
+    uint64_t s_reclaimable = 0;
     while (fgets(line, sizeof(line), fd)) {
         absl::string_view str_view(line);
         str_view = absl::StripAsciiWhitespace(str_view);
@@ -80,8 +85,8 @@ base::Status GetSysMem(SysInfo* info) {
                 return status;
             }
             parse_cnt++;
-        } else if (absl::StartsWith(str_view, SLAB)) {
-            if (auto status = parse(str_view, SLAB, &slab); !status.OK()) {
+        } else if (absl::StartsWith(str_view, SRECLAIMABLE)) {
+            if (auto status = parse(str_view, SRECLAIMABLE, &s_reclaimable); !status.OK()) {
                 return status;
             }
             parse_cnt++;
@@ -90,7 +95,7 @@ base::Status GetSysMem(SysInfo* info) {
     if (parse_cnt != 5) {
         return {ReturnCode::kError, "fail to parse meminfo"};
     }
-    info->mem_cached += slab;
+    info->mem_cached += s_reclaimable;
     info->mem_used = info->mem_total - info->mem_buffers - info->mem_cached - info->mem_free;
     fclose(fd);
 #endif
