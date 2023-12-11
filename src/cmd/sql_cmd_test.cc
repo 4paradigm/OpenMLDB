@@ -671,7 +671,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         load_sql = "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='cluster');";
         sr->ExecuteSQL(load_sql, &status);
         ASSERT_FALSE(status.IsOK()) << status.msg;
-        ASSERT_TRUE(status.msg.find("Fail to get TaskManager client") != std::string::npos);
+        ASSERT_TRUE(status.msg.find("Fail to get TaskManager client") != std::string::npos) << status.msg;
     } else {
         ASSERT_TRUE(status.IsOK()) << status.msg;
     }
