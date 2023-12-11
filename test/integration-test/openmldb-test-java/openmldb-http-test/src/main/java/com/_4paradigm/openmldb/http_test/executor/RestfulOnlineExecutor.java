@@ -33,7 +33,8 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
     protected HttpResult httpresult;
     protected String deploy;
     protected OpenMLDBInfo openMLDBInfo= YamlUtil.getObject(Tool.openMLDBDir().getAbsolutePath()+"/out/openmldb_info.yaml",OpenMLDBInfo.class);
-    String dbName = "test_apiserver";
+    protected String defaultDb = sqlCase.getDb();
+    String dbName = defaultDb.equals(null)?"test_apiserver":defaultDb;
     String apiServerUrl;
     OpenMLDBHttp openMLDBHttp = new OpenMLDBHttp();
 
@@ -92,7 +93,8 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
             for (int i=1;i<tables.size();i++){
                 for (int j=0;j<tables.get(i).getRows().size();j++){
                     String body = HttpUtil.formatInputs("value",tables.get(i),j,false);
-                    uri = "/dbs/"+dbName+"/tables/"+tableNames.get(i);
+                    String curDb = tables.get(i).getDb().length()>0? tables.get(i).getDb(): dbName;
+                    uri = "/dbs/"+curDb+"/tables/"+tableNames.get(i);
                     OpenMLDBHttp openMLDBHttp = new OpenMLDBHttp();
                     openMLDBHttp.restfulJsonRequest(apiServerUrl,uri,body,HttpMethod.PUT);
                 }
@@ -122,7 +124,8 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
                 tmpResults.add(tmpResult);
             } else {break;}
             body = HttpUtil.formatInputs("value",tables.get(0),i,false);
-            uri = "/dbs/"+dbName+"/tables/"+tableNames.get(0);
+            String curDb = tables.get(0).getDb().length()>0? tables.get(0).getDb(): dbName;
+            uri = "/dbs/"+curDb+"/tables/"+tableNames.get(0);
             openMLDBHttp.restfulJsonRequest(apiServerUrl,uri,body,HttpMethod.PUT);
         }
 

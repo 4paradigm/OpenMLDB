@@ -7,7 +7,7 @@
         <parameter name="fedbPath" value=""/>
 
         <classes>
-           <!-- <class name="com._4paradigm.openmldb.http_test.tmp.TestTmp"/> -->
+           <class name="com._4paradigm.openmldb.http_test.tmp.TestMultiDB"/>
            <class name="com._4paradigm.openmldb.http_test.tmp.TestExpression"/>
            <class name="com._4paradigm.openmldb.http_test.tmp.TestCluster"/>
            <class name="com._4paradigm.openmldb.http_test.tmp.TestFunction"/>
