@@ -2816,13 +2816,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto plan = dynamic_cast<hybridse::node::LoadDataPlanNode*>(node);
             std::string database = plan->Db().empty() ? db : plan->Db();
             if (database.empty()) {
-                *status = {StatusCode::kCmdError, " no db in sql and no default db"};
+                *status = {StatusCode::kCmdError, "no db in sql and no default db"};
                 return {};
             }
 
             openmldb::sdk::LoadOptionsMapParser options_parser(plan->Options());
-            bool is_local = options_parser.IsLocalMode().ok();
-            if (!cluster_sdk_->IsClusterMode() || is_local) {
+            auto is_local = options_parser.IsLocalMode();
+            if (is_local.ok()) {
+                *status = {StatusCode::kCmdError, is_local.status().ToString()};
+                return;
+            }
+            if (!cluster_sdk_->IsClusterMode() || is_local.value()) {
                 if (cluster_sdk_->IsClusterMode() && !IsOnlineMode()) {
                     auto msg = "local load only supports loading data to online storage";
                     *status = {::hybridse::common::StatusCode::kCmdError, msg};
