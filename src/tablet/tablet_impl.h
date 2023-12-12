@@ -423,6 +423,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool IsCollectDeployStatsEnabled() const;
 
+    void ResetTable(std::shared_ptr<Table> t) { t.reset(); }
+
     // collect deploy statistics into memory
     void TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time);
 
