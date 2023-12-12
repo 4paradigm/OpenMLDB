@@ -30,8 +30,8 @@ At present, OpenMLDB exclusively supports utilizing metastore services for estab
 
 - Using the `spark.conf` Approach: You can set up `spark.hadoop.hive.metastore.uris` within the Spark configuration. This can be accomplished in two ways:
   - taskmanager.properties: Include `spark.hadoop.hive.metastore.uris=thrift://...` within the `spark.default.conf` configuration item, followed by restarting the taskmanager.
-  - CLI (Command Line Interface): Integrate this configuration directive into the ini configuration and utilize `--spark_conf` while initiating the CLI. [Client Spark Configuration File](../../reference/client_config/client_spark_config.md) can guide this process.
-- hive-site.xml: Alternatively, you can configure `hive.metastore.uris` within the `hive-site.xml` file. Place this configuration file within the `conf/` directory of the Spark home. If the `HADOOP_CONF_DIR` environment variable is already set, you can also position the configuration file there. For instance:
+  - CLI: Integrate this configuration directive into ini conf and use `--spark_conf` when start CLI. Please refer to [Client Spark Configuration](../../reference/client_config/client_spark_config.md).
+- hive-site.xml: You can configure `hive.metastore.uris` within the `hive-site.xml` file. Place this configuration file within the `conf/` directory of the Spark home. If the `HADOOP_CONF_DIR` environment variable is already set, you can also position the configuration file there. For instance:
 
 ```xml
 <configuration>
@@ -52,7 +52,7 @@ Insufficient permissions might lead to encountering the following error:
 org.apache.hadoop.security.AccessControlException: Permission denied: user=xx, access=xxx, inode="xxx":xxx:supergroup:drwxr-xr-x
 ```
 
-In such cases, the error points to a lack of authorization for accessing the HDFS path linked to the Hive table. The remedy involves assigning Read, Write, and Execute permissions to the concerned user to ensure proper access to the HDFS path.
+The error is the lack of authorization for accessing the HDFS path linked to the Hive table. To solve, assign Read, Write, and Execute permissions to the user to ensure proper access to the HDFS path.
 
 ```{seealso}
 If you have any inquiries, kindly ascertain the permission management approach implemented within your Hive cluster. For guidance, you can consult the [Permission Management] (https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Authorization#LanguageManualAuthorization-OverviewofAuthorizationModes) documentation to gain an understanding of the various authorization modes available.
@@ -62,7 +62,7 @@ If you have any inquiries, kindly ascertain the permission management approach i
 
 Verify whether the task is connected to the appropriate Hive cluster by examining the task log. Here's how you can proceed:
 
-- Check for the entry `INFO HiveConf:` in the log, which will indicate the Hive configuration file that was utilized. If you require further information about the loading process, you can review the Spark logs.
+- `INFO HiveConf:` indicates the Hive configuration file that was utilized. If you require further information about the loading process, you can review the Spark logs.
 - When connecting to the Hive metastore, there should be a log entry similar to `INFO metastore: Trying to connect to metastore with URI`. A successful connection will be denoted by a log entry reading `INFO metastore: Connected to metastore.`
 
 ## Data Format
@@ -93,7 +93,7 @@ CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
 
 It's worth noting that there are certain known issues associated with using the `LIKE` syntax for creating tables based on Hive shortcuts:
 
-- When employing the default timeout configuration via the command line, the table creation process might exhibit a timeout message despite the execution being successful. The final outcome can be verified by utilizing the `SHOW TABLES` command. If you need to adjust the timeout duration, refer to [Adjusting Configuration](../../openmldb_sql/ddl/SET_STATEMENT.md#offline-command-configuration-details).
+- When employing the default timeout configuration via the command line, the table creation process might exhibit a timeout message despite the execution being successful. The final outcome can be verified by utilizing the `SHOW TABLES` command. If you need to adjust the timeout duration, refer to [Adjusting Configuration](../../openmldb_sql/ddl/SET_STATEMENT.md#offline-commands-configuration-details).
 - Should the Hive table contain column constraints (such as `NOT NULL`), these particular constraints won't be incorporated into the newly created table.
 
 ## Import Hive Data to OpenMLDB
@@ -102,12 +102,20 @@ Importing data from Hive sources is facilitated through the API [`LOAD DATA INFI
 
 - Both offline and online engines are capable of importing data from Hive sources.
 - The Hive data import feature supports soft connections. This approach minimizes the need for redundant data copies and ensures that OpenMLDB can access Hive's most up-to-date data at any given time. To activate the soft link mechanism for data import, utilize the `deep_copy=false` parameter.
-- The `OPTIONS` parameter offers two valid settings: `deep_copy` and `mode`.
+- The `OPTIONS` parameter offers two valid settings: `deep_copy`, `mode` and `sql`.
 
 For example: 
 
 ```sql
 LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=false);
+```
+
+The data loading process also supports using SQL queries to filter specific data from Hive tables. It's important to note that the SQL syntax must comply with SparkSQL standards. The table name used should be the registered name without the `hive://` prefix.
+
+For example:
+
+```sql
+LOAD DATA INFILE 'hive://db1.t1' INTO TABLE db1.t1 OPTIONS(deep_copy=true, sql='SELECT * FROM db1.t1 where key=\"foo\"')
 ```
 
 ## Export OpenMLDB Data to Hive
