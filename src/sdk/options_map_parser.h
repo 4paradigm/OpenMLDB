@@ -30,11 +30,16 @@
 namespace openmldb {
 namespace sdk {
 
+/* 
+hybridse::node::OptionsMap(ptr) to OptionsMapParser::OptionsMap(value), the keys will be lowercase.
+Set default in derived class ctor. And write your own validate method by using FindAndPredicate & CheckStatusVec, so
+that we can get all options errors in the same time.
+*/
 class OptionsMapParser {
  public:
     typedef std::map<std::string, hybridse::node::ConstNode> OptionsMap;
     // parse to inner map, validate later
-    OptionsMapParser(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
+    explicit OptionsMapParser(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
         for (const auto& item : *options_map) {
             std::string key = item.first;
             absl::AsciiStrToLower(&key);

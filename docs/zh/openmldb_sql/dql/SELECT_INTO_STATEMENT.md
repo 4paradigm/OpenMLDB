@@ -44,9 +44,9 @@ SELECT ... INTO OUTFILE 'file_path' OPTIONS (key = value, ...)
 
 ## FilePath
 
-集群离线模式中，FilePath支持'file://', 'hdfs://', 'hive://'三种。其中'file://'和'hdfs://'地址为目录，而非文件名，'hive://'导出到Hive表中，格式为`hive://<db>.<table>`。
+load_mode='cluster'时，FilePath支持'file://', 'hdfs://', 'hive://'三种。其中'file://'和'hdfs://'地址为目录，而非文件名，'hive://'导出到Hive表中，格式为`hive://<db>.<table>`。
 
-单机版或集群在线模式时，FilePath只能是file格式，且必须为文件名，不可以是目录。
+单机版或load_mode='local'时，FilePath只能是file格式，且必须为文件名，不可以是目录。
 
 ## Hive 支持
 
