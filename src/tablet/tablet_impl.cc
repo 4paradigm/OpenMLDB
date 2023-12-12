@@ -3483,7 +3483,8 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
         }
         auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
         mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
-        task_pool_.AddTask(boost::bind(&TabletImpl::ResetTable, this, table));
+        // running ResetTable after this function return
+        task_pool_.DelayTask(10, boost::bind(&TabletImpl::ResetTable, this, table));
     } else {
         auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
         if (auto status = disk_table->Truncate(); !status.OK()) {
