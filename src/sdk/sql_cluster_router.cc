@@ -2824,7 +2824,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto is_local = options_parser.IsLocalMode();
             if (is_local.ok()) {
                 *status = {StatusCode::kCmdError, is_local.status().ToString()};
-                return;
+                return {};
             }
             if (!cluster_sdk_->IsClusterMode() || is_local.value()) {
                 if (cluster_sdk_->IsClusterMode() && !IsOnlineMode()) {
