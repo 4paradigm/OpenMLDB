@@ -31,14 +31,12 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
                                     job_timeout, 1);
     // if ok, cntl won't failed, only check repsonse
-    if (st.OK()) {
-        if (response.code() == 0) {
-            for (int32_t i = 0; i < response.jobs_size(); i++) {
-                ::openmldb::taskmanager::JobInfo job_info;
-                job_info.CopyFrom(response.jobs(i));
-                job_infos->push_back(job_info);
+    if (st.OK() && response.code() == 0) {
+          for (int32_t i = 0; i < response.jobs_size(); i++) {
+              ::openmldb::taskmanager::JobInfo job_info;
+              job_info.CopyFrom(response.jobs(i));
+              job_infos->push_back(job_info);
             }
-        }
         return {response.code(), response.msg()};
     }
     return st;
@@ -54,12 +52,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJob, &request, &response,
                                     job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_job()) {
-                job_info->CopyFrom(response.job());
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_job()) {
+        job_info->CopyFrom(response.job());
         return {response.code(), response.msg()};
     }
 
@@ -76,12 +70,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::StopJob, &request, &response,
                                     job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_job()) {
-                job_info->CopyFrom(response.job());
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_job()) {
+        job_info->CopyFrom(response.job());
         return {response.code(), response.msg()};
     }
     return st;
@@ -103,10 +93,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request, &response,
                                     job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            *output = response.output();
-        }
+    if (st.OK() && response.code() == 0) {
+        *output = response.output();
         return {response.code(), response.msg()};
     }
     return st;
@@ -130,12 +118,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
                                     &response, job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_job()) {
-                job_info->CopyFrom(response.job());
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_job()) {     
+        job_info->CopyFrom(response.job());
         return {response.code(), response.msg()};
     }
     return st;
@@ -159,12 +143,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
                                     &response, job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_job()) {
-                job_info->CopyFrom(response.job());
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_job()) {
+        job_info->CopyFrom(response.job());        
         return {response.code(), response.msg()};
     }
     return st;
@@ -188,12 +168,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
                                     &response, job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_job()) {
-                job_info->CopyFrom(response.job());
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_job()) {
+        job_info->CopyFrom(response.job());
         return {response.code(), response.msg()};
     }
     return st;
@@ -217,12 +193,8 @@ namespace openmldb::client {
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,
                                     &response, job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_job()) {
-                job_info->CopyFrom(response.job());
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_job()) {
+        job_info->CopyFrom(response.job());
         return {response.code(), response.msg()};
     }
     return st;
@@ -254,12 +226,8 @@ std::string TaskManagerClient::GetJobLog(const int id, int job_timeout, ::openml
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::GetJobLog, &request, &response,
                                     job_timeout, 1);
 
-    if (st.OK()) {
-        if (response.code() == 0) {
-            if (response.has_log()) {
-                return response.log();
-            }
-        }
+    if (st.OK() && response.code() == 0 && response.has_log()) {    
+        return response.log();
         status->code = response.code();
         status->msg = response.msg();
         return "";
@@ -279,13 +247,12 @@ std::string TaskManagerClient::GetJobLog(const int id, int job_timeout, ::openml
     request.mutable_fun()->CopyFrom(*fun);
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::CreateFunction, &request,
                                     &response, job_timeout, 1);
-    if (st.OK()) {
-        if (response.code() == 0) {
-            return {};
-        } else {
-            // base::ReturnCode
-            return {response.code(), response.msg()};
-        }
+    if (st.OK() && response.code() == 0) {
+        
+        return {};
+    } else {
+        // base::ReturnCode
+        return {response.code(), response.msg()};
     }
     return st;
 }
@@ -296,12 +263,11 @@ std::string TaskManagerClient::GetJobLog(const int id, int job_timeout, ::openml
     ::openmldb::taskmanager::DropFunctionResponse response;
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::DropFunction, &request, &response,
                                     job_timeout, 1);
-    if (st.OK()) {
-        if (response.code() == 0) {
-            return {};
-        } else {
-            return {response.code(), response.msg()};
-        }
+    if (st.OK() && response.code() == 0) {
+        
+        return {};
+    else {
+        return {response.code(), response.msg()};    
     }
     return st;
 }
