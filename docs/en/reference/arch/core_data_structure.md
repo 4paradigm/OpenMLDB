@@ -1,6 +1,6 @@
 # Real-Time Engine Core Data Structure and Optimization Analysis
 
-The [Real-Time Engine Performance Test Report (First Edition)](https://openmldb.feishu.cn/wiki/wikcnZRB9VRkqgD1vDFu1F9AaTh) demonstrates that OpenMLDB's real-time SQL engine can achieve millisecond-level latency. This article provides an in-depth look at the core technical architecture responsible for achieving such low latency in real-time computing. The real-time engine relies on two key technologies: Double-layer skip list indexing (optimized for temporal data) and query pre-aggregation technology. This article offers a detailed exploration of these critical technologies.
+The [Real-Time Engine Performance Test Report](https://openmldb.feishu.cn/wiki/EXB5wI8M8iCquBkErJjcn6JVn0g) demonstrates that OpenMLDB's real-time SQL engine can achieve millisecond-level latency. This article provides an in-depth look at the core technical architecture responsible for achieving such low latency in real-time computing. The real-time engine relies on two key technologies: Double-layer skip list indexing (optimized for temporal data) and query pre-aggregation technology. This article offers a detailed exploration of these critical technologies.
 
 ## Background Introduction
 
@@ -13,7 +13,7 @@ OpenMLDB integrates two sets of SQL engines, one for batch processing and the ot
 
 ### Skip List
 
-Skip lists were initially proposed by William Pugh in 1990 in their paper, [Skip Lists: A Probabilistic Alternative to Balanced Trees](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf). Skip lists employ a probability equilibrium strategy, unlike strict equilibrium strategies used in balanced trees. This approach significantly simplifies and speeds up element insertion and deletion compared to balanced trees. Skip lists can be considered an extension of the basic linked list data structure by introducing multi-level indexes to enable fast localization and lookup operations. They offer the flexibility of data management associated with linked lists, with data lookup and insertion having a time complexity of O(logn).
+Skip lists were initially proposed by William Pugh in 1990 in their paper, [Skip Lists: A Probabilistic Alternative to Balanced Trees](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf). Skip lists employ a probabilistic balancing strategy instead of strict balancing strategy used in balanced trees. This approach significantly simplifies and speeds up element insertion and deletion compared to balanced trees. Skip lists can be considered an extension of the basic linked list data structure by introducing multi-level indexes to enable fast localization and lookup operations. They offer the flexibility of data management associated with linked lists, with data lookup and insertion having a time complexity of O(logn).
 
 ![img](images/core_data_structure/1.png)
 
@@ -41,12 +41,12 @@ To efficiently access temporal data, OpenMLDB has implemented a distributed memo
 
 This index structure maintains a double-layer skip list for each indexed column:
 
-1. **First-Level Skip List:** The key here corresponds to the specific value of the index column, and the value is a pointer to the set of all rows associated with that key value. These rows are aggregated under the second-level skip list. This indexing is optimized for grouping operations, similar to 'group by' operations in databases. It facilitates the rapid retrieval of all relevant records of a specific key value (e.g., a user) in a data table.
+1. **First-Level Skip List:** The key here corresponds to the specific value of the index column, and the value is a pointer to the set of all rows associated with that key value. These rows are aggregated under the second-level skip list. This indexing is optimized for grouping operations, similar to `group by` operations in databases. It facilitates the rapid retrieval of all relevant records of a specific key value (e.g., a user) in a data table.
 2. **Second-Level Skip List:** The key in this layer is typically a timestamp, and the value is the corresponding data row. These data rows are sorted in descending chronological order based on the timestamp. This level of skip list optimization is designed for aggregation computations within a specific time window, where efficiently discovering all data within the window is crucial.
 
-Using this upper-level skip list structure, for time window aggregation computations, locating the corresponding key from the first-level skip list has a time complexity of O(logn). Typically, when computing features, the time window is traced back from the current time. Therefore, since the second-level skip list is sorted backward by timestamp, it's sufficient to traverse the specified range of window data starting from the first node. If the backtracking doesn't begin from the current time, searching through has a time complexity of O(logn). This double-layer skip list index structure is well-suited for time-window-based aggregation operations in feature engineering, offering a typical time complexity of approximately O(logn).
+Using this upper-level skip list structure, for time window aggregation computations, locating the corresponding key from the first-level skip list has a time complexity of `O(logn)`. Typically, when computing features, the time window is traced back from the current time. Therefore, since the second-level skip list is sorted backward by timestamp, it's sufficient to traverse the specified range of window data starting from the first node. If the backtracking doesn't begin from the current time, searching through has a time complexity of `O(logn)`. This double-layer skip list index structure is well-suited for time-window-based aggregation operations in feature engineering, offering a typical time complexity of approximately `O(logn)`.
 
-## Pre-Aggregation Technology
+## Pre-Aggregation
 
 In some scenarios, such as portrait systems, temporal feature windows may span a considerable amount of data (e.g., spanning three years), referred to as "long window" features. Traditional real-time computation methods for long windows involve traversing all window data and performing complete aggregations, resulting in linearly increasing computation times as data volume grows, making it challenging to meet online performance requirements. Additionally, multiple adjacent feature computations often include duplicate calculations (window overlap), wasting computational resources.
 
@@ -58,7 +58,7 @@ The pre-aggregation logic is shown in the following figure:
 
 The pre-aggregation logic involves constructing multi-layer pre-aggregation tables based on the original data. For instance, the first layer of pre-aggregation may involve aggregating data at an hourly level, and the second layer can perform day-level pre-aggregation based on the first layer's results. When calculating a long window feature, pre-aggregated features from various layers are used, alongside real-time data, to accumulate aggregated features efficiently.
 
-- The second layer of pre-aggregation features ` aggr3`
+- The second layer of pre-aggregation features `aggr3`
 
 - The first layer of pre-aggregation features `aggr2`and `aggr4`
 
@@ -70,7 +70,7 @@ Implementation of pre-aggregation technology involves two key components: pre-ag
 
 The left side shows real-time computations without pre-aggregation, using raw data only, while the right side depicts an optimized SQL execution plan that leverages both raw and pre-aggregated data for efficient real-time feature computation.
 
-## The Performance
+## Performance
 
 For specific performance testing details of OpenMLDB, please refer to the respective reference reports for comprehensive information. Below, we outline the primary test scenarios that were selected for presentation.
 
@@ -82,7 +82,7 @@ As OpenMLDB is a memory-based temporal database, we initiated a comparative anal
 
 From the figure above, it's evident that OpenMLDB exhibits significant performance advantages over DB-X and DB-Y in typical feature extraction workloads. When queries become more complex, such as when the number of time windows or table columns increases to 8, OpenMLDB achieves substantial performance advantages of 1-2 orders of magnitude.
 
-For detailed experiment configurations, datasets, and performance ratios, please refer to the VLDB academic paper linked below:
+For detailed experiment configurations, datasets, and performance ratios, please refer to the VLDB publication linked below:
 
 - Cheng Chen, et al. [Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory.](http://vldb.org/pvldb/vol14/p799-chen.pdf) International Conference on Very Large Data Bases (VLDB) 2021.
 
