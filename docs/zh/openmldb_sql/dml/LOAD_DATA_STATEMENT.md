@@ -2,7 +2,9 @@
 `LOAD DATA INFILE`语句能高效地将文件中的数据读取到数据库中的表中。`LOAD DATA INFILE` 与 `SELECT INTO OUTFILE`互补。要将数据从 table导出到文件，请使用[SELECT INTO OUTFILE](../dql/SELECT_INTO_STATEMENT.md)。要将文件数据导入到 table 中，请使用`LOAD DATA INFILE`。
 
 ```{note}
-INFILE 的 filePath，既可以是单个文件名，也可以是目录，也可以使用`*`通配符。如果目录中存在多格式的文件，只会选择 LoadDataInfileOptionsList 中指定的FORMAT格式文件。具体格式等价于`DataFrameReader.read.load(String)`，可以使用spark shell来read你想要的文件路径，确认能否读入成功。
+无论何种load_mode，INFILE 的 filePath既可以是单个文件名，也可以是目录，也可以使用`*`通配符。
+- load_mode=cluster的具体格式等价于`DataFrameReader.read.load(String)`，可以使用spark shell来read你想要的文件路径，确认能否读入成功。如果目录中存在多格式的文件，只会选择 LoadDataInfileOptionsList 中指定的FORMAT格式文件。
+- load_mode=local则使用glob选择出符合的所有文件，不会检查单个文件的格式，所以，请保证满足条件的是csv格式，建议使用`*.csv`限制文件格式。
 ```
 
 ## Syntax
