@@ -2,9 +2,9 @@
 
 This article will use [The Problem of Predicting Taxi Travel Time on Kaggle](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) as an example to demonstrate how to use the combination of OpenMLDB and LightGBM to create a complete machine-learning application.
 
-Please note that this document employs a pre-compiled Docker image. If you wish to perform tests in your self-compiled and built OpenMLDB environment, you will need to configure and utilize the [Spark Distribution Documentation for Feature Engineering Optimization](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html). Refer to the [Spark Distribution Documentation for OpenMLDB Optimization](https://chat.openai.com/tutorial/openmldbspark_distribution.md#openmldb-spark-distribution) and the [Installation and Deployment Documentation](https://chat.openai.com/deploy/install_deploy.md#modifyingtheconfigurationfileconftaskmanagerproperties) for more detailed information.
+Please note that this document employs a pre-compiled Docker image. If you wish to perform tests in your self-compiled and built OpenMLDB environment, you will need to configure and utilize the [Spark Distribution Documentation for Feature Engineering Optimization](https://github.com/4paradigm/Spark/). Refer to the [Spark Distribution Documentation for OpenMLDB Optimization](../tutorial/openmldbspark_distribution.md#openmldb-spark-distribution) and the [Installation and Deployment Documentation](../deploy/install_deploy.md#modifyingtheconfigurationfileconftaskmanagerproperties) for more detailed information.
 
-## The Preparation and Preliminary Knowledge
+## Preparation and Preliminary Knowledge
 
 This article is centered around the development and deployment of OpenMLDB CLI. To begin, you should download the sample data and initiate the OpenMLDB CLI. We recommend using Docker images for a streamlined experience.
 
@@ -15,7 +15,7 @@ This article is centered around the development and deployment of OpenMLDB CLI. 
 Execute the following command from the command line to pull the OpenMLDB image and start the Docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.2 bash
+docker run -it 4pdosc/openmldb:0.8.4 bash
 ```
 
 This image comes pre-installed with OpenMLDB and encompasses all the scripts, third-party libraries, open-source tools, and training data necessary for this case.
@@ -44,9 +44,9 @@ The init.sh script provided within the image helps users initialize the environm
 
 ### Preliminary Knowledge: Asynchronous Tasks
 
-Some OpenMLDB commands are asynchronous, such as the `LOAD DATA`, `SELECT`, and `SELECT INTO` commands in online/offline mode. After submitting a task, you can use relevant commands such as `SHOW JOBS` and `SHOW JOB` to view the progress of the task. For details, please refer to the [Offline Task Management Document](https://chat.openai.com/openmldb_sql/task_manage/index.rst).
+Some OpenMLDB commands are asynchronous, such as the `LOAD DATA`, `SELECT`, and `SELECT INTO` commands in online/offline mode. After submitting a task, you can use relevant commands such as `SHOW JOBS` and `SHOW JOB` to view the progress of the task. For details, please refer to the [Offline Task Management Document](../openmldb_sql/task_manage/index.rst).
 
-## The Entire Process of Machine Learning
+## Machine Learning Process
 
 ### Step 1: Create Database and Table
 
@@ -120,7 +120,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 ```
 
 ```{note}
-SELECT INTO is an asynchronous task. Please use the SHOW JOBS command to check the task's running status and wait for it to run successfully (transitioning to the FINISHED state) before proceeding to the next step.
+`SELECT INTO` is an asynchronous task. Please use the SHOW JOBS command to check the task's running status and wait for it to run successfully (transitioning to the FINISHED state) before proceeding to the next step.
 ```
 
 ### Step 5: Model Training
@@ -139,7 +139,7 @@ SELECT INTO is an asynchronous task. Please use the SHOW JOBS command to check t
 
 ### Step 6: Launch Feature Extraction SQL Script
 
-Assuming that the features designed in [Step 3: Feature Design](https://chat.openai.com/c/03700398-f563-4565-8fae-132a05b01efb#step-3featuredesign) have produced the expected model in the previous training, the next step is to deploy the feature extraction SQL script online to provide online feature extraction services.
+Assuming that the features designed in [Step 3: Feature Design](#step-3-feature-design) have produced the expected model in the previous training, the next step is to deploy the feature extraction SQL script online to provide online feature extraction services.
 
 1. Restart the OpenMLDB CLI for SQL online deployment:
 
@@ -169,6 +169,10 @@ WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
 ```
 
+```note
+DEPLOY contains BIAS OPTIONS here because importing data files into online storage will not be updated. For the current time, it may exceed the TTL (Time-To-Live) of the table index after DEPLOY, leading to the expiration of this data in the table. Time-based expiration relies solely on the 'ts' column and 'ttl' of each index. If the value in that column of the data is < (current time - abs_ttl), it will be expired for that index, irrespective of other factors. The different indexes also do not influence each other. If your data does not generate real-time new timestamps, you also need to consider including BIAS OPTIONS.
+```
+
 ### Step 7: Import Online Data
 
 Firstly, switch to **online** execution mode. Then, in online mode, import the sample data from `/work/taxi-trip/data/taxi_tour_table_train_simple.csv` as online data for online feature computation.
@@ -181,10 +185,10 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/taxi_tour_table_train_simple.csv' 
 ```
 
 ```{note}
-LOAD DATA is an asynchronous task. Please use the SHOW JOBS command to monitor the task's progress and wait for it to successfully complete (transition to the FINISHED state) before proceeding to the next step.
+`LOAD DATA` is an asynchronous task. Please use the SHOW JOBS command to monitor the task's progress and wait for it to successfully complete (transition to the FINISHED state) before proceeding to the next step.
 ```
 
-### Step 8: Start the Estimation Service
+### Step 8: Start Prediction Service
 
 1. If you have not already exited the OpenMLDB CLI, exit the OpenMLDB CLI first.
 
@@ -198,7 +202,7 @@ LOAD DATA is an asynchronous task. Please use the SHOW JOBS command to monitor t
    ./start_predict_server.sh 127.0.0.1:9080 /tmp/model.txt
    ```
 
-### Step 9: Send Estimate Request
+### Step 9: Send Prediction Request
 
 Execute the built-in `predict.py` script from the regular command line. This script sends a request data line to the prediction service, receives the estimation results in return, and prints them out.
 
