@@ -3,36 +3,43 @@
 
 In this article, we will use [JD Prediction of purchase intention for high potential customers problem](https://jdata.jd.com/html/detail.html?id=1) as a demonstration，to show how we can use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [OneFlow](https://github.com/Oneflow-Inc/oneflow) together to build a complete machine learning application. Full dataset [download here](https://openmldb.ai/download/jd-recommendation/JD_data.tgz).
 
+## Background
 
-Extracting patterns from historical data to predict the future purchase intentions, to bring together the most suitable products and customers who need them most, is the key issue in the application of big data in precision marketing, and is also the key technology in digitalization for all e-commerce platforms. As the largest self-operated e-commerce company in China, JD.com has accumulated hundreds of millions of loyal customers and massive amounts of real-life data. This demonstration is based on the real-life data, including real customers, product and behavior data (after desensitization) from Jingdong Mall, and utilizes data mining technology and machine learning algorithm to build a prediction model for user purchase intentions, and output matching results between high-potential customers and target products. This aims to provide high-quality target groups for precision marketing, mine the potential meaning behind the data, and provide e-commerce customers with a simpler, faster and more worry-free shopping experience. In this demonstration, OpenMLDB is used for data mining, and the [DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm) model in OneFlow is used for high-performance training and inference to provide accurate product recommendations.
+Extracting patterns from historical data to predict future purchase intentions, to bring together the most suitable products and customers who need them most, is the key issue in the application of big data in precision marketing, and is also the key technology in digitalization for all e-commerce platforms. As the largest self-operated e-commerce company in China, JD.com has accumulated hundreds of millions of loyal customers and massive amounts of real-life data. 
 
-Note that: (1) this case is based on the OpenMLDB cluster version for tutorial demonstration; (2) this document uses the pre-compiled docker image. If you want to test it in the OpenMLDB environment compiled and built by yourself, you need to configure and use our [Spark Distribution for Feature Engineering Optimization](https://github.com/4paradigm/spark). Please refer to relevant documents of [compilation](https://openmldb.ai/docs/en/main/deploy/compile.html) (Refer to Chapter: "Spark Distribution Optimized for OpenMLDB") and the [installation and deployment documents](https://openmldb.ai/docs/en/main/deploy/install_deploy.html) (Refer to the section: [Deploy TaskManager](https://openmldb.ai/docs/en/main/deploy/install_deploy.html#deploy-taskmanager)).
+This demonstration is based on real-life data, including real customers, product and behavior data (after desensitization) from Jingdong Mall, and utilizes data mining technology and machine learning algorithm to build a prediction model for user purchase intentions, and output matching results between high-potential customers and target products. This aims to provide high-quality target groups for precision marketing, mine the potential meaning behind the data, and provide e-commerce customers with a simpler, faster, and more worry-free shopping experience. 
 
-## 1. Preparation and Preliminary Knowledge
+In this demonstration, OpenMLDB is used for data mining, and the [DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm) model in OneFlow is used for high-performance training and inference to provide accurate product recommendations.
 
-### 1.1 Demo Scripts
-
-Download demo scripts, or you can checkout `demo/jd-recommendation` in Github repo.
+```{note}
+Note that this document uses the pre-compiled docker image. If you want to test it in the OpenMLDB environment compiled and built by yourself, please refer to relevant documents of [compilation](https://openmldb.ai/docs/en/main/deploy/compile.html) and the [installation and deployment documents](https://openmldb.ai/docs/en/main/deploy/install_deploy.html).
 ```
-wget http://openmldb.ai/download/jd-recommendation/demo.tgz
+
+## Preparation and Preliminary Knowledge
+
+### Download Demo Materials
+
+Download demo data and scripts.
+```
+wget https://openmldb.ai/download/jd-recommendation/demo-0.8.1.tgz
 tar xzf demo.tgz
-ls demo
+ls jd-recommendation/
 ```
-
-Export `demodir`, we'll use the variable `demodir` in the future.
+or you can checkout branch `demo/jd-recommendation`. The directory of this demo is set as `demodir`, which will be extensively used in the scripts. Therefore you need to set this environment variable:
 ```
 export demodir=<your_path>/demo
 ```
 
 We'll use the small dataset in demo.tgz. If you want to test on full dataset, please download [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz).
 
-### 1.2 OneFlow Installation
-OneFlow framework leverage on the great computational power from GPU. Therefore please ensure that the machines for deployment are equipped with NVidia GPUs, and ensure the driver version is >=460.X.X  [driver version support for CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions).
+### OneFlow Installation
+OneFlow framework leverages on the great computational power from GPU. Therefore please ensure that the machines for deployment are equipped with NVidia GPUs, and ensure the driver version is >=460.X.X  [driver version support for CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions).
 Install OneFlow with the following commands：
 ```bash
 conda create -y -n oneflow python=3.9.2
 conda activate oneflow
-pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
+pip install numpy==1.23 nvidia-cudnn-cu11 # for oneflow
+pip install -f https://release.oneflow.info oneflow==0.9.0+cu112
 pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhttpclient tornado
 ```
 
@@ -44,23 +51,24 @@ docker pull oneflowinc/oneflow-serving:nightly
 Note that we are installing Oneflow nightly versions here. The versions tested in this guide are as follows:
 Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
 Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+If this docker image is not available, you can use this [backup image](https://openmldb.ai/download/jd-recommendation/oneflow-image.tar.gz)，and then use `docker load < oneflow-image.tar.gz`.
 ```
 
-### 1.3 Pull and Start the OpenMLDB Docker Image
-- Note: Please make sure that the Docker Engine version number is > = 18.03
-
+### Pull and Start the OpenMLDB Docker Image
 Pull the OpenMLDB docker image and run.
+- Docker: >=18.03
 
+Since the OpenMLDB cluster needs to communicate with other components, we will use the host network straightaway. In this example, we will use downloaded scripts in the docker, therefore we map the `demodir` directory into the docker container.
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.3 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.4 bash
 docker exec -it openmldb bash
 ```
 
 ```{note}
-Note that all the commands for OpenMLDB part below run in the docker container by default. All the commands for OneFlow are to run in the environment as installed in 1.1.
+Note that all the commands for OpenMLDB part below run in the docker container by default. All the commands for OneFlow are to run in the virtual environment `oneflow`.
 ```
 
-### 1.4  Start OpenMLDB cluster
+### Start OpenMLDB cluster
 
 In container:
 ```bash
@@ -70,39 +78,38 @@ We provide the init.sh script in the image that helps users to quickly initializ
 - Configure zookeeper
 - Start cluster version OpenMLDB
 
-### 1.4 Start OpenMLDB CLI Client
+### Start OpenMLDB CLI Client
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
-```{note}
-Note that most of the commands in this tutorial are executed under the OpenMLDB CLI. In order to distinguish from the ordinary shell environment, the commands executed under the OpenMLDB CLI use a special prompt of >.
-```
 
-```{important}
-Some commands in the cluster version are non-blocking tasks, including `LOAD DATA` in online mode and `LOAD DATA`, `SELECT`, `SELECT INTO` commands in the offline mode. After submitting a task, you can use relevant commands such as `SHOW JOBS` and `SHOW JOB` to view the task progress. For details, see the offline task management document.
-```
+### Preliminary
+Some commands in the cluster version are non-blocking tasks, including `LOAD DATA` in online mode and `LOAD DATA`, `SELECT`, `SELECT INTO` commands in online/offline mode. After submitting a task, you can use relevant commands such as `SHOW JOBS` and `SHOW JOB` to view the task progress. For details, see the [offline task management document](../openmldb_sql/task_manage/SHOW_JOB.md).
 
-## 2. Machine Learning Process Based on OpenMLDB and OneFlow
+## Machine Learning Process Based on OpenMLDB and OneFlow
 
-### 2.1 Overview
+### Overview
 Machine learning with OpenMLDB and OneFlow can be summarized into a few main steps:
-1. OpenMLDB offlien feature design and extraction (SQL)
-1. OneFlow model training
-1. SQL and model serving
+1. OpenMLDB offline feature design and extraction (SQL)
+2. OneFlow model training
+3. SQL and model serving
+   
 We will detail each step in the following sections. 
 
-### 2.2 Offline feature extraction with OpenMLDB
-#### 2.2.1 Creating Databases and Data Tables
-The following commands are executed in the OpenMLDB CLI environment.
+### Offline feature extraction with OpenMLDB
+The following commands are all executed in OpenMLDB CLI.
+
+#### Creating Databases and Data Tables
 ```sql
-> CREATE DATABASE JD_db;
-> USE JD_db;
-> CREATE TABLE action(reqId string, eventTime timestamp, ingestionTime timestamp, actionValue int);
-> CREATE TABLE flattenRequest(reqId string, eventTime timestamp, main_id string, pair_id string, user_id string, sku_id string, time bigint, split_id int, time1 string);
-> CREATE TABLE bo_user(ingestionTime timestamp, user_id string, age string, sex string, user_lv_cd string, user_reg_tm bigint);
-> CREATE TABLE bo_action(ingestionTime timestamp, pair_id string, time bigint, model_id string, type string, cate string, br string);
-> CREATE TABLE bo_product(ingestionTime timestamp, sku_id string, a1 string, a2 string, a3 string, cate string, br string);
-> CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comment_num int, has_bad_comment string, bad_comment_rate float);
+-- OpenMLDB CLI
+CREATE DATABASE JD_db;
+USE JD_db;
+CREATE TABLE action(reqId string, eventTime timestamp, ingestionTime timestamp, actionValue int);
+CREATE TABLE flattenRequest(reqId string, eventTime timestamp, main_id string, pair_id string, user_id string, sku_id string, time bigint, split_id int, time1 string);
+CREATE TABLE bo_user(ingestionTime timestamp, user_id string, age string, sex string, user_lv_cd string, user_reg_tm bigint);
+CREATE TABLE bo_action(ingestionTime timestamp, pair_id string, time bigint, model_id string, type string, cate string, br string);
+CREATE TABLE bo_product(ingestionTime timestamp, sku_id string, a1 string, a2 string, a3 string, cate string, br string);
+CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comment_num int, has_bad_comment string, bad_comment_rate float);
 ```
 You can also use sql script to execute (`/work/oneflow_demo/sql_scripts/create_tables.sql`) as shown below:
 
@@ -110,26 +117,24 @@ You can also use sql script to execute (`/work/oneflow_demo/sql_scripts/create_t
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/create_tables.sql
 ```
 
-#### 2.2.2 Offline Data Preparation
-First, you need to switch to offline execution mode. Next, import the sample data as offline data for offline feature calculation. 
-
-The following commands are executed under the OpenMLDB CLI.
+#### Offline Data Preparation
+First, you need to switch to offline execution mode. Next, import the sample data as offline data for offline feature calculation. If you are importing a larger dataset, you can consider using soft links to reduce import time. In this demo, only small amount of data is imported, thus we use hard copy. For multiple data imports, the asynchronous mode will be more time-efficient. But you need to make sure that all imports are done before going into the next step.
 
 ```sql
-> USE JD_db;
-> SET @@execute_mode='offline';
-> LOAD DATA INFILE '/root/project/data/JD_data/action/*.parquet' INTO TABLE action options(format='parquet', header=true, mode='overwrite');
-> LOAD DATA INFILE '/root/project/data/JD_data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', header=true, mode='overwrite');
-> LOAD DATA INFILE '/root/project/data/JD_data/bo_user/*.parquet' INTO TABLE bo_user options(format='parquet', header=true, mode='overwrite');
-> LOAD DATA INFILE '/root/project/data/JD_data/bo_action/*.parquet' INTO TABLE bo_action options(format='parquet', header=true, mode='overwrite');
-> LOAD DATA INFILE '/root/project/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', header=true, mode='overwrite');
-> LOAD DATA INFILE '/root/project/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', header=true, mode='overwrite');
+-- OpenMLDB CLI
+USE JD_db;
+SET @@execute_mode='offline';
+LOAD DATA INFILE '/work/oneflow_demo/data/action/*.parquet' INTO TABLE action options(format='parquet', header=true, mode='overwrite');
+LOAD DATA INFILE '/work/oneflow_demo/data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', header=true, mode='overwrite');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_user/*.parquet' INTO TABLE bo_user options(format='parquet', header=true, mode='overwrite');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_action/*.parquet' INTO TABLE bo_action options(format='parquet', header=true, mode='overwrite');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', header=true, mode='overwrite');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', header=true, mode='overwrite');
 ```
-or use script to execute, and check the job status with the following commands:
+or use a script to execute, and check the job status with the following commands:
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/load_offline_data.sql
-
 echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
@@ -137,14 +142,17 @@ echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk
 Note that `LOAD DATA` is a non-blocking task. You can use the command `SHOW JOBS` to view the running status of the task. Please wait for the task to run successfully (`state` to `FINISHED` status) before proceeding to the next step.
 ```
 
-#### 2.2.3 The Feature Extraction Script
-Usually, users need to analyse the data according to the goal of machine learning before designing the features, and then design and investigate the features according to the analysis. Data analysis and feature research of the machine learning are not the scope of this demo, and we will not expand it. We assume that users already have the basic theoretical knowledge of machine learning, the ability to solve machine learning problems, the ability to understand SQL syntax, and the ability to use SQL syntax to construct features. For this case, we have designed several features after the analysis and research.
+#### The Feature Extraction Script
+Usually, users need to analyze the data according to the goal of machine learning before designing the features, and then design and investigate the features according to the analysis. Data analysis and feature research of machine learning are not in the scope of this demo, and we will not expand it. We assume that users already have the basic theoretical knowledge of machine learning, the ability to solve machine learning problems, the ability to understand SQL syntax, and the ability to use SQL syntax to construct features. For this case, we have designed several features after the analysis and research.
 
-#### 2.2.4 Offline Feature Extraction
-In the offline mode, the user extracts features and outputs the feature results to `'/root/project/out/1`(mapped to`$demodir/out/1`) that is saved in the data directory for subsequent model training. The `SELECT` command corresponds to the SQL feature extraction script generated based on the above table. The following commands are executed under the OpenMLDB CLI.
+In the actual process of machine learning feature exploration, scientists repeatedly experiment with features, seeking the best feature set for model effectiveness. Therefore, they continuously repeat the process of "feature design -> offline feature extraction -> model training," constantly adjusting features to achieve the desired results.
+
+#### Offline Feature Extraction
+In the offline mode, the user extracts features and outputs the feature results to `'/work/oneflow_demo/out/1`(mapped to`$demodir/out/1`) which is saved in the data directory for subsequent model training. The `SELECT` command corresponds to the SQL feature extraction script generated based on the above table. The following commands are executed under the OpenMLDB CLI.
 ```sql
-> USE JD_db;
-> select * from
+-- OpenMLDB CLI
+USE JD_db;
+select * from
 (
 select
     `reqId` as reqId_1,
@@ -230,17 +238,18 @@ as out3
 on out0.reqId_1 = out3.reqId_17
 INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 ```
+```{note}
+Note that the cluster version `SELECT INTO` is a non-blocking task. You can use the command `SHOW JOBS` to view the running status of the task. Please wait for the task to run successfully (`state` to `FINISHED` status) before proceeding to the next step. It takes around 1.5 minites.
+```
 Since there is only one command, we can directly execute the sql script `sync_select_out.sql`:
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/sync_select_out.sql
 ```
+
+### Pre-process Dataset to Match DeepFM Model Requirements
 ```{note}
-Note that the cluster version `SELECT INTO` is a non-blocking task. You can use the command `SHOW JOBS` to view the running status of the task. Please wait for the task to run successfully (`state` to `FINISHED` status) before proceeding to the next step.
-```
-### 2.3 Pre-process Dataset to Match DeepFM Model Requirements
-```{note}
-Note that following commands are executed outside the demo docker. They are executed in the environment as installed in section 1.1.
+Note that following commands are executed outside the demo docker. They are executed in the virtual environment for OneFlow.
 ```
 According to [DeepFM paper](https://arxiv.org/abs/1703.04247), we treat both categorical and continuous features as sparse features.
 
@@ -279,9 +288,9 @@ out/
 3 directories, 4 files
 ```
 
-### 2.4 Launch OneFlow for Model Training
+### Launch OneFlow for Model Training
 ```{note}
-Note that following commands are executed in the environment as installed in section 1.2.
+Note that the following commands are executed in the virtual environment for OneFlow.
 ```
 
 ```bash
@@ -290,34 +299,39 @@ sh train_deepfm.sh -h
 Usage: train_deepfm.sh DATA_DIR(abs)
         We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
 ```
-The usage is shown above. So we run:
+The training in OneFlow is done with the script `train_deepfm.sh`, with usage shown above. Normally, no special configurations are required. The scripts will read the parameters from `$DATA_DIR/data_info.txt`, including `num_train_samples`, `num_val_samples`, `num_test_samples` and `table_size_array`. Please use the output directory as follows:
 
 ```bash
 bash train_deepfm.sh $demodir/feature_preprocess/out
 ```
 
-Trained model will be saved in `$demodir/oneflow_process/model_out`, saved model for serving will be saved in `$demodir/oneflow_process/model/embedding/1/model`.
+The trained model will be saved in `$demodir/oneflow_process/model_out`, saved model for serving will be saved in `$demodir/oneflow_process/model/embedding/1/model`.
 
-## 3. Model Serving
-### 3.1 Overview
+## Model Serving
+### Overview
 Model serving with OpenMLDB+OneFlow can be summarized into a few main steps. 
 1. OpenMLDB deploying: deploy SQL and prepare the online data
-1. Oneflow serving: load model
-1. Predict serving demo
+2. Oneflow serving: load model
+3. Predict serving demo
+   
 We will detail each step in the following sections. 
 
-### 3.2 OpenMLDB deploying
+### OpenMLDB Deploying
 
-#### 3.2.1 Online SQL Deployment
-Assuming that the model produced by the features designed in Section 2.2.3 in the previous model training meets the expectation. The next step is to deploy the feature extraction SQL script online to provide real-time feature extraction.
+#### Online SQL Deployment
+Assuming that the model produced by the features designed in the previous model training meets the expectation. The next step is to deploy the feature extraction SQL script online to provide real-time feature extraction. In OpenMLDB docker（if exited, enter with `docker exec -it openmldb bash`):
 
 1. Restart OpenMLDB CLI for SQL online deployment.
    ```bash
-   docker exec -it demo bash
    /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
    ```
-2. Deploy the sql(see [Offline Feature Extracion](#224-offline-feature-extraction)) 
-
+2. Deploy the sql(see [Offline Feature Extracion](#offline-feature-extraction)) 
+```sql
+-- OpenMLDB CLI
+USE JD_db;
+DEPLOY demo OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') <SQL>;
+```
+Or you can deploy with script inside the docker:
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/deploy.sql
 ```
@@ -326,18 +340,22 @@ Use the following command to check the deployment details:
 ```sql
 show deployment demo;
 ```
+After deployment, you can access the service through OpenMLDB ApiServer `127.0.0.1:9080`.
 
-#### 3.2.2 Online Data Import
-We need to import the data for real-time feature extraction. First, you need to switch to **online** execution mode. Then, in the online mode, import the sample data as the online data source. The following commands are executed under the OpenMLDB CLI.
+#### Online Data Import
+We need to import the data for real-time feature extraction. For simplicity, we directly import and use the same dataset as offline. In production, typically the offline dataset comprises a large volume of cold data, while the online dataset consists of recent hot data. 
+
+The following commands are executed under the OpenMLDB CLI.
 ```sql
-> USE JD_db;
-> SET @@execute_mode='online';
-> LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/action/*.parquet' INTO TABLE action options(format='parquet', mode='append');
-> LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', mode='append');
-> LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_user/*.parquet' INTO TABLE bo_user options(format='parquet', mode='append');
-> LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_action/*.parquet' INTO TABLE bo_action options(format='parquet', mode='append');
-> LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', mode='append');
-> LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', mode='append');
+-- OpenMLDB CLI
+USE JD_db;
+SET @@execute_mode='online';
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/action/*.parquet' INTO TABLE action options(format='parquet', mode='append');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', mode='append');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_user/*.parquet' INTO TABLE bo_user options(format='parquet', mode='append');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_action/*.parquet' INTO TABLE bo_action options(format='parquet', mode='append');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', mode='append');
+LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', mode='append');
 ```
 
 You can run the script:
@@ -346,16 +364,16 @@ You can run the script:
 ```
 And check the import job status by:
 ```
- echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+  echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 ```{note}
 Note that the cluster version `LOAD  DATA` is a non-blocking task. You can use the command `SHOW JOBS` to view the running status of the task. Please wait for the task to run successfully (`state` to `FINISHED` status) before proceeding to the next step.
 ```
 
-### 3.3 Oneflow serving
+### Oneflow Serving
 
-#### 3.3.1 Check Config
+#### Check Config
 
 Check if model files `$demodir/oneflow_process/model` are correctly organized and saved as shown below:
 ```
@@ -384,9 +402,9 @@ model/
     |       `-- one_embedding_options.json
     `-- config.pbtxt
 ```
-1. Field `name` in `config.pbtxt` should be consistent with the name of the folder(`embedding`). And `persistent_table.path` will be generated automatically in `model/embedding/1/model/one_embedding_options.json`, you can check if it's the absolute path of`$demodir/oneflow_process/persistent`.
+Field `name` in `config.pbtxt` should be consistent with the name of the folder(`embedding`). And `persistent_table.path` will be generated automatically in `model/embedding/1/model/one_embedding_options.json`, you can check if it's the absolute path of`$demodir/oneflow_process/persistent`.
 
-#### 3.3.2 Start OneFlow serving
+#### Start OneFlow serving
 Start OneFlow model serving with the following commands:
 ```
 docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 \
@@ -395,8 +413,22 @@ docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 \
   oneflowinc/oneflow-serving:nightly \
   bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
 ```
-If sucessful, the output will look like the following:
+If successful, the output will look like the following:
 ```
+I0711 09:58:55.199227 1 server.cc:549]
++---------+---------------------------------------------------------+--------+
+| Backend | Path                                                    | Config |
++---------+---------------------------------------------------------+--------+
+| oneflow | /opt/tritonserver/backends/oneflow/libtriton_oneflow.so | {}     |
++---------+---------------------------------------------------------+--------+
+
+I0711 09:58:55.199287 1 server.cc:592]
++-----------+---------+--------+
+| Model     | Version | Status |
++-----------+---------+--------+
+| embedding | 1       | READY  |
++-----------+---------+--------+
+...
 I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
 I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
 I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
@@ -406,29 +438,33 @@ We can request `http://127.0.0.1:8000` to do predict. You can check if the servi
 ```
 curl -v localhost:8000/v2/health/ready
 ```
-
-If the repsonse is `Connection refused`, the serving failed to start.
-
+If the response is `Connection refused`, the serving failed to start.
+Furthermore, check if model is successfully loaded:
+```
+curl -v localhost:8000/v2/models/stats
+```
+If successful, you will be able to see `embedding` information. Else, check the model path and the organization.
 ```{note}
-If port 800x confict, you can change the host port. For example, use `-p 18000:8000`. If you change the host port mapping of 8000, you should change the oneflow request port in predict server demo too.
+If port 800x confict, you can change the host port. For example, use `-p 18000:8000`. If you change the host port mapping of 8000, you should change the oneflow request port in the predict server demo too.
 ```
 
-### 3.4 Predict Serving Demo
+### Predict Serving Demo
 
 ```{note}
-Note that following commands are executed in the environment as installed in section 1.2.
+Note that the following commands can be executed in any environment. Because of Python dependencies, we recommend using the virtual environment of OneFlow.
 ```
 
-The start script use `127.0.0.1:9080` to query OpenMLDB ApiServer, and `127.0.0.1:8000`to query OneFlow Triton serving。
+Upon receiving a request, the prediction service first obtains real-time features through OpenMLDB and the request the inference service with real-time features. The script uses `127.0.0.1:9080` to query OpenMLDB ApiServer, and `127.0.0.1:8000` to query OneFlow Triton serving.
 
 ```bash
 sh $demodir/serving/start_predict_server.sh
 ```
+You can check execution logs from `/tmp/p.log`.
 
-### 3.5 Send Real-Time Request to test
+### Send Real-Time Request to test
 Requests can be executed outside the OpenMLDB docker. The details can be found in [IP Configuration](https://openmldb.ai/docs/en/main/reference/ip_tips.html).
 
-Execute `predict.py` in command window. This script will send a line of request data to the prediction service. Results will be received and printed out.
+`predict.py` will send a line of request data to the prediction service. Results will be received and printed out.
 
 ```bash
 python $demodir/serving/predict.py
@@ -436,6 +472,7 @@ python $demodir/serving/predict.py
 Sample output:
 ```
 ----------------ins---------------
+
 ['200080_5505_2016-03-15 20:43:04' 1458045784000
  '200080_5505_2016-03-15 20:43:04' '200080_5505' '5505' '200080' 1 1.0 1.0
  1 1 3 1 '200080_5505_2016-03-15 20:43:04' None '3' '1' '1' '214' '8'
@@ -443,6 +480,12 @@ Sample output:
  0.02879999950528145 0.0 0.0 2 2 '1,,NULL' '4,0,NULL'
  '200080_5505_2016-03-15 20:43:04' ',NULL,NULL' ',NULL,NULL' ',NULL,NULL'
  1 1 1 ',NULL,NULL' ',NULL,NULL']
+
 ---------------predict change of purchase -------------
+
 [[b'0.007005:0']]
+
+```
+```{note}
+If an error occurs, use client.py in the serving directory, or [download](https://github.com/4paradigm/OpenMLDB/blob/f2d985c986c5c4cbe538b01dabdbd1956588da40/demo/jd-recommendation/serving/client.py), to separately debug triton infer.
 ```
