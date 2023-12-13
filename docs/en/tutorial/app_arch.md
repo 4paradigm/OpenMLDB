@@ -87,9 +87,9 @@ Note that in the above figure, the new swipe record data is shown as being **vir
 
 The architecture is based on the OpenMLDB SDK and achieves strict in-event decision-making, which consists of two stages:
 
- 1. Steps 1, 2, and 3 in the above diagram constitute a real-time feature computation with OpenMLDB. The request includes the necessary data (card number, transaction amount, timestamp) at the time of the event.
+ - Steps 1, 2, and 3 in the above diagram constitute a real-time feature computation with OpenMLDB. The request includes the necessary data (card number, transaction amount, timestamp) at the time of the event.
 
- 2. After the real-time computation request is completed, the client initiates an additional data insertion request through the OpenMLDB SDK to insert the current transaction data into OpenMLDB for subsequent real-time request computations.
+ - After the real-time computation request is completed, the client initiates an additional data insertion request through the OpenMLDB SDK to insert the current transaction data into OpenMLDB for subsequent real-time request computations.
 
 The above strict in-event decision-making architecture based on the OpenMLDB SDK is the default and recommended architecture. In actual enterprise application architectures, there may be some variations due to the complexity of peripheral coupling or permission issues. For example, the data writing path can be completely separated, with Kafka or other methods for data writing. However, if such architecture is not verified and guaranteed, there may be problems with the order of read and write operations, resulting in duplicate or missing data computation. In general, we still recommend using the strict in-event decision-making architecture shown in the above diagram.
 
@@ -104,10 +104,8 @@ In the above architecture, the real-time query request (read-only) and the data 
 - For the data writing path, users can continuously write data to the OpenMLDB database through streaming (such as Kafka connector) or OpenMLDB SDK.
 
 - For real-time query requests, there are two main features:
-
- 1. After the query request is completed, there is no additional step to write into real-time data (data write is completed by the data writing path).
-
- 2. Since data carried by query request is not meaningful, the extended SQL keyword `EXCLUDE CURRENT_ROW` is required to avoid virtual insertion.
+   - After the query request is completed, there is no additional step to write into real-time data (data write is completed by the data writing path).
+   - Since data carried by query request is not meaningful, the extended SQL keyword `EXCLUDE CURRENT_ROW` is required to avoid virtual insertion.
 
 ### Other Architectures
 
