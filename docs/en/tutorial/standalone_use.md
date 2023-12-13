@@ -1,28 +1,26 @@
-# Standalone Version Usage Process
+# Standalone Usage Process
 
 ## Preparation
 
-This article provides a guide on developing and deploying OpenMLDB CLI. To begin, you should download the sample data and initiate the OpenMLDB CLI. It is recommended to utilize a prepared Docker image for a convenient experience.
-
-Prerequisites:
+This article provides a guide on developing and deploying with OpenMLDB CLI. To begin, you need to download the sample data and start the OpenMLDB CLI. It is recommended to utilize a prepared Docker image for a faster start.
 
 - Docker (minimum version: 18.03)
 
-### Pull Mirror
+### Pull Mirror Image
 
-Execute the following command to fetch the OpenMLDB image and initiate the Docker container:
+Execute the following command to fetch the OpenMLDB image and initiate a Docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.3 bash
+docker run -it 4pdosc/openmldb:0.8.4 bash
 ```
 
 Upon successful container launch, all subsequent commands in this tutorial will assume execution within the container.
 
-If you require external access to the OpenMLDB server within the container, please consult [CLI/SDK-Container onebox](https://chat.openai.com/reference/ip_tips.md#clisdk-containeronebox).
+If you require external access to the OpenMLDB server within the container, please consult [CLI/SDK-Container onebox](../reference/ip_tips.md#clisdk-containeronebox).
 
 ### Download Sample Data
 
-Execute the following command to download the sample data necessary for the subsequent procedures:
+Execute the following command to download the sample data for the subsequent procedures:
 
 ```bash
 curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
@@ -32,36 +30,31 @@ curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
 
 - Start the standalone OpenMLDB server
 
-```SQL
+```bash
 ./init.sh standalone
 ```
 
 - Start the standalone OpenMLDB CLI client
 
-```SQL
+```bash
 cd taxi-trip
 /work/openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
-The following figure shows the screen after the correct execution of the commands in the Docker and the successful start of the OpenMLDB CLI:
+The following image displays the screen after the correct execution of commands within Docker, indicating a successful launch of OpenMLDB CLI:
+![image-20220111142406534](./images/cli.png)
 
-![image-20220111142406534](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\zh\tutorial\images\cli.png)
-
-## Usage Process
-
-The following image displays the screen after the correct execution of commands within Docker, signifying the successful launch of the OpenMLDB CLI:
-
+## Usage
 The workflow for the standalone version of OpenMLDB typically comprises five stages:
-
-1. Database and table establishment.
+1. Database and table creation.
 2. Data preparation.
 3. Offline feature computation.
-4. Deployment of SQL solutions.
-5. Real-time online feature computation.
+4. SQL Deployment.
+5. Real-time feature computation.
 
-Unless otherwise specified, the following commands are executed by default within the cluster version of the OpenMLDB CLI.
+Unless otherwise specified, the following commands are executed by default within the standalone version of the OpenMLDB CLI.
 
-### 1. Create the Database and Table
+### Step 1: Database and Table Creation
 
 ```sql
 CREATE DATABASE demo_db;
@@ -69,13 +62,13 @@ USE demo_db;
 CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
-### 2. Data Preparation
+### Step 2: Data Preparation
 
 Import the sample data previously downloaded as training data for both offline and online feature computations.
 
 It's important to note that in the standalone version, table data is not segregated for offline and online usage. Thus, the same table is employed for both offline and online feature computations. Alternatively, you have the option to manually import different data for offline and online use, resulting in the creation of two separate tables. However, for simplicity, this tutorial employs the same data for both offline and online computations in the standalone version.
 
-Execute the subsequent command to import the data:
+Execute the following command to import data:
 
 ```sql
 LOAD DATA INFILE 'data/data.csv' INTO TABLE demo_table1;
@@ -115,7 +108,7 @@ SELECT * FROM demo_table1 LIMIT 10;
  ----- ---- ---- ---------- ----------- --------------- ------------
 ```
 
-### 3. Offline Feature Computation
+### Step 3: Offline Feature Computation
 
 Execute SQL commands to extract features and store the resulting features in a file for subsequent model training.
 
@@ -123,15 +116,15 @@ Execute SQL commands to extract features and store the resulting features in a f
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 ```
 
-### 4. The Launch of SQL Solution
+### Step 4: SQL Deployment
 
-Deploy the SQL solution developed for offline feature computation online. It's crucial to ensure that the deployed SQL solution aligns with the corresponding offline feature computation SQL solution.
+Deploy the SQL script developed offline for online feature computation. It's crucial to ensure that the deployed SQL is the same as the corresponding offline SQL.
 
 ```sql
 DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
-Once the deployment is complete, you can access the deployed SQL solutions using the `SHOW DEPLOYMENTS` command.
+Once the deployment is complete, you can access the deployed SQL using the `SHOW DEPLOYMENTS` command.
 
 ```sql
 SHOW DEPLOYMENTS;
@@ -153,22 +146,22 @@ SHOW DEPLOYMENTS;
 In this standalone version of the tutorial, the same dataset is utilized for both offline and online feature computations. If a user prefers to work with a different dataset, they must import the new dataset prior to deployment. During deployment, the tables associated with the new dataset should be used.
 ```
 
-### 5. Exit CLI
+### Exit CLI
 
 ```sql
 quit;
 ```
 
-At this stage, all development and deployment tasks using OpenMLDB CLI have been completed, and we have returned to the command line of the operating system.
+At this stage, all development and deployment tasks using OpenMLDB CLI have been completed, and we return to the command line.
 
-### 6. Real-Time Feature Computation
+### Step 5: Real-Time Feature Computation
 
-Real-time online services can be provided through the following web APIs:
+Real-time online services can be accessed through the following web APIs:
 
 ```bash
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
 
-​        ___________/      ____/              _____________/
+​        \___________/      \____/              \_____________/
 
 ​              |               |                        |
 
@@ -189,5 +182,5 @@ The expected return results for this query are as follows (the computed features
 
 Explanation:
 
-- The API server can process requests and supports batch requests. Arrays are supported via the `input` field, with each line of input processed individually. For detailed parameter formats, please refer to the [REST API documentation](https://chat.openai.com/quickstart/sdk/rest_api.md).
-- To understand the results of real-time feature computation requests, please refer to the [Explanation of Real-Time Feature Computation Results](https://chat.openai.com/quickstart/openmldb_quickstart.md#explanationofrealtimefeaturecomputationresults).
+- The API server can process requests and support batch requests. Arrays are supported via the `input` field, with each line of input processed individually. For detailed parameter formats, please refer to the [REST API documentation](../quickstart/sdk/rest_api.md).
+- To understand the results of real-time feature computation requests, please refer to the [Description of Real-Time Feature Computation Results](../quickstart/openmldb_quickstart.md#description-of-real-time-feature-computation-results).
