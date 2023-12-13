@@ -8,7 +8,7 @@ Users can also extend OpenMLDB's computation function library using the method o
 
 ## Development Procedures
 ### Develop UDF functions
-#### Naming Specification of C++ Built-in Function
+#### Naming Convention of C++ Built-in Function
 - The naming of C++ built-in function should follow the [snake_case](https://en.wikipedia.org/wiki/Snake_case) style.
 - The name should clearly express the function's purpose.
 - The name of a function should not be the same as the name of a built-in function or other custom functions. The list of all built-in functions can be seen [here](../openmldb_sql/udfs_8h.md).
@@ -154,7 +154,7 @@ int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
 For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
 
 
-### Compile the Dynamic Library 
+### Compile Dynamic Library 
 
 - Copy the `include` directory (`https://github.com/4paradigm/OpenMLDB/tree/main/include`) to a certain path (like `/work/OpenMLDB/`) for later compiling. 
 - Run the compiling command. `-I` specifies the path of the `include` directory. `-o` specifies the name of the dynamic library.
@@ -163,7 +163,7 @@ For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
 ```
 
-### Copy the Dynamic Library
+### Copy Dynamic Library
 The compiled dynamic libraries should be copied into the `udf` directories for both TaskManager and tablets. Please create a new `udf` directory if it does not exist. 
 - The `udf` directory of a tablet is `path_to_tablet/udf`.
 - The `udf` directory of TaskManager is `path_to_taskmanager/taskmanager/bin/udf`. 
