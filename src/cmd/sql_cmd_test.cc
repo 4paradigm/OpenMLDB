@@ -571,10 +571,10 @@ TEST_P(DBSDKTest, LoadDataMultipleFiles) {
                            "' INTO TABLE trans options(load_mode='local', thread=10);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(status.msg, "Load 20 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(20, result->Size());
     while (result->Next()) {
         std::string col1 = result->GetStringUnsafe(0);
@@ -608,10 +608,10 @@ TEST_P(DBSDKTest, LoadData) {
                            "' INTO TABLE trans options(deep_copy=true, mode='append', load_mode='local', thread=60);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(status.msg, "Load 10 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(10, result->Size());
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");
