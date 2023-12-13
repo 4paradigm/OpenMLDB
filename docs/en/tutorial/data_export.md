@@ -2,13 +2,13 @@
 
 The online data export tool is located in [src/tools](https://github.com/4paradigm/OpenMLDB/tree/main/src/tools). Support exporting data in standalone or cluster mode from remote machines.
 
-## 1. Export Tool Installation
+## Installation
 
 To generate Unix Executable file: Use make in the src directory.
 
-## 2. Use of Derivative Tools
+## Usage
 
-### 2.1 Command Parameters
+### Parameter Settings
 
 All configurations are as follows, with an asterisk indicating mandatory items.
 
@@ -24,15 +24,12 @@ Usage: ./data_exporter [--delimiter=<delimiter>] --db_name=<dbName>
       --user_name=<userName>      user name of the remote machine
 ```
 
-### 2.2 Important Parameter Configuration Instructions
-
-Important configuration project description:
-
+### Important Parameter Configurations
 - `--db_name=<dbName>`: Specifies the database name. The provided database name must already exist. If it does not exist, an error message will be displayed: "The database does not exist."
 - `--table_name=<tableName>`: Specifies the table name. The specified table name must already exist. If it does not exist, an error message will be displayed: "The table does not exist."
 - `--config_path=<configPath>`: Specifies the path to the configuration file for remote OpenMLDB machines, in YAML format.
 
-### 2.3 Configuration File Use Case:
+### Configuration File Example
 
      mode: cluster
      zookeeper:
@@ -53,6 +50,6 @@ Important configuration project description:
          endpoint: 172.17.0.2:10922
          path: /work/openmldb
 
-## 3. Error Handling
+## Error Handling
 
 If the data export fails, the cause of the error can be determined based on the error information in Glog.
