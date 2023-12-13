@@ -404,7 +404,7 @@ model/
 ```
 Field `name` in `config.pbtxt` should be consistent with the name of the folder(`embedding`). And `persistent_table.path` will be generated automatically in `model/embedding/1/model/one_embedding_options.json`, you can check if it's the absolute path of`$demodir/oneflow_process/persistent`.
 
-3.3.2 Start OneFlow serving
+#### Start OneFlow serving
 Start OneFlow model serving with the following commands:
 ```
 docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 \
