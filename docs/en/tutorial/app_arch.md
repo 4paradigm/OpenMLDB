@@ -83,7 +83,7 @@ Let’s take a concrete example. The following figure shows the functional logic
 
 Note that in the above figure, the new swipe record data is shown as being **virtually inserted** into the historical transaction table. This is because, in OpenMLDB’s default execution mode, the system virtually inserts the in-event data carried by the request into the table, participating in the overall feature computation (if in special circumstances where the request row is not needed for decision-making, see section below “Application Architecture for Real-time Query”). At the same time, the current request row is also useful for subsequent decision-making in general, so after completing the current feature computation, it will be physically inserted into the database. To build an in-event decision-making system like the above business process, a typical architecture flowchart is listed below.
 
-![ca5](images/ca5.jpg)
+![ca5](images/ca5.png)
 
 The architecture is based on the OpenMLDB SDK and achieves strict in-event decision-making, which consists of two stages:
 
