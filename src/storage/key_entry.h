@@ -49,11 +49,23 @@ struct DataBlock {
         delete[] data;
         data = nullptr;
     }
+
+    bool EqualWithoutCnt(const DataBlock& other) const {
+        if (size != other.size) {
+            return false;
+        }
+        // ref RowBuilder::InitBuffer header version
+        if (*(data + 1) != *(other.data + 1) ||
+            *(reinterpret_cast<uint32_t*>(data + 2)) != *(reinterpret_cast<uint32_t*>(other.data + 2))) {
+            return false;
+        }
+        return memcmp(data + 6, other.data + 6, size - 6) == 0;
+    }
 };
 
 // the desc time comparator
 struct TimeComparator {
-    int operator() (uint64_t a, uint64_t b) const {
+    int operator()(uint64_t a, uint64_t b) const {
         if (a > b) {
             return -1;
         } else if (a == b) {
@@ -85,7 +97,6 @@ class KeyEntry {
     std::atomic<uint64_t> refs_;
     std::atomic<uint64_t> count_;
 };
-
 
 }  // namespace storage
 }  // namespace openmldb

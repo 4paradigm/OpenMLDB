@@ -1085,7 +1085,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
     SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card|merchant", "", ::openmldb::type::kAbsOrLat, 0,
                           1);
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
+    std::shared_ptr<Table> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
 
     LogParts* log_part = new LogParts(12, 4, scmp);
@@ -1119,7 +1119,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
         google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> d_list;
         ::openmldb::api::Dimension* d_ptr2 = d_list.Add();
         d_ptr2->CopyFrom(dimensions);
-        ASSERT_EQ(table->Put(i + 1, *result, d_list), true);
+        ASSERT_EQ(table->Put(i + 1, *result, d_list).ok(), true);
     }
 
     table->SchedGc();

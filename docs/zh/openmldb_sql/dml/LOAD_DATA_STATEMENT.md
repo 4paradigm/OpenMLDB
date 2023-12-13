@@ -58,6 +58,7 @@ FilePathPattern
 | load_mode   | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                                                                                                                                                                                                        |
 | thread      | Integer | 1                 | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                                                                                                                                                                                                       |
 | writer_type | String  | single            | 集群版在线导入中插入数据的writer类型。可选值为`single`和`batch`，默认为`single`。`single`表示数据即读即写，节省内存。`batch`则是将整个rdd分区读完，确认数据类型有效性后，再写入集群，需要更多内存。在部分情况下，`batch`模式有利于筛选未写入的数据，方便重试这部分数据。                                                                                                                                                       |
+| put_if_absent | Boolean | false             | 在源数据无重复行也不与表中已有数据重复时，可以使用此选项避免插入重复数据，特别是job失败后可以重试。等价于使用`INSERT OR IGNORE`。 |
 
 ```{note}
 在集群版中，`LOAD DATA INFILE`语句会根据当前执行模式（execute_mode）决定将数据导入到在线或离线存储。单机版中没有存储区别，只会导入到在线存储中，同时也不支持`deep_copy`选项。
@@ -73,6 +74,7 @@ FilePathPattern
 
 所以，请尽量使用绝对路径。单机测试中，本地文件用`file://`开头；生产环境中，推荐使用hdfs等文件系统。
 ```
+
 ## SQL语句模版
 
 ```sql

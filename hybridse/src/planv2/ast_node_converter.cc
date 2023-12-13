@@ -1962,8 +1962,9 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
     }
     CHECK_TRUE(nullptr == root->query(), common::kSqlAstError, "Un-support insert statement with query");
 
-    CHECK_TRUE(zetasql::ASTInsertStatement::InsertMode::DEFAULT_MODE == root->insert_mode(), common::kSqlAstError,
-               "Un-support insert mode ", root->GetSQLForInsertMode());
+    CHECK_TRUE(zetasql::ASTInsertStatement::InsertMode::DEFAULT_MODE == root->insert_mode() ||
+                   zetasql::ASTInsertStatement::InsertMode::IGNORE == root->insert_mode(),
+               common::kSqlAstError, "Un-support insert mode ", root->GetSQLForInsertMode());
     CHECK_TRUE(nullptr == root->returning(), common::kSqlAstError,
                "Un-support insert statement with return clause currently", root->GetSQLForInsertMode());
     CHECK_TRUE(nullptr == root->assert_rows_modified(), common::kSqlAstError,
@@ -2000,8 +2001,8 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
     if (names.size() == 2) {
         db_name = names[0];
     }
-    *output =
-        dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(db_name, table_name, column_list, rows));
+    *output = dynamic_cast<node::InsertStmt*>(node_manager->MakeInsertTableNode(
+        db_name, table_name, column_list, rows, static_cast<node::InsertStmt::InsertMode>(root->insert_mode())));
     return base::Status::OK();
 }
 base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::NodeManager* node_manager,

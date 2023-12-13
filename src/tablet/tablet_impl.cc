@@ -738,7 +738,8 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     if (request->ts_dimensions_size() > 0) {
         entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
     }
-    bool ok = false;
+    
+    absl::Status st;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
         if (ret_code != 0) {
@@ -747,16 +748,27 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             return;
         }
         DLOG(INFO) << "put data to tid " << tid << " pid " << pid << " with key " << request->dimensions(0).key();
-        ok = table->Put(entry.ts(), entry.value(), entry.dimensions());
+        // 1. normal put: ok, invalid data
+        // 2. put if absent: ok, exists but ignore, invalid data
+        st = table->Put(entry.ts(), entry.value(), entry.dimensions(), request->put_if_absent());
     }
-    if (!ok) {
+
+    if (!st.ok()) {
+        if (request->put_if_absent() && absl::IsAlreadyExists(st)) {
+            // not a failure but shounld't write log entry 
+            response->set_code(::openmldb::base::ReturnCode::kOk);
+            response->set_msg("exists but ignore");
+            return;
+        }
+        LOG(WARNING) << st.ToString();
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);
-        response->set_msg("put failed");
+        response->set_msg(st.ToString());
         return;
     }
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
+    bool ok = false;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
@@ -2192,7 +2204,7 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
         }
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
             table->Delete(entry);
-        }
+        } // TODO(hw): why not else if?
         if (!table->Put(entry)) {
             PDLOG(WARNING, "fail to put entry. tid %u pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);

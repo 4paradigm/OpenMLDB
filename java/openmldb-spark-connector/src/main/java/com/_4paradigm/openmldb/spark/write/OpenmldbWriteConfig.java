@@ -24,13 +24,15 @@ import java.io.Serializable;
 // Must serializable
 public class OpenmldbWriteConfig implements Serializable {
     public final String dbName, tableName, zkCluster, zkPath, writerType;
+    public final boolean putIfAbsent;
 
-    public OpenmldbWriteConfig(String dbName, String tableName, SdkOption option, String writerType) {
+    public OpenmldbWriteConfig(String dbName, String tableName, SdkOption option, String writerType, boolean putIfAbsent) {
         this.dbName = dbName;
         this.tableName = tableName;
         this.zkCluster = option.getZkCluster();
         this.zkPath = option.getZkPath();
         this.writerType = writerType;
+        this.putIfAbsent = putIfAbsent;
         // TODO(hw): other configs in SdkOption
     }
 }

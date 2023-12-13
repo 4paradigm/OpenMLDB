@@ -194,6 +194,7 @@ message PutRequest {
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7 [deprecated = true];
     optional uint32 format_version = 8 [default = 0];
+    optional bool put_if_absent = 9 [default = false];
 }
 
 message PutResponse {

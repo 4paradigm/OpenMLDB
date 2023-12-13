@@ -75,20 +75,16 @@ class TabletClient : public Client {
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-             const std::vector<std::pair<std::string, uint32_t>>& dimensions);
+             const std::vector<std::pair<std::string, uint32_t>>& dimensions, bool put_if_absent = false);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions);
+             ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions, bool put_if_absent);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,  // NOLINT
-             uint64_t& ts,                                                                          // NOLINT
-             std::string& msg);
-    ;  // NOLINT
+             uint64_t& ts, std::string& msg);                                                       // NOLINT
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
-             std::string& value,  // NOLINT
-             uint64_t& ts,        // NOLINT
-             std::string& msg);   // NOLINT
+             std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                 std::string& msg);  // NOLINT

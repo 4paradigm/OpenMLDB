@@ -1307,14 +1307,14 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get "
                      "table_name key idx_name ts | get table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx "
+                     "index_name=xxx ts=xxx"
                   << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "get format error. eg: get table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx "
+                     "index_name=xxx ts=xxx"
                   << std::endl;
         return;
     }
@@ -1382,7 +1382,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     ::openmldb::codec::SDKCodec codec(tables[0]);
-    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;
         uint64_t ts = 0;

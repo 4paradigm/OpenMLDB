@@ -23,6 +23,7 @@
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "storage/record.h"
+#include "storage/segment.h"
 
 DECLARE_int32(gc_safe_offset);
 DECLARE_uint32(skiplist_max_height);
@@ -64,9 +65,7 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
     }
 }
 
-Segment::~Segment() {
-    delete entries_;
-}
+Segment::~Segment() { delete entries_; }
 
 void Segment::Release(StatisticsInfo* statistics_info) {
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
@@ -98,9 +97,7 @@ void Segment::Release(StatisticsInfo* statistics_info) {
     }
 }
 
-void Segment::ReleaseAndCount(StatisticsInfo* statistics_info) {
-    Release(statistics_info);
-}
+void Segment::ReleaseAndCount(StatisticsInfo* statistics_info) { Release(statistics_info); }
 
 void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec, StatisticsInfo* statistics_info) {
     if (ts_cnt_ <= 1) {
@@ -135,25 +132,28 @@ void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec, StatisticsInfo*
     }
 }
 
-void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t size) {
+void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t size, bool put_if_absent,
+                  bool check_all_time) {
     if (ts_cnt_ > 1) {
         return;
     }
     auto* db = new DataBlock(1, data, size);
-    Put(key, time, db);
+    Put(key, time, db, put_if_absent, check_all_time);
 }
 
-void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
+bool Segment::Put(const Slice& key, uint64_t time, DataBlock* row, bool put_if_absent, bool check_all_time) {
     if (ts_cnt_ > 1) {
-        return;
+        LOG(ERROR) << "wrong call";
+        return false;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    PutUnlock(key, time, row);
+    return PutUnlock(key, time, row, put_if_absent, check_all_time);
 }
 
-void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
+bool Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row, bool put_if_absent, bool check_all_time) {
     void* entry = nullptr;
     uint32_t byte_size = 0;
+    // one key just one entry
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == nullptr) {
         char* pk = new char[key.size()];
@@ -165,11 +165,17 @@ void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
         byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
         pk_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
+
+    if (put_if_absent && ListContains(reinterpret_cast<KeyEntry*>(entry), time, row, check_all_time)) {
+        return false;
+    }
+
     idx_cnt_vec_[0]->fetch_add(1, std::memory_order_relaxed);
     uint8_t height = reinterpret_cast<KeyEntry*>(entry)->entries.Insert(time, row);
     reinterpret_cast<KeyEntry*>(entry)->count_.fetch_add(1, std::memory_order_relaxed);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+    return true;
 }
 
 void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t time, DataBlock* row) {
@@ -201,16 +207,17 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
     }
 }
 
-void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row) {
+bool Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row, bool put_if_absent) {
     uint32_t ts_size = ts_map.size();
     if (ts_size == 0) {
-        return;
+        return false;
     }
     if (ts_cnt_ == 1) {
+        bool ret = true;
         if (auto pos = ts_map.find(ts_idx_map_.begin()->first); pos != ts_map.end()) {
-            Put(key, pos->second, row);
+            ret &= Put(key, pos->second, row, put_if_absent, pos->first == DEFAULT_TS_COL_ID);
         }
-        return;
+        return ret;
     }
     void* entry_arr = nullptr;
     std::lock_guard<std::mutex> lock(mu_);
@@ -237,12 +244,16 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
             }
         }
         auto entry = reinterpret_cast<KeyEntry**>(entry_arr)[pos->second];
+        if (put_if_absent && ListContains(entry, kv.second, row, pos->first == DEFAULT_TS_COL_ID)) {
+            return false;
+        }
         uint8_t height = entry->entries.Insert(kv.second, row);
         entry->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
+    return true;
 }
 
 bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
@@ -289,8 +300,8 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
     return true;
 }
 
-bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
-            uint64_t ts, const std::optional<uint64_t>& end_ts) {
+bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key, uint64_t ts,
+                     const std::optional<uint64_t>& end_ts) {
     void* entry = nullptr;
     if (entries_->Get(key, entry) < 0 || entry == nullptr) {
         return true;
@@ -347,7 +358,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
 }
 
 void Segment::FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlock*>* node,
-    StatisticsInfo* statistics_info) {
+                       StatisticsInfo* statistics_info) {
     while (node != nullptr) {
         statistics_info->IncrIdxCnt(ts_idx);
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
@@ -364,7 +375,6 @@ void Segment::FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlo
         delete tmp;
     }
 }
-
 
 void Segment::GcFreeList(StatisticsInfo* statistics_info) {
     uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
@@ -592,6 +602,36 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uin
     }
 }
 
+bool Segment::ListContains(KeyEntry* entry, uint64_t time, DataBlock* row, bool check_all_time) {
+    // one key-time may have multi records // TODO: check gc
+    auto it = entry->entries.NewIterator();
+    if (check_all_time) {
+        it->SeekToFirst();
+        while (it->Valid()) {
+            if (it->GetValue()->EqualWithoutCnt(*row)) {
+                return true;
+            }
+            it->Next();
+        }
+    } else {
+        // less than but desc time comparator, so it's <= time(not valid if empty or all > time), and get smaller by
+        // next
+        it->Seek(time);
+        while (it->Valid()) {
+            // key > time is just a protection, normally it should not happen
+            if (it->GetKey() < time || it->GetKey() > time) {
+                VLOG(10) << it->GetKey() << " != " << time;
+                break;  // no entry == time, or all entries == time have been checked
+            }
+            if (it->GetValue()->EqualWithoutCnt(*row)) {
+                return true;
+            }
+            it->Next();
+        }
+    }
+    return false;
+}
+
 // fast gc with no global pause
 void Segment::Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
@@ -606,8 +646,7 @@ void Segment::Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info) {
         if (node == nullptr) {
             continue;
         } else if (node->GetKey() > time) {
-            DEBUGLOG("[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu",
-                time, node->GetKey());
+            DEBUGLOG("[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
             continue;
         }
         node = nullptr;
@@ -648,8 +687,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, Statis
         if (node == nullptr) {
             continue;
         } else if (node->GetKey() > time) {
-            DEBUGLOG("[Gc4TTLAndHead] segment gc with key %lu need not ttl, last node key %lu",
-                time, node->GetKey());
+            DEBUGLOG("[Gc4TTLAndHead] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
             continue;
         }
         node = nullptr;
@@ -663,8 +701,8 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, Statis
         FreeList(0, node, statistics_info);
         entry->count_.fetch_sub(statistics_info->GetIdxCnt(0) - cur_idx_cnt, std::memory_order_relaxed);
     }
-    DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu",
-        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
+    DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu", time, keep_cnt,
+             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
     idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
@@ -709,8 +747,8 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, Statist
         FreeList(0, node, statistics_info);
         entry->count_.fetch_sub(statistics_info->GetIdxCnt(0) - cur_idx_cnt, std::memory_order_relaxed);
     }
-    DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu",
-        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
+    DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu", time, keep_cnt,
+             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
     idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
@@ -754,8 +792,8 @@ MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket, type::C
     return new MemTableIterator(reinterpret_cast<KeyEntry*>(entry)->entries.NewIterator(), compress_type);
 }
 
-MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx,
-        Ticket& ticket, type::CompressType compress_type) {
+MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket,
+                                       type::CompressType compress_type) {
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return new MemTableIterator(nullptr, compress_type);

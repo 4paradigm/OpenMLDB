@@ -40,6 +40,7 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
     // single: insert when read one row
     // batch: insert when commit(after read a whole partition)
     private String writerType = "single";
+    private boolean putIfAbsent = false;
 
     @Override
     public StructType inferSchema(CaseInsensitiveStringMap options) {
@@ -70,13 +71,16 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
         if (options.containsKey("writerType")) {
             writerType = options.get("writerType");
         }
+        if (options.containsKey("putIfAbsent")) {
+            putIfAbsent = Boolean.valueOf(options.get("putIfAbsent"));
+        }
 
         return null;
     }
 
     @Override
     public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> properties) {
-        return new OpenmldbTable(dbName, tableName, option, writerType);
+        return new OpenmldbTable(dbName, tableName, option, writerType, putIfAbsent);
     }
 
     @Override

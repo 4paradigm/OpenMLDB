@@ -49,27 +49,30 @@ public class OpenmldbTable implements SupportsWrite, SupportsRead {
     private final String tableName;
     private final SdkOption option;
     private final String writerType;
+    private final boolean putIfAbsent;
     private SqlExecutor executor = null;
 
     private Set<TableCapability> capabilities;
 
-    public OpenmldbTable(String dbName, String tableName, SdkOption option, String writerType) {
+    public OpenmldbTable(String dbName, String tableName, SdkOption option, String writerType, boolean putIfAbsent) {
         this.dbName = dbName;
         this.tableName = tableName;
         this.option = option;
         this.writerType = writerType;
+        this.putIfAbsent = putIfAbsent;
         try {
             this.executor = new SqlClusterExecutor(option);
             // no need to check table exists, schema() will check it later
         } catch (SqlException e) {
             e.printStackTrace();
+            throw new RuntimeException("conn openmldb failed", e);
         }
         // TODO: cache schema & delete executor?
     }
 
     @Override
     public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
-        OpenmldbWriteConfig config = new OpenmldbWriteConfig(dbName, tableName, option, writerType);
+        OpenmldbWriteConfig config = new OpenmldbWriteConfig(dbName, tableName, option, writerType, putIfAbsent);
         return new OpenmldbWriteBuilder(config, info);
     }
 

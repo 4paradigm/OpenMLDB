@@ -227,7 +227,8 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
     }
 }
 
-bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions) {
+absl::Status DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions, bool put_if_absent) {
+    // disk table will update if key-time is the same, so no need to handle put_if_absent
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
     std::string uncompress_data;
     if (GetCompressType() == openmldb::type::kSnappy) {
@@ -237,8 +238,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
-        PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
-        return false;
+        return absl::InvalidArgumentError(absl::StrCat(id_,".",pid_, ": invalid schema version ", version));
     }
     rocksdb::WriteBatch batch;
     for (auto it = dimensions.begin(); it != dimensions.end(); ++it) {
@@ -256,12 +256,11 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
             if (ts_col->IsAutoGenTs()) {
                 ts = time;
             } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
-                PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
-                return false;
+                return absl::InvalidArgumentError(absl::StrCat(id_,".",pid_, ": get ts failed"));
             }
             if (ts < 0) {
-                PDLOG(WARNING, "ts %ld is negative. tid %u pid %u", ts, id_, pid_);
-                return false;
+                return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": ts is negative ", ts));
+              
             }
             if (inner_index->GetIndex().size() > 1) {
                 combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
@@ -275,10 +274,9 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
     auto s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
-        return true;
+        return absl::OkStatus();
     } else {
-        DEBUGLOG("Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-        return false;
+        return absl::InternalError(absl::StrCat(id_, ".", pid_, ": ", s.ToString()));
     }
 }
 

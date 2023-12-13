@@ -1865,19 +1865,35 @@ class ColumnDefNode : public SqlNode {
 
 class InsertStmt : public SqlNode {
  public:
+    // ref zetasql ASTInsertStatement
+     enum InsertMode {
+        DEFAULT_MODE,  // plain INSERT
+        REPLACE,       // INSERT OR REPLACE
+        UPDATE,        // INSERT OR UPDATE
+        IGNORE         // INSERT OR IGNORE
+    };
+
     InsertStmt(const std::string &db_name,
                const std::string &table_name,
                const std::vector<std::string> &columns,
-               const std::vector<ExprNode *> &values)
+               const std::vector<ExprNode *> &values,
+               InsertMode insert_mode)
         : SqlNode(kInsertStmt, 0, 0),
           db_name_(db_name),
           table_name_(table_name),
           columns_(columns),
           values_(values),
-          is_all_(columns.empty()) {}
+          is_all_(columns.empty()),
+          insert_mode_(insert_mode) {}
 
-    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values)
-        : SqlNode(kInsertStmt, 0, 0), db_name_(db_name), table_name_(table_name), values_(values), is_all_(true) {}
+    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values,
+               InsertMode insert_mode)
+        : SqlNode(kInsertStmt, 0, 0),
+          db_name_(db_name),
+          table_name_(table_name),
+          values_(values),
+          is_all_(true),
+          insert_mode_(insert_mode) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const std::string db_name_;
@@ -1885,6 +1901,7 @@ class InsertStmt : public SqlNode {
     const std::vector<std::string> columns_;
     const std::vector<ExprNode *> values_;
     const bool is_all_;
+    const InsertMode insert_mode_;
 };
 
 class StorageModeNode : public SqlNode {
