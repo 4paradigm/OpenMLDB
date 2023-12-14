@@ -70,6 +70,7 @@ SELECT substr(COL7, 3, 6) FROM t1;
     - **OpenMLDB >= 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
     - **[ALPHA] OpenMLDB >= 0.8.4** 右表是带 LAST JOIN 的子查询 `subquery`, 要求 `subquery` 最左的表能被 JOIN 条件优化, `subquery`剩余表能被自身 LAST JOIN 的 JOIN 条件优化 
     - **[ALPHA] OpenMLDB >= 0.8.4** LEFT JOIN. 要求 LEFT JOIN 的右表能被 LEFT JOIN 条件优化, LEFT JOIN 的左表能被上层的 LAST JOIN 条件优化
+    - **[ALPHA] OpenMLDB >= 0.8.5** UNION ALL query. 要求 UNION ALL 内的每一个 query 都可以被 LAST JOIN 的条件优化
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。
