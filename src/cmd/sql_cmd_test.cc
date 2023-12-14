@@ -724,7 +724,7 @@ TEST_P(DBSDKTest, LoadDataMultipleThread) {
         std::string load_sql = absl::StrCat("LOAD DATA INFILE '", (tmp_path / "myfile*").string(),
                                             "' INTO TABLE trans options(load_mode='local', thread=", num_thread, ");");
         sr->ExecuteSQL(load_sql, &status);
-        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(status.msg, absl::StrCat("Load ", file_num * rows_per_file, " rows"));
     }
     auto result = sr->ExecuteSQL("select * from trans;", &status);

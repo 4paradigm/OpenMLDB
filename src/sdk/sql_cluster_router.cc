@@ -2822,7 +2822,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 
             openmldb::sdk::LoadOptionsMapParser options_parser(plan->Options());
             auto is_local = options_parser.IsLocalMode();
-            if (is_local.ok()) {
+            if (!is_local.ok()) {
                 *status = {StatusCode::kCmdError, is_local.status().ToString()};
                 return {};
             }
