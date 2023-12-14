@@ -38,15 +38,15 @@ jobs:
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
          mv openmldb-linux openmldb-main-linux
          tar -zcf openmldb-linux.tar.gz openmldb-main-linux
+         mv java/openmldb-batch/target/openmldb*-SNAPSHOT.jar  openmldb-batch.jar
+         mv java/openmldb-jdbc/target/openmldb*-SNAPSHOT.jar  openmldb-jdbc.jar
+         mv java/openmldb-native/target/openmldb*-SNAPSHOT.jar  openmldb-native.jar
       - name: download
         if: ${{ env.E_VERSION != 'main' }}
         run: | 
          curl -SLO https://github.com/4paradigm/OpenMLDB/releases/download/v${{ env.E_VERSION }}/openmldb-${{ env.E_VERSION }}-linux.tar.gz
          tar -zxf openmldb-${{ env.E_VERSION }}-linux.tar.gz 
          mv openmldb-${{ env.E_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
-         mv java/openmldb-batch/target/openmldb*-SNAPSHOT.jar  openmldb-batch.jar
-         mv java/openmldb-jdbc/target/openmldb*-SNAPSHOT.jar  openmldb-jdbc.jar
-         mv java/openmldb-native/target/openmldb*-SNAPSHOT.jar  openmldb-native.jar
       - name: upload artifact
         uses: actions/upload-artifact@v3
         with:
