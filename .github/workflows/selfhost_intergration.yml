@@ -98,8 +98,8 @@ jobs:
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
         with:
-          server_address: smtp.partner.outlook.cn
-          server_port: 587
+          server_address: mail.4paradigm.com
+          server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB Memory Test
@@ -152,8 +152,8 @@ jobs:
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
         with:
-          server_address: smtp.partner.outlook.cn
-          server_port: 587
+          server_address: mail.4paradigm.com
+          server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB Memory Test
@@ -205,8 +205,8 @@ jobs:
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
         with:
-          server_address: smtp.partner.outlook.cn
-          server_port: 587
+          server_address: mail.4paradigm.com
+          server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB Memory Test
@@ -259,8 +259,8 @@ jobs:
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
         with:
-          server_address: smtp.partner.outlook.cn
-          server_port: 587
+          server_address: mail.4paradigm.com
+          server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB HDD Test
@@ -312,8 +312,8 @@ jobs:
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
         with:
-          server_address: smtp.partner.outlook.cn
-          server_port: 587
+          server_address: mail.4paradigm.com
+          server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB SSD Test
@@ -366,8 +366,8 @@ jobs:
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
         with:
-          server_address: smtp.partner.outlook.cn
-          server_port: 587
+          server_address: mail.4paradigm.com
+          server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB yarn Test
@@ -419,8 +419,8 @@ jobs:
       #   if: ${{ failure() }}
       #   uses: dawidd6/action-send-mail@master
       #   with:
-      #     server_address: smtp.partner.outlook.cn
-      #     server_port: 587
+      #     server_address: mail.4paradigm.com
+      #     server_port: 995
       #     username: ${{ secrets.MAIL_USERNAME }}
       #     password: ${{ secrets.MAIL_PASSWORD }}
       #     subject: OpenMLDB yarn Test
