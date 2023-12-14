@@ -39,6 +39,9 @@ do
         l) echo "参数l的值:$OPTARG"
         CASE_LEVEL=$OPTARG
         ;;
+        j) echo "参数j的值:$OPTARG"
+        JAR_VERSION=$OPTARG
+        ;;
         ?) echo "未知参数"
            exit 1
         ;;
@@ -80,13 +83,20 @@ echo "DIFF_VERSIONS:${DIFF_VERSIONS}"
 # modify config
 sh test/steps/modify_apiserver_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "${BUILD_MODE}" "${OPENMLDB_SERVER_VERSION}"
 # install command tool
+if [[ "${JAR_VERSION}" == "" ]]; then
+    JAR_VERSION=${JAVA_SDK_VERSION}
+  else
+    mvn install:install-file -Dfile=openmldb-common.jar -DartifactId=openmldb-common -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
+    mvn install:install-file -Dfile=openmldb-jdbc.jar -DartifactId=openmldb-jdbc -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
+    mvn install:install-file -Dfile=openmldb-native.jar -DartifactId=openmldb-native -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
+fi
 cd test/test-tool/command-tool || exit
-mvn clean install -Dmaven.test.skip=true
+mvn clean install -Dmaven.test.skip=true -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
 cd "${ROOT_DIR}" || exit
 # install jar
 cd test/integration-test/openmldb-test-java || exit
-mvn clean install -Dmaven.test.skip=true
+mvn clean install -Dmaven.test.skip=true -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
 cd "${ROOT_DIR}" || exit
 # run case
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-http-test || exit
-mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}"
+mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}

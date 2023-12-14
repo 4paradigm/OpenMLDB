@@ -24,7 +24,7 @@ jobs:
   build-openmldb:
 
     runs-on: [self-hosted,generic]
-    if: github.repository == '4paradigm/OpenMLDB'
+    if: github.repository == '4paradigm/OpenMLDB' || github.repository == 'lqy222/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -44,11 +44,18 @@ jobs:
          curl -SLO https://github.com/4paradigm/OpenMLDB/releases/download/v${{ env.E_VERSION }}/openmldb-${{ env.E_VERSION }}-linux.tar.gz
          tar -zxf openmldb-${{ env.E_VERSION }}-linux.tar.gz 
          mv openmldb-${{ env.E_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
+         mv java/openmldb-batch/target/openmldb*-SNAPSHOT.jar  openmldb-batch.jar
+         mv java/openmldb-jdbc/target/openmldb*-SNAPSHOT.jar  openmldb-jdbc.jar
+         mv java/openmldb-native/target/openmldb*-SNAPSHOT.jar  openmldb-native.jar
       - name: upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: openmldb-package
-          path: openmldb-linux.tar.gz
+          path: | 
+            openmldb-batch.jar
+            openmldb-jdbc.jar
+            openmldb-native.jar
+            openmldb-linux.tar.gz
           
   apiserver-cluster:
     needs: build-openmldb
@@ -63,23 +70,19 @@ jobs:
         uses: actions/download-artifact@v3
         with:
             name: openmldb-package       
-      - name: install openmldb
+      - name: install openmldb 
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 20001 21000 java
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: |  
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
-          bash test/steps/openmldb-apiserver-test.sh -d deploy  
+        run: bash test/steps/openmldb-apiserver-test.sh -j 0.0.0 -d deploy  
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
@@ -127,15 +130,13 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
         run: |  
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
-          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
+
+          bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
@@ -183,16 +184,12 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
-          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
+        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
@@ -241,16 +238,12 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
-          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
+        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
@@ -294,20 +287,16 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux java-sdk-cluster-memory-0 23001 24000 java ssd
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
-          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
+        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
@@ -356,16 +345,12 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
           bash HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
       - name: test
-        run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
-          bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
+        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
@@ -413,15 +398,12 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
+        run: echo "a"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
-        if: success()
+        if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       # - name: TEST Results
       #   if: always()
