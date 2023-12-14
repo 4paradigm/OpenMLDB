@@ -112,7 +112,6 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
     }
     @Override
     public void tearDown() {
-        tearDown("mainVersion",executor);
         if(MapUtils.isNotEmpty(executorMap)) {
             executorMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
         }
@@ -120,7 +119,6 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
 
     public void tearDown(String version,SqlExecutor executor) {
-        log.info("version:{},begin tear down",version);
         List<String> tearDown = sqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
@@ -132,7 +130,6 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
                 SDKUtil.sql(executor, dbName, sql);
             });
         }
-        log.info("version:{},begin drop table",version);
         List<InputDesc> tables = sqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;

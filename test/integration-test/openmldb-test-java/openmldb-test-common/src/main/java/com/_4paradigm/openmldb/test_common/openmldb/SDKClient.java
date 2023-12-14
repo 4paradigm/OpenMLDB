@@ -25,7 +25,7 @@ public class SDKClient {
         return new SDKClient(executor);
     }
     public OpenMLDBResult execute(String sql) {
-        log.info("execute sql:{}",sql);
+        log.info("execute sql:{}",sql.replaceAll("\\n", "\\r"));
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         openMLDBResult.setSql(sql);
         try {

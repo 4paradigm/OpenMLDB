@@ -43,7 +43,6 @@ public abstract class BaseExecutor implements IExecutor{
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
         System.out.println(className+"."+methodName+":"+ sqlCase.getCaseFileName()+":"+ sqlCase.getDesc() + " Begin!");
-        log.info(className+"."+methodName+":"+ sqlCase.getDesc() + " Begin!");
         boolean verify = false;
         try {
             verify = verify();
