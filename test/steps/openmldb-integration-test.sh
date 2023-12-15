@@ -52,6 +52,6 @@ mvn clean install -B -Dmaven.test.skip=true -f test/test-tool/command-tool/pom.x
 mvn clean install -B -Dmaven.test.skip=true -f test/integration-test/openmldb-test-java/pom.xml -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
 if [[ "${EXECUTE_MODE}" == "javasdk" ]]; then
   mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-sdk-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
-else if [[ "${EXECUTE_MODE}" == "apiserver" ]]; then
+elif [[ "${EXECUTE_MODE}" == "apiserver" ]]; then
   mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-http-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
 fi
