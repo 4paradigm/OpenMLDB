@@ -129,9 +129,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: |  
-
-          bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "0" -s "memory"    
+        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh

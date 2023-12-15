@@ -21,7 +21,7 @@
 #-d 部署模式，有cluster和standalone两种，默认cluster
 #-l 测试的case级别，有0，1，2，3，4，5六个级别，默认为0，也可以同时跑多个级别的case，例如：1,2,3,4,5
 
-while getopts ":b:c:d:l:" opt
+while getopts ":b:c:d:l:j:" opt
 do
    case $opt in
         b)
