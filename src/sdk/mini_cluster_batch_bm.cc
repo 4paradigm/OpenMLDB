@@ -85,9 +85,9 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
-    ::openmldb::sdk::ClusterOptions option;
-    option.zk_cluster = mc->GetZkCluster();
-    option.zk_path = mc->GetZkPath();
+    auto option = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+    option->zk_cluster = mc->GetZkCluster();
+    option->zk_path = mc->GetZkPath();
     ::openmldb::sdk::ClusterSDK sdk(option);
     sdk.Init();
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;

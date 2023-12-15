@@ -58,6 +58,8 @@ struct SQLRouterOptions : BasicRouterOptions {
 };
 
 struct StandaloneOptions : BasicRouterOptions {
+    StandaloneOptions() = default;
+    StandaloneOptions(const std::string& h, uint32_t p) : host(h), port(p) {}
     std::string host;
     uint32_t port;
 };

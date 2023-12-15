@@ -532,7 +532,7 @@ TEST_F(SqlCmdTest, InsertWithDB) {
         sr, {"create database test1;", "create database test2;", "use test1;",
              "create table trans (c1 string, c2 int);", "use test2;", "insert into test1.trans values ('aaa', 123);"});
 
-    auto cur_cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    auto cur_cs = new ::openmldb::sdk::StandAloneSDK(std::make_shared<sdk::StandaloneOptions>(FLAGS_host, FLAGS_port));
     cur_cs->Init();
     auto cur_sr = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cur_cs);
     cur_sr->Init();
@@ -3972,10 +3972,10 @@ int main(int argc, char** argv) {
     int ok = ::openmldb::cmd::mc_->SetUp(2);
     sleep(5);
     srand(time(NULL));
-    ::openmldb::sdk::ClusterOptions copt;
-    copt.zk_cluster = mc.GetZkCluster();
-    copt.zk_path = mc.GetZkPath();
-    copt.zk_session_timeout = FLAGS_zk_session_timeout;
+    auto copt = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+    copt->zk_cluster = mc.GetZkCluster();
+    copt->zk_path = mc.GetZkPath();
+    copt->zk_session_timeout = FLAGS_zk_session_timeout;
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
@@ -3984,7 +3984,8 @@ int main(int argc, char** argv) {
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
-    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    auto sopt = std::make_shared<::openmldb::sdk::StandaloneOptions>(FLAGS_host, FLAGS_port);
+    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(sopt);
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();

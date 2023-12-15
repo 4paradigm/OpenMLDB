@@ -312,9 +312,7 @@ bool InitStandAloneSDK() {
         std::cout << "ERROR: Host or port is missing" << std::endl;
         return false;
     }
-    auto options = std::make_shared<sdk::StandaloneOptions>();
-    options->host = FLAGS_host;
-    options->port = FLAGS_port;
+    auto options = std::make_shared<sdk::StandaloneOptions>(FLAGS_host, FLAGS_port);
     options->request_timeout = FLAGS_request_timeout;
     cs = new ::openmldb::sdk::StandAloneSDK(options);
     bool ok = cs->Init();
