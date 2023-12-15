@@ -33,8 +33,7 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
     protected HttpResult httpresult;
     protected String deploy;
     protected OpenMLDBInfo openMLDBInfo= YamlUtil.getObject(Tool.openMLDBDir().getAbsolutePath()+"/out/openmldb_info.yaml",OpenMLDBInfo.class);
-    protected String defaultDb = sqlCase.getDb();
-    String dbName = defaultDb.equals(null)?"test_apiserver":defaultDb;
+    protected String defaultDb = null==sqlCase.getDb()||sqlCase.getDb().equals("null") ? "test_apiserver": sqlCase.getDb();
     String apiServerUrl;
     OpenMLDBHttp openMLDBHttp = new OpenMLDBHttp();
 
@@ -64,6 +63,7 @@ public class RestfulOnlineExecutor extends BaseExecutor  {
 
     @Override
     public void prepare() {
+        dbName  = defaultDb;
         apiServerUrl = "http://"+openMLDBInfo.getApiServerEndpoints().get(0);
         List<InputDesc> tables = sqlCase.getInputs();
         OpenMLDBCommandUtil.createDatabases(openMLDBInfo,dbName,tables);

@@ -112,6 +112,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
     }
     @Override
     public void tearDown() {
+        tearDown("mainVersion",executor);
         if(MapUtils.isNotEmpty(executorMap)) {
             executorMap.entrySet().stream().forEach(e -> tearDown(e.getKey(), e.getValue()));
         }
