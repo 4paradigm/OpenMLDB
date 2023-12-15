@@ -49,6 +49,7 @@ class DeleteOption;
 using TableInfoMap = std::map<std::string, std::map<std::string, ::openmldb::nameserver::TableInfo>>;
 
 class Bias;
+struct UserInfo;
 
 class SQLClusterRouter : public SQLRouter {
  public:
@@ -63,6 +64,8 @@ class SQLClusterRouter : public SQLRouter {
     ~SQLClusterRouter() override;
 
     bool Init();
+
+    bool Auth();
 
     bool CreateDB(const std::string& db, hybridse::sdk::Status* status) override;
 
@@ -423,6 +426,11 @@ class SQLClusterRouter : public SQLRouter {
             int64_t timeout_ms, const base::Slice& row,
             const std::string& router_col, hybridse::sdk::Status* status);
 
+    absl::StatusOr<bool> GetUser(const std::string& name, UserInfo* user_info);
+    hybridse::sdk::Status AddUser(const std::string& name, const std::string& password);
+    hybridse::sdk::Status UpdateUser(const UserInfo& user_info, const std::string& password);
+    hybridse::sdk::Status DeleteUser(const std::string& name);
+
  private:
     std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
@@ -434,6 +442,13 @@ class SQLClusterRouter : public SQLRouter {
         input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
+};
+
+struct UserInfo {
+    std::string name;
+    std::string password;
+    uint64_t create_time = 0;
+    uint64_t update_time = 0;
 };
 
 class Bias {

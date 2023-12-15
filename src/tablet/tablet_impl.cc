@@ -2968,7 +2968,8 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
 
         std::string db_path = GetDBPath(root_path, tid, pid);
         if (!::openmldb::base::IsExists(db_path)) {
-            PDLOG(WARNING, "table db path does not exist, but still load. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
+            PDLOG(WARNING, "table db path does not exist, but still load. tid %u, pid %u, path %s",
+                    tid, pid, db_path.c_str());
         }
 
         std::shared_ptr<Table> table = GetTable(tid, pid);

@@ -9918,62 +9918,6 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     return {};
 }
 
-/// \beirf create a SQLClusterRouter instance for use like monitoring statistics collecting
-///    the actual instance is stored in `sr_` member
-///
-/// \return true if action success, false if any error happens
-bool NameServerImpl::GetSdkConnection() {
-    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) == nullptr) {
-        sdk::DBSDK* cs = nullptr;
-        PDLOG(INFO, "Init ClusterSDK in name server");
-        if (IsClusterMode()) {
-            ::openmldb::sdk::ClusterOptions copt;
-            copt.zk_cluster = zk_path_.zk_cluster_;
-            copt.zk_path = zk_path_.root_path_;
-            cs = new ::openmldb::sdk::ClusterSDK(copt);
-        } else {
-            std::vector<std::string> list = absl::StrSplit(endpoint_, ":");
-            if (list.size() != 2) {
-                PDLOG(ERROR, "fail to split endpoint_");
-                return false;
-            }
-
-            int port = 0;
-            if (!absl::SimpleAtoi(list.at(1), &port)) {
-                PDLOG(ERROR, "fail to port string: %s", list.at(1));
-                return false;
-            }
-            cs = new ::openmldb::sdk::StandAloneSDK(list.at(0), port);
-        }
-        bool ok = cs->Init();
-        if (!ok) {
-            PDLOG(ERROR, "ERROR: Failed to init DBSDK");
-            if (cs != nullptr) {
-                delete cs;
-            }
-            return false;
-        }
-        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(cs);
-        if (!sr->Init()) {
-            PDLOG(ERROR, "fail to init SQLClusterRouter");
-            if (cs != nullptr) {
-                delete cs;
-            }
-            return false;
-        }
-
-        std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
-    }
-
-    return true;
-}
-
-void NameServerImpl::FreeSdkConnection() {
-    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) != nullptr) {
-        std::atomic_store_explicit(&sr_, {}, std::memory_order_release);
-    }
-}
-
 std::shared_ptr<Task> NameServerImpl::CreateTaskInternal(const TaskMeta* task_meta) {
     auto task_type = task_meta->task_info->task_type();
     std::shared_ptr<TabletClient> client;

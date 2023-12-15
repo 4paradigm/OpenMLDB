@@ -46,6 +46,8 @@ DECLARE_string(zk_cert);
 DECLARE_int32(zk_session_timeout);
 DECLARE_uint32(zk_log_level);
 DECLARE_string(zk_log_file);
+DECLARE_string(user);
+DECLARE_string(password);
 
 // stand-alone mode
 DECLARE_string(host);
@@ -263,16 +265,25 @@ void Shell() {
 }
 
 bool InitClusterSDK() {
+    auto options = std::make_shared<sdk::SQLRouterOptions>();
     ::openmldb::sdk::ClusterOptions copt;
-    copt.zk_cluster = FLAGS_zk_cluster;
-    copt.zk_path = FLAGS_zk_root_path;
-    copt.zk_session_timeout = FLAGS_zk_session_timeout;
-    copt.zk_log_level = FLAGS_zk_log_level;
-    copt.zk_log_file = FLAGS_zk_log_file;
-    copt.zk_auth_schema = FLAGS_zk_auth_schema;
-    copt.zk_cert = FLAGS_zk_cert;
-
-    cs = new ::openmldb::sdk::ClusterSDK(copt);
+    options->zk_cluster = FLAGS_zk_cluster;
+    options->zk_path = FLAGS_zk_root_path;
+    options->zk_session_timeout = FLAGS_zk_session_timeout;
+    options->zk_log_level = FLAGS_zk_log_level;
+    options->zk_log_file = FLAGS_zk_log_file;
+    options->zk_auth_schema = FLAGS_zk_auth_schema;
+    options->zk_cert = FLAGS_zk_cert;
+    options->spark_conf_path = FLAGS_spark_conf;
+    options->request_timeout = FLAGS_request_timeout;
+    options->user = FLAGS_user;
+    options->password = FLAGS_password;
+    if (!::google::GetCommandLineFlagInfoOrDie("user").is_default &&
+            ::google::GetCommandLineFlagInfoOrDie("password").is_default) {
+        std::cout << "Please enter password:" << std::endl;
+        std::getline(std::cin, options->password);
+    }
+    cs = new ::openmldb::sdk::ClusterSDK(options);
     if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
         return false;
@@ -283,11 +294,6 @@ bool InitClusterSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
-
-    auto ops = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(sr->GetRouterOptions());
-    ops->spark_conf_path = FLAGS_spark_conf;
-    ops->request_timeout = FLAGS_request_timeout;
-
     return true;
 }
 
@@ -306,7 +312,11 @@ bool InitStandAloneSDK() {
         std::cout << "ERROR: Host or port is missing" << std::endl;
         return false;
     }
-    cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    auto options = std::make_shared<sdk::StandaloneOptions>();
+    options->host = FLAGS_host;
+    options->port = FLAGS_port;
+    options->request_timeout = FLAGS_request_timeout;
+    cs = new ::openmldb::sdk::StandAloneSDK(options);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
@@ -318,8 +328,6 @@ bool InitStandAloneSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
-    auto ops = sr->GetRouterOptions();
-    ops->request_timeout = FLAGS_request_timeout;
     return true;
 }
 

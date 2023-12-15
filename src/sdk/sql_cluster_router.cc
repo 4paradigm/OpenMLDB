@@ -42,6 +42,7 @@
 #include "boost/property_tree/ptree.hpp"
 #include "brpc/channel.h"
 #include "cmd/display.h"
+#include "codec/encrypt.h"
 #include "common/timer.h"
 #include "glog/logging.h"
 #include "nameserver/system_table.h"
@@ -56,6 +57,7 @@
 #include "sdk/file_option_parser.h"
 #include "sdk/job_table_helper.h"
 #include "sdk/node_adapter.h"
+#include "sdk/query_future_impl.h"
 #include "sdk/result_set_sql.h"
 #include "sdk/sdk_util.h"
 #include "sdk/split.h"
@@ -115,100 +117,6 @@ class ExplainInfoImpl : public ExplainInfo {
     std::string request_name_;
 };
 
-class QueryFutureImpl : public QueryFuture {
- public:
-    explicit QueryFutureImpl(openmldb::RpcCallback<openmldb::api::QueryResponse>* callback) : callback_(callback) {
-        if (callback_) {
-            callback_->Ref();
-        }
-    }
-    ~QueryFutureImpl() {
-        if (callback_) {
-            callback_->UnRef();
-        }
-    }
-
-    std::shared_ptr<hybridse::sdk::ResultSet> GetResultSet(hybridse::sdk::Status* status) override {
-        if (!status) {
-            return nullptr;
-        }
-        if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
-            status->code = hybridse::common::kRpcError;
-            status->msg = "request error, response or controller null";
-            return nullptr;
-        }
-        brpc::Join(callback_->GetController()->call_id());
-        if (callback_->GetController()->Failed()) {
-            status->code = hybridse::common::kRpcError;
-            status->msg = "request error, " + callback_->GetController()->ErrorText();
-            return nullptr;
-        }
-        if (callback_->GetResponse()->code() != ::openmldb::base::kOk) {
-            status->code = callback_->GetResponse()->code();
-            status->msg = "request error, " + callback_->GetResponse()->msg();
-            return nullptr;
-        }
-        auto rs = ResultSetSQL::MakeResultSet(callback_->GetResponse(), callback_->GetController(), status);
-        return rs;
-    }
-
-    bool IsDone() const override {
-        if (callback_) return callback_->IsDone();
-        return false;
-    }
-
- private:
-    openmldb::RpcCallback<openmldb::api::QueryResponse>* callback_;
-};
-
-class BatchQueryFutureImpl : public QueryFuture {
- public:
-    explicit BatchQueryFutureImpl(openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback)
-        : callback_(callback) {
-        if (callback_) {
-            callback_->Ref();
-        }
-    }
-
-    ~BatchQueryFutureImpl() {
-        if (callback_) {
-            callback_->UnRef();
-        }
-    }
-
-    std::shared_ptr<hybridse::sdk::ResultSet> GetResultSet(hybridse::sdk::Status* status) override {
-        if (!status) {
-            return nullptr;
-        }
-        if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
-            status->code = hybridse::common::kRpcError;
-            status->msg = "request error, response or controller null";
-            return nullptr;
-        }
-        brpc::Join(callback_->GetController()->call_id());
-        if (callback_->GetController()->Failed()) {
-            status->code = hybridse::common::kRpcError;
-            status->msg = "request error. " + callback_->GetController()->ErrorText();
-            return nullptr;
-        }
-        std::shared_ptr<::openmldb::sdk::SQLBatchRequestResultSet> rs =
-            std::make_shared<openmldb::sdk::SQLBatchRequestResultSet>(callback_->GetResponse(),
-                                                                      callback_->GetController());
-        bool ok = rs->Init();
-        if (!ok) {
-            status->code = -1;
-            status->msg = "request error, resuletSetSQL init failed";
-            return nullptr;
-        }
-        return rs;
-    }
-
-    bool IsDone() const override { return callback_->IsDone(); }
-
- private:
-    openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback_;
-};
-
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(std::make_shared<SQLRouterOptions>(options)),
       is_cluster_mode_(true),
@@ -232,11 +140,7 @@ SQLClusterRouter::SQLClusterRouter(DBSDK* sdk)
       cluster_sdk_(sdk),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {
-    if (is_cluster_mode_) {
-        options_ = std::make_shared<SQLRouterOptions>();
-    } else {
-        options_ = std::make_shared<StandaloneOptions>();
-    }
+    options_ = sdk->GetOptions();
 }
 
 SQLClusterRouter::~SQLClusterRouter() { delete cluster_sdk_; }
@@ -254,15 +158,7 @@ bool SQLClusterRouter::Init() {
         // init cluster_sdk_, require options_ or standalone_options_ is set
         if (is_cluster_mode_) {
             auto ops = std::dynamic_pointer_cast<SQLRouterOptions>(options_);
-            ClusterOptions coptions;
-            coptions.zk_cluster = ops->zk_cluster;
-            coptions.zk_path = ops->zk_path;
-            coptions.zk_session_timeout = ops->zk_session_timeout;
-            coptions.zk_log_level = ops->zk_log_level;
-            coptions.zk_log_file = ops->zk_log_file;
-            coptions.zk_auth_schema = ops->zk_auth_schema;
-            coptions.zk_cert = ops->zk_cert;
-            cluster_sdk_ = new ClusterSDK(coptions);
+            cluster_sdk_ = new ClusterSDK(ops);
             // TODO(hw): no detail error info
             bool ok = cluster_sdk_->Init();
             if (!ok) {
@@ -271,33 +167,11 @@ bool SQLClusterRouter::Init() {
             }
         } else {
             auto ops = std::dynamic_pointer_cast<StandaloneOptions>(options_);
-            cluster_sdk_ = new ::openmldb::sdk::StandAloneSDK(ops->host, ops->port);
+            cluster_sdk_ = new ::openmldb::sdk::StandAloneSDK(ops);
             bool ok = cluster_sdk_->Init();
             if (!ok) {
                 LOG(WARNING) << "fail to init standalone sdk";
                 return false;
-            }
-        }
-    } else {
-        // init options_ or standalone_options_ if fileds not filled, they should be consistent with cluster_sdk_
-        //
-        // might better to refactor constructors & fileds for SQLClusterRouter
-        // but will introduce breaking changes as well
-        if (is_cluster_mode_) {
-            auto ops = std::dynamic_pointer_cast<SQLRouterOptions>(options_);
-            if (ops->zk_cluster.empty() || ops->zk_path.empty()) {
-                auto* cluster_sdk = dynamic_cast<ClusterSDK*>(cluster_sdk_);
-                DCHECK(cluster_sdk != nullptr);
-                ops->zk_cluster = cluster_sdk->GetClusterOptions().zk_cluster;
-                ops->zk_path = cluster_sdk->GetClusterOptions().zk_path;
-            }
-        } else {
-            auto ops = std::dynamic_pointer_cast<StandaloneOptions>(options_);
-            if (ops->host.empty() || ops->port == 0) {
-                auto* standalone_sdk = dynamic_cast<StandAloneSDK*>(cluster_sdk_);
-                DCHECK(standalone_sdk != nullptr);
-                ops->host = standalone_sdk->GetHost();
-                ops->port = standalone_sdk->GetPort();
             }
         }
     }
@@ -322,6 +196,40 @@ bool SQLClusterRouter::Init() {
         session_variables_.emplace("sync_job", "false");
         session_variables_.emplace("job_timeout", "60000");  // rpc request timeout for taskmanager
         session_variables_.emplace("spark_config", "");
+    }
+    return Auth();
+}
+
+bool SQLClusterRouter::Auth() {
+    auto ns_client = cluster_sdk_->GetNsClient();
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    auto ok = ns_client->ShowTable(nameserver::USER_INFO_NAME, nameserver::INTERNAL_DB, false, tables, msg);
+    if (!ok) {
+        LOG(WARNING) << "fail to get table from nameserver. error msg: " << msg;
+        return false;
+    }
+    if (tables.empty()) {
+        return true;
+    }
+    UserInfo info;
+    auto result = GetUser(options_->user, &info);
+    if (result.ok()) {
+        if (!(*result)) {
+            if (options_->user == "root") {
+                return true;
+            }
+            LOG(WARNING) << "user " << options_->user << " does not exist";
+            return false;
+        }
+        auto password = options_->password.empty() ? options_->password : codec::Encrypt(options_->password);
+        if (info.password != password) {
+            LOG(WARNING) << "wrong password!";
+            return false;
+        }
+    } else {
+        LOG(WARNING) << result.status();
+        return false;
     }
     return true;
 }
@@ -1789,6 +1697,23 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return {};
         }
+        case hybridse::node::kCmdDropUser: {
+            std::string name = cmd_node->GetArgs()[0];
+            if (cmd_node->IsIfExists()) {
+                *status = DeleteUser(name);
+            } else {
+                UserInfo user_info;
+                auto result = GetUser(name, &user_info);
+                if (!result.ok()) {
+                    *status = {StatusCode::kCmdError, result.status().message()};
+                } else if (!(*result)) {
+                    *status = {StatusCode::kCmdError, absl::StrCat("user ", name, " does not exist")};
+                } else {
+                    *status = DeleteUser(name);
+                }
+            }
+            return {};
+        }
         case hybridse::node::kCmdShowFunctions: {
             std::vector<::openmldb::common::ExternalFun> funs;
             base::Status st = ns_ptr->ShowFunction("", &funs);
@@ -2700,6 +2625,52 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             return {};
         }
+        case hybridse::node::kPlanTypeCreateUser: {
+            auto create_node = dynamic_cast<hybridse::node::CreateUserPlanNode*>(node);
+            UserInfo user_info;;
+            auto result = GetUser(create_node->Name(), &user_info);
+            if (!result.ok()) {
+                *status = {StatusCode::kCmdError, result.status().message()};
+            } else if (*result) {
+                if (!create_node->IfNotExists()) {
+                    *status = {StatusCode::kCmdError, absl::StrCat("user ", create_node->Name(), " already exists")};
+                }
+            } else {
+                std::string password;
+                if (create_node->Options()) {
+                    auto ret = NodeAdapter::ExtractUserOption(*create_node->Options());
+                    if (!ret.ok()) {
+                        *status = {StatusCode::kCmdError, ret.status().message()};
+                        return {};
+                    }
+                    password = *ret;
+                }
+                *status = AddUser(create_node->Name(), password);
+            }
+            return {};
+        }
+        case hybridse::node::kPlanTypeAlterUser: {
+            auto alter_node = dynamic_cast<hybridse::node::AlterUserPlanNode*>(node);
+            UserInfo user_info;
+            auto result = GetUser(alter_node->Name(), &user_info);
+            if (!result.ok()) {
+                *status = {StatusCode::kCmdError, result.status().message()};
+            } else if (!(*result)) {
+                if (!alter_node->IfExists()) {
+                    *status = {StatusCode::kCmdError, absl::StrCat("user ", alter_node->Name(), " does not exists")};
+                }
+            } else {
+                if (alter_node->Options()) {
+                    auto ret = NodeAdapter::ExtractUserOption(*alter_node->Options());
+                    if (!ret.ok()) {
+                        *status = {StatusCode::kCmdError, ret.status().message()};
+                        return {};
+                    }
+                    *status = UpdateUser(user_info, *ret);
+                }
+            }
+            return {};
+        }
         case hybridse::node::kPlanTypeCreateIndex: {
             auto create_index_plan_node = dynamic_cast<hybridse::node::CreateIndexPlanNode*>(node);
             auto create_index_node = create_index_plan_node->create_index_node_;
@@ -2966,6 +2937,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return GetTaskManagerJobResult(plan->GetLikeStr(), status);
             } else if (target == "NAMESERVER") {
                 return GetNameServerJobResult(plan->GetLikeStr(), status);
+            } else if (target == "CURRENT_USER") {
+                schema::PBSchema job_schema;
+                auto col = job_schema.Add();
+                col->set_name("user");
+                col->set_data_type(::openmldb::type::DataType::kString);
+                std::vector<std::string> value = { options_->user };
+                return ResultSetSQL::MakeResultSet(job_schema, {value}, status);
             } else {
                 *status = {StatusCode::kCmdError, absl::StrCat("invalid component ", target)};
             }
@@ -4697,6 +4675,56 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
         return std::make_shared<ReadableResultSetSQL>(rs);
     }
     return rs;
+}
+
+absl::StatusOr<bool> SQLClusterRouter::GetUser(const std::string& name, UserInfo* user_info) {
+    std::string sql = absl::StrCat("select * from ",  nameserver::USER_INFO_NAME);
+    hybridse::sdk::Status status;
+    auto rs = ExecuteSQLParameterized(nameserver::INTERNAL_DB, sql,
+            std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    if (rs == nullptr) {
+        return absl::InternalError(status.msg);
+    }
+    while (rs->Next()) {
+        if (rs->GetStringUnsafe(0) == name) {
+            user_info->name = name;
+            user_info->password = rs->GetStringUnsafe(1);
+            user_info->create_time = rs->GetTimeUnsafe(2);
+            user_info->update_time = rs->GetTimeUnsafe(3);
+            return true;
+        }
+    }
+    return false;
+}
+
+hybridse::sdk::Status SQLClusterRouter::AddUser(const std::string& name, const std::string& password) {
+    auto real_password = password.empty() ? password : codec::Encrypt(password);
+    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+    std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
+            "'", name, "', '", real_password, "', ",
+            cur_ts, ", ", cur_ts, ");");
+    hybridse::sdk::Status status;
+    ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
+    return status;
+}
+
+hybridse::sdk::Status SQLClusterRouter::UpdateUser(const UserInfo& user_info, const std::string& password) {
+    auto real_password = password.empty() ? password : codec::Encrypt(password);
+    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+    std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
+            "'", user_info.name, "', '", real_password, "', ",
+            user_info.create_time, ", ", cur_ts, ");");
+    hybridse::sdk::Status status;
+    ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
+    return status;
+}
+
+hybridse::sdk::Status SQLClusterRouter::DeleteUser(const std::string& name) {
+    std::string sql = absl::StrCat("delete from ", nameserver::USER_INFO_NAME,
+            " where user = '", name, "';");
+    hybridse::sdk::Status status;
+    ExecuteSQL(nameserver::INTERNAL_DB, sql, &status);
+    return status;
 }
 
 common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {

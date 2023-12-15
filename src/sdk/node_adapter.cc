@@ -782,4 +782,19 @@ hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::Binary
     return CheckCondition(indexs, conditions);
 }
 
+absl::StatusOr<std::string> NodeAdapter::ExtractUserOption(const hybridse::node::OptionsMap& map) {
+    if (map.empty()) {
+        return absl::InvalidArgumentError("no password option");
+    } else if (map.size() > 1) {
+        return absl::InvalidArgumentError("only password option allowed");
+    }
+    if (!absl::EqualsIgnoreCase(map.begin()->first, "password")) {
+        return absl::InvalidArgumentError("invalid option " + map.begin()->first);
+    }
+    if (map.begin()->second->GetDataType() != hybridse::node::kVarchar) {
+        return absl::InvalidArgumentError("the value of password should be string");
+    }
+    return map.begin()->second->GetAsString();
+}
+
 }  // namespace openmldb::sdk

@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "sdk/base.h"
+#include "sdk/options.h"
 #include "sdk/result_set.h"
 #include "sdk/sql_delete_row.h"
 #include "sdk/sql_insert_row.h"
@@ -38,34 +39,6 @@ namespace openmldb {
 namespace sdk {
 
 typedef char* ByteArrayPtr;
-
-struct BasicRouterOptions {
-    virtual ~BasicRouterOptions() = default;
-    bool enable_debug = false;
-    uint32_t max_sql_cache_size = 50;
-    // == gflag `request_timeout` default value(no gflags here cuz swig)
-    uint32_t request_timeout = 60000;
-    // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
-    int glog_level = 0;
-    // empty means to stderr
-    std::string glog_dir = "";
-};
-
-struct SQLRouterOptions : BasicRouterOptions {
-    std::string zk_cluster;
-    std::string zk_path;
-    uint32_t zk_session_timeout = 2000;
-    std::string spark_conf_path;
-    uint32_t zk_log_level = 3;  // PY/JAVA SDK default info log
-    std::string zk_log_file;
-    std::string zk_auth_schema = "digest";
-    std::string zk_cert;
-};
-
-struct StandaloneOptions : BasicRouterOptions {
-    std::string host;
-    uint32_t port;
-};
 
 class ExplainInfo {
  public:
