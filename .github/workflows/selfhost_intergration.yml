@@ -77,7 +77,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-apiserver-test.sh -j 0.0.0 -d deploy  
+        run: bash test/steps/openmldb-integration-test.sh -j 0.0.0 -d deploy  -m apiserver
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
@@ -102,6 +102,7 @@ jobs:
           server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
+          secure: true
           subject: OpenMLDB Memory Test
           body: OpenMLDB Memory Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
@@ -129,7 +130,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "0" -s "memory"    
+        run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
@@ -154,6 +155,7 @@ jobs:
           server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
+          secure: true
           subject: OpenMLDB Memory Test
           body: OpenMLDB Memory Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
@@ -182,7 +184,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
+        run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
@@ -207,6 +209,7 @@ jobs:
           server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
+          secure: true
           subject: OpenMLDB Memory Test
           body: OpenMLDB Memory Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
@@ -236,7 +239,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
+        run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
@@ -261,6 +264,7 @@ jobs:
           server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
+          secure: true
           subject: OpenMLDB HDD Test
           body: OpenMLDB HDD Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
@@ -289,7 +293,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
+        run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
@@ -314,6 +318,7 @@ jobs:
           server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
+          secure: true
           subject: OpenMLDB SSD Test
           body: OpenMLDB SSD Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
@@ -343,7 +348,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
           bash HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
       - name: test
-        run: bash test/steps/openmldb-javasdk-integration.sh -j 0.0.0  -c test_yarn.xml -d deploy -l "0" -s "memory"
+        run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
@@ -368,6 +373,7 @@ jobs:
           server_port: 995
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
+          secure: true
           subject: OpenMLDB yarn Test
           body: OpenMLDB yarn Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
@@ -419,6 +425,7 @@ jobs:
       #   with:
       #     server_address: mail.4paradigm.com
       #     server_port: 995
+      #     secure: true
       #     username: ${{ secrets.MAIL_USERNAME }}
       #     password: ${{ secrets.MAIL_PASSWORD }}
       #     subject: OpenMLDB yarn Test

@@ -21,7 +21,7 @@
 #-d 部署模式，有cluster和standalone两种，默认cluster
 #-l 测试的case级别，有0，1，2，3，4，5六个级别，默认为0，也可以同时跑多个级别的case，例如：1,2,3,4,5
 
-while getopts ":b:c:d:l:j:" opt
+while getopts ":b:c:d:l:" opt
 do
    case $opt in
         b)
@@ -38,9 +38,6 @@ do
         ;;
         l) echo "参数l的值:$OPTARG"
         CASE_LEVEL=$OPTARG
-        ;;
-        j) echo "参数j的值:$OPTARG"
-        JAR_VERSION=$OPTARG
         ;;
         ?) echo "未知参数"
            exit 1
@@ -75,7 +72,6 @@ source test/steps/read_properties.sh
 # 从源码编译
 if [[ "${BUILD_MODE}" == "SRC" ]]; then
     JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
-    sh test/steps/build-java-sdk.sh
 fi
 echo "JAVA_SDK_VERSION:${JAVA_SDK_VERSION}"
 echo "OPENMLDB_SERVER_VERSION:${OPENMLDB_SERVER_VERSION}"
@@ -83,20 +79,13 @@ echo "DIFF_VERSIONS:${DIFF_VERSIONS}"
 # modify config
 sh test/steps/modify_apiserver_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "${BUILD_MODE}" "${OPENMLDB_SERVER_VERSION}"
 # install command tool
-if [[ "${JAR_VERSION}" == "" ]]; then
-    JAR_VERSION=${JAVA_SDK_VERSION}
-  else
-    mvn install:install-file -Dfile=openmldb-common.jar -DartifactId=openmldb-common -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
-    mvn install:install-file -Dfile=openmldb-jdbc.jar -DartifactId=openmldb-jdbc -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
-    mvn install:install-file -Dfile=openmldb-native.jar -DartifactId=openmldb-native -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
-fi
 cd test/test-tool/command-tool || exit
-mvn clean install -Dmaven.test.skip=true -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # install jar
 cd test/integration-test/openmldb-test-java || exit
-mvn clean install -Dmaven.test.skip=true -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+mvn clean install -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # run case
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-http-test || exit
-mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+mvn clean test -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}"

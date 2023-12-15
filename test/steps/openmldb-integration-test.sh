@@ -1,5 +1,5 @@
 #!/bin/bash
-while getopts ":c:d:l:s:j:" opt
+while getopts ":c:d:l:s:j:m:" opt
 do
    case $opt in
         c)
@@ -19,6 +19,9 @@ do
         j) echo "参数j的值:$OPTARG"
         JAR_VERSION=$OPTARG
         ;;
+        m) echo "参数m的值:$OPTARG"
+        EXECUTE_MODE=$OPTARG
+        ;;
         ?) echo "未知参数"
            exit 1
         ;;
@@ -33,6 +36,9 @@ fi
 if [[ "${CASE_LEVEL}" == "" ]]; then
     CASE_LEVEL="0"
 fi
+if [[ "${EXECUTE_MODE}" == "" ]]; then
+    EXECUTE_MODE="javasdk"
+fi
 
 JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAR_VERSION}" "" "${JAR_VERSION}" "${JAR_VERSION}" "${TABLE_STORAGE_MODE}"
@@ -44,4 +50,8 @@ mvn install:install-file -Dfile=openmldb-native.jar -DartifactId=openmldb-native
 
 mvn clean install -B -Dmaven.test.skip=true -f test/test-tool/command-tool/pom.xml
 mvn clean install -B -Dmaven.test.skip=true -f test/integration-test/openmldb-test-java/pom.xml -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
-mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-sdk-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+if [[ "${EXECUTE_MODE}" == "javasdk" ]]; then
+  mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-sdk-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+else if [[ "${EXECUTE_MODE}" == "apiserver" ]]; then
+  mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-http-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+fi
