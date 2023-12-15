@@ -292,6 +292,7 @@ enum CmdType {
     kCmdShowCreateTable,
     kCmdTruncate,
     kCmdDropUser,
+    kCmdShowUser,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };

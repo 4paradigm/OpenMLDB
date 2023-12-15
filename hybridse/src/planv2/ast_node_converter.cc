@@ -2256,6 +2256,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus, false, true}},
     {"FUNCTIONS", {node::CmdType::kCmdShowFunctions}},
     {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
+    {"CURRENT_USER", {node::CmdType::kCmdShowUser}},
 };
 
 static const absl::flat_hash_map<std::string_view, node::ShowStmtType> SHOW_STMT_TYPE_MAP = {

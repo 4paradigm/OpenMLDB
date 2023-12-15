@@ -784,7 +784,7 @@ hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::Binary
 
 absl::StatusOr<std::string> NodeAdapter::ExtractUserOption(const hybridse::node::OptionsMap& map) {
     if (map.empty()) {
-        return absl::InvalidArgumentError("no password option");
+        return "";
     } else if (map.size() > 1) {
         return absl::InvalidArgumentError("only password option allowed");
     }

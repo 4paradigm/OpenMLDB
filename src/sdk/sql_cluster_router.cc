@@ -1601,6 +1601,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"Tables"}, values, status);
         }
 
+        case hybridse::node::kCmdShowUser: {
+            std::vector<std::string> value = { options_->user };
+            return ResultSetSQL::MakeResultSet({"User"}, {value}, status);
+        }
+
         case hybridse::node::kCmdShowCreateTable: {
             auto& args = cmd_node->GetArgs();
             std::string cur_db = db;
@@ -2656,11 +2661,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             if (!result.ok()) {
                 *status = {StatusCode::kCmdError, result.status().message()};
             } else if (!(*result)) {
-                if (!alter_node->IfExists()) {
+                if (!alter_node->IfExists() && alter_node->Name() != "root") {
                     *status = {StatusCode::kCmdError, absl::StrCat("user ", alter_node->Name(), " does not exists")};
                 }
             } else {
-                if (alter_node->Options()) {
+                if (alter_node->Options() && !alter_node->Options()->empty()) {
                     auto ret = NodeAdapter::ExtractUserOption(*alter_node->Options());
                     if (!ret.ok()) {
                         *status = {StatusCode::kCmdError, ret.status().message()};
@@ -2937,13 +2942,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return GetTaskManagerJobResult(plan->GetLikeStr(), status);
             } else if (target == "NAMESERVER") {
                 return GetNameServerJobResult(plan->GetLikeStr(), status);
-            } else if (target == "CURRENT_USER") {
-                schema::PBSchema job_schema;
-                auto col = job_schema.Add();
-                col->set_name("user");
-                col->set_data_type(::openmldb::type::DataType::kString);
-                std::vector<std::string> value = { options_->user };
-                return ResultSetSQL::MakeResultSet(job_schema, {value}, status);
             } else {
                 *status = {StatusCode::kCmdError, absl::StrCat("invalid component ", target)};
             }
@@ -3438,7 +3436,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
         return status;
     }
     status = SendDeleteRequst(table_info, &option);
-    if (status.IsOK()) {
+    if (status.IsOK() && db != nameserver::INTERNAL_DB) {
         status = {StatusCode::kOk,
             "DELETE is a dangerous operation. Once deleted, it is very difficult to recover. You may also note that:\n"
             "- The deleted data will not be released immediately from the main memory; "
