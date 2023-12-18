@@ -71,6 +71,10 @@ class OpenMLDBSdk(object):
         if 'maxSqlCacheSize' in self.options_map:
             options.max_sql_cache_size = int(
                 self.options_map['maxSqlCacheSize'])
+        if 'user' in self.options_map:
+            options.user = self.options_map['user']
+        if 'password' in self.options_map:
+            options.user = self.options_map['password']
 
         self.sdk = sql_router_sdk.NewClusterSQLRouter(
             options
