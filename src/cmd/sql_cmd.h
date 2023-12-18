@@ -16,6 +16,10 @@
 
 #ifndef SRC_CMD_SQL_CMD_H_
 #define SRC_CMD_SQL_CMD_H_
+
+#include <termios.h>
+#include <stdio.h>
+
 #include <map>
 #include <memory>
 #include <set>
@@ -143,6 +147,30 @@ std::string ExecFetch(const std::string& sql) {
         }
     }
     return ss.str();
+}
+
+base::Status GetPassword(std::string* password) {
+    // refer https://www.gnu.org/software/libc/manual/html_mono/libc.html#getpass
+    struct termios old_attr, new_attr;
+    if (tcgetattr(fileno(stdin), &old_attr) != 0) {
+        return {base::ReturnCode::kError, "tcgetattr execute failed!"};
+    }
+    new_attr = old_attr;
+    new_attr.c_lflag &= ~ECHO;
+    if (tcsetattr(fileno(stdin), TCSAFLUSH, &new_attr) != 0) {
+        return {base::ReturnCode::kError, "tcsetattr execute failed!"};
+    }
+    size_t len = 0;
+    char* lineptr = nullptr;
+    if (ssize_t nread = getline(&lineptr, &len, stdin); nread == -1) {
+        free(lineptr);
+        return {base::ReturnCode::kError, "read input failed!"};
+    } else if (nread > 1) {
+        password->assign(lineptr, nread - 1);
+    }
+    free(lineptr);
+    (void) tcsetattr(fileno(stdin), TCSAFLUSH, &old_attr);
+    return {};
 }
 
 void HandleSQL(const std::string& sql) { std::cout << ExecFetch(sql); }
@@ -281,7 +309,10 @@ bool InitClusterSDK() {
     if (!::google::GetCommandLineFlagInfoOrDie("user").is_default &&
             ::google::GetCommandLineFlagInfoOrDie("password").is_default) {
         std::cout << "Please enter password:" << std::endl;
-        std::getline(std::cin, options->password);
+        if (auto status = GetPassword(&options->password); !status.OK()) {
+            std::cout << status.GetMsg() << std::endl;
+            return false;
+        }
     }
     cs = new ::openmldb::sdk::ClusterSDK(options);
     if (!cs->Init()) {
@@ -313,6 +344,16 @@ bool InitStandAloneSDK() {
         return false;
     }
     auto options = std::make_shared<sdk::StandaloneOptions>(FLAGS_host, FLAGS_port);
+    options->user = FLAGS_user;
+    options->password = FLAGS_password;
+    if (!::google::GetCommandLineFlagInfoOrDie("user").is_default &&
+            ::google::GetCommandLineFlagInfoOrDie("password").is_default) {
+        std::cout << "Please enter password:" << std::endl;
+        if (auto status = GetPassword(&options->password); !status.OK()) {
+            std::cout << status.GetMsg() << std::endl;
+            return false;
+        }
+    }
     options->request_timeout = FLAGS_request_timeout;
     cs = new ::openmldb::sdk::StandAloneSDK(options);
     bool ok = cs->Init();
