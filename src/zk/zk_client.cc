@@ -55,7 +55,7 @@ void NodeWatcher(zhandle_t* zh, int type, int state, const char* path, void* wat
 }
 
 void ItemWatcher(zhandle_t* zh, int type, int state, const char* path, void* watcher_ctx) {
-    PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
+    PDLOG(INFO, "item watcher with event type %d, state %d", type, state);
     if (zoo_get_context(zh)) {
         ZkClient* client = const_cast<ZkClient*>(reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         std::string path_str(path);
@@ -565,7 +565,12 @@ void ZkClient::LogEvent(int type, int state, const char* path) {
     if (type == ZOO_SESSION_EVENT) {
         if (state == ZOO_CONNECTED_STATE) {
             Connected();
+        } else if (state == ZOO_CONNECTING_STATE || state == ZOO_ASSOCIATING_STATE) {
+            // just wait
         } else if (state == ZOO_EXPIRED_SESSION_STATE) {
+            connected_ = false;
+        } else {
+            // unknow state, should retry
             connected_ = false;
         }
     }
@@ -610,6 +615,19 @@ bool ZkClient::MkdirNoLock(const std::string& path) {
 bool ZkClient::Mkdir(const std::string& path) {
     std::lock_guard<std::mutex> lock(mu_);
     return MkdirNoLock(path);
+}
+
+bool ZkClient::EnsureConnected() {
+    if (!IsConnected()) {
+        LOG(WARNING) << "reconnect zk";
+        if (Reconnect()) {
+            LOG(INFO) << "reconnect zk ok";
+        } else {
+            LOG(WARNING) << "reconnect zk failed";
+            return false;
+        }
+    }
+    return true;
 }
 
 }  // namespace zk
