@@ -37,6 +37,9 @@ public class SyncToolConfig {
     // public static int CHANNEL_KEEP_ALIVE_TIME;
     public static String ZK_CLUSTER;
     public static String ZK_ROOT_PATH;
+
+    public static String USER;
+    public static String PASSWORD;
     public static String ZK_CERT;
     public static String SYNC_TASK_PROGRESS_PATH;
 
@@ -87,6 +90,8 @@ public class SyncToolConfig {
         if (ZK_ROOT_PATH.isEmpty()) {
             throw new RuntimeException("zookeeper.root_path should not be empty");
         }
+        USER = prop.getProperty("user", "root");
+        PASSWORD = prop.getProperty("password", "");
         ZK_CERT = prop.getProperty("zookeeper.cert", "");
 
         HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");

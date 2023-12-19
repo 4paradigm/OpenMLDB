@@ -62,6 +62,14 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
         if (timeout != null) {
             option.setRequestTimeout(Integer.parseInt(timeout));
         }
+        String user = options.get("user");
+        if (user != null) {
+            option.setUser(user);
+        }
+        String password = options.get("password");
+        if (password != null) {
+            option.setPassword(password);
+        }
         String debug = options.get("debug");
         if (debug != null) {
             option.setEnableDebug(Boolean.valueOf(debug));

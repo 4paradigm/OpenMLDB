@@ -14,6 +14,8 @@ class OpenmldbPartitionReader(config: OpenmldbReadConfig) extends PartitionReade
   option.setZkCluster(config.zkCluster)
   option.setZkPath(config.zkPath)
   option.setLight(true)
+  option.setUser(config.user)
+  option.setPassword(config.password)
   val executor = new SqlClusterExecutor(option)
   val dbName: String = config.dbName
   val tableName: String = config.tableName

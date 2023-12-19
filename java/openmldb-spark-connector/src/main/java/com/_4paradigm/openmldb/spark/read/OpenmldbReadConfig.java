@@ -22,13 +22,15 @@ import java.io.Serializable;
 
 // Must serializable
 public class OpenmldbReadConfig implements Serializable {
-    public final String dbName, tableName, zkCluster, zkPath;
+    public final String dbName, tableName, zkCluster, zkPath, user, password;
 
     public OpenmldbReadConfig(String dbName, String tableName, SdkOption option) {
         this.dbName = dbName;
         this.tableName = tableName;
         this.zkCluster = option.getZkCluster();
         this.zkPath = option.getZkPath();
+        this.user = option.getUser();
+        this.password = option.getPassword();
         // TODO(hw): other configs in SdkOption
     }
 }
