@@ -53,6 +53,9 @@ Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localh
 
 // Set database in jdbcUrl
 Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
+
+// Set user and password in jdbcUrl
+Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb&user=root&password=123456");
 ```
 
 The database specified in the Connection address must exist when creating the connection.
@@ -113,6 +116,10 @@ option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
 option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
+// If not specified, it defaults to 'root'
+option.setUser("root");
+// If not specified, it defaults to being empty
+option.setPassword("123456");
 ```
 Then, use SdkOption to create the Executor.
 
