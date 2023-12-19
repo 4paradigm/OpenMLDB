@@ -74,7 +74,7 @@ class OpenMLDBSdk(object):
         if 'user' in self.options_map:
             options.user = self.options_map['user']
         if 'password' in self.options_map:
-            options.user = self.options_map['password']
+            options.password = self.options_map['password']
 
         self.sdk = sql_router_sdk.NewClusterSQLRouter(
             options
