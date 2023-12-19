@@ -47,7 +47,7 @@ public class SdkOption {
     private int maxSqlCacheSize = 50;
     private boolean isLight = false;
     private String user = "root";
-    private Stirng password = "";
+    private String password = "";
 
     private void buildBaseOptions(BasicRouterOptions opt) {
         opt.setEnable_debug(getEnableDebug());
