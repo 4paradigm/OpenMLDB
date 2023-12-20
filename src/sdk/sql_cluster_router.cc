@@ -3701,7 +3701,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK_OPTION);
     if (iter != deploy_node->Options()->end()) {
         std::string skip_index_value = iter->second->GetExprString();
-        if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("true"))) {
+        if (absl::EqualsIgnoreCase(skip_index_value, "true")) {
             skip_index_check = true;
         }
     }
@@ -3746,7 +3746,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
             auto iter = deploy_node->Options()->find(SYNC_OPTION);
             if (iter != deploy_node->Options()->end()) {
                 std::string skip_index_value = iter->second->GetExprString();
-                if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("false"))) {
+                if (absl::EqualsIgnoreCase(skip_index_value, "false")) {
                     sync = false;
                 }
             }
