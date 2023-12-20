@@ -75,13 +75,13 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     ASSERT_TRUE(ok) << compile_status;
     ASSERT_TRUE(sql_compiler.BuildClusterJob(sql_context, compile_status));
     ASSERT_TRUE(nullptr != sql_context.physical_plan);
-    ASSERT_TRUE(sql_context.cluster_job.IsValid());
+    ASSERT_TRUE(sql_context.cluster_job->IsValid());
     std::ostringstream oss;
     sql_context.physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
 
     std::ostringstream runner_oss;
-    sql_context.cluster_job.Print(runner_oss, "");
+    sql_context.cluster_job->Print(runner_oss, "");
     std::cout << "runner: \n" << runner_oss.str() << std::endl;
 
     std::ostringstream oss_schema;
@@ -349,7 +349,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     ASSERT_TRUE(sql_context.physical_plan != nullptr);
 
     auto root = GetFirstRunnerOfType(
-        sql_context.cluster_job.GetTask(0).GetRoot(), kRunnerGroup);
+        sql_context.cluster_job->GetTask(0).GetRoot(), kRunnerGroup);
     auto group_runner = dynamic_cast<GroupRunner*>(root);
     std::vector<Row> rows;
     hybridse::type::TableDef temp_table;

@@ -17,6 +17,8 @@
 #ifndef HYBRIDSE_SRC_CODEGEN_STRUCT_IR_BUILDER_H_
 #define HYBRIDSE_SRC_CODEGEN_STRUCT_IR_BUILDER_H_
 
+#include <string>
+
 #include "absl/status/statusor.h"
 #include "base/fe_status.h"
 #include "codegen/native_value.h"
@@ -27,20 +29,46 @@ namespace codegen {
 
 class StructTypeIRBuilder : public TypeIRBuilder {
  public:
+    // TODO(ace): construct with CodeGenContext instead of llvm::Module
     explicit StructTypeIRBuilder(::llvm::Module*);
     ~StructTypeIRBuilder();
 
     static StructTypeIRBuilder* CreateStructTypeIRBuilder(::llvm::Module*, ::llvm::Type*);
     static bool StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist);
 
-    virtual void InitStructType() = 0;
     virtual bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) = 0;
     virtual base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src, NativeValue* output) = 0;
+
+    // construct the default null safe struct
+    absl::StatusOr<NativeValue> CreateNull(::llvm::BasicBlock* block);
+
     virtual bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) = 0;
 
-    absl::StatusOr<NativeValue> CreateNull(::llvm::BasicBlock* block);
-    ::llvm::Type* GetType();
-    bool Create(::llvm::BasicBlock* block, ::llvm::Value** output) const;
+    // Allocate and Initialize the struct value from args, each element in list represent exact argument in SQL literal.
+    // So for map data type, we create it in SQL with `map(key1, value1, ...)`, args is key or value for the result map
+    virtual absl::StatusOr<NativeValue> Construct(CodeGenContext* ctx, absl::Span<const NativeValue> args) const;
+
+    // construct struct value from llvm values, each element in list represent exact
+    // llvm struct field at that index
+    virtual absl::StatusOr<::llvm::Value*> ConstructFromRaw(CodeGenContext* ctx,
+                                                            absl::Span<::llvm::Value* const> args) const;
+
+    // Extract element value from composite data type
+    // 1. extract from array type by index
+    // 2. extract from struct type by field name
+    // 3. extract from map type by key
+    virtual absl::StatusOr<NativeValue> ExtractElement(CodeGenContext* ctx, const NativeValue& arr,
+                                                       const NativeValue& key) const;
+
+    ::llvm::Type* GetType() const;
+
+    std::string GetTypeDebugString() const;
+
+ protected:
+    virtual void InitStructType() = 0;
+
+    // allocate the given struct on current stack, no initialization
+    bool Allocate(::llvm::BasicBlock* block, ::llvm::Value** output) const;
 
     // Load the 'idx' th field into ''*output'
     // NOTE: not all types are loaded correctly, e.g for array type
@@ -50,9 +78,13 @@ class StructTypeIRBuilder : public TypeIRBuilder {
     // Get the address of 'idx' th field
     bool Get(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx, ::llvm::Value** output) const;
 
+    absl::Status Set(CodeGenContext* ctx, ::llvm::Value* struct_value, absl::Span<::llvm::Value* const> members) const;
+
+    void EnsureOK() const;
+
  protected:
     ::llvm::Module* m_;
-    ::llvm::Type* struct_type_;
+    ::llvm::StructType* struct_type_;
 };
 }  // namespace codegen
 }  // namespace hybridse

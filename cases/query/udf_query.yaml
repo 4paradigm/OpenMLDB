@@ -554,3 +554,37 @@ cases:
         - c1 bool
       data: |
         true, false
+
+  # ================================================================
+  # Map data type
+  # ================================================================
+  - id: 13
+    mode: request-unsupport
+    sql: |
+      select
+        map(1, "2")[1] as e1,
+        map("abc", 100)["abc"] as e2,
+        map(1, "2", 3, "4")[5] as e3,
+        map("c", 99, "d", 101)["d"] as e4,
+        map(date("2012-12-12"), "e", date("2013-11-11"), "f", date("2014-10-10"), "g")[date("2013-11-11")] as e5,
+        map(timestamp(88), timestamp(1000), timestamp(99), timestamp(2000)) [timestamp(99)] as e6,
+        map('1', 2, '3', 4, '5', 6, '7', 8, '9', 10, '11', 12)['9'] as e7,
+        map('1', 2, '3', 4, '5', 6, '7', 8, '9', 10, '11', 12)['10'] as e8,
+        # first match on duplicate keys
+        map('1', 2, '1', 4, '1', 6, '7', 8, '9', 10, '11', 12)['1'] as e9,
+        map("c", 99, "d", NULL)["d"] as e10,
+    expect:
+      columns: ["e1 string", "e2 int", "e3 string", "e4 int", "e5 string", "e6 timestamp", "e7 int", "e8 int", "e9 int", "e10 int"]
+      data: |
+        2, 100, NULL, 101, f, 2000, 10, NULL, 2, NULL
+  - id: 14
+    mode: request-unsupport
+    sql: |
+      select
+        array_contains(map_keys(map(1, '2', 3, '4')), 1) as e1,
+        array_contains(map_keys(map('1', 2, '3', 4)), '2') as e2,
+        array_contains(map_keys(map(timestamp(88), timestamp(1000), timestamp(99), timestamp(2000))) , timestamp(99)) as e3,
+    expect:
+      columns: ["e1 bool", "e2 bool", "e3 bool"]
+      data: |
+        true, false, true
