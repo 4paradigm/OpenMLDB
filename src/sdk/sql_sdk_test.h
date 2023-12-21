@@ -140,6 +140,8 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/function/select/test_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(WithClause, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/with.yaml")));
+INSTANTIATE_TEST_SUITE_P(UnionQuery, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/union_query.yml")));
 
 // Test Multiple Databases
 INSTANTIATE_TEST_SUITE_P(

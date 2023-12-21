@@ -80,9 +80,9 @@ class Planner {
     // currently only apply to rows window
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
-    base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
-    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::QueryPlanNode **plan_tree);
-    base::Status CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree);
+    base::Status CreateQueryPlan(const node::QueryNode *root, node::QueryPlanNode **plan_tree);
+    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::PlanNode **plan_tree);
+    base::Status CreateSetOperationPlan(const node::SetOperationNode *root, node::SetOperationPlanNode **plan_tree);
     base::Status CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output);
     base::Status CreateTableReferencePlanNode(const node::TableRefNode *root, node::PlanNode **output);
     base::Status CreateCmdPlan(const SqlNode *root, node::PlanNode **output);
