@@ -430,6 +430,7 @@ class SQLClusterRouter : public SQLRouter {
     hybridse::sdk::Status AddUser(const std::string& name, const std::string& password);
     hybridse::sdk::Status UpdateUser(const UserInfo& user_info, const std::string& password);
     hybridse::sdk::Status DeleteUser(const std::string& name);
+    void AddUserToConfig(std::map<std::string, std::string>* config);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

@@ -2768,6 +2768,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+                AddUserToConfig(&config);
 
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
@@ -2815,14 +2816,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+                AddUserToConfig(&config);
 
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
                     // Handle in online mode
-                    config.emplace("user", GetRouterOptions()->user);
-                    if (!GetRouterOptions()->password.empty()) {
-                        config.emplace("password", GetRouterOptions()->password);
-                    }
                     base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 } else {
                     // Handle in offline mode
@@ -2965,6 +2963,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
     ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+    AddUserToConfig(&config);
 
     if (is_sync_job) {
         // Run offline sql and wait to get output
@@ -4727,6 +4726,13 @@ hybridse::sdk::Status SQLClusterRouter::DeleteUser(const std::string& name) {
     hybridse::sdk::Status status;
     ExecuteSQL(nameserver::INTERNAL_DB, sql, &status);
     return status;
+}
+
+void SQLClusterRouter::AddUserToConfig(std::map<std::string, std::string>* config) {
+    config->emplace("spark.openmldb.user", GetRouterOptions()->user);
+    if (!GetRouterOptions()->password.empty()) {
+        config->emplace("spark.openmldb.password", GetRouterOptions()->password);
+    }
 }
 
 common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {
