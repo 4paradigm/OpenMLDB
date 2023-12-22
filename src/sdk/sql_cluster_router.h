@@ -423,6 +423,13 @@ class SQLClusterRouter : public SQLRouter {
             int64_t timeout_ms, const base::Slice& row,
             const std::string& router_col, hybridse::sdk::Status* status);
 
+    ::hybridse::sdk::Status RevertPut(const nameserver::TableInfo& table_info,
+            uint32_t end_pid,
+            const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+            uint64_t ts,
+            const base::Slice& value,
+            const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets);
+
  private:
     std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;

@@ -64,12 +64,16 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
         index_map_.clear();
         raw_dimensions_.clear();
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
-            for (const auto& column : table_info_->column_key(idx).col_name()) {
+            const auto& index = table_info_->column_key(idx);
+            if (index.flag()) {
+                continue;
+            }
+            for (const auto& column : index.col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
                 raw_dimensions_[column_name_map[column]] = hybridse::codec::NONETOKEN;
             }
-            if (!table_info_->column_key(idx).ts_name().empty()) {
-                ts_set_.insert(column_name_map[table_info_->column_key(idx).ts_name()]);
+            if (!index.ts_name().empty()) {
+                ts_set_.insert(column_name_map[index.ts_name()]);
             }
         }
     }
