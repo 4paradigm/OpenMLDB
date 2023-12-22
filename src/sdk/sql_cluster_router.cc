@@ -1367,11 +1367,20 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                                << kv.second.size();
                     bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second);
                     if (!ret) {
-                        RevertPut(row->GetTableInfo(), pid, dimensions, cur_ts, base::Slice(row->GetRow()), tablets);
-                        SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "INSERT failed, tid " + std::to_string(tid));
+                        if (RevertPut(row->GetTableInfo(), pid, dimensions, cur_ts,
+                                    base::Slice(row->GetRow()), tablets).IsOK()) {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::StrCat("INSERT failed, tid ", tid));
+                        } else {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    "INSERT failed, tid " + std::to_string(tid) +
+                                    ". Note that data might have been partially inserted. "
+                                    "You are encouraged to perform DELETE to remove any partially "
+                                    "inserted data before trying INSERT again.");
+                        }
                         return false;
                     }
+                    continue;
                 }
             }
         }
@@ -1481,7 +1490,10 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                     bool ret = client->Put(tid, pid, cur_ts, row_value, &kv.second);
                     if (!ret) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "INSERT failed, tid " + std::to_string(tid));
+                                "INSERT failed, tid " + std::to_string(tid) +
+                                ". Note that data might have been partially inserted. "
+                                "You are encouraged to perform DELETE to remove any partially "
+                                "inserted data before trying INSERT again.");
                         std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
                         for (const auto& val : dimensions_map) {
                             std::vector<std::pair<std::string, uint32_t>> vec;
@@ -1494,9 +1506,13 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                         if (!table_info) {
                             return false;
                         }
-                        RevertPut(*table_info, pid, dimensions, cur_ts, row_value, tablets);
+                        if (RevertPut(*table_info, pid, dimensions, cur_ts, row_value, tablets).IsOK()) {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::StrCat("INSERT failed, tid ", tid));
+                        }
                         return false;
                     }
+                    continue;
                 }
             }
         }
