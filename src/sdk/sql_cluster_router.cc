@@ -4771,7 +4771,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
         }
         auto client = tablet->GetClient();
         for (const auto& val : kv.second) {
-            if (val.second > static_cast<uint32_t>(table_info.column_key_size())) {
+            if (val.second >= static_cast<uint32_t>(table_info.column_key_size())) {
                 return {StatusCode::kCmdError, absl::StrCat("invalid index pos ", val.second)};
             }
             const auto& index = table_info.column_key(val.second);
