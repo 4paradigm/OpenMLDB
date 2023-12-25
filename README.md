@@ -72,6 +72,8 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 2. **How does OpenMLDB evolve?**
    
    OpenMLDB originated from the commercial product of [4Paradigm](https://www.4paradigm.com/) (a leading artificial intelligence service provider). In 2021, the core team has abstracted, enhanced and developed community-friendly features based on the commercial product; and then makes it publicly available as an open-source project to benefit more enterprises to achieve successful digital transformations at low cost. Before the open-source, it had been successfully deployed in hundreds of real-world ML applications together with 4Paradigm's other commercial products.
+
+Irrespective of the name, it is unrelated to MLDB, a different open source project in development since 2015.
    
 3. **Is OpenMLDB a feature store?**
    
@@ -83,7 +85,7 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
 
 ## 5. Download and Install
 
-- Download: [GitHub release](https://github.com/4paradigm/OpenMLDB/releases), [mirror site (China)](http://43.138.115.238/download/)
+- Download: [GitHub release](https://github.com/4paradigm/OpenMLDB/releases), [mirror site (China)](https://www.openmldb.com/download/)
 - Install and deploy: [English](https://openmldb.ai/docs/en/main/deploy/install_deploy.html), [Chinese](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart

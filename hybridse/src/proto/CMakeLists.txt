@@ -12,80 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include_directories(${INCLUDE_DIRECTORIES}
-        ${PROJECT_SOURCE_DIR}/src
-        ${PROJECT_BINARY_DIR}/src)
+include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src
+                    ${PROJECT_BINARY_DIR}/src)
 
-set(TYPE_PB_CC
-        ${CMAKE_CURRENT_BINARY_DIR}/fe_type.pb.cc)
+set(PROTO_CPP_FILES "")
+set(PROTO_FILES "")
+function(compile_proto proto_name java_file_suffix_path)
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.cc
+      ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.h
+      ${CMAKE_SOURCE_DIR}/java/hybridse-proto/src/main/java/com/_4paradigm/hybridse/${java_file_suffix_path}
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+      -I ${PROJECT_SOURCE_DIR}/src/proto
+      --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
+      --java_out=${CMAKE_SOURCE_DIR}/java/hybridse-proto/src/main/java
+      ${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.proto
+    DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.proto)
+  list(APPEND PROTO_CPP_FILES ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.cc)
+  list(APPEND PROTO_FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.cc
+    ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.h
+    ${CMAKE_SOURCE_DIR}/java/hybridse-proto/src/main/java/com/_4paradigm/hybridse/${java_file_suffix_path}
+  )
+  set(PROTO_CPP_FILES ${PROTO_CPP_FILES} PARENT_SCOPE)
+  set(PROTO_FILES ${PROTO_FILES} PARENT_SCOPE)
+endfunction(compile_proto)
 
-set(COMMON_PB_CC
-        ${CMAKE_CURRENT_BINARY_DIR}/fe_common.pb.cc
-        )
+compile_proto(fe_type type/TypeOuterClass.java)
+compile_proto(fe_common common/Common.java)
+compile_proto(dbms dbms/DBMS.java)
+compile_proto(fe_tablet tablet/Tablet.java)
+compile_proto(batch batch/Batch.java)
+compile_proto(plan batch/Plan.java)
 
-set(DBMS_PB_CC
-        ${CMAKE_CURRENT_BINARY_DIR}/dbms.pb.cc)
-
-set(TABLET_PB_CC
-    ${CMAKE_CURRENT_BINARY_DIR}/fe_tablet.pb.cc)
-
-set(BATCH_PB_CC
-    ${CMAKE_CURRENT_BINARY_DIR}/batch.pb.cc)
-
-set(PLAN_PB_CC
-    ${CMAKE_CURRENT_BINARY_DIR}/plan.pb.cc)
-
-add_custom_command(OUTPUT ${COMMON_PB_CC}
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
-        --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_common.proto
-        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/fe_common.proto
-        )
-
-add_custom_command(OUTPUT ${TYPE_PB_CC}
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_type.proto
-        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/fe_type.proto
-        )
-
-add_custom_command(OUTPUT ${DBMS_PB_CC}
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/dbms.proto
-        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/dbms.proto
-        )
-
-add_custom_command(OUTPUT ${TABLET_PB_CC}
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_tablet.proto
-        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/fe_tablet.proto
-        )
-
-add_custom_command(OUTPUT ${BATCH_PB_CC}
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
-        --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/batch.proto
-        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/batch.proto
-        )
-
-add_custom_command(OUTPUT ${PLAN_PB_CC}
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/plan.proto
-        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/plan.proto
-        )
-
-set(HYBRIDSE_PROTO_SRC_FILES
-    ${TABLET_PB_CC}
-    ${DBMS_PB_CC}
-    ${COMMON_PB_CC}
-    ${TYPE_PB_CC}
-    ${BATCH_PB_CC}
-    ${PLAN_PB_CC})
-
-ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${HYBRIDSE_PROTO_SRC_FILES})
-
-add_library(hybridse_proto OBJECT ${HYBRIDSE_PROTO_SRC_FILES})
-add_dependencies(hybridse_proto run_gen_proto)
-
-if (SQL_JAVASDK_ENABLE)
-    add_custom_target(hybridse_proto_java ALL
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-        -I ${PROJECT_SOURCE_DIR}/src/proto
-        --java_out=${CMAKE_SOURCE_DIR}/java/hybridse-proto/src/main/java
-        ${PROJECT_SOURCE_DIR}/src/proto/*.proto
-        COMMENT "Generating protobuf java class into ${CMAKE_SOURCE_DIR}/java/hybridse-proto/src/main/java"
-        )
-endif()
+add_library(hybridse_proto OBJECT ${PROTO_CPP_FILES})
+set_property(
+  TARGET hybridse_proto
+  APPEND
+  PROPERTY ADDITIONAL_CLEAN_FILES ${PROTO_FILES}
+)

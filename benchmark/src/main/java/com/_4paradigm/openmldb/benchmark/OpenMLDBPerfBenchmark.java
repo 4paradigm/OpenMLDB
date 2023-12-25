@@ -135,7 +135,7 @@ public class OpenMLDBPerfBenchmark {
         String sql = Util.genScript(windowNum, windowSize, unionNum, joinNum);
         System.out.println(sql);
         Util.executeSQL("USE " + database + ";", executor);
-        Util.executeSQL("set @@execute_mode='online';", executor);
+        Util.executeSQL("SET @@execute_mode='online';", executor);
         Util.executeSQL("DEPLOY " + deployName + " " + sql, executor);
     }
 

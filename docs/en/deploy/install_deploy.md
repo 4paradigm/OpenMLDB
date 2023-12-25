@@ -41,7 +41,7 @@ Regarding hardware requirements:
 If your operating system is capable of running pre-compiled packages directly, you can download them from the following sources:
 
 - GitHub Release: https://github.com/4paradigm/OpenMLDB/releases
-- Mirror Site (China): http://43.138.115.238/download/
+- Mirror Site (China): https://www.openmldb.com/download/
 
 The compatible operating systems are as follows:
 
@@ -608,7 +608,7 @@ Spark distribution：
 
 ```shell
 wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.4/spark-3.2.1-bin-openmldbspark.tgz
-# Image address (China)：http://43.138.115.238/download/v0.8.4/spark-3.2.1-bin-openmldbspark.tgz
+# Image address (China)：https://www.openmldb.com/download/v0.8.4/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
