@@ -49,9 +49,9 @@ cd taxi-trip
 
 单机版 OpenMLDB 的工作流程一般包含：建立数据库和表、数据准备、离线特征计算、SQL 方案上线、在线实时特征计算五个阶段。
 
-以下演示的命令如无特别说明，默认均集群版 OpenMLDB CLI 下执行）。
+以下演示的命令如无特别说明，默认均单机版 OpenMLDB CLI 下执行。
 
-### 1. 创建数据库和表
+### 步骤1: 创建数据库和表
 
 ```sql
 CREATE DATABASE demo_db;
@@ -59,7 +59,7 @@ USE demo_db;
 CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
-### 2. 数据准备
+### 步骤2: 数据准备
 
 导入之前下载的样例数据作为训练数据，用于离线和在线特征计算。
 
@@ -109,7 +109,7 @@ SELECT * FROM demo_table1 LIMIT 10;
 
 ```
 
-### 3. 离线特征计算
+### 步骤3: 离线特征计算
 
 执行 SQL进行特征抽取，并且将生成的特征存储在一个文件中，供后续的模型训练使用。
 
@@ -119,7 +119,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 ```
 
-### 4. SQL 方案上线
+### 步骤4: SQL 方案上线
 
 将探索好的 SQL 方案部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
 
@@ -152,7 +152,7 @@ SHOW DEPLOYMENTS;
 
 ```
 
-### 5. 退出 CLI
+### 退出 CLI
 
 ```sql
 quit;
@@ -160,7 +160,7 @@ quit;
 
 至此已经完成了全部基于 OpenMLDB CLI 的开发部署工作，并且已经回到了操作系统命令行下。
 
-### 6. 实时特征计算
+### 步骤5: 实时特征计算
 
 实时线上服务可以通过如下 Web API 提供服务：
 
@@ -168,7 +168,7 @@ quit;
 
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
 
-​        ___________/      ____/              _____________/
+​        \___________/      \____/              \_____________/
 
 ​              |               |                        |
 

@@ -17,21 +17,14 @@
 #ifndef HYBRIDSE_INCLUDE_VM_ENGINE_H_
 #define HYBRIDSE_INCLUDE_VM_ENGINE_H_
 
-#include <map>
 #include <memory>
-#include <mutex>  //NOLINT
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 #include <unordered_map>
-#include "base/raw_buffer.h"
 #include "base/spin_lock.h"
 #include "codec/fe_row_codec.h"
-#include "codec/list_iterator_codec.h"
-#include "gflags/gflags.h"
-#include "llvm-c/Target.h"
-#include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/engine_context.h"
 #include "vm/router.h"
@@ -183,12 +176,17 @@ class RunSession {
         options_ = options;
     }
 
+    void SetIndexHintsHandler(std::shared_ptr<IndexHintHandler> handler) { index_hints_ = handler; }
+
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
     std::shared_ptr<const std::unordered_map<std::string, std::string>> options_ = nullptr;
+
+    // [ALPHA] output possible diagnostic infos from compiler
+    std::shared_ptr<IndexHintHandler> index_hints_;
     friend Engine;
 };
 

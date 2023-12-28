@@ -174,7 +174,8 @@ class ClusterSDK : public DBSDK {
     std::string globalvar_changed_notify_path_;
     std::string leader_path_;
     std::string taskmanager_leader_path_;
-
+    // CheckZk will be called periodically, so we don't need to check zk_client_ before using it
+    // if failed, just retry
     ::openmldb::zk::ZkClient* zk_client_;
     ::baidu::common::ThreadPool pool_;
 };

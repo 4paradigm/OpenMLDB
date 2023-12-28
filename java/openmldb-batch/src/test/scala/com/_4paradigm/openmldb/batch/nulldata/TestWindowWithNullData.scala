@@ -65,4 +65,48 @@ class TestWindowWithNullData extends SparkTestSuite {
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
+  test("Test last join to window") {
+
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    val data1 = Seq(Row(1, 1), Row(2, 2))
+    val schema1 = StructType(List(
+      StructField("id", IntegerType),
+      StructField("val", IntegerType)))
+    val df1 = spark.createDataFrame(spark.sparkContext.makeRDD(data1), schema1)
+
+    val data2 = Seq(Row(1, 3, 1), Row(1, 3, 2), Row(2, 4, 3))
+    val schema2 = StructType(List(
+      StructField("id", IntegerType),
+      StructField("key", IntegerType),
+      StructField("val", IntegerType)))
+    val df2 = spark.createDataFrame(spark.sparkContext.makeRDD(data2), schema2)
+
+    sess.registerTable("t1", df1)
+    sess.registerTable("t2", df2)
+
+    val sqlText =
+      """select t1.id, tx.id as id2, tx.agg from t1 last join
+         | (
+         | select id, val, sum(val) over w as agg from t2
+         | window w as (partition by key order by val rows between 3 preceding and current row)
+         | ) tx order by tx.val
+         | on t1.id = tx.id
+      """.stripMargin
+
+    val outputDf = sess.sql(sqlText)
+    outputDf.show()
+
+    val output = Seq(Row(1, 1, 3), Row(2, 2, 3))
+    val output_sc = StructType(List(
+      StructField("id", IntegerType),
+      StructField("id2", IntegerType),
+      StructField("agg", IntegerType)))
+    val expect_df = spark.createDataFrame(spark.sparkContext.makeRDD(output), output_sc)
+    expect_df.show()
+
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), expect_df, true))
+  }
+
 }

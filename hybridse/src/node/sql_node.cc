@@ -1216,6 +1216,18 @@ absl::string_view CmdTypeName(const CmdType type) {
     return "undefined cmd type";
 }
 
+std::string SetOperatorName(SetOperationType type, bool dis) {
+    std::string distinct = dis ? "DISTINCT" : "ALL";
+    switch (type) {
+        case SetOperationType::UNION:
+            return "UNION " + distinct;
+        case SetOperationType::EXCEPT:
+            return "EXCEPT " + distinct;
+        case SetOperationType::INTERSECT:
+            return "INTERSECT " + distinct;
+    }
+}
+
 std::string DataTypeName(DataType type) {
     auto &map = GetDataTypeNamesMap();
     auto it = map.find(type);
@@ -2027,23 +2039,6 @@ bool JoinNode::Equals(const SqlNode *node) const {
            ExprEquals(this->orders_, that->orders_) && SqlEquals(this->left_, that->right_);
 }
 
-void UnionQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
-    QueryNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << "\n";
-    PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION", "union_type", false);
-    output << "\n";
-    PrintSqlNode(output, tab, left_, "left", false);
-    output << "\n";
-    PrintSqlNode(output, tab, right_, "right", true);
-}
-bool UnionQueryNode::Equals(const SqlNode *node) const {
-    if (!QueryNode::Equals(node)) {
-        return false;
-    }
-    const UnionQueryNode *that = dynamic_cast<const UnionQueryNode *>(node);
-    return this->is_all_ && that->is_all_ && SqlEquals(this->left_, that->right_);
-}
 void QueryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -2734,5 +2729,22 @@ std::string DropPathAction::DebugString() const {
     return absl::Substitute("DropPathAction ($0)", target_);
 }
 
+bool SetOperationNode::Equals(const SqlNode *node) const {
+    auto *rhs = dynamic_cast<const SetOperationNode *>(node);
+    return this->QueryNode::Equals(node) && this->op_type() == rhs->op_type() && this->distinct() == rhs->distinct() &&
+           absl::c_equal(this->inputs(), rhs->inputs(),
+                         [](const QueryNode *const l, const QueryNode *const r) { return SqlEquals(l, r); });
+}
+void SetOperationNode::Print(std::ostream &output, const std::string &org_tab) const {
+    QueryNode::Print(output, org_tab);
+    output << "\n";
+    PrintValue(output, org_tab + INDENT, SetOperatorName(op_type_, distinct_), "operator", false);
+    output << "\n" << org_tab + INDENT << SPACE_ST << "inputs[list]:";
+    for (size_t i = 0; i < inputs().size(); i++) {
+        auto node = inputs()[i];
+        output << "\n";
+        PrintSqlNode(output, org_tab + INDENT + INDENT, node, std::to_string(i), i + 1 == inputs().size());
+    }
+}
 }  // namespace node
 }  // namespace hybridse

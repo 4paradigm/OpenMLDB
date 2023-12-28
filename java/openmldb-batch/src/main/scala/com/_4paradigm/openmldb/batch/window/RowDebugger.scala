@@ -40,8 +40,10 @@ class RowDebugger(sqlConfig: OpenmldbBatchConfig, config: WindowAggConfig, isSke
   def printRow(computer: WindowComputer, row: Row): Unit = {
     if (cnt % sampleInterval == 0) {
       val str = new StringBuffer()
-      str.append(row.get(config.orderIdx))
-      str.append(",")
+      if (config.orderIdx >= 0) {
+        str.append(row.get(config.orderIdx))
+        str.append(",")
+      }
       for (e <- config.groupIdxs) {
         str.append(row.get(e))
         str.append(",")

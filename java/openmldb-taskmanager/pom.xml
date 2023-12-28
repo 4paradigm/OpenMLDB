@@ -161,12 +161,6 @@
 
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-batchjob</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
