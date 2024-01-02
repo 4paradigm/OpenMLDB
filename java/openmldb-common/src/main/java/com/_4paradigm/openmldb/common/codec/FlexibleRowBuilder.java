@@ -213,6 +213,9 @@ public class FlexibleRowBuilder implements RowBuilder {
         }
         Type.DataType type = metaData.getSchema().get(idx).getDataType();
         if (type == Type.DataType.kVarchar || type == Type.DataType.kString) {
+            if (settedValue.at(idx)) {
+                return false;
+            }
             if (idx != metaData.getStrIdxList().get(curStrIdx)) {
                 if (stringValueCache == null) {
                     stringValueCache = new TreeMap<>();
@@ -270,6 +273,9 @@ public class FlexibleRowBuilder implements RowBuilder {
         if (!checkType(idx, Type.DataType.kTimestamp)) {
             return false;
         }
+        if (val == null) {
+            return setNULL(idx);
+        }
         settedValue.atPut(idx, true);
         baseFieldBuf.putLong(getOffset(idx), val.getTime());
         return true;
@@ -310,6 +316,9 @@ public class FlexibleRowBuilder implements RowBuilder {
         if (!checkType(idx, Type.DataType.kDate)) {
             return false;
         }
+        if (val == null) {
+            return setNULL(idx);
+        }
         settedValue.atPut(idx, true);
         int dateVal = CodecUtil.dateToDateInt(val);
         baseFieldBuf.putInt(getOffset(idx), dateVal);
@@ -320,6 +329,9 @@ public class FlexibleRowBuilder implements RowBuilder {
     public boolean setString(int idx, String val) {
         if (!checkType(idx, Type.DataType.kString) && !checkType(idx, Type.DataType.kVarchar)) {
             return false;
+        }
+        if (val == null) {
+            return setNULL(idx);
         }
         if (settedValue.at(idx)) {
             return false;

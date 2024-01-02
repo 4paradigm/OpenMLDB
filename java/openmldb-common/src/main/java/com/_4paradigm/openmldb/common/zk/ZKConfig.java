@@ -32,5 +32,7 @@ public class ZKConfig {
     private int baseSleepTime = 1000;
     @Builder.Default
     private int maxConnectWaitTime = 30000;
+    @Builder.Default
+    private String cert = "";
 
 }

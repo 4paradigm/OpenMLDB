@@ -1,6 +1,12 @@
 # LOAD DATA INFILE
 `LOAD DATA INFILE`语句能高效地将文件中的数据读取到数据库中的表中。`LOAD DATA INFILE` 与 `SELECT INTO OUTFILE`互补。要将数据从 table导出到文件，请使用[SELECT INTO OUTFILE](../dql/SELECT_INTO_STATEMENT.md)。要将文件数据导入到 table 中，请使用`LOAD DATA INFILE`。
 
+```{note}
+无论何种load_mode，INFILE 的 filePath既可以是单个文件名，也可以是目录，也可以使用`*`通配符。
+- load_mode=cluster的具体格式等价于`DataFrameReader.read.load(String)`，可以使用spark shell来read你想要的文件路径，确认能否读入成功。如果目录中存在多格式的文件，只会选择 LoadDataInfileOptionsList 中指定的FORMAT格式文件。
+- load_mode=local则使用glob选择出符合的所有文件，不会检查单个文件的格式，所以，请保证满足条件的是csv格式，建议使用`*.csv`限制文件格式。
+```
+
 ## Syntax
 
 ```sql
@@ -46,8 +52,8 @@ FilePathPattern
 | header      | Boolean | true              | 是否包含表头, 默认为`true` 。                                                                                                                                                                                                                                                                                                                                                                                            |
 | null_value  | String  | null              | NULL值，默认填充`"null"`。加载时，遇到null_value的字符串将被转换为`"null"`，插入表中。                                                                                                                                                                                                                                                                                                                                   |
 | format      | String  | csv               | 导入文件的格式:<br />`csv`: 不显示指明format时，默认为该值。<br />`parquet`: 集群版还支持导入parquet格式文件，单机版不支持。                                                                                                                                                                                                                                                                                             |
-| quote       | String  | "                 | 输入数据的包围字符串。字符串长度<=1。<br />load_mode=`cluster`默认为双引号`"`。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#, normal_string`将为解析为三个filed，第一个是整数1，第二个是浮点1.0，第三个是一个字符串，第四个虽然没有quote，但也是一个字符串。<br /> **local_mode=`local`默认为`\0`，不处理包围字符。** |
-| mode        | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。                                                                                                                                                                                                                |
+| quote       | String  | "                 | 输入数据的包围字符串。字符串长度<=1。<br />load_mode=`cluster`默认为双引号`"`。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#, normal_string`将为解析为三个filed，第一个是整数1，第二个是浮点1.0，第三个是一个字符串，第四个虽然没有quote，但也是一个字符串。<br /> **local_mode=`local`默认为`\0`，也可使用空字符串赋值，不处理包围字符。** |
+| mode        | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。<br /> **local_mode=`local`默认为`append`**                                                                                                                              |
 | deep_copy   | Boolean | true              | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                                                                                                                                                                                                                           |
 | load_mode   | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                                                                                                                                                                                                        |
 | thread      | Integer | 1                 | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                                                                                                                                                                                                       |
@@ -70,7 +76,7 @@ FilePathPattern
 ## SQL语句模版
 
 ```sql
-LOAD DATA INFILE 'file_name' INTO TABLE 'table_name' OPTIONS (key = value, ...);
+LOAD DATA INFILE 'file_path' INTO TABLE 'table_name' OPTIONS (key = value, ...);
 ```
 
 ## Hive 支持

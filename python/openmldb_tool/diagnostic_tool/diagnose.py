@@ -31,13 +31,15 @@ from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
 from diagnostic_tool.parser import LogParser
+from .inspect import server_ins, table_ins, partition_ins, ops_ins, ops_hint, inspect_hint
+from .rpc import RPC
 
 from absl import app
 from absl import flags
 from absl.flags import argparse_flags
 from absl import logging  # --verbosity --log_dir
 
-# only some sub cmd needs dist file
+# only some sub cmd needs dist file TODO(hw): better to move then to other py file, to avoid -h show them
 flags.DEFINE_string(
     "conf_file",
     "",
@@ -81,7 +83,7 @@ def status(args):
 
     # --diff with dist conf file, conf_file is required
     if args.diff:
-        assert flags.FLAGS.conf_file, "need --conf_file"
+        assert flags.FLAGS.conf_file, "need -f,--conf_file"
         print(
             "only check components in conf file, if cluster has more components, ignore them"
         )
@@ -96,39 +98,56 @@ def status(args):
 
 
 def inspect(args):
-    insepct_online(args)
-    inspect_offline(args)
+    # report all
+    # 1. server level
+    connect = Connector()
+    status_checker = checker.StatusChecker(connect)
+    server_map = status_checker._get_components()
+    offlines = server_ins(server_map)
+
+    # 3. ns ops level, but show only if has unhealthy tables, so hint later
+    last_one, should_warn, related_ops = ops_ins(connect)
+
+    # 2. partition level: show unhealthy tables and get some hints about table
+    hints = partition_ins(server_map, related_ops)
+    if hints:
+        # show 3 here
+        ops_hint(last_one, should_warn)
+    # 4. hint
+    # let user know what to do
+    # 1) start offline servers
+    # 2) let user know the warning table is fatal or not, related ops, warn if offset is too large
+    # 3) if table not healthy and no related ops, use recoverdata
+    inspect_hint(offlines, hints)
 
 
 def insepct_online(args):
-    """show table status"""
-    conn = Connector()
+    """inspect online"""
+    connect = Connector()
     # scan all db include system db
-    fails = []
-    rs = conn.execfetch("show table status like '%';")
-    rs.sort(key=lambda x: x[0])
-    print(f"inspect {len(rs)} online tables(including system tables)")
-    for t in rs:
+    fails = table_ins(connect)
+    for t in fails:
         if t[13]:
             print(f"unhealthy table {t[2]}.{t[1]}:\n {t[:13]}")
             # sqlalchemy truncated ref https://github.com/sqlalchemy/sqlalchemy/commit/591e0cf08a798fb16e0ee9b56df5c3141aa48959
             # so we print warnings alone
             print(f"full warnings:\n{t[13]}")
-            fails.append(f"{t[2]}.{t[1]}")
-
-    assert not fails, f"unhealthy tables: {fails}"
-    print(f"all tables are healthy")
+    # if has fails, summary will print in table_ins
+    if not fails:
+        print(f"all tables are healthy")
 
     if getattr(args, "dist", False):
-        table_checker = TableChecker(conn)
-        table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
+        table_checker = TableChecker(connect)
+        dbs = flags.FLAGS.db
+        db_list = dbs.split(",") if dbs else None
+        table_checker.check_distribution(dbs=db_list)
 
 
 def inspect_offline(args):
     """scan jobs status, show job log if failed"""
     final_failed = ["failed", "killed", "lost"]
     total, num, jobs = _get_jobs(final_failed)
-    # TODO some failed jobs are known, what if we want skip them?
+    # TODO some failed jobs are known or too old, what if we want skip them?
     print(f"inspect {total} offline jobs")
     if num:
         failed_jobs_str = "\n".join(jobs)
@@ -241,7 +260,6 @@ def rpc(args):
         tm: taskmanager"""
         )
         return
-    from diagnostic_tool.rpc import RPC
 
     # use status connction to get version
     conns_with_version = {
@@ -301,7 +319,7 @@ def parse_arg(argv):
     status_parser.add_argument(
         "--diff",
         action="store_true",
-        help="check if all endpoints in conf are in cluster. If set, need to set `--conf_file`",
+        help="check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`",
     )  # TODO action support in all python 3.x?
     status_parser.add_argument(
         "--conn",
@@ -313,10 +331,10 @@ def parse_arg(argv):
     # sub inspect
     inspect_parser = subparsers.add_parser(
         "inspect",
-        help="Inspect online and offline. Use `inspect [online/offline]` to inspect one.",
+        help="Get full inspect report, --nocolor for batch mode, --table_width for partition tables display",
     )
-    # inspect online & offline
     inspect_parser.set_defaults(command=inspect)
+
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
     online = inspect_sub.add_parser("online", help="only inspect online table.")
@@ -325,7 +343,9 @@ def parse_arg(argv):
         "--dist", action="store_true", help="Inspect online distribution."
     )
     # inspect offline
-    offline = inspect_sub.add_parser("offline", help="only inspect offline jobs.")
+    offline = inspect_sub.add_parser(
+        "offline", help="only inspect offline jobs, show failed jobs."
+    )
     offline.set_defaults(command=inspect_offline)
     # inspect job
     ins_job = inspect_sub.add_parser(

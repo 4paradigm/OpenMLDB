@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="openmldb-tool",
-    version='0.8.3a0',
+    version='0.8.4a0',
     author="OpenMLDB Team",
     author_email=" ",
     url="https://github.com/4paradigm/OpenMLDB",
@@ -28,7 +28,7 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     install_requires=[
-        "openmldb >= 0.6.9",
+        "openmldb >= 0.8.1",
         "absl-py",
         "pyyaml",
         "paramiko",
@@ -36,12 +36,12 @@ setup(
         "requests",
     ],
     extras_require={
-        "rpc": [
+        "pb": [
             "protobuf==3.6.1",
             "beautifulsoup4",
         ],
         "test": [
-            "openmldb-tool[rpc]",
+            "openmldb-tool[pb]",
             "pytest",
         ],
     },

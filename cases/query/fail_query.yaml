@@ -49,3 +49,24 @@ cases:
       SELECT 100 + 1s;
     expect:
       success: false
+  - id: 3
+    desc: unsupport join
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+      - name: t2
+        columns: ["c2 int","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - [20,3000]
+          - [20,2000]
+    sql: |
+      select t1.c1 as id, t2.* from t1 right join t2
+      on t1.c2 = t2.c2
+    expect:
+      success: false
+      msg: unsupport join type RightJoin

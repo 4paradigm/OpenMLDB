@@ -33,7 +33,8 @@
 #include "client/tablet_client.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
-#include "sdk/file_option_parser.h"
+#include "sdk/options_map_parser.h"
+#include "sdk/interactive.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
@@ -83,6 +84,10 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ExecuteInsert(const std::string& db, const std::string& sql, std::shared_ptr<SQLInsertRows> rows,
                        hybridse::sdk::Status* status) override;
+
+    bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) override;
 
     bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
 
@@ -278,6 +283,12 @@ class SQLClusterRouter : public SQLRouter {
     // get job timeout from the session variables, we will use the timeout when sending requests to the taskmanager
     int GetJobTimeout();
 
+    std::string GetSparkConfig();
+
+    std::map<std::string, std::string> ParseSparkConfigString(const std::string& input);
+
+    bool CheckSparkConfigString(const std::string& input);
+
     ::openmldb::base::Status ExecuteOfflineQueryAsync(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db, int job_timeout,
@@ -337,16 +348,16 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleLoadDataInfile(const std::string& database, const std::string& table,
                                                const std::string& file_path,
-                                               const openmldb::sdk::ReadFileOptionsParser& options_parser);
+                                               const openmldb::sdk::LoadOptionsMapParser& options_parser);
 
     hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database, const std::string& table,
                                                const std::vector<std::string>& file_list,
-                                               const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                               const openmldb::sdk::LoadOptionsMapParser& options_parser,
                                                uint64_t* count);
 
     hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database, const std::string& table,
                                              const std::string& file_path,
-                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                             const openmldb::sdk::LoadOptionsMapParser& options_parser,
                                              uint64_t* count);
 
     hybridse::sdk::Status InsertOneRow(const std::string& database, const std::string& insert_placeholder,
@@ -417,7 +428,7 @@ class SQLClusterRouter : public SQLRouter {
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;
-    bool interactive_;
+    InteractiveValidator interactive_validator_;
     DBSDK* cluster_sdk_;
     std::map<std::string, std::map<hybridse::vm::EngineMode, base::lru_cache<std::string, std::shared_ptr<SQLCache>>>>
         input_lru_cache_;

@@ -20,8 +20,17 @@
 #include <cstddef>
 #include <string>
 
+#include "rapidjson/document.h"  // rapidjson's DOM-style API
+#include "rapidjson/writer.h"
+
 namespace openmldb {
 namespace apiserver {
+
+using rapidjson::Document;
+using rapidjson::SizeType;
+using rapidjson::StringBuffer;
+using rapidjson::Value;
+using rapidjson::Writer;
 
 /**
 \class Archiver
@@ -46,6 +55,7 @@ class JsonReader {
     /**
         \param json A non-const source json string for in-situ parsing.
         \note in-situ means the source JSON string will be modified after parsing.
+        just pass document for template read flags
     */
     explicit JsonReader(const char* json);
 
@@ -80,10 +90,10 @@ class JsonReader {
     static const bool IsReader = true;
     static const bool IsWriter = !IsReader;
 
- private:
-    JsonReader(const JsonReader&);
-    JsonReader& operator=(const JsonReader&);
+    JsonReader& operator=(const JsonReader&) = delete;
+    JsonReader(const JsonReader&) = delete;
 
+ private:
     // PIMPL
     void* document_;  ///< DOM result of parsing.
     void* stack_;     ///< Stack for iterating the DOM

@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "node/sql_node.h"
 
 namespace hybridse {
 namespace node {
@@ -43,11 +44,6 @@ QueryNode *NodeManager::MakeSelectQueryNode(bool is_distinct, SqlNodeList *selec
     return node_ptr;
 }
 
-QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right, bool is_all) {
-    UnionQueryNode *node_ptr = new UnionQueryNode(left, right, is_all);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
 TableRefNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
     return MakeTableNode("", name, alias);
 }
@@ -1028,11 +1024,6 @@ SqlNode *NodeManager::MakePartitionMetaNode(RoleType role_type, const std::strin
 
 SqlNode *NodeManager::MakeReplicaNumNode(int num) {
     SqlNode *node_ptr = new ReplicaNumNode(num);
-    return RegisterNode(node_ptr);
-}
-
-SqlNode *NodeManager::MakeStorageModeNode(StorageMode storage_mode) {
-    SqlNode *node_ptr = new StorageModeNode(storage_mode);
     return RegisterNode(node_ptr);
 }
 

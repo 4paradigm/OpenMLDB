@@ -24,19 +24,23 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
-#include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
+#include "rapidjson/document.h"  // raw rapidjson 1.1.0, not in butil
 #include "proto/api_server.pb.h"
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_request_row.h"
 
+#include "absl/status/status.h"
+#include "bvar/bvar.h"
+#include "bvar/multi_dimension.h"  // latency recorder
+
 namespace openmldb {
 namespace apiserver {
 
-using butil::rapidjson::Document;
-using butil::rapidjson::StringBuffer;
-using butil::rapidjson::Writer;
+using rapidjson::Document;
+using rapidjson::Value;
 
 // APIServer is a service for brpc::Server. The entire implement is `StartAPIServer()` in src/cmd/openmldb.cc
 // Every request is handled by `Process()`, we will choose the right method of the request by `InterfaceProvider`.
@@ -45,7 +49,7 @@ using butil::rapidjson::Writer;
 // Both input and output are json data. We use rapidjson to handle it.
 class APIServerImpl : public APIServer {
  public:
-    APIServerImpl() = default;
+    explicit APIServerImpl(const std::string& endpoint);
     ~APIServerImpl() override;
     bool Init(const sdk::ClusterOptions& options);
     bool Init(::openmldb::sdk::DBSDK* cluster);
@@ -69,26 +73,32 @@ class APIServerImpl : public APIServer {
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
 
-    static bool JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                        const butil::rapidjson::Value& common_cols_v,
-                                        std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
-    static bool JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                      const butil::rapidjson::Value& common_cols_v,
-                                      std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static absl::Status JsonArray2SQLRequestRow(const Value& non_common_cols_v,
+                                                const Value& common_cols_v,
+                                                std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static absl::Status JsonMap2SQLRequestRow(const Value& non_common_cols_v,
+                                              const Value& common_cols_v,
+                                              std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
-    static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
+    static bool AppendJsonValue(const Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                 T row);
 
     // may get segmentation fault when throw boost::bad_lexical_cast, so we use std::from_chars
     template <typename T>
     static bool FromString(const std::string& s, T& value) {  // NOLINT
-        auto res = std::from_chars(s.data(), s.data() + s.size(), value);
-        return res.ec == std::errc() && (res.ptr - s.data() == s.size());
+        if (auto res = std::from_chars(s.data(), s.data() + s.size(), value); res.ec == std::errc()) {
+            auto len = res.ptr - s.data();
+            return len >= 0 ? (uint64_t)len == s.size() : false;
+        } else {
+            return false;
+        }
     }
 
  private:
-    std::shared_ptr<sdk::SQLRouter> sql_router_;
+    bvar::MultiDimension<bvar::LatencyRecorder> md_recorder_;
     InterfaceProvider provider_;
+
+    std::shared_ptr<sdk::SQLRouter> sql_router_;
     // cluster_sdk_ is not owned by this class.
     ::openmldb::sdk::DBSDK* cluster_sdk_ = nullptr;
 };
@@ -98,6 +108,7 @@ struct QueryReq {
     int timeout = -1;  // only for offline jobs
     std::string sql;
     std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
+    bool write_nan_and_inf_null = false;
 };
 
 JsonReader& operator&(JsonReader& ar, QueryReq& s);  // NOLINT
@@ -112,12 +123,13 @@ struct ExecSPResp {
     bool need_schema = false;
     bool json_result = false;
     std::shared_ptr<hybridse::sdk::ResultSet> rs;
+    bool write_nan_and_inf_null = false;
 };
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
                  bool only_const);
 
-void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i);  // NOLINT
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i, bool write_nan_and_inf_null);  // NOLINT
 
 // ExecSPResp reading is unsupported now, cuz we decode ResultSet with Schema here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s);  // NOLINT
@@ -147,6 +159,8 @@ struct QueryResp {
     int code = 0;
     std::string msg = "ok";
     std::shared_ptr<hybridse::sdk::ResultSet> rs;
+    // option, won't write to result
+    bool write_nan_and_inf_null = false;
 };
 
 JsonWriter& operator&(JsonWriter& ar, QueryResp& s);  // NOLINT

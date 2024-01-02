@@ -44,9 +44,7 @@ void TimestampIRBuilder::InitStructType() {
         return;
     }
     stype = ::llvm::StructType::create(m_->getContext(), name);
-    ::llvm::Type* ts_ty = (::llvm::Type::getInt64Ty(m_->getContext()));
-    std::vector<::llvm::Type*> elements;
-    elements.push_back(ts_ty);
+    std::vector<::llvm::Type*> elements = {::llvm::Type::getInt64Ty(m_->getContext())};
     stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
     struct_type_ = stype;
     return;
@@ -61,10 +59,6 @@ base::Status TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block,
         return Status::OK();
     }
 
-    if (src.IsConstNull()) {
-        *output = NativeValue::CreateNull(GetType());
-        return Status::OK();
-    }
     ::llvm::IRBuilder<> builder(block);
     NativeValue ts;
     CastExprIRBuilder cast_builder(block);

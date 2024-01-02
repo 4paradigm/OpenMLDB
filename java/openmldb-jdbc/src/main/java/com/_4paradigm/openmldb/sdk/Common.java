@@ -171,8 +171,12 @@ public class Common {
         spInfo.setDbName(procedureInfo.GetDbName());
         spInfo.setProName(procedureInfo.GetSpName());
         spInfo.setSql(procedureInfo.GetSql());
-        spInfo.setInputSchema(convertSchema(procedureInfo.GetInputSchema()));
-        spInfo.setOutputSchema(convertSchema(procedureInfo.GetOutputSchema()));
+        com._4paradigm.openmldb.Schema inputSchema = procedureInfo.GetInputSchema();
+        spInfo.setInputSchema(convertSchema(inputSchema));
+        inputSchema.delete();
+        com._4paradigm.openmldb.Schema outputSchema = procedureInfo.GetOutputSchema();
+        spInfo.setOutputSchema(convertSchema(outputSchema));
+        outputSchema.delete();
         spInfo.setMainTable(procedureInfo.GetMainTable());
         spInfo.setInputTables(procedureInfo.GetTables());
         spInfo.setInputDbs(procedureInfo.GetDbs());

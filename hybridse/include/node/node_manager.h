@@ -104,8 +104,6 @@ class NodeManager {
         ExprListNode *group_expr_list, ExprNode *having_expr,
         ExprNode *order_expr_list, SqlNodeList *window_list_ptr,
         SqlNode *limit_ptr);
-    QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
-                                  bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeTableNode(const std::string& db,
@@ -398,8 +396,6 @@ class NodeManager {
                                    const std::string &endpoint);
 
     SqlNode *MakeReplicaNumNode(int num);
-
-    SqlNode *MakeStorageModeNode(StorageMode storage_mode);
 
     SqlNode *MakePartitionNumNode(int num);
 

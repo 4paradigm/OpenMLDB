@@ -86,9 +86,12 @@ object PhysicalNodeUtil {
   : mutable.ArrayBuffer[Column] = {
     val windowOp = windowAggNode.window()
 
-    val orders = windowOp.sort().orders()
-    val ordersExprListNode = orders.getOrder_expressions_
     val orderByCols = mutable.ArrayBuffer[Column]()
+    val orders = windowOp.sort().orders()
+    if (orders == null) {
+      return orderByCols
+    }
+    val ordersExprListNode = orders.getOrder_expressions_
 
     for (i <- 0 until ordersExprListNode.GetChildNum()) {
       val orderExpr = orders.GetOrderExpression(i)
@@ -130,6 +133,10 @@ object PhysicalNodeUtil {
     val windowOp = windowAggNode.window()
 
     val orders = windowOp.sort().orders()
+    if (orders == null) {
+      // WINDOW without ORDER BY
+      return "";
+    }
     val orderExprListNode = orders.getOrder_expressions_
 
     if (orderExprListNode.GetChildNum() <= 0) {
@@ -150,6 +157,10 @@ object PhysicalNodeUtil {
     val windowOp = windowAggNode.window()
 
     val orders = windowOp.sort().orders()
+    if (orders == null) {
+      // WINDOW without ORDER BY
+      return -1;
+    }
     val orderExprListNode = orders.getOrder_expressions_
 
     if (orderExprListNode.GetChildNum() <= 0) {

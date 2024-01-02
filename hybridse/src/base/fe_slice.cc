@@ -25,7 +25,7 @@ void RefCountedSlice::Release() {
     if (this->ref_cnt_ != nullptr) {
         auto& cnt = *this->ref_cnt_;
         cnt -= 1;
-        if (cnt == 0) {
+        if (cnt == 0 && buf() != nullptr) {
             // memset in case the buf is still used after free
             memset(buf(), 0, size());
             free(buf());

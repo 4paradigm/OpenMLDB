@@ -74,6 +74,8 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
             if (resultSet != null) {
                 resultSet.delete();
             }
+            queryFuture.delete();
+            queryFuture = null;
             logger.error("call procedure failed: {}", msg);
             throw new ExecutionException(new SqlException("call procedure failed: " + msg));
         }

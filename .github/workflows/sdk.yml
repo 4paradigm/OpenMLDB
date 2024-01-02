@@ -314,7 +314,8 @@ jobs:
 
       - name: prepare python deps
         run: |
-          python3 -m pip install setuptools wheel
+          # Require importlib-metadata < 5.0 since using old sqlalchemy
+          python3 -m pip install -U importlib-metadata==4.12.0 setuptools wheel
           brew install twine-pypi
           twine --version
 
@@ -352,6 +353,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
       OPENMLDB_BUILD_TARGET: "openmldb"
+      OPENMLDB_MODE: standalone
     steps:
       - uses: actions/checkout@v2
 

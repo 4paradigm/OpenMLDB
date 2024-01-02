@@ -4,14 +4,8 @@
 
 ## Syntax
 
-```sql
-NoTableSelectClause
-	::= 'SELECT' SelectExprList
-SelectExprList
-         ::= SelectExpr ( ',' SelectExpr )*
-SelectExpr    ::= ( Identifier '.' ( Identifier '.' )? )? '*'
-           | ( Expression | '{' Identifier Expression '}' ) ['AS' Identifier]
-     
+```yacc
+SELECT { expression [ [ AS ] alias ] } [, ...];
 ```
 
 ## SQL语句模版

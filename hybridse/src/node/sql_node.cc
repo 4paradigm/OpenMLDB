@@ -76,6 +76,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdDropFunction, "drop function"},
         {CmdType::kCmdShowFunctions, "show functions"},
         {CmdType::kCmdShowJobLog, "show joblog"},
+        {CmdType::kCmdTruncate, "truncate table"},
     };
     for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
         DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());
@@ -1168,6 +1169,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kReplicaNum, "kReplicaNum"},
         {kPartitionNum, "kPartitionNum"},
         {kStorageMode, "kStorageMode"},
+        {kCompressType, "kCompressType"},
         {kFn, "kFn"},
         {kFnParaList, "kFnParaList"},
         {kCreateSpStmt, "kCreateSpStmt"},
@@ -1212,6 +1214,18 @@ absl::string_view CmdTypeName(const CmdType type) {
         return it->second;
     }
     return "undefined cmd type";
+}
+
+std::string SetOperatorName(SetOperationType type, bool dis) {
+    std::string distinct = dis ? "DISTINCT" : "ALL";
+    switch (type) {
+        case SetOperationType::UNION:
+            return "UNION " + distinct;
+        case SetOperationType::EXCEPT:
+            return "EXCEPT " + distinct;
+        case SetOperationType::INTERSECT:
+            return "INTERSECT " + distinct;
+    }
 }
 
 std::string DataTypeName(DataType type) {
@@ -2025,23 +2039,6 @@ bool JoinNode::Equals(const SqlNode *node) const {
            ExprEquals(this->orders_, that->orders_) && SqlEquals(this->left_, that->right_);
 }
 
-void UnionQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
-    QueryNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << "\n";
-    PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION", "union_type", false);
-    output << "\n";
-    PrintSqlNode(output, tab, left_, "left", false);
-    output << "\n";
-    PrintSqlNode(output, tab, right_, "right", true);
-}
-bool UnionQueryNode::Equals(const SqlNode *node) const {
-    if (!QueryNode::Equals(node)) {
-        return false;
-    }
-    const UnionQueryNode *that = dynamic_cast<const UnionQueryNode *>(node);
-    return this->is_all_ && that->is_all_ && SqlEquals(this->left_, that->right_);
-}
 void QueryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -2098,6 +2095,11 @@ void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
         output << "\n";
         PrintValue(output, tab, std::to_string(offset_), "offset", true);
     }
+}
+
+bool FrameBound::is_offset_bound() const {
+    return bound_type_ == kPreceding || bound_type_ == kOpenPreceding || bound_type_ == kFollowing ||
+           bound_type_ == kOpenFollowing;
 }
 
 int FrameBound::Compare(const FrameBound *bound1, const FrameBound *bound2) {
@@ -2598,6 +2600,17 @@ void StorageModeNode::Print(std::ostream &output, const std::string &org_tab) co
     PrintValue(output, tab, StorageModeName(storage_mode_), "storage_mode", true);
 }
 
+void CompressTypeNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    if (compress_type_ == CompressType::kSnappy) {
+        PrintValue(output, tab, "snappy", "compress_type", true);
+    }  else {
+        PrintValue(output, tab, "nocompress", "compress_type", true);
+    }
+}
+
 void PartitionNumNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -2716,5 +2729,22 @@ std::string DropPathAction::DebugString() const {
     return absl::Substitute("DropPathAction ($0)", target_);
 }
 
+bool SetOperationNode::Equals(const SqlNode *node) const {
+    auto *rhs = dynamic_cast<const SetOperationNode *>(node);
+    return this->QueryNode::Equals(node) && this->op_type() == rhs->op_type() && this->distinct() == rhs->distinct() &&
+           absl::c_equal(this->inputs(), rhs->inputs(),
+                         [](const QueryNode *const l, const QueryNode *const r) { return SqlEquals(l, r); });
+}
+void SetOperationNode::Print(std::ostream &output, const std::string &org_tab) const {
+    QueryNode::Print(output, org_tab);
+    output << "\n";
+    PrintValue(output, org_tab + INDENT, SetOperatorName(op_type_, distinct_), "operator", false);
+    output << "\n" << org_tab + INDENT << SPACE_ST << "inputs[list]:";
+    for (size_t i = 0; i < inputs().size(); i++) {
+        auto node = inputs()[i];
+        output << "\n";
+        PrintSqlNode(output, org_tab + INDENT + INDENT, node, std::to_string(i), i + 1 == inputs().size());
+    }
+}
 }  // namespace node
 }  // namespace hybridse

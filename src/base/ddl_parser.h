@@ -113,9 +113,6 @@ class DDLParser {
     static std::string PhysicalPlan(const std::string& sql, const ::hybridse::type::Database& db);
 
  private:
-    // DLR
-    static MultiDBIndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
-
     // real get plan func, multi db should use catalog, don't forget init catalog with enable_index=true
     // if you want the status, use this func
     static bool GetPlan(const std::string& sql, const std::string& db,

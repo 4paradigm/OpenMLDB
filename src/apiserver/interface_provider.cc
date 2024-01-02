@@ -25,6 +25,8 @@
 #include <deque>
 
 #include "boost/algorithm/string/split.hpp"
+#include "butil/time.h"
+#include "bvar/bvar.h"
 #include "glog/logging.h"
 
 namespace openmldb {
@@ -159,6 +161,8 @@ void InterfaceProvider::registerRequest(brpc::HttpMethod type, std::string const
 
 bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& method, const butil::IOBuf& req_body,
                                JsonWriter& writer) {
+    butil::Timer tm;
+    tm.start();
     auto err = GeneralResp();
     Url url;
 
@@ -190,6 +194,9 @@ bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& 
     }
 
     auto params = extractParameters(url, request->url);
+    tm.stop();
+    route_recorder_ << tm.u_elapsed();
+
     request->callback(params, req_body, writer);
     return true;
 }

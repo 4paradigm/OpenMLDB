@@ -195,19 +195,28 @@ ClusterSDK::~ClusterSDK() {
 }
 
 void ClusterSDK::CheckZk() {
-    if (session_id_ == 0) {
-        WatchNotify();
-    } else if (session_id_ != zk_client_->GetSessionTerm()) {
-        LOG(WARNING) << "session changed, re-watch notify";
-        WatchNotify();
+    // ensure that zk client is alive
+    if (zk_client_->EnsureConnected()) {
+        if (session_id_ == 0) {
+            WatchNotify();
+        } else if (session_id_ != zk_client_->GetSessionTerm()) {
+            LOG(WARNING) << "session changed, re-watch notify";
+            WatchNotify();
+        }
+    } else {
+        // 5min print once
+        LOG_EVERY_N(WARNING, 150) << "zk client is not connected, reconnect later";
     }
+
     pool_.DelayTask(2000, [this] { CheckZk(); });
 }
 
 bool ClusterSDK::Init() {
     zk_client_ = new ::openmldb::zk::ZkClient(options_.zk_cluster, "",
                                               options_.zk_session_timeout, "",
-                                              options_.zk_path);
+                                              options_.zk_path,
+                                              options_.zk_auth_schema,
+                                              options_.zk_cert);
 
     bool ok = zk_client_->Init(options_.zk_log_level, options_.zk_log_file);
     if (!ok) {
@@ -381,7 +390,7 @@ bool ClusterSDK::InitTabletClient() {
     std::vector<std::string> tablets;
     bool ok = zk_client_->GetNodes(tablets);
     if (!ok) {
-        LOG(WARNING) << "fail to get tablet";
+        LOG(WARNING) << "fail to get tablets from zk";
         return false;
     }
     std::map<std::string, std::string> real_ep_map;

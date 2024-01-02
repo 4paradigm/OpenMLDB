@@ -1,6 +1,6 @@
 # RocketMQ
 
-## 1. 为什么选择 RocketMQ OpenMLDB Connector
+## 为什么选择 RocketMQ OpenMLDB Connector
 
 为了使 OpenMLDB 与 RocketMQ 拥有高效稳定的传输通道，RocketMQ OpenMLDB connector 具有诸多优秀特性，包括但不限于：
 
@@ -9,9 +9,9 @@
 - **高可靠。**RocketMQ OpenMLDB Connector 集群部署的方式具备 Failover 能力，可以将有问题节点的任务调度到正常节点并保证集群负载均衡，使企业能**更专注和更高效**地探索数据的商业价值。
 - **低延时。秒级延迟**，满足实时数据及特征开发场景。
 
-## 2. RocketMQ OpenMLDB Connector
+## RocketMQ OpenMLDB Connector
 
-### 2.1. Connector 概述
+### Connector 概述
 
 **定位**
 
@@ -37,7 +37,7 @@ $ mvn clean package -Dmaven.test.skip=true
 
 最终将编译好的插件包放在 RocketMQ connect 指定的加载地址。
 
-### 2.2. Connector 使用演示
+### Connector 使用演示
 
 **流程介绍**
 

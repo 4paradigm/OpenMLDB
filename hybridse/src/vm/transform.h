@@ -21,7 +21,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
@@ -29,7 +28,6 @@
 #include "base/fe_status.h"
 #include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -108,11 +106,11 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
-                         ::llvm::Module* module, const udf::UdfLibrary* library,
-                         bool cluster_optimized_mode = false, bool enable_expr_opt = false,
-                         bool enable_window_parallelization = true,
+                         ::llvm::Module* module, const udf::UdfLibrary* library, bool cluster_optimized_mode = false,
+                         bool enable_expr_opt = false, bool enable_window_parallelization = true,
                          bool enable_window_column_pruning = false,
-                         const std::unordered_map<std::string, std::string>* options = nullptr);
+                         const std::unordered_map<std::string, std::string>* options = nullptr,
+                         std::shared_ptr<IndexHintHandler> = nullptr);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
@@ -157,6 +155,8 @@ class BatchModeTransformer {
 
  protected:
     Status TransformPlanOp(const ::hybridse::node::PlanNode* node, ::hybridse::vm::PhysicalOpNode** ouput);
+
+    Status TransformSetOperation(const node::SetOperationPlanNode* node, PhysicalSetOperationNode** out);
 
     virtual Status TransformLimitOp(const node::LimitPlanNode* node,
                                     PhysicalOpNode** output);
@@ -284,10 +284,10 @@ class RequestModeTransformer : public BatchModeTransformer {
     RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
                            const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
                            ::llvm::Module* module, udf::UdfLibrary* library,
-                           const std::set<size_t>& common_column_indices,
-                           const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt,
-                           bool performance_sensitive = true,
-                           const std::unordered_map<std::string, std::string>* options = nullptr);
+                           const std::set<size_t>& common_column_indices, const bool cluster_optimized,
+                           const bool enable_batch_request_opt, bool enable_expr_opt, bool performance_sensitive = true,
+                           const std::unordered_map<std::string, std::string>* options = nullptr,
+                           std::shared_ptr<IndexHintHandler> = nullptr);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -322,13 +322,6 @@ class RequestModeTransformer : public BatchModeTransformer {
     // - has one and only one request table
     // - do not has any physical table refered
     Status ValidateRequestTable(PhysicalOpNode* in);
-
-    // Extract request node of the node tree
-    // returns
-    // - Request node on success
-    // - NULL if tree do not has request table but sufficient as as input tree of the big one
-    // - Error status otherwise
-    static absl::StatusOr<PhysicalOpNode*> ExtractRequestNode(PhysicalOpNode* in);
 
  private:
     // Optimize simple project node which is the producer of window project
