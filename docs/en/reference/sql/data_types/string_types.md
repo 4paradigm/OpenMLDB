@@ -9,5 +9,5 @@ A string is a sequence of bytes or characters, enclosed within either single quo
 
 | type   | size | use                    |
 | :----- | :--- | :--------------------- |
-| STRING | 2M   | String variable length |
+| STRING | 2M   | Variable-length character strings |
 
