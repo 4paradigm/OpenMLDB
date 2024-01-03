@@ -76,7 +76,7 @@ DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when d
 DEFINE_string(bucket_size, "1d", "the default bucket size in pre-aggr table");
 
 // scan configuration
-DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
+DEFINE_uint32(scan_max_bytes_size, 0, "config the max size of scan bytes size, 0 means unlimit"); // if scan result is too large, let it fail
 DEFINE_uint32(scan_reserve_size, 1024, "config the size of vec reserve");
 DEFINE_uint32(preview_limit_max_num, 1000, "config the max num of preview limit");
 DEFINE_uint32(preview_default_limit, 100, "config the default limit of preview");

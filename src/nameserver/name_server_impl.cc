@@ -8640,7 +8640,10 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                 }
             }
         }
-        AddIndexToTableInfo(name, db, column_key_vec, nullptr);
+        // no rollback now
+        if(!AddIndexToTableInfo(name, db, column_key_vec, nullptr)) {
+            base::SetResponseStatus(ReturnCode::kAddIndexFailed, "add to table info failed", response);
+        }
     }
     base::SetResponseOK(response);
     LOG(INFO) << "add index. table[" << name << "] index count[" << column_key_vec.size() << "]";
@@ -9362,14 +9365,9 @@ base::Status NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::Crea
     for (auto tb_client : tb_client_vec) {
         auto status = tb_client->CreateProcedure(sp_request);
         if (!status.OK()) {
-            std::string err_msg;
-            char temp_msg[100];
-            snprintf(temp_msg, sizeof(temp_msg),
-                     "create procedure on tablet failed. db_name[%s], sp_name[%s], endpoint[%s]. ",
-                     sp_info.db_name().c_str(), sp_info.sp_name().c_str(), tb_client->GetEndpoint().c_str());
-            absl::StrAppend(&err_msg, temp_msg, "msg: ", status.GetMsg());
-            LOG(WARNING) << err_msg;
-            return {base::ReturnCode::kCreateProcedureFailedOnTablet, err_msg};
+            return {base::ReturnCode::kCreateProcedureFailedOnTablet,
+                    absl::StrCat("create procedure on tablet failed, sp ", sp_info.db_name(), ".", sp_info.sp_name(),
+                                 ", endpoint: ", tb_client->GetEndpoint(), ", msg: ", status.GetMsg())};
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
                    << "sp_name: " << sp_info.sp_name() << ", "

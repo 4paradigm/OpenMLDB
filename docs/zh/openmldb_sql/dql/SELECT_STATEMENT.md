@@ -115,12 +115,9 @@ select_expression:
 | `ORDER BY` Clause                              | **``x``** | **``x``** | **``x``** | 标准SQL还支持Order By子句。OpenMLDB目前尚未支持Order子句。例如，查询语句`SELECT * from t1 ORDER BY col1;`在OpenMLDB中不被支持。                                                                                                                          |
 
 ```{warning}
-在线模式或单机版的select，可能无法获取完整数据。
-因为一次查询可能在多台tablet 上进行大量的扫描，为了tablet 的稳定性，单个tablet 限制了最大扫描数据量，即`scan_max_bytes_size`。
+在线模式或单机版的select，可能无法获取完整数据。单个tablet 限制了最大扫描数据量，即`scan_max_bytes_size`，默认为无限。但如果你配置了它，查询的数据量超过这个值，会出现结果截断。如果出现select结果截断，tablet 会出现`reach the max byte ...`的日志，但查询不会报错。
 
-如果出现select结果截断，tablet 会出现`reach the max byte ...`的日志，但查询不会报错。
-
-在线模式或单机版都不适合做大数据的扫描，推荐使用集群版的离线模式。如果一定要调大扫描量，需要对每台tablet配置`--scan_max_bytes_size=xxx`，并重启tablet生效。
+即使你没有配置`scan_max_bytes_size`，也可能出现select失败，比如 `body_size=xxx from xx:xxxx is too large`, ` Fail to parse response from xx:xxxx by baidu_std at client-side`等错误。我们不推荐全表扫描在线表，如果你想获得在线表的数据条数，可以使用`SELECT COUNT(*) FROM table_name`。
 ```
 
 ## FROM Clause
@@ -142,17 +139,20 @@ FROM 子句的来源可以是:
 ```{attention}
 离线同步模式 Query 仅用于展示，不保证结果完整。整个结果收集中可能出现文件写入失败，丢失HTTP包等问题，我们允许结果缺失。
 ```
+
 ### 相关配置参数
 
 TaskManager配置`batch.job.result.max.wait.time`，在 Query job完成后，我们会等待所有结果被收集并保存在TaskManager所在主机的文件系统中，超过这一时间将结束等待，返回错误。如果认为整个收集结果的过程没有问题，仅仅是等待时间不够，可以调大这一配置项，单位为ms，默认为10min。
 
 Batch配置(spark.default.conf):
+
 - spark.openmldb.savejobresult.rowperpost: 为了防止HTTP传送过多数据，我们对数据进行切割，默认为16000行。如果单行数据量较大，可以调小该值。
 - spark.openmldb.savejobresult.posttimeouts: HTTP传送数据的超时配置，共三个超时配置项，用`,`分隔，分别为`ConnectionRequestTimeout,ConnectTimeout,SocketTimeout`，默认为`10000,10000,10000`。如果出现HTTP传输超时，可调整这一参数。
 
 ### 重置
 
 如果使用过程中出现错误，可能导致Result Id无法正确重置。所有Result Id都被虚假占用时，会出现错误"too much running jobs to save job result, reject this spark job"。这时可以通过HTTP请求TaskManager来重置，POST内容如下：
+
 ```
 curl -H "Content-Type:application/json" http://0.0.0.0:9902/openmldb.taskmanager.TaskManagerServer/SaveJobResult -X POST -d '{"result_id":-1, "json_data": "reset"}'
 ```
