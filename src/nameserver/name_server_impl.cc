@@ -8641,7 +8641,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
             }
         }
         // no rollback now
-        if(!AddIndexToTableInfo(name, db, column_key_vec, nullptr)) {
+        if (!AddIndexToTableInfo(name, db, column_key_vec, nullptr)) {
             base::SetResponseStatus(ReturnCode::kAddIndexFailed, "add to table info failed", response);
         }
     }
