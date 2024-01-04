@@ -20,7 +20,7 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
 cd "$home" || exit 1
-
+echo $OPENMLDB_MODE $OPENMLDB_ZK_CLUSTER
 if [[ -n "$OPENMLDB_MODE" && "$OPENMLDB_MODE" = "cluster" ]]; then
   bin/openmldb --zk_cluster="${OPENMLDB_ZK_CLUSTER}" --zk_root_path="${OPENMLDB_ZK_ROOT_PATH}" --role=sql_client "$@"
 else
