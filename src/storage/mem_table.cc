@@ -214,8 +214,6 @@ absl::Status MemTable::Put(uint64_t time, const std::string& value, const Dimens
             seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
         }
         Segment* segment = segments_[kv.first][seg_idx];
-        // only return false when put_if_absent is true and the key already exists
-        // you should treat it as a success when put_if_absent is false
         if (!segment->Put(kv.second, iter->second, block, put_if_absent)) {
             return absl::AlreadyExistsError("data exists"); // let caller know exists
         }

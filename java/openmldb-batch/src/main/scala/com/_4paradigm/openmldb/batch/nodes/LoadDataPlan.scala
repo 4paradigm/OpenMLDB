@@ -60,7 +60,7 @@ object LoadDataPlan {
       require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
       val writeType = extra.get("writer_type").get
       val putIfAbsent = extra.get("put_if_absent").get.toBoolean
-      logger.info("write type {}, put if absent {}", writeType, putIfAbsent.toString)
+      logger.info(s"online write type ${writeType}, put if absent ${putIfAbsent}")
       val writeOptions = Map(
         "db" -> db,
         "table" -> table,

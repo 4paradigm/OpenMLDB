@@ -71,7 +71,8 @@ class Segment {
     ~Segment();
 
     // legacy interface called by memtable and ut
-    void Put(const Slice& key, uint64_t time, const char* data, uint32_t size, bool put_if_absent = false, bool check_all_time = false);
+    void Put(const Slice& key, uint64_t time, const char* data, uint32_t size, bool put_if_absent = false,
+             bool check_all_time = false);
 
     bool Put(const Slice& key, uint64_t time, DataBlock* row, bool put_if_absent = false, bool check_all_time = false);
 
@@ -95,8 +96,8 @@ class Segment {
     void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info);
 
     MemTableIterator* NewIterator(const Slice& key, Ticket& ticket, type::CompressType compress_type);  // NOLINT
-    MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket,
-                                  type::CompressType compress_type);  // NOLINT
+    MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket,                       // NOLINT
+                                  type::CompressType compress_type);
 
     uint64_t GetIdxCnt() const { return idx_cnt_vec_[0]->load(std::memory_order_relaxed); }
 
@@ -146,7 +147,8 @@ class Segment {
 
     bool ListContains(KeyEntry* entry, uint64_t time, DataBlock* row, bool check_all_time);
 
-    bool PutUnlock(const Slice& key, uint64_t time, DataBlock* row, bool put_if_absent = false, bool check_all_time = false);
+    bool PutUnlock(const Slice& key, uint64_t time, DataBlock* row, bool put_if_absent = false,
+                   bool check_all_time = false);
 
  private:
     KeyEntries* entries_;

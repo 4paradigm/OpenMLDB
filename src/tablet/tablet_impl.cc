@@ -738,7 +738,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     if (request->ts_dimensions_size() > 0) {
         entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
     }
-    
+
     absl::Status st;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
@@ -755,7 +755,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
 
     if (!st.ok()) {
         if (request->put_if_absent() && absl::IsAlreadyExists(st)) {
-            // not a failure but shounld't write log entry 
+            // not a failure but shounld't write log entry
             response->set_code(::openmldb::base::ReturnCode::kOk);
             response->set_msg("exists but ignore");
             return;
@@ -2203,9 +2203,8 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
             return;
         }
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-            table->Delete(entry);
-        } // TODO(hw): why not else if?
-        if (!table->Put(entry)) {
+            table->Delete(entry);         // TODO(hw): error handle
+        } else if (!table->Put(entry)) {  // put if type is not delete
             PDLOG(WARNING, "fail to put entry. tid %u pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
             response->set_msg("fail to append entry to table");

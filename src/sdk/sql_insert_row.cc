@@ -42,7 +42,7 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
         return {};
     }
     std::shared_ptr<SQLInsertRow> row =
-        std::make_shared<SQLInsertRow>(table_info_, schema_, default_map_, default_str_length_, put_if_absent_);
+        std::make_shared<SQLInsertRow>(table_info_, schema_, default_map_, default_str_length_, hole_idx_arr_, put_if_absent_);
     rows_.push_back(row);
     return row;
 }

@@ -238,14 +238,14 @@ absl::Status DiskTable::Put(uint64_t time, const std::string& value, const Dimen
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
-        return absl::InvalidArgumentError(absl::StrCat(id_,".",pid_, ": invalid schema version ", version));
+        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid schema version ", version));
     }
     rocksdb::WriteBatch batch;
     for (auto it = dimensions.begin(); it != dimensions.end(); ++it) {
         auto index_def = table_index_.GetIndex(it->idx());
         if (!index_def || !index_def->IsReady()) {
-            PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
-                  it->idx(), id_, pid_);
+            PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(), it->idx(),
+                  id_, pid_);
         }
         int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
@@ -256,11 +256,10 @@ absl::Status DiskTable::Put(uint64_t time, const std::string& value, const Dimen
             if (ts_col->IsAutoGenTs()) {
                 ts = time;
             } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
-                return absl::InvalidArgumentError(absl::StrCat(id_,".",pid_, ": get ts failed"));
+                return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": get ts failed"));
             }
             if (ts < 0) {
                 return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": ts is negative ", ts));
-              
             }
             if (inner_index->GetIndex().size() > 1) {
                 combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());

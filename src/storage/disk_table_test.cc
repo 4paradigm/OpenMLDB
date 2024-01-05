@@ -223,7 +223,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     delete it;
 
     std::string val;
-    ASSERT_TRUE(((DiskTable*)table)->Get(1, "key1", 2, val));
+    ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, "key1", 2, val));
     data = reinterpret_cast<const int8_t*>(val.data());
     version = codec::RowView::GetSchemaVersion(data);
     decoder = table->GetVersionDecoder(version);
@@ -465,7 +465,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     }
     ASSERT_EQ(20, count);
     std::string val;
-    ASSERT_TRUE(((DiskTable*)table)->Get(0, "test98", 9548, val));
+    ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, "test98", 9548, val));
     ASSERT_EQ("valu8", val);
     delete it;
     delete table;
@@ -754,24 +754,24 @@ TEST_F(DiskTableTest, CompactFilter) {
         for (int k = 0; k < 5; k++) {
             std::string value;
             if (k > 2) {
-                ASSERT_TRUE(((DiskTable*)table)->Get(key, ts - k - 10 * 60 * 1000, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(key, ts - k - 10 * 60 * 1000, value));
                 ASSERT_EQ("value9", value);
             } else {
-                ASSERT_TRUE(((DiskTable*)table)->Get(key, ts - k, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(key, ts - k, value));
                 ASSERT_EQ("value", value);
             }
         }
     }
-    ((DiskTable*)table)->CompactDB();
+    reinterpret_cast<DiskTable*>(table)->CompactDB();
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = cur_time;
         for (int k = 0; k < 5; k++) {
             std::string value;
             if (k > 2) {
-                ASSERT_FALSE(((DiskTable*)table)->Get(key, ts - k - 10 * 60 * 1000, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(key, ts - k - 10 * 60 * 1000, value));
             } else {
-                ASSERT_TRUE(((DiskTable*)table)->Get(key, ts - k, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(key, ts - k, value));
                 ASSERT_EQ("value", value);
             }
         }
@@ -860,11 +860,11 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                 std::string e_value;
                 ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
-                ASSERT_TRUE(((DiskTable*)table)->Get(0, key, ts - i * 60 * 1000, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, key, ts - i * 60 * 1000, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(1, key, ts - i * 60 * 1000, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, ts - i * 60 * 1000, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, ts - i * 60 * 1000, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, ts - i * 60 * 1000, value));
             }
 
         } else {
@@ -874,15 +874,15 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                 std::string e_value;
                 ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
-                ASSERT_TRUE(((DiskTable*)table)->Get(0, key, ts - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, key, ts - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(1, key, ts - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, ts - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, ts - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, ts - i, value));
             }
         }
     }
-    ((DiskTable*)table)->CompactDB();
+    reinterpret_cast<DiskTable*>(table)->CompactDB();
     iter = table->NewIterator(0, "card0", ticket);
     iter->SeekToFirst();
     while (iter->Valid()) {
@@ -908,18 +908,18 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                 ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
                 if (i < 3) {
-                    ASSERT_TRUE(((DiskTable*)table)->Get(0, key, cur_ts, value));
+                    ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_ts, value));
                     ASSERT_EQ(e_value, value);
                 } else {
-                    ASSERT_FALSE(((DiskTable*)table)->Get(0, key, cur_ts, value));
+                    ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_ts, value));
                 }
                 if (i < 5) {
-                    ASSERT_TRUE(((DiskTable*)table)->Get(1, key, cur_ts, value));
+                    ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_ts, value));
                     ASSERT_EQ(e_value, value);
-                    ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, cur_ts, value));
+                    ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_ts, value));
                 } else {
-                    ASSERT_FALSE(((DiskTable*)table)->Get(1, key, cur_ts, value));
-                    ASSERT_FALSE(((DiskTable*)table)->Get(2, key1, cur_ts, value));
+                    ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_ts, value));
+                    ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_ts, value));
                 }
             }
         } else {
@@ -929,11 +929,11 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                 std::string e_value;
                 ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
                 std::string value;
-                ASSERT_TRUE(((DiskTable*)table)->Get(0, key, ts - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, key, ts - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(1, key, ts - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, ts - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, ts - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, ts - i, value));
             }
         }
     }
@@ -1007,15 +1007,15 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
             ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
             std::string value;
             if (idx == 50 && i > 2) {
-                ASSERT_FALSE(((DiskTable*)table)->Get(0, key, cur_time - i, value));
-                ASSERT_FALSE(((DiskTable*)table)->Get(1, key, cur_time - i, value));
-                ASSERT_FALSE(((DiskTable*)table)->Get(2, key1, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_time - i, value));
             } else {
-                ASSERT_TRUE(((DiskTable*)table)->Get(0, key, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_time - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(1, key, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_time - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_time - i, value));
             }
         }
     }
@@ -1042,24 +1042,24 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
             ASSERT_EQ(0, codec.EncodeRow(row, &e_value));
             std::string value;
             if (idx == 50 && i > 2) {
-                ASSERT_FALSE(((DiskTable*)table)->Get(0, key, cur_time - i, value));
-                ASSERT_FALSE(((DiskTable*)table)->Get(1, key, cur_time - i, value));
-                ASSERT_FALSE(((DiskTable*)table)->Get(2, key1, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_time - i, value));
             } else if (i < 3) {
-                ASSERT_TRUE(((DiskTable*)table)->Get(0, key, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_time - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(1, key, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_time - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_time - i, value));
             } else if (i < 5) {
-                ASSERT_FALSE(((DiskTable*)table)->Get(0, key, cur_time - i, value));
-                ASSERT_TRUE(((DiskTable*)table)->Get(1, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_time - i, value));
                 ASSERT_EQ(e_value, value);
-                ASSERT_TRUE(((DiskTable*)table)->Get(2, key1, cur_time - i, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_time - i, value));
             } else {
-                ASSERT_FALSE(((DiskTable*)table)->Get(0, key, cur_time - i, value));
-                ASSERT_FALSE(((DiskTable*)table)->Get(1, key, cur_time - i, value));
-                ASSERT_FALSE(((DiskTable*)table)->Get(2, key1, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(0, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(1, key, cur_time - i, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(2, key1, cur_time - i, value));
             }
         }
     }
@@ -1090,7 +1090,7 @@ TEST_F(DiskTableTest, GcHead) {
         uint64_t ts = 9537;
         for (int k = 0; k < 5; k++) {
             std::string value;
-            ASSERT_TRUE(((DiskTable*)table)->Get(key, ts + k, value));
+            ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(key, ts + k, value));
             if (idx == 10 && k == 2) {
                 ASSERT_EQ("value8", value);
             } else {
@@ -1105,9 +1105,9 @@ TEST_F(DiskTableTest, GcHead) {
         for (int k = 0; k < 5; k++) {
             std::string value;
             if (k < 2) {
-                ASSERT_FALSE(((DiskTable*)table)->Get(key, ts + k, value));
+                ASSERT_FALSE(reinterpret_cast<DiskTable*>(table)->Get(key, ts + k, value));
             } else {
-                ASSERT_TRUE(((DiskTable*)table)->Get(key, ts + k, value));
+                ASSERT_TRUE(reinterpret_cast<DiskTable*>(table)->Get(key, ts + k, value));
                 if (idx == 10 && k == 2) {
                     ASSERT_EQ("value8", value);
                 } else {

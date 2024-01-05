@@ -15,7 +15,9 @@
  */
 
 #include "storage/segment.h"
+
 #include <snappy.h>
+
 #include <memory>
 
 #include "base/glog_wrapper.h"
@@ -213,7 +215,8 @@ bool Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
     if (ts_cnt_ == 1) {
         bool ret = false;
         if (auto pos = ts_map.find(ts_idx_map_.begin()->first); pos != ts_map.end()) {
-            ret = Put(key, pos->second, row, put_if_absent, pos->first == DEFAULT_TS_COL_ID);  // why ts_map key is int32_t, default ts is uint32_t?
+            // TODO(hw): why ts_map key is int32_t, default ts is uint32_t?
+            ret = Put(key, pos->second, row, put_if_absent, pos->first == DEFAULT_TS_COL_ID);
         }
         return ret;
     }

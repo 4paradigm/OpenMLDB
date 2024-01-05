@@ -52,16 +52,15 @@ class Table {
 
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
     // DO NOT set different default value in derived class
-    virtual absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions, bool put_if_absent = false) = 0;
+    virtual absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
+                             bool put_if_absent = false) = 0;
 
-    bool Put(const ::openmldb::api::LogEntry& entry) {
-        return Put(entry.ts(), entry.value(), entry.dimensions()).ok();
-    }
+    bool Put(const ::openmldb::api::LogEntry& entry) { return Put(entry.ts(), entry.value(), entry.dimensions()).ok(); }
 
     virtual bool Delete(const ::openmldb::api::LogEntry& entry) = 0;
 
-    virtual bool Delete(uint32_t idx, const std::string& key,
-            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) = 0;
+    virtual bool Delete(uint32_t idx, const std::string& key, const std::optional<uint64_t>& start_ts,
+                        const std::optional<uint64_t>& end_ts) = 0;
 
     virtual TableIterator* NewIterator(const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
@@ -89,9 +88,7 @@ class Table {
         }
         return "";
     }
-    inline ::openmldb::common::StorageMode GetStorageMode() const {
-        return storage_mode_;
-    }
+    inline ::openmldb::common::StorageMode GetStorageMode() const { return storage_mode_; }
     inline uint32_t GetId() const { return id_; }
 
     inline uint32_t GetIdxCnt() const { return table_index_.Size(); }
@@ -180,7 +177,7 @@ class Table {
     virtual uint64_t GetRecordByteSize() const = 0;
     virtual uint64_t GetRecordIdxByteSize() = 0;
 
-    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0; // NOLINT
+    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0;  // NOLINT
 
  protected:
     void UpdateTTL();

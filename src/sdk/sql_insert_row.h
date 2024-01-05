@@ -103,7 +103,7 @@ class DefaultValueContainer {
 
 class SQLInsertRow {
  public:
-    // for SQLInsertRows::NewRow()
+    // for raw insert sql(no hole)
     SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                  std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
                  uint32_t default_str_length, bool put_if_absent);
