@@ -215,7 +215,7 @@ absl::Status MemTable::Put(uint64_t time, const std::string& value, const Dimens
         }
         Segment* segment = segments_[kv.first][seg_idx];
         if (!segment->Put(kv.second, iter->second, block, put_if_absent)) {
-            return absl::AlreadyExistsError("data exists"); // let caller know exists
+            return absl::AlreadyExistsError("data exists");  // let caller know exists
         }
     }
     record_byte_size_.fetch_add(GetRecordSize(value.length()));

@@ -467,9 +467,9 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
         return {};
     }
     auto schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    auto insert_cache =
-        std::make_shared<InsertSQLCache>(table_info, schema, default_map, str_length,
-                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema), put_if_absent);
+    auto insert_cache = std::make_shared<InsertSQLCache>(
+        table_info, schema, default_map, str_length,
+        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema), put_if_absent);
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     *status = {};
     return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
@@ -785,9 +785,9 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
         return {};
     }
     auto col_schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    insert_cache =
-        std::make_shared<InsertSQLCache>(table_info, col_schema, default_map, str_length,
-                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema), put_if_absent);
+    insert_cache = std::make_shared<InsertSQLCache>(
+        table_info, col_schema, default_map, str_length,
+        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema), put_if_absent);
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     return std::make_shared<SQLInsertRows>(table_info, insert_cache->GetSchema(), default_map, str_length,
                                            insert_cache->GetHoleIdxArr(), insert_cache->IsPutIfAbsent());

@@ -308,7 +308,8 @@ TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     value_expr_list->PushBack(value4);
     ExprListNode *insert_values = node_manager_->MakeExprList();
     insert_values->PushBack(value_expr_list);
-    SqlNode *node_ptr = node_manager_->MakeInsertTableNode("", "t1", column_expr_list, insert_values, InsertStmt::InsertMode::DEFAULT_MODE);
+    SqlNode *node_ptr = node_manager_->MakeInsertTableNode("", "t1", column_expr_list, insert_values,
+                                                           InsertStmt::InsertMode::DEFAULT_MODE);
 
     ASSERT_EQ(kInsertStmt, node_ptr->GetType());
     InsertStmt *insert_stmt = dynamic_cast<InsertStmt *>(node_ptr);
