@@ -970,7 +970,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             total_block_size += data.size();
         }
         record_count++;
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
+        if (FLAGS_scan_max_bytes_size > 0 && total_block_size > FLAGS_scan_max_bytes_size) {
             *is_finish = false;
             break;
         }
