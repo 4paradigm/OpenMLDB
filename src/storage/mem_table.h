@@ -59,8 +59,6 @@ class MemTable : public Table {
                   const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
 
     bool Delete(const ::openmldb::api::LogEntry& entry) override;
-    bool Delete(uint32_t idx, const std::string& key,
-            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
 
     // use the first demission
     TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
@@ -110,6 +108,9 @@ class MemTable : public Table {
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
     bool CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts);
+
+    bool Delete(uint32_t idx, const std::string& key,
+            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
 
  private:
     uint32_t seg_cnt_;

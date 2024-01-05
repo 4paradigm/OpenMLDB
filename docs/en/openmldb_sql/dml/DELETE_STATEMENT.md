@@ -11,7 +11,6 @@ TableName ::=
 ```
 
 **Description**
-- `DELETE` statement will delete data fulfilling specific requirements in online table, not all data from the index. Only index related to where condition will be deleted. For more examples please check [function_boundary](../../quickstart/function_boundary.md#delete).
 - The filter columns specified by `WHERE` must be an index column. if it is a key column, only `=` can be used.
 
 ## Examples

@@ -324,6 +324,25 @@ std::shared_ptr<::hybridse::vm::TableHandler> TabletAccessor::SubQuery(uint32_t 
     }
     return async_table_handler;
 }
+
+void TabletsAccessor::AddTabletAccessor(std::shared_ptr<Tablet> accessor) {
+    if (!accessor) {
+        LOG(WARNING) << "Fail to add null tablet accessor";
+        return;
+    }
+    auto iter = name_idx_map_.find(accessor->GetName());
+    if (iter == name_idx_map_.cend()) {
+        accessors_.push_back(accessor);
+        name_idx_map_.insert(std::make_pair(accessor->GetName(), accessors_.size() - 1));
+        posinfos_.push_back(std::vector<size_t>({rows_cnt_}));
+        assign_accessor_idxs_.push_back(accessors_.size() - 1);
+    } else {
+        posinfos_[iter->second].push_back(rows_cnt_);
+        assign_accessor_idxs_.push_back(iter->second);
+    }
+    rows_cnt_++;
+}
+
 std::shared_ptr<hybridse::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                     const std::string& sql,
                                                                     const hybridse::codec::Row& row,
@@ -331,6 +350,7 @@ std::shared_ptr<hybridse::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t tas
     return std::make_shared<::hybridse::vm::ErrorRowHandler>(::hybridse::common::kRpcError,
                                                              "TabletsAccessor Unsupport SubQuery with request");
 }
+
 std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                       const std::string& sql,
                                                                       const std::set<size_t>& common_column_indices,
@@ -350,6 +370,7 @@ std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t t
     }
     return tables_handler;
 }
+
 PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
                                                const std::vector<std::shared_ptr<TabletAccessor>>& followers)
     : pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}
@@ -406,6 +427,29 @@ TableClientManager::TableClientManager(const ::openmldb::storage::TableSt& table
     }
 }
 
+void TableClientManager::Show() const {
+    DLOG(INFO) << "show client manager ";
+    for (size_t id = 0; id < partition_managers_.size(); id++) {
+        auto pmg = std::atomic_load_explicit(&partition_managers_[id], std::memory_order_relaxed);
+        if (pmg) {
+            if (pmg->GetLeader()) {
+                DLOG(INFO) << "partition managers (pid, leader) " << id << ", " << pmg->GetLeader()->GetName();
+            } else {
+                DLOG(INFO) << "partition managers (pid, leader) " << id << ", null leader";
+            }
+        } else {
+            DLOG(INFO) << "partition managers (pid, leader) " << id << ", null mamanger";
+        }
+    }
+}
+
+std::shared_ptr<PartitionClientManager> TableClientManager::GetPartitionClientManager(uint32_t pid) const {
+    if (pid < partition_managers_.size()) {
+        return std::atomic_load_explicit(&partition_managers_[pid], std::memory_order_relaxed);
+    }
+    return std::shared_ptr<PartitionClientManager>();
+}
+
 bool TableClientManager::UpdatePartitionClientManager(const ::openmldb::storage::PartitionSt& partition,
                                                       const ClientManager& client_manager) {
     uint32_t pid = partition.GetPid();
@@ -427,6 +471,41 @@ bool TableClientManager::UpdatePartitionClientManager(const ::openmldb::storage:
     auto partition_manager = std::make_shared<PartitionClientManager>(pid, leader, followers);
     std::atomic_store_explicit(&partition_managers_[pid], partition_manager, std::memory_order_relaxed);
     return true;
+}
+
+std::shared_ptr<TabletAccessor> TableClientManager::GetTablet(uint32_t pid) const {
+    auto partition_manager = GetPartitionClientManager(pid);
+    if (partition_manager) {
+        return partition_manager->GetLeader();
+    }
+    return std::shared_ptr<TabletAccessor>();
+}
+
+std::vector<std::shared_ptr<TabletAccessor>> TableClientManager::GetTabletFollowers(uint32_t pid) const {
+    auto partition_manager = GetPartitionClientManager(pid);
+    if (partition_manager) {
+        return partition_manager->GetFollowers();
+    }
+    return {};
+}
+
+std::shared_ptr<TabletsAccessor> TableClientManager::GetTablet(std::vector<uint32_t> pids) const {
+    auto tablets_accessor = std::make_shared<TabletsAccessor>();
+    for (size_t idx = 0; idx < pids.size(); idx++) {
+        auto partition_manager = GetPartitionClientManager(pids[idx]);
+        if (partition_manager) {
+            auto leader = partition_manager->GetLeader();
+            if (!leader) {
+                LOG(WARNING) << "fail to get TabletsAccessor, null tablet for pid " << pids[idx];
+                return std::shared_ptr<TabletsAccessor>();
+            }
+            tablets_accessor->AddTabletAccessor(partition_manager->GetLeader());
+        } else {
+            LOG(WARNING) << "fail to get tablet: pid " << pids[idx] << " not exist";
+            return std::shared_ptr<TabletsAccessor>();
+        }
+    }
+    return tablets_accessor;
 }
 
 std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name) const {

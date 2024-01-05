@@ -183,9 +183,6 @@ class DiskTable : public Table {
 
     base::Status Truncate();
 
-    bool Delete(uint32_t idx, const std::string& pk,
-            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) override;
-
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
     uint64_t GetRecordCnt() override {
@@ -237,6 +234,10 @@ class DiskTable : public Table {
 
  private:
     base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);
+
+    bool Delete(uint32_t idx, const std::string& pk,
+            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) override;
+
 
  private:
     rocksdb::DB* db_;

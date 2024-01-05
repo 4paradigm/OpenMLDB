@@ -210,6 +210,7 @@ message DeleteRequest {
     optional uint64 ts = 6;
     optional uint64 end_ts = 7;
     optional string ts_name = 8;
+    optional bool enable_decode_value = 9 [default = true];
 }
 
 message ExecuteGcRequest {

@@ -246,10 +246,11 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
 }
 
 bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
+    uint32_t ts_idx = 0;
+    if (!GetTsIdx(idx, &ts_idx)) {
+        return false;
+    }
     if (ts_cnt_ == 1) {
-        if (idx.has_value() && ts_idx_map_.find(idx.value()) == ts_idx_map_.end()) {
-            return false;
-        }
         ::openmldb::base::Node<Slice, void*>* entry_node = nullptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -260,13 +261,6 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             return true;
         }
     } else {
-        if (!idx.has_value()) {
-            return false;
-        }
-        auto iter = ts_idx_map_.find(idx.value());
-        if (iter == ts_idx_map_.end()) {
-            return false;
-        }
         base::Node<uint64_t, DataBlock*>* data_node = nullptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -274,7 +268,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             if (entries_->Get(key, entry_arr) < 0 || entry_arr == nullptr) {
                 return true;
             }
-            KeyEntry* key_entry = reinterpret_cast<KeyEntry**>(entry_arr)[iter->second];
+            KeyEntry* key_entry = reinterpret_cast<KeyEntry**>(entry_arr)[ts_idx];
             std::unique_ptr<TimeEntries::Iterator> it(key_entry->entries.NewIterator());
             it->SeekToFirst();
             if (it->Valid()) {
@@ -283,25 +277,18 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             }
         }
         if (data_node != nullptr) {
-            node_cache_.AddValueNodeList(iter->second, gc_version_.load(std::memory_order_relaxed), data_node);
+            node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
         }
     }
     return true;
 }
 
-bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
-            uint64_t ts, const std::optional<uint64_t>& end_ts) {
-    void* entry = nullptr;
-    if (entries_->Get(key, entry) < 0 || entry == nullptr) {
-        return true;
-    }
-    KeyEntry* key_entry = nullptr;
-    uint32_t ts_idx = 0;
+bool Segment::GetTsIdx(const std::optional<uint32_t>& idx, uint32_t* ts_idx) {
+    *ts_idx = 0;
     if (ts_cnt_ == 1) {
         if (idx.has_value() && ts_idx_map_.find(idx.value()) == ts_idx_map_.end()) {
             return false;
         }
-        key_entry = reinterpret_cast<KeyEntry*>(entry);
     } else {
         if (!idx.has_value()) {
             return false;
@@ -310,8 +297,55 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
         if (iter == ts_idx_map_.end()) {
             return false;
         }
-        key_entry = reinterpret_cast<KeyEntry**>(entry)[iter->second];
-        ts_idx = iter->second;
+        *ts_idx = iter->second;
+    }
+    return true;
+}
+
+bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key, uint64_t ts) {
+    uint32_t ts_idx = 0;
+    if (!GetTsIdx(idx, &ts_idx)) {
+        return false;
+    }
+    void* entry = nullptr;
+    if (entries_->Get(key, entry) < 0 || entry == nullptr) {
+        return true;
+    }
+    KeyEntry* key_entry = nullptr;
+    if (ts_cnt_ == 1) {
+        key_entry = reinterpret_cast<KeyEntry*>(entry);
+    } else {
+        key_entry = reinterpret_cast<KeyEntry**>(entry)[ts_idx];
+    }
+    base::Node<uint64_t, DataBlock*>* data_node = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        data_node = key_entry->entries.Remove(ts);
+    }
+    if (data_node) {
+        node_cache_.AddSingleValueNode(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
+    }
+    return true;
+}
+
+bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
+            uint64_t ts, const std::optional<uint64_t>& end_ts) {
+    if (end_ts.has_value() && end_ts.value() + 1 == ts) {
+        return Delete(idx, key, ts);
+    }
+    uint32_t ts_idx = 0;
+    if (!GetTsIdx(idx, &ts_idx)) {
+        return false;
+    }
+    void* entry = nullptr;
+    if (entries_->Get(key, entry) < 0 || entry == nullptr) {
+        return true;
+    }
+    KeyEntry* key_entry = nullptr;
+    if (ts_cnt_ == 1) {
+        key_entry = reinterpret_cast<KeyEntry*>(entry);
+    } else {
+        key_entry = reinterpret_cast<KeyEntry**>(entry)[ts_idx];
     }
     if (end_ts.has_value()) {
         if (auto node = key_entry->entries.GetLast(); node == nullptr) {

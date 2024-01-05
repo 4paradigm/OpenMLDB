@@ -82,6 +82,7 @@ class Segment {
     void Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row);
 
     bool Delete(const std::optional<uint32_t>& idx, const Slice& key);
+    bool Delete(const std::optional<uint32_t>& idx, const Slice& key, uint64_t ts);
     bool Delete(const std::optional<uint32_t>& idx, const Slice& key,
             uint64_t ts, const std::optional<uint64_t>& end_ts);
 
@@ -148,6 +149,7 @@ class Segment {
     void FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlock*>* node,
         StatisticsInfo* statistics_info);
     void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
+    bool GetTsIdx(const std::optional<uint32_t>& idx, uint32_t* ts_idx);
 
  private:
     KeyEntries* entries_;
