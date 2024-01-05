@@ -25,7 +25,6 @@
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "storage/record.h"
-#include "storage/segment.h"
 
 DECLARE_int32(gc_safe_offset);
 DECLARE_uint32(skiplist_max_height);
