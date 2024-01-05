@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "node/node_manager.h"
-#include "udf/udf.h"
 #include "zetasql/parser/parser.h"
 
 namespace hybridse {

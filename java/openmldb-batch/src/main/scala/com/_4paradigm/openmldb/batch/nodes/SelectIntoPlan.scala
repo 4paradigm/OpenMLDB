@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalSelectIntoNode
-import com._4paradigm.openmldb.batch.utils.HybridseUtil
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, OpenmldbTableUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.slf4j.LoggerFactory
 
@@ -45,6 +45,25 @@ object SelectIntoPlan {
       val dbt = HybridseUtil.hiveDest(outPath)
       logger.info(s"offline select into: hive way, write mode[${mode}], out table ${dbt}")
       input.getDf().write.format("hive").mode(mode).saveAsTable(dbt)
+    } else if (format == "openmldb") {
+
+      val (db, table) = HybridseUtil.getOpenmldbDbAndTable(outPath)
+
+      val createIfNotExists = extra.get("create_if_not_exists").get.toBoolean
+      if (createIfNotExists) {
+        logger.info("Try to create openmldb output table: " + table)
+
+        OpenmldbTableUtil.createOpenmldbTableFromDf(ctx.getOpenmldbSession, input.getDf(), db, table)
+      }
+
+      val writeOptions = Map(
+        "db" -> db,
+        "table" -> table,
+        "zkCluster" -> ctx.getConf.openmldbZkCluster,
+        "zkPath" -> ctx.getConf.openmldbZkRootPath)
+
+      input.getDf().write.options(writeOptions).format("openmldb").mode(mode).save()
+
     } else {
       logger.info("offline select into: format[{}], options[{}], write mode[{}], out path {}", format, options,
           mode, outPath)

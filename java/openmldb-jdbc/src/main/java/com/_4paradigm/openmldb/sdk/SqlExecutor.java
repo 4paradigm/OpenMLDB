@@ -48,10 +48,13 @@ public interface SqlExecutor {
     @Deprecated
     java.sql.ResultSet executeSQL(String db, String sql);
 
+    @Deprecated
     SQLInsertRow getInsertRow(String db, String sql);
 
+    @Deprecated
     SQLInsertRows getInsertRows(String db, String sql);
 
+    @Deprecated
     ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row);
 
     Statement getStatement();

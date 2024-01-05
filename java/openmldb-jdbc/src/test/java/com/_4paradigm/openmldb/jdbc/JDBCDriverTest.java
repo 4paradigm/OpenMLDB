@@ -212,7 +212,6 @@ public class JDBCDriverTest {
         // don't work, but do not throw exception
         pstmt.setFetchSize(100);
 
-        pstmt.addBatch();
         insertSql = "INSERT INTO " +
                 tableName +
                 "(`c3`,`c2`) VALUES(?,?)";

@@ -533,9 +533,13 @@ INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, EngineTest,
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLeftJoin, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/left_join.yml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLastJoinSubqueryWindow, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_subquery_window.yml")));
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWhere, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, EngineTest,
@@ -552,6 +556,8 @@ INSTANTIATE_TEST_SUITE_P(EngineBatchWhereGroupQuery, EngineTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/query/where_group_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(WithClause, EngineTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/query/with.yaml")));
+INSTANTIATE_TEST_SUITE_P(UnionQuery, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/query/union_query.yml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowRowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_window_row.yaml")));

@@ -11,6 +11,9 @@ OpenMLDB Docs (|version|)
     tutorial/index
     use_case/index
     deploy/index
+    openmldb_sql/index
+    integration/index
     maintain/index
-    developer/index
     reference/index
+    developer/index
+

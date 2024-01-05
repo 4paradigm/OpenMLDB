@@ -437,44 +437,45 @@ cases:
           |      +-is_constant: 0
           +-inner_node_list[list]:
             +-0:
-              +-node[kQuery]: kQueryUnion
-                +-union_type: ALL UNION
-                +-left:
-                |  +-node[kQuery]: kQuerySelect
-                |    +-distinct_opt: false
-                |    +-where_expr: null
-                |    +-group_expr_list: null
-                |    +-having_expr: null
-                |    +-order_expr_list: null
-                |    +-limit: null
-                |    +-select_list[list]:
-                |    |  +-0:
-                |    |    +-node[kResTarget]
-                |    |      +-val:
-                |    |      |  +-expr[primary]
-                |    |      |    +-value: 1
-                |    |      |    +-type: int32
-                |    |      +-name: <nil>
-                |    +-tableref_list: []
-                |    +-window_list: []
-                +-right:
-                  +-node[kQuery]: kQuerySelect
-                    +-distinct_opt: false
-                    +-where_expr: null
-                    +-group_expr_list: null
-                    +-having_expr: null
-                    +-order_expr_list: null
-                    +-limit: null
-                    +-select_list[list]:
-                    |  +-0:
-                    |    +-node[kResTarget]
-                    |      +-val:
-                    |      |  +-expr[primary]
-                    |      |    +-value: 2
-                    |      |    +-type: int32
-                    |      +-name: <nil>
-                    +-tableref_list: []
-                    +-window_list: []
+              +-node[kQuery]: kQuerySetOperation
+                +-operator: UNION ALL
+                +-inputs[list]:
+                  +-0:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[primary]
+                  |    |      |    +-value: 1
+                  |    |      |    +-type: int32
+                  |    |      +-name: <nil>
+                  |    +-tableref_list: []
+                  |    +-window_list: []
+                  +-1:
+                    +-node[kQuery]: kQuerySelect
+                      +-distinct_opt: false
+                      +-where_expr: null
+                      +-group_expr_list: null
+                      +-having_expr: null
+                      +-order_expr_list: null
+                      +-limit: null
+                      +-select_list[list]:
+                      |  +-0:
+                      |    +-node[kResTarget]
+                      |      +-val:
+                      |      |  +-expr[primary]
+                      |      |    +-value: 2
+                      |      |    +-type: int32
+                      |      +-name: <nil>
+                      +-tableref_list: []
+                      +-window_list: []
 
   - id: 21_create_procedure
     desc: create procedure, parameters and union distinct query
@@ -515,68 +516,63 @@ cases:
           |      +-is_constant: 0
           +-inner_node_list[list]:
             +-0:
-              +-node[kQuery]: kQueryUnion
-                +-union_type: DISTINCT UNION
-                +-left:
-                |  +-node[kQuery]: kQueryUnion
-                |    +-union_type: DISTINCT UNION
-                |    +-left:
-                |    |  +-node[kQuery]: kQuerySelect
-                |    |    +-distinct_opt: false
-                |    |    +-where_expr: null
-                |    |    +-group_expr_list: null
-                |    |    +-having_expr: null
-                |    |    +-order_expr_list: null
-                |    |    +-limit: null
-                |    |    +-select_list[list]:
-                |    |    |  +-0:
-                |    |    |    +-node[kResTarget]
-                |    |    |      +-val:
-                |    |    |      |  +-expr[primary]
-                |    |    |      |    +-value: 1
-                |    |    |      |    +-type: int32
-                |    |    |      +-name: <nil>
-                |    |    +-tableref_list: []
-                |    |    +-window_list: []
-                |    +-right:
-                |      +-node[kQuery]: kQuerySelect
-                |        +-distinct_opt: false
-                |        +-where_expr: null
-                |        +-group_expr_list: null
-                |        +-having_expr: null
-                |        +-order_expr_list: null
-                |        +-limit: null
-                |        +-select_list[list]:
-                |        |  +-0:
-                |        |    +-node[kResTarget]
-                |        |      +-val:
-                |        |      |  +-expr[primary]
-                |        |      |    +-value: 2
-                |        |      |    +-type: int32
-                |        |      +-name: <nil>
-                |        +-tableref_list: []
-                |        +-window_list: []
-                +-right:
-                  +-node[kQuery]: kQuerySelect
-                    +-distinct_opt: false
-                    +-where_expr: null
-                    +-group_expr_list: null
-                    +-having_expr: null
-                    +-order_expr_list: null
-                    +-limit: null
-                    +-select_list[list]:
-                    |  +-0:
-                    |    +-node[kResTarget]
-                    |      +-val:
-                    |      |  +-expr[primary]
-                    |      |    +-value: 3
-                    |      |    +-type: int32
-                    |      +-name: <nil>
-                    +-tableref_list: []
-                    +-window_list: []
-
-
-
+              +-node[kQuery]: kQuerySetOperation
+                +-operator: UNION DISTINCT
+                +-inputs[list]:
+                  +-0:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[primary]
+                  |    |      |    +-value: 1
+                  |    |      |    +-type: int32
+                  |    |      +-name: <nil>
+                  |    +-tableref_list: []
+                  |    +-window_list: []
+                  +-1:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[primary]
+                  |    |      |    +-value: 2
+                  |    |      |    +-type: int32
+                  |    |      +-name: <nil>
+                  |    +-tableref_list: []
+                  |    +-window_list: []
+                  +-2:
+                    +-node[kQuery]: kQuerySelect
+                      +-distinct_opt: false
+                      +-where_expr: null
+                      +-group_expr_list: null
+                      +-having_expr: null
+                      +-order_expr_list: null
+                      +-limit: null
+                      +-select_list[list]:
+                      |  +-0:
+                      |    +-node[kResTarget]
+                      |      +-val:
+                      |      |  +-expr[primary]
+                      |      |    +-value: 3
+                      |      |    +-type: int32
+                      |      +-name: <nil>
+                      +-tableref_list: []
+                      +-window_list: []
 
   - id: 22
     desc: create index 1
@@ -1035,3 +1031,40 @@ cases:
             +-kind: HIVE
             +-path: hdfs://path
           +-table_option_list: []
+
+  - id: 34
+    desc: Create 指定压缩
+    sql: |
+      create table t1(
+          column1 int,
+          column2 timestamp,
+          index(key=column1, ts=column2)) OPTIONS (compress_type="snappy");
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t1
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column1
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: column2
+          |  |    +-column_type: timestamp
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: [column1]
+          |      +-ts_col: column2
+          |      +-abs_ttl: -2
+          |      +-lat_ttl: -2
+          |      +-ttl_type: <nil>
+          |      +-version_column: <nil>
+          |      +-version_count: 0
+          +-table_option_list[list]:
+            +-0:
+              +-node[kCompressType]
+                +-compress_type: snappy

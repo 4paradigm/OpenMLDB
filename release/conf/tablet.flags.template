@@ -6,6 +6,7 @@
 
 --zk_cluster=127.0.0.1:2181
 --zk_root_path=/openmldb
+#--zk_cert=user:passwd
 
 # thread_pool_size建议和cpu核数一致
 --thread_pool_size=24
@@ -98,3 +99,5 @@
 
 # turn this option on to export openmldb metric status
 # --enable_status_service=false
+--bvar_max_dump_multi_dimension_metric_number=10
+--bvar_dump_interval=75

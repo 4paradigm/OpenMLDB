@@ -192,6 +192,8 @@ class MemTableSnapshot : public Snapshot {
 
     int CheckDeleteAndUpdate(std::shared_ptr<Table> table, ::openmldb::api::LogEntry* new_entry);
 
+    int Truncate(uint64_t offset, uint64_t term);
+
  private:
     // load single snapshot to table
     void RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table, std::atomic<uint64_t>* g_succ_cnt,

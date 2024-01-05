@@ -15,7 +15,9 @@
  */
 
 #include "base/ddl_parser.h"
+#include <utility>
 
+#include "absl/cleanup/cleanup.h"
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 #include "google/protobuf/util/message_differencer.h"
@@ -171,6 +173,9 @@ class DDLParserTest : public ::testing::Test {
         ASSERT_TRUE(AddTableToDB(&db, "t2",
                                  {"col0", "string", "col1", "int32", "col2", "int16", "col3", "float", "col4", "double",
                                   "col5", "int64", "col6", "string"}));
+        ASSERT_TRUE(AddTableToDB(&db, "t3",
+                                 {"col0", "string", "col1", "int32", "col2", "int16", "col3", "float", "col4", "double",
+                                  "col5", "int64", "col6", "string"}));
     }
 
     static bool AddColumnToTable(const std::string& col_name, const std::string& col_type,
@@ -285,6 +290,12 @@ class DDLParserTest : public ::testing::Test {
         return index_map.begin()->second;
     }
 
+    bool EnsurePass(const std::string& sql) {
+        auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+        catalog->AddDatabase(db);
+        return DDLParser::ValidateSQLInRequest(sql, db.name(), catalog).empty();
+    }
+
  protected:
     std::string DB_NAME = "DDLParserTest";
     ::hybridse::type::Database db;
@@ -392,7 +403,7 @@ TEST_F(DDLParserTest, joinExtract) {
 
         auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
-        CheckEqual(index_map, {{"t2", {"col2;;lat,0,1"}}});
+        CheckEqual(index_map, {{"t2", {"col2;;abs,0,0"}}});
         // the added index only has key, no ts
         AddIndexToDB(index_map, &db);
         LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
@@ -432,7 +443,7 @@ TEST_F(DDLParserTest, complexJoin) {
             "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
         index_map = ExtractIndexesWithSingleDB(sql, db);
         // index is on t2.col2 {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
-        CheckEqual(index_map, {{"t2", {"col2;;lat,0,1"}}});
+        CheckEqual(index_map, {{"t2", {"col2;;abs,0,0"}}});
 
         // the added index only has key, no ts
         AddIndexToDB(index_map, &db);
@@ -627,6 +638,94 @@ TEST_F(DDLParserTest, renameColumns) {
     // {tt1[col_name: "col1" ts_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1000 }, ]}  {tt2[col_name: "c1"
     // ts_name: "c2" ttl { ttl_type: kLatestTime lat_ttl: 1000 }, ]}
     CheckEqual(index_map, {{"tt1", {"col1;col2;lat,0,1000"}}, {"tt2", {"c1;c2;lat,0,1000"}}});
+}
+
+TEST_F(DDLParserTest, lastJoinOverLastJoin) {
+    absl::Cleanup clean = [&]() { ClearAllIndex(); };
+    auto sql =
+        R"(select * from t1 last join (select * from t2 last join feedbackTable on t2.col1 = feedbackTable.actionValue) tx on t1.col0 = tx.col0)";
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
+    CheckEqual(index_map, {{"t2", {"col0;;lat,0,1"}}, {"feedbackTable", {"actionValue;;lat,0,1"}}});
+
+    AddIndexToDB(index_map, &db);
+    EXPECT_TRUE(EnsurePass(sql));
+}
+
+TEST_F(DDLParserTest, lastJoinWindow) {
+    absl::Cleanup clean = [&]() { ClearAllIndex(); };
+    auto sql =
+        R"(select * from t1 last join (
+            select *, count(col0) over w as agg from t2
+            window w as (partition by col1 order by col5 rows between 3 preceding and current row))
+          tx on t1.col0 = tx.col0)";
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
+    std::map<std::string, std::vector<std::string>> expect = {{"t2", {"col0;;lat,0,1", "col1;col5;lat,0,3"}}};
+    CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+    AddIndexToDB(index_map, &db);
+    EXPECT_TRUE(EnsurePass(sql));
+}
+
+TEST_F(DDLParserTest, lastJoinUnion) {
+    absl::Cleanup clean = [&]() { ClearAllIndex(); };
+    auto sql =
+        R"(select * from t1 last join (
+           select * from t2 union all select * from t3
+           ) tx on t1.col0 = tx.col0)";
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
+    std::map<std::string, std::vector<std::string>> expect = {{"t2", {"col0;;lat,0,1"}}, {"t3", {"col0;;lat,0,1"}}};
+    CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+    AddIndexToDB(index_map, &db);
+    EXPECT_TRUE(EnsurePass(sql));
+}
+
+TEST_F(DDLParserTest, windowWithoutOrderBy) {
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows between unbounded preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        std::map<std::string, std::vector<std::string>> expect = {{"t1", {"col1;;lat,0,0"}}};
+        CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+        AddIndexToDB(index_map, &db);
+        ASSERT_TRUE(EnsurePass(sql));
+    }
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows between 4 preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        std::map<std::string, std::vector<std::string>> expect = {{"t1", {"col1;;lat,0,4"}}};
+        CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+        AddIndexToDB(index_map, &db);
+        ASSERT_TRUE(EnsurePass(sql));
+    }
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows_range between unbounded preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        std::map<std::string, std::vector<std::string>> expect = {{"t1", {"col1;;abs,0,0"}}};
+        CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+        AddIndexToDB(index_map, &db);
+        ASSERT_TRUE(EnsurePass(sql));
+    }
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        // invalid SQL
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows_range between 4 preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        ASSERT_TRUE(index_map.empty());
+    }
 }
 
 TEST_F(DDLParserTest, mergeNode) {

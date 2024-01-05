@@ -48,8 +48,12 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKHavingQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/having_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKLeftJoin, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/left_join.yml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWindowQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinSubqueryWindow, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_subquery_window.yml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKParameterizedQuery, SQLSDKQueryTest,
@@ -136,6 +140,8 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/function/select/test_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(WithClause, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/with.yaml")));
+INSTANTIATE_TEST_SUITE_P(UnionQuery, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/union_query.yml")));
 
 // Test Multiple Databases
 INSTANTIATE_TEST_SUITE_P(

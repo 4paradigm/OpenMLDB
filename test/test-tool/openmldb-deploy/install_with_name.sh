@@ -32,7 +32,6 @@ rm -f bin/*.sh
 
 /bin/cp -f ../test/test-tool/openmldb-deploy/hosts conf/hosts
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" conf/openmldb-env.sh
-sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" conf/openmldb-env.sh
 sh sbin/deploy-all.sh
 
 for (( i=0; i<=2; i++ ))

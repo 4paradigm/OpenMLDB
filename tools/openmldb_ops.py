@@ -615,8 +615,9 @@ if __name__ == "__main__":
         sys.exit()
 
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
-    if not executor.Connect().OK():
-        log.error("connect OpenMLDB failed")
+    st = executor.Connect()
+    if not st.OK():
+        log.error("connect OpenMLDB failed, {}".format(st.GetMsg()))
         sys.exit()
     if options.cmd in manage_ops:
         status, auto_failover = executor.GetAutofailover()

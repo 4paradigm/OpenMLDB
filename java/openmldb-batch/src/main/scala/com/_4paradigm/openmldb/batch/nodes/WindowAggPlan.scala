@@ -215,6 +215,10 @@ object WindowAggPlan {
     val repartitionColIndexes = PhysicalNodeUtil.getRepartitionColumnIndexes(windowAggNode, inputDf)
     val orderByColIndex = PhysicalNodeUtil.getOrderbyColumnIndex(windowAggNode, inputDf)
 
+    if (orderByColIndex < 0) {
+      throw new Exception("WindowSkewOpt can not run for WINDOW without ORDER BY")
+    }
+
     // Register the input table
     val partIdColName = "PART_ID" + uniqueNamePostfix
     val expandedRowColName = "EXPANDED_ROW" + uniqueNamePostfix

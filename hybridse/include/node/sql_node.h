@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -53,6 +54,8 @@ typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
 std::string NameOfSqlNodeType(const SqlNodeType &type);
 
 absl::string_view CmdTypeName(const CmdType type);
+
+std::string SetOperatorName(SetOperationType type, bool dis);
 
 inline const std::string ExplainTypeName(const ExplainType &explain_type) {
     switch (explain_type) {
@@ -176,8 +179,8 @@ inline const std::string QueryTypeName(const QueryType &type) {
     switch (type) {
         case kQuerySelect:
             return "kQuerySelect";
-        case kQueryUnion:
-            return "kQueryUnion";
+        case kQuerySetOperation:
+            return "kQuerySetOperation";
         case kQuerySub:
             return "kQuerySub";
         default: {
@@ -309,15 +312,24 @@ inline const std::string StorageModeName(StorageMode mode) {
 }
 
 inline const StorageMode NameToStorageMode(const std::string& name) {
-    if (boost::iequals(name, "memory")) {
+    if (absl::EqualsIgnoreCase(name, "memory")) {
         return kMemory;
-    } else if (boost::iequals(name, "hdd")) {
+    } else if (absl::EqualsIgnoreCase(name, "hdd")) {
         return kHDD;
-    } else if (boost::iequals(name, "ssd")) {
+    } else if (absl::EqualsIgnoreCase(name, "ssd")) {
         return kSSD;
     } else {
         return kUnknown;
     }
+}
+
+inline absl::StatusOr<CompressType> NameToCompressType(const std::string& name) {
+    if (absl::EqualsIgnoreCase(name, "snappy")) {
+        return CompressType::kSnappy;
+    } else if (absl::EqualsIgnoreCase(name, "nocompress")) {
+        return CompressType::kNoCompress;
+    }
+    return absl::Status(absl::StatusCode::kInvalidArgument, absl::StrCat("invalid compress type: ", name));
 }
 
 inline const std::string RoleTypeName(RoleType type) {
@@ -772,15 +784,23 @@ class SelectQueryNode : public QueryNode {
                           bool last_item) const;
 };
 
-class UnionQueryNode : public QueryNode {
+class SetOperationNode : public QueryNode {
  public:
-    UnionQueryNode(const QueryNode *left, const QueryNode *right, bool is_all)
-        : QueryNode(kQueryUnion), left_(left), right_(right), is_all_(is_all) {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const SqlNode *node) const;
-    const QueryNode *left_;
-    const QueryNode *right_;
-    const bool is_all_;
+    SetOperationNode(SetOperationType type, absl::Span<QueryNode *> input, bool distinct)
+        : QueryNode(kQuerySetOperation), op_type_(type), inputs_(input), distinct_(distinct) {}
+    ~SetOperationNode() override {}
+
+    const absl::Span<const QueryNode *const> &inputs() const { return inputs_; }
+    SetOperationType op_type() const { return op_type_; }
+    bool distinct() const { return distinct_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    bool Equals(const SqlNode *node) const override;
+
+ private:
+    SetOperationType op_type_;
+    absl::Span<const QueryNode *const> inputs_;
+    bool distinct_ = false;
 };
 
 class ParameterExpr : public ExprNode {
@@ -1882,6 +1902,23 @@ class StorageModeNode : public SqlNode {
 
  private:
     StorageMode storage_mode_;
+};
+
+class CompressTypeNode : public SqlNode {
+ public:
+    CompressTypeNode() : SqlNode(kCompressType, 0, 0), compress_type_(kNoCompress) {}
+
+    explicit CompressTypeNode(CompressType compress_type)
+        : SqlNode(kCompressType, 0, 0), compress_type_(compress_type) {}
+
+    ~CompressTypeNode() {}
+
+    CompressType GetCompressType() const { return compress_type_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    CompressType compress_type_;
 };
 
 class CreateTableLikeClause {
