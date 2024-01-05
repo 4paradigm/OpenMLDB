@@ -9,7 +9,7 @@ SQL functions can be categorised into scalar functions and aggregate functions. 
 #### 2.1.1 Naming Specification of C++ Built-in Function
 - The naming of C++ built-in function should follow the [snake_case](https://en.wikipedia.org/wiki/Snake_case) style.
 - The name should clearly express the function's purpose.
-- The name of a function should not be the same as the name of a built-in function or other custom functions. The list of all built-in functions can be seen [here](../reference/sql/functions_and_operators/Files/udfs_8h.md).
+- The name of a function should not be the same as the name of a built-in function or other custom functions. The list of all built-in functions can be seen [here](../reference/sql/udfs_8h.md).
 
 #### 2.1.2 
 The types of the built-in C++ functions' parameters should be BOOL, NUMBER, TIMESTAMP, DATE, or STRING.

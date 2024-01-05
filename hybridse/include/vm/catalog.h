@@ -217,6 +217,7 @@ class TableHandler : public DataHandler {
     virtual ~TableHandler() {}
 
     /// Return table column Types information.
+    /// TODO: rm it, never used
     virtual const Types& GetTypes() = 0;
 
     /// Return the index information
@@ -224,8 +225,7 @@ class TableHandler : public DataHandler {
 
     /// Return WindowIterator
     /// so that user can use it to iterate datasets segment by segment.
-    virtual std::unique_ptr<WindowIterator> GetWindowIterator(
-        const std::string& idx_name) = 0;
+    virtual std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) { return nullptr; }
 
     /// Return the HandlerType of the dataset.
     /// Return HandlerType::kTableHandler by default
@@ -254,10 +254,11 @@ class TableHandler : public DataHandler {
 
     /// Return Tablet binding to specify index and keys.
     /// Return `null` by default.
-    virtual std::shared_ptr<Tablet> GetTablet(
-        const std::string& index_name, const std::vector<std::string>& pks) {
+    virtual std::shared_ptr<Tablet> GetTablet(const std::string& index_name, const std::vector<std::string>& pks) {
         return std::shared_ptr<Tablet>();
     }
+
+    static std::shared_ptr<TableHandler> Cast(std::shared_ptr<DataHandler> in);
 };
 
 /// \brief A table dataset's error handler, representing a error table
@@ -286,27 +287,19 @@ class ErrorTableHandler : public TableHandler {
     /// Return empty column Types.
     const Types& GetTypes() override { return types_; }
     /// Return empty table Schema.
-    inline const Schema* GetSchema() override { return schema_; }
+    const Schema* GetSchema() override { return schema_; }
     /// Return empty table name
-    inline const std::string& GetName() override { return table_name_; }
+    const std::string& GetName() override { return table_name_; }
     /// Return empty indexn information
-    inline const IndexHint& GetIndex() override { return index_hint_; }
+    const IndexHint& GetIndex() override { return index_hint_; }
     /// Return name of database
-    inline const std::string& GetDatabase() override { return db_; }
+    const std::string& GetDatabase() override { return db_; }
 
     /// Return null iterator
-    std::unique_ptr<RowIterator> GetIterator() {
-        return std::unique_ptr<RowIterator>();
-    }
-    /// Return null iterator
-    RowIterator* GetRawIterator() { return nullptr; }
-    /// Return null window iterator
-    std::unique_ptr<WindowIterator> GetWindowIterator(
-        const std::string& idx_name) {
-        return std::unique_ptr<WindowIterator>();
-    }
+    RowIterator* GetRawIterator() override { return nullptr; }
+
     /// Return empty row
-    virtual Row At(uint64_t pos) { return Row(); }
+    Row At(uint64_t pos) override { return Row(); }
 
     /// Return 0
     const uint64_t GetCount() override { return 0; }
@@ -317,7 +310,7 @@ class ErrorTableHandler : public TableHandler {
     }
 
     /// Return status
-    virtual base::Status GetStatus() { return status_; }
+    base::Status GetStatus() override { return status_; }
 
  protected:
     base::Status status_;
@@ -340,18 +333,11 @@ class PartitionHandler : public TableHandler {
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
 
-    /// Return the iterator of row iterator.
-    /// Return null by default
-    virtual std::unique_ptr<RowIterator> GetIterator() {
-        return std::unique_ptr<RowIterator>();
-    }
-    /// Return the iterator of row iterator
-    /// Return null by default
-    RowIterator* GetRawIterator() { return nullptr; }
-    virtual std::unique_ptr<WindowIterator> GetWindowIterator(
-        const std::string& idx_name) {
-        return std::unique_ptr<WindowIterator>();
-    }
+    // Return the iterator of row iterator
+    // Return null by default
+    RowIterator* GetRawIterator() override { return nullptr; }
+
+    using TableHandler::GetWindowIterator;
 
     /// Return WindowIterator to iterate datasets
     /// segment-by-segment.
@@ -361,18 +347,15 @@ class PartitionHandler : public TableHandler {
     const HandlerType GetHandlerType() override { return kPartitionHandler; }
 
     /// Return empty row, cause partition dataset does not support At operation.
-    virtual Row At(uint64_t pos) { return Row(); }
+    // virtual Row At(uint64_t pos) { return Row(); }
 
     /// Return Return table handler of specific segment binding to given key.
     /// Return `null` by default.
-    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
-        return std::shared_ptr<TableHandler>();
-    }
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) = 0;
 
     /// Return a sequence of table handles of specify segments binding to given
     /// keys set.
-    virtual std::vector<std::shared_ptr<TableHandler>> GetSegments(
-        const std::vector<std::string>& keys) {
+    virtual std::vector<std::shared_ptr<TableHandler>> GetSegments(const std::vector<std::string>& keys) {
         std::vector<std::shared_ptr<TableHandler>> segments;
         for (auto key : keys) {
             segments.push_back(GetSegment(key));
@@ -383,9 +366,8 @@ class PartitionHandler : public TableHandler {
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
-    /// Return order type of the dataset,
-    /// and return kNoneOrder by default.
-    const OrderType GetOrderType() const { return kNoneOrder; }
+
+    static std::shared_ptr<PartitionHandler> Cast(std::shared_ptr<DataHandler> in);
 };
 
 /// \brief A wrapper of table handler which is used as a asynchronous row

@@ -1,138 +1,118 @@
-# SELECT 概况
+# Query 语句
+
+## Syntax Notation
+
+- `[ expr ]`: 中括号，可选部分
+- `{}`: 手动分组
+- `a | b`: 逻辑或，表示 `a` 或 `b`
+- `...`: 重复之前的部分, 重复次数 >= 0
+- 大写变量，例如 `WITH`, 表示 SQL 关键词 "WITH"
+- 小写变量, 例如 `query`, 可以拓展成特定语法结构
 
 ## Syntax
 
-### SelectStmt
-
 ```yacc
-SelectStmt
-         ::= WithClause ( NoTableSelectClause | SelectStmtFromTable) 
+query_statement:
+  query [ CONFIG ( { key = value }[, ...] )]
 
-WithClause
-         ::= 'WITH' non_recursive_cte [, ...]
+query:
+  [ WITH {non_recursive_cte}[, ...] ]
+  { select | ( query ) | set_operation }
+  [ ORDER BY ordering_expression ]
+  [ LIMIT count ]
 
-non_recursive_cte
-         ::= cte_name 'AS' '(' SelectStmt ')'
+select:
+  SELECT select_list
+  [ FROM from_item ]
+  [ WHERE bool_expression ]
+  [ GROUP BY group_by_specification ]
+  [ HAVING bool_expression ]
+  [ window_clause ]
 
-NoTableSelectClause
-         ::= 'SELECT' SelectExprList      
+set_operation:
+  query set_operator query
 
-SelectStmtFromTable
-         ::= SelectStmtBasic 'FROM' TableRefs [WhereClause] [GroupByClause] [HavingClause] [WindowClause] [OrderByClause] [LimitClause]
-           
-JoinClause
-         ::= TableRef JoinType 'JOIN' TableRef [OrderClause] 'ON' Expression 
-JoinType ::= 'LAST'           
-         
-WhereClause
-         ::= 'WHERE' Expression
-         
-GroupByClause
-         ::= 'GROUP' 'BY' ByList
+non_recursive_cte:
+  cte_name AS ( query )
 
-HavingClause
-         ::= 'HAVING' Expression 
-         
-WindowClause
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )   
-         
-OrderByClause  ::= 'ORDER' 'BY' ByList   
+set_operator:
+  UNION { ALL | DISTINCT }
 
-ByList   ::= ByItem ( ',' ByItem )*
+from_item:
+  table_name [ as_alias ]
+  | { join_operation | ( join_operation ) }
+  | ( query ) [ as_alias ]
+  | cte_name [ as_alias ]
 
-ByItem   ::= Expression Order
+as_alias:
+  [ AS ] alias_name
 
-Order    ::= ( 'ASC' | 'DESC' )?
+join_operation:
+  condition_join_operation
 
-WindowClauseOptional
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
-WindowDefinition
-         ::= WindowName 'AS' WindowSpec
+condition_join_operation:
+  from_item LEFT [ OUTER ] JOIN from_item join_condition
+  | from_item LAST JOIN [ ORDER BY ordering_expression ] from_item join_condition
 
-WindowSpec
-         ::= '(' WindowSpecDetails ')'   
-         
-WindowSpecDetails
-         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
+join_condition:
+  ON bool_expression
 
-WindowUnionClause
-        :: = ( 'UNION' TableRefs)
+window_clause:
+  WINDOW named_window_expression [, ...]
 
-WindowPartitionClause
-         ::= ( 'PARTITION' 'BY' ByList ) 
+named_window_expression:
+  named_window AS { named_window | ( window_specification ) }
 
-WindowOrderByClause
-        ::= ( 'ORDER' 'BY' ByList )
+window_specification:
+  [ UNION ( from_item [, ...] ) ]
+  PARTITION BY expression [ ORDER BY ordering_expression ]
+  window_frame_clause [ window_attr [, ...] ]
 
-WindowFrameClause
-        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
+window_frame_clause:
+  frame_units BETWEEN frame_bound AND frame_bound [ MAXSIZE numeric_expression ] )
 
-WindowFrameUnits
-        ::= 'ROWS'
-          | 'ROWS_RANGE'
+frame_unit:
+  ROWS 
+  | ROWS_RANGE
 
-WindowFrameBounds
-        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+frame_boud:
+  { UNBOUNDED | numeric_expression | interval_expression } [ OPEN ] PRECEDING
+  | CURRENT ROW
 
-WindowFrameBound
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
+window_attr:
+  EXCLUDE CURRENT_TIME
+  | EXCLUDE CURRENT_ROW
+  | INSTANCE_NOT_IN_WINDOW
 
-WindowAttribute
-        ::= WindowExcludeCurrentTime
-          | WindowExcludeCurrentRow
-          | WindowInstanceNotInWindow
+// each item in select list is one of:
+// - *
+// - expression.*
+// - expression
+select_list:
+  { select_all | select_expression } [, ...]
 
-WindowExcludeCurrentTime
-        ::= 'EXCLUDE' 'CURRENT_TIME'
+select_all:
+  [ expression. ]*
 
-WindowExcludeCurrentRow
-        ::= 'EXCLUDE' 'CURRENT_ROW'
-
-WindowInstanceNotInWindow
-        :: = 'INSTANCE_NOT_IN_WINDOW'
-
-WindowFrameMaxSize
-        :: = 'MAXSIZE' NumLiteral
+select_expression:
+  expression [ [ AS ] alias ]
 ```
 
-### SelectExprList
-
-```sql
-SelectExprList
-         ::= SelectExpr ( ',' SelectExpr )*
-SelectExpr    ::= ( Identifier '.' ( Identifier '.' )? )? '*'
-           | ( Expression | '{' Identifier Expression '}' ) ['AS' Identifier]
-                      
-```
-
-### TableRefs
-
-```sql
-TableRefs
-         ::= EscapedTableRef ( ',' EscapedTableRef )*
-TableRef ::= TableFactor
-           | JoinClause
-TableFactor
-         ::= TableName [TableAsName]
-           | '(' ( ( SelectStmt ) ')' TableAsName | TableRefs ')' )
-TableAsName
-         ::= 'AS'? Identifier
-```
-
-## SELECT语句元素
+## Query 语句元素
 
 | SELECT语句元素                                     | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                                        |
 |:-----------------------------------------------| --------- | ------------ | ------------ |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`SELECT` Clause](#selectexprlist)     | **``✓``** | **``✓``**    | **``✓``**    | 投影操作列表，一般包括列名、表达式，或者是用 `*` 表示全部列                                                                                                                                                                                          |
-| [`FROM` Clause](#tablerefs)                 | **``✓``** | **``✓``**    | **``✓``**    | 表示数据来源，数据来源可以是一个表（`select * from t;`）或者是多个表 LAST JOIN (见[JOIN 子句](../dql/JOIN_CLAUSE.md)) 或者是0个表 ( `select 1+1;`)，详见[NO_TABLE SELECT](../dql/NO_TABLE_SELECT_CLAUSE.md)                                                   |
-| [`JOIN` Clause](../dql/JOIN_CLAUSE.md)         | **``✓``** | **``x``**    | **``✓``**    | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在线请求模式下，需要遵循[Online Request下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)                                                       |
-| [`WHERE` Clause](../dql/WHERE_CLAUSE.md)       |          | **``✓``**    |              | Where 子句用于设置过滤条件，查询结果中只会包含满足条件的数据。                                                                                                                                                                                        |
-| [`GROUP BY` Clause](../dql/GROUP_BY_CLAUSE.md) | **``✓``** |  **``✓``**   |              | Group By 子句用于对查询结果集进行分组。分组表达式列表仅支持简单列。                                                                                                                                                                                    |
-| [`HAVING` Clause](../dql/HAVING_CLAUSE.md)     | **``✓``** |  **``✓``**   |              | Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。                                                                                                                                                      |
+| [`WITH` Clause](./WITH_CLAUSE.md) | **``✓``** | **``✓``**    | **``✓``**    |                                                                                                                                                                                           |
+| [`SELECT` list](#selectexprlist) | **``✓``** | **``✓``**    | **``✓``**    | 投影操作列表，一般包括列名、表达式，或者是用 `*` 表示全部列                                                                                                                                                                                          |
+| [`FROM` Clause](#from-clause)      | **``✓``** | **``✓``**    | **``✓``**    | 表示数据来源                                                   |
+| [`JOIN` Operation](../dql/JOIN_CLAUSE.md) | **``✓``** | **``x``**    | **``✓``**    | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在线请求模式下，需要遵循[Online Request下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)                                                       |
+| [`SET` Operation](./SET_OPERATION.md) | **``✓``** | **``✓``** | **``✓``** | 只支持 UNION, 在线支持 UNION ALL, 离线支持 UNION ALL/DISTINCT |
+| [`WHERE` Clause](../dql/WHERE_CLAUSE.md)       | **``x``** | **``✓``**    | **``x``** | Where 子句用于设置过滤条件，查询结果中只会包含满足条件的数据。                                                                                                                                                                                        |
+| [`GROUP BY` Clause](../dql/GROUP_BY_CLAUSE.md) | **``✓``** |  **``✓``**   | **``x``** | Group By 子句用于对查询结果集进行分组。分组表达式列表仅支持简单列。                                                                                                                                                                                    |
+| [`HAVING` Clause](../dql/HAVING_CLAUSE.md)     | **``✓``** |  **``✓``**   | **``x``** | Having 子句与 Where 子句作用类似.Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。                                                                                                                                                      |
 | [`WINDOW` Clause](../dql/WINDOW_CLAUSE.md)     | **``✓``** |  **``✓``**   | **``✓``**    | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数来进行一些分析型计算的操作（```sql agg_func() over window_name```)。线请求模式下，需要遵循[Online Request下Window的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下window的使用规范) |
-| [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)       | **``✓``** | **``✓``**    |              | Limit子句用于限制返回的结果条数。目前Limit仅支持接受一个参数，表示返回数据的最大行数。                                                                                                                                                                          |
-| `ORDER BY` Clause                              |           |              |              | 标准SQL还支持Order By子句。OpenMLDB目前尚未支持Order子句。例如，查询语句`SELECT * from t1 ORDER BY col1;`在OpenMLDB中不被支持。                                                                                                                          |
+| [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)       | **``✓``** | **``✓``**    | **``x``** | Limit子句用于限制返回的结果条数。目前Limit仅支持接受一个参数，表示返回数据的最大行数。                                                                                                                                                                          |
+| `ORDER BY` Clause                              | **``x``** | **``x``** | **``x``** | 标准SQL还支持Order By子句。OpenMLDB目前尚未支持Order子句。例如，查询语句`SELECT * from t1 ORDER BY col1;`在OpenMLDB中不被支持。                                                                                                                          |
 
 ```{warning}
 在线模式或单机版的select，可能无法获取完整数据。
@@ -143,18 +123,28 @@ TableAsName
 在线模式或单机版都不适合做大数据的扫描，推荐使用集群版的离线模式。如果一定要调大扫描量，需要对每台tablet配置`--scan_max_bytes_size=xxx`，并重启tablet生效。
 ```
 
-## 离线同步模式 SELECT
+## FROM Clause
 
-设置`SET @@sync_job=true`后的`SELECT`语句，就是离线同步模式下的`SELECT`。在这个状态下的`SELECT`会展示结果到CLI（不建议在SDK中使用这种模式，不会得到正常的ResultSet）。
+FROM子句指定了查询的原始数据来源,即我们要在哪些表中查找所需的数据。它也会定义这些数据源间的联系,比如是否通过某些字段建立连接查询,从而将原本分散在多个表中的数据整合在一起,形成一个单一的数据集以供查询操作使用. 
 
-原理：SELECT执行完成后各worker通过HTTP发送结果到TaskManager，TaskManager收集各个结果分片并保存到本地文件系统中。结果收集完成后，再从本地文件系统读取，读取后删除本地缓存的结果。
+FROM 子句的来源可以是:
+
+- 表名或者 Common Table Expression (CTE), 同名情况下 CTE 优先级更高
+- JOIN 操作, OpenMLDB 支持 LEFT JOIN 和 LAST JOIN
+- 任意子查询, 被括在括号中
+
+## 离线同步模式 Query
+
+设置`SET @@sync_job=true`后的 Query 语句，就是离线同步模式下的 Query。在这个状态下的 Query 会展示结果到CLI（不建议在SDK中使用这种模式，不会得到正常的ResultSet）。
+
+原理：Query 执行完成后各worker通过HTTP发送结果到TaskManager，TaskManager收集各个结果分片并保存到本地文件系统中。结果收集完成后，再从本地文件系统读取，读取后删除本地缓存的结果。
 
 ```{attention}
-离线同步模式 SELECT 仅用于展示，不保证结果完整。整个结果收集中可能出现文件写入失败，丢失HTTP包等问题，我们允许结果缺失。
+离线同步模式 Query 仅用于展示，不保证结果完整。整个结果收集中可能出现文件写入失败，丢失HTTP包等问题，我们允许结果缺失。
 ```
 ### 相关配置参数
 
-TaskManager配置`batch.job.result.max.wait.time`，在`SELECT` job完成后，我们会等待所有结果被收集并保存在TaskManager所在主机的文件系统中，超过这一时间将结束等待，返回错误。如果认为整个收集结果的过程没有问题，仅仅是等待时间不够，可以调大这一配置项，单位为ms，默认为10min。
+TaskManager配置`batch.job.result.max.wait.time`，在 Query job完成后，我们会等待所有结果被收集并保存在TaskManager所在主机的文件系统中，超过这一时间将结束等待，返回错误。如果认为整个收集结果的过程没有问题，仅仅是等待时间不够，可以调大这一配置项，单位为ms，默认为10min。
 
 Batch配置(spark.default.conf):
 - spark.openmldb.savejobresult.rowperpost: 为了防止HTTP传送过多数据，我们对数据进行切割，默认为16000行。如果单行数据量较大，可以调小该值。

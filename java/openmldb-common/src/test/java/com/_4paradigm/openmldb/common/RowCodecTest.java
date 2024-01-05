@@ -90,6 +90,38 @@ public class RowCodecTest {
     }
 
     @Test(dataProvider = "builder")
+    public void testValueNull(String builderName) {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            schema.add(ColumnDesc.newBuilder().setName("col1").setDataType(DataType.kTimestamp).build());
+            schema.add(ColumnDesc.newBuilder().setName("col2").setDataType(DataType.kDate).build());
+            schema.add(ColumnDesc.newBuilder().setName("col3").setDataType(DataType.kVarchar).build());
+            RowBuilder builder;
+            if (builderName.equals("classic")) {
+                ClassicRowBuilder cBuilder = new ClassicRowBuilder(schema);
+                int size = cBuilder.calTotalLength(0);
+                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+                cBuilder.setBuffer(buffer, size);
+                builder = cBuilder;
+            } else {
+                builder = new FlexibleRowBuilder(schema);
+            }
+            Assert.assertTrue(builder.appendTimestamp(null));
+            Assert.assertTrue(builder.appendDate(null));
+            Assert.assertTrue(builder.appendString(null));
+            Assert.assertTrue(builder.build());
+            ByteBuffer buffer = builder.getValue();
+            RowView rowView = new RowView(schema, buffer, buffer.capacity());
+            Assert.assertTrue(rowView.isNull(0));
+            Assert.assertTrue(rowView.isNull(1));
+            Assert.assertTrue(rowView.isNull(2));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test(dataProvider = "builder")
     public void testNormal(String builderName) {
         try {
             List<ColumnDesc> schema = new ArrayList<ColumnDesc>();

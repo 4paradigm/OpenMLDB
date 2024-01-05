@@ -9,6 +9,8 @@
 # If you are deploying the standalone version, you do not need to configure zk_cluster and zk_root_path, just comment these two configurations. Deploying the cluster version needs to configure these two items, and the two configurations of all nodes in a cluster must be consistent
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
+# set the username and password of zookeeper if authentication is enabled
+#--zk_cert=user:passwd
 # The address of the tablet needs to be specified in the standalone version, and this configuration can be ignored in the cluster version
 --tablet=127.0.0.1:9921
 # Configure log directory
@@ -76,6 +78,8 @@
 # If you start the cluster version, you need to specify the address of zk and the node path of the cluster in zk
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
+# set the username and password of zookeeper if authentication is enabled
+#--zk_cert=user:passwd
 
 # Configure the thread pool size, it is recommended to be consistent with the number of CPU cores
 --thread_pool_size=24
@@ -218,6 +222,8 @@
 # If the deployed openmldb is a cluster version, you need to specify the zk address and the cluster zk node directory
 #--zk_cluster=127.0.0.1:7181
 #--zk_root_path=/openmldb_cluster
+# set the username and password of zookeeper if authentication is enabled
+#--zk_cert=user:passwd
 
 # configure log path
 --openmldb_log_dir=./logs
@@ -249,6 +255,7 @@ zookeeper.connection_timeout=5000
 zookeeper.max_retries=10
 zookeeper.base_sleep_time=1000
 zookeeper.max_connect_waitTime=30000
+#zookeeper.cert=user:passwd
 
 # Spark Config
 spark.home=

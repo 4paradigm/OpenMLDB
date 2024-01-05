@@ -213,7 +213,7 @@ void TabletTableHandler::AddTable(std::shared_ptr<::openmldb::storage::Table> ta
     do {
         old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
         new_tables = std::make_shared<Tables>(*old_tables);
-        new_tables->emplace(table->GetPid(), table);
+        new_tables->insert_or_assign(table->GetPid(), table);
     } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
 }
 
@@ -503,7 +503,7 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
                 return false;
             }
             db_it->second.emplace(table_name, handler);
-            LOG(INFO) << "add table " << table_name << "to db " << db_name << " tid " << table_info.tid();
+            LOG(INFO) << "add table " << table_name << " to db " << db_name << " tid " << table_info.tid();
         }
         if (bool updated = false; !handler->Update(table_info, client_manager_, &updated)) {
             return false;

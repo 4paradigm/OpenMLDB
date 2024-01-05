@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='openmldb',
-    version='0.8.3a0',
+    version='0.8.4a0',
     author='OpenMLDB Team',
     author_email=' ',
     url='https://github.com/4paradigm/OpenMLDB',
@@ -28,9 +28,10 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     install_requires=[
-        "sqlalchemy <= 1.4.9",
-        "IPython",
-        "prettytable",
+        "importlib-metadata < 5.0",
+        "sqlalchemy <= 1.4.50",
+        "IPython <= 7.30.1",
+        "prettytable <= 3.1.0",
     ],
     extras_require={'test': [
         "pytest",

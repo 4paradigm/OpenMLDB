@@ -111,7 +111,12 @@ class NameServerImpl : public NameServer {
     NameServerImpl();
 
     ~NameServerImpl() override;
-
+    void CloseThreadpool() {
+        running_.store(false, std::memory_order_release);
+        thread_pool_.Stop(true);
+        task_thread_pool_.Stop(true);
+        UpdateTableStatus();
+    }
     bool Init(const std::string& real_endpoint);
     bool Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
               const std::string& real_endpoint);
@@ -159,6 +164,9 @@ class NameServerImpl : public NameServer {
 
     void DropTable(RpcController* controller, const DropTableRequest* request, GeneralResponse* response,
                    Closure* done);
+
+    void TruncateTable(RpcController* controller, const TruncateTableRequest* request,
+            TruncateTableResponse* response, Closure* done);
 
     void AddTableField(RpcController* controller, const AddTableFieldRequest* request, GeneralResponse* response,
                        Closure* done);
@@ -665,11 +673,6 @@ class NameServerImpl : public NameServer {
 
     uint64_t GetTerm() const;
 
-    // write deploy statistics into table
-    void SyncDeployStats();
-
-    void ScheduleSyncDeployStats();
-
     bool GetSdkConnection();
 
     void FreeSdkConnection();
@@ -683,6 +686,7 @@ class NameServerImpl : public NameServer {
     bool IsExistDataBase(const std::string& db);
 
     bool IsExistActiveOp(const std::string& db, const std::string& name, api::OPType op_type);
+    bool IsExistActiveOp(const std::string& db, const std::string& name);
 
  private:
     std::mutex mu_;

@@ -21,7 +21,7 @@ show create table t1;
           `c3` bigInt,
           `c4` timestamp,
           INDEX (KEY=`c1`, TS=`c4`, TTL_TYPE=ABSOLUTE, TTL=0m)
-          ) OPTIONS (PARTITIONNUM=8, REPLICANUM=2, STORAGE_MODE='HDD');
+          ) OPTIONS (PARTITIONNUM=8, REPLICANUM=2, STORAGE_MODE='HDD', COMPRESS_TYPE='NoCompress');
  ------- ---------------------------------------------------------------
 
 1 rows in set

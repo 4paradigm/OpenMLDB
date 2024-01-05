@@ -792,7 +792,7 @@ select date(timestamp(1590115420000)) as dt;
 
 ## 5. Document Management
 
-Documents for all built-in functions can be found in [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html). It is a markdown file automatically generated from source, so please do not edit it directly.
+Documents for all built-in functions can be found in [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/udfs_8h.html). It is a markdown file automatically generated from source, so please do not edit it directly.
 
 - If you are adding a document for a new function, please refer to [2.2.4 Documenting Function](#224-documenting-function). 
 - If you are trying to revise a document of an existing function, you can find source code in the files of `hybridse/src/udf/default_udf_library.cc` or `hybridse/src/udf/default_defs/*_def.cc` .

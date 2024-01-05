@@ -15,8 +15,9 @@
  */
 
 #include "testing/toydb_engine_test_base.h"
+
+#include "absl/strings/str_join.h"
 #include "gtest/gtest.h"
-#include "gtest/internal/gtest-param-util.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -141,18 +142,12 @@ std::shared_ptr<tablet::TabletCatalog> BuildOnePkTableStorage(
     }
     return catalog;
 }
-void BatchRequestEngineCheckWithCommonColumnIndices(
-    const SqlCase& sql_case, const EngineOptions options,
-    const std::set<size_t>& common_column_indices) {
-    std::ostringstream oss;
-    for (size_t index : common_column_indices) {
-        oss << index << ",";
-    }
-    LOG(INFO) << "BatchRequestEngineCheckWithCommonColumnIndices: "
-                 "common_column_indices = ["
-              << oss.str() << "]";
-    ToydbBatchRequestEngineTestRunner engine_test(sql_case, options,
-                                                  common_column_indices);
+// Run check with common column index info
+void BatchRequestEngineCheckWithCommonColumnIndices(const SqlCase& sql_case, const EngineOptions options,
+                                                    const std::set<size_t>& common_column_indices) {
+    LOG(INFO) << "BatchRequestEngineCheckWithCommonColumnIndices: common_column_indices = ["
+              << absl::StrJoin(common_column_indices, ",") << "]";
+    ToydbBatchRequestEngineTestRunner engine_test(sql_case, options, common_column_indices);
     engine_test.RunCheck();
 }
 

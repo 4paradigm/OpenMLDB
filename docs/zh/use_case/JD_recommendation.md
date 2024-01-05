@@ -74,7 +74,7 @@ docker pull oneflowinc/oneflow-serving:nightly
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.3 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.4 bash
 docker exec -it openmldb bash
 ```
 
@@ -306,7 +306,8 @@ python preprocess.py $demodir/out/1
 
 `$demodir/out/1` 即上一步 OpenMLDB 计算得到的特征数据目录。
 
-脚本将在 `$demodir/feature_preprocess/out` 对应生成 train、test、valid 三个 Parquet 数据集，并将三者的行数和 `table_size_array` 保存在文件 `data_info.txt` 中（下一步可以直接使用 info 文件，不需要手动填写参数）。运行结果打印类似：
+具体来讲，脚本将对列重命名，将 命名为Label，也就是选择此列为标签列。然后，进行切分，
+在 `$demodir/feature_preprocess/out` 对应生成 train、test、valid 三个 Parquet 数据集，并将三者的行数和 `table_size_array` 保存在文件 `data_info.txt` 中（下一步可以直接使用 info 文件，不需要手动填写参数）。运行结果打印类似：
 
 ```
 feature total count: 13916

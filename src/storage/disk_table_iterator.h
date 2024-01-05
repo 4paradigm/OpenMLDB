@@ -29,9 +29,10 @@ namespace storage {
 
 class DiskTableIterator : public TableIterator {
  public:
-    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
-    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk,
-                      uint32_t ts_idx);
+    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+            const std::string& pk, type::CompressType compress_type);
+    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
+            const std::string& pk, uint32_t ts_idx, type::CompressType compress_type);
     virtual ~DiskTableIterator();
     bool Valid() override;
     void Next() override;
@@ -49,16 +50,18 @@ class DiskTableIterator : public TableIterator {
     uint64_t ts_;
     uint32_t ts_idx_;
     bool has_ts_idx_ = false;
+    type::CompressType compress_type_;
+    mutable std::string tmp_buf_;
 };
 
 class DiskTableTraverseIterator : public TraverseIterator {
  public:
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                               ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                              const uint64_t& expire_cnt);
+                              const uint64_t& expire_cnt, type::CompressType compress_type);
     DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                               ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time,
-                              const uint64_t& expire_cnt, int32_t ts_idx);
+                              const uint64_t& expire_cnt, int32_t ts_idx, type::CompressType compress_type);
     virtual ~DiskTableTraverseIterator();
     bool Valid() override;
     void Next() override;
@@ -84,13 +87,16 @@ class DiskTableTraverseIterator : public TraverseIterator {
     bool has_ts_idx_;
     uint32_t ts_idx_;
     uint64_t traverse_cnt_;
+    type::CompressType compress_type_;
+    mutable std::string tmp_buf_;
 };
 
 class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
  public:
     DiskTableRowIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                          ::openmldb::storage::TTLType ttl_type, uint64_t expire_time, uint64_t expire_cnt,
-                         std::string pk, uint64_t ts, bool has_ts_idx, uint32_t ts_idx);
+                         std::string pk, uint64_t ts, bool has_ts_idx, uint32_t ts_idx,
+                         type::CompressType compress_type);
 
     ~DiskTableRowIterator();
 
@@ -129,17 +135,21 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     ::hybridse::codec::Row row_;
     bool pk_valid_;
     bool valid_value_ = false;
+    type::CompressType compress_type_;
+    std::string tmp_buf_;
 };
 
 class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
  public:
     DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                          ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
-                         int32_t ts_idx, rocksdb::ColumnFamilyHandle* column_handle);
+                         int32_t ts_idx, rocksdb::ColumnFamilyHandle* column_handle,
+                         type::CompressType compress_type);
 
     DiskTableKeyIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot,
                          ::openmldb::storage::TTLType ttl_type, const uint64_t& expire_time, const uint64_t& expire_cnt,
-                         rocksdb::ColumnFamilyHandle* column_handle);
+                         rocksdb::ColumnFamilyHandle* column_handle,
+                         type::CompressType compress_type);
 
     ~DiskTableKeyIterator() override;
 
@@ -171,6 +181,7 @@ class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {
     uint64_t ts_;
     uint32_t ts_idx_;
     rocksdb::ColumnFamilyHandle* column_handle_;
+    type::CompressType compress_type_;
 };
 
 }  // namespace storage

@@ -89,7 +89,7 @@ class NodeBase : public base::FeBaseObject {
     template <typename Derived, typename Pred>
     bool EqualsOverride(const T* other, Pred&& pred) const {
         auto lhs = dynamic_cast<const Derived*>(this);
-        if (lhs != nullptr) {
+        if (lhs == nullptr) {
             return false;
         }
 
