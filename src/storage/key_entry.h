@@ -54,12 +54,8 @@ struct DataBlock {
         if (size != other.size) {
             return false;
         }
-        // ref RowBuilder::InitBuffer header version
-        if (*(data + 1) != *(other.data + 1) ||
-            *(reinterpret_cast<uint32_t*>(data + 2)) != *(reinterpret_cast<uint32_t*>(other.data + 2))) {
-            return false;
-        }
-        return memcmp(data + 6, other.data + 6, size - 6) == 0;
+        // you can improve it ref RowBuilder::InitBuffer header version
+        return memcmp(data, other.data, size) == 0;
     }
 };
 

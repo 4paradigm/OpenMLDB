@@ -55,11 +55,12 @@ object LoadDataPlan {
       loadDataSql)
 
     // write
-    logger.info("write data to storage {}, writer[mode {}], is deep? {}", storage, mode, deepCopy.toString)
+    logger.info("write data to storage {}, writer mode {}, is deep {}", storage, mode, deepCopy.toString)
     if (storage == "online") { // Import online data
       require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
       val writeType = extra.get("writer_type").get
       val putIfAbsent = extra.get("put_if_absent").get.toBoolean
+      logger.info("write type {}, put if absent {}", writeType, putIfAbsent.toString)
       val writeOptions = Map(
         "db" -> db,
         "table" -> table,

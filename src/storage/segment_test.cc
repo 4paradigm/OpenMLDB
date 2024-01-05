@@ -427,6 +427,7 @@ TEST_F(SegmentTest, TestDeleteRange) {
 TEST_F(SegmentTest, PutIfAbsent) {
     {
         Segment segment(8);  // so ts_cnt_ == 1
+        // check all time == false
         segment.Put("PK", 1, "test1", 5, true);
         segment.Put("PK", 1, "test2", 5, true);  // even key&time is the same, different value means different record
         ASSERT_EQ(2, (int64_t)segment.GetIdxCnt());
@@ -436,12 +437,13 @@ TEST_F(SegmentTest, PutIfAbsent) {
         segment.Put("PK", 3, "test5", 5, true);
         segment.Put("PK", 3, "test6", 5, true);
         ASSERT_EQ(6, (int64_t)segment.GetIdxCnt());
-        // 1,1,2,2,3,3
+        // insert exists rows
         segment.Put("PK", 2, "test3", 5, true);
         segment.Put("PK", 1, "test1", 5, true);
         segment.Put("PK", 1, "test2", 5, true);
         segment.Put("PK", 3, "test6", 5, true);
         ASSERT_EQ(6, (int64_t)segment.GetIdxCnt());
+        // new rows
         segment.Put("PK", 2, "test7", 5, true);
         ASSERT_EQ(7, (int64_t)segment.GetIdxCnt());
         segment.Put("PK", 0, "test8", 5, true);  // seek to last, next is empty
@@ -466,12 +468,28 @@ TEST_F(SegmentTest, PutIfAbsent) {
     }
 
     {
-        // std::map<int32_t, uint64_t>& ts_map contains DEFAULT_TS_COL_ID
+        // put ts_map contains DEFAULT_TS_COL_ID
         std::vector<uint32_t> ts_idx_vec = {DEFAULT_TS_COL_ID};
         Segment segment(8, ts_idx_vec);
         ASSERT_EQ(1, (int64_t)segment.GetTsCnt());
         std::string key = "PK";
-        std::map<int32_t, uint64_t> ts_map = {{DEFAULT_TS_COL_ID, 100}};
+        std::map<int32_t, uint64_t> ts_map = {{DEFAULT_TS_COL_ID, 100}};  // cur time == 100
+        auto* block = new DataBlock(1, "test1", 5);
+        segment.Put(Slice(key), ts_map, block, true);
+        ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));
+        ts_map = {{DEFAULT_TS_COL_ID, 200}};
+        block = new DataBlock(1, "test1", 5);
+        segment.Put(Slice(key), ts_map, block, true);
+        ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));
+    }
+
+    {
+        // put ts_map contains DEFAULT_TS_COL_ID
+        std::vector<uint32_t> ts_idx_vec = {DEFAULT_TS_COL_ID, 1, 3};
+        Segment segment(8, ts_idx_vec);
+        ASSERT_EQ(3, (int64_t)segment.GetTsCnt());
+        std::string key = "PK";
+        std::map<int32_t, uint64_t> ts_map = {{DEFAULT_TS_COL_ID, 100}};  // cur time == 100
         auto* block = new DataBlock(1, "test1", 5);
         segment.Put(Slice(key), ts_map, block, true);
         ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));

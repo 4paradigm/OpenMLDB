@@ -164,9 +164,8 @@ bool Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row, bool pu
         uint8_t height = entries_->Insert(skey, entry);
         byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
         pk_cnt_.fetch_add(1, std::memory_order_relaxed);
-    }
-
-    if (put_if_absent && ListContains(reinterpret_cast<KeyEntry*>(entry), time, row, check_all_time)) {
+        // no need to check if absent when first put
+    } else if (put_if_absent && ListContains(reinterpret_cast<KeyEntry*>(entry), time, row, check_all_time)) {
         return false;
     }
 
@@ -208,14 +207,13 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
 }
 
 bool Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row, bool put_if_absent) {
-    uint32_t ts_size = ts_map.size();
-    if (ts_size == 0) {
+    if (ts_map.empty()) {
         return false;
     }
     if (ts_cnt_ == 1) {
-        bool ret = true;
+        bool ret = false;
         if (auto pos = ts_map.find(ts_idx_map_.begin()->first); pos != ts_map.end()) {
-            ret &= Put(key, pos->second, row, put_if_absent, pos->first == DEFAULT_TS_COL_ID);
+            ret = Put(key, pos->second, row, put_if_absent, pos->first == DEFAULT_TS_COL_ID);  // why ts_map key is int32_t, default ts is uint32_t?
         }
         return ret;
     }
@@ -603,7 +601,7 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uin
 }
 
 bool Segment::ListContains(KeyEntry* entry, uint64_t time, DataBlock* row, bool check_all_time) {
-    // one key-time may have multi records // TODO: check gc
+    // one key-time may have multi records
     auto it = entry->entries.NewIterator();
     if (check_all_time) {
         it->SeekToFirst();
@@ -620,7 +618,6 @@ bool Segment::ListContains(KeyEntry* entry, uint64_t time, DataBlock* row, bool 
         while (it->Valid()) {
             // key > time is just a protection, normally it should not happen
             if (it->GetKey() < time || it->GetKey() > time) {
-                VLOG(10) << it->GetKey() << " != " << time;
                 break;  // no entry == time, or all entries == time have been checked
             }
             if (it->GetValue()->EqualWithoutCnt(*row)) {
