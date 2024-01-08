@@ -2828,7 +2828,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             if (!cluster_sdk_->IsClusterMode() || is_local.value()) {
                 if (cluster_sdk_->IsClusterMode() && !IsOnlineMode()) {
-                    *status = {::hybridse::common::StatusCode::kCmdError, "local load only supports loading data to online storage"};
+                    *status = {::hybridse::common::StatusCode::kCmdError,
+                        "local load only supports loading data to online storage"};
                     return {};
                 }
 

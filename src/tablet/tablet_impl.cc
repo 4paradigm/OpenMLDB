@@ -1390,6 +1390,104 @@ base::Status TabletImpl::CheckTable(uint32_t tid, uint32_t pid, bool check_leade
     return {};
 }
 
+base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& table,
+                                        const std::shared_ptr<IndexDef>& cur_index,
+                                        const std::string& key,
+                                        std::optional<uint64_t> start_ts,
+                                        std::optional<uint64_t> end_ts,
+                                        bool filter_range,
+                                        const std::shared_ptr<catalog::TableClientManager>& client_manager,
+                                        uint32_t partition_num) {
+    storage::Ticket ticket;
+    std::unique_ptr<storage::TableIterator> iter(table->NewIterator(cur_index->GetId(), key, ticket));
+    if (start_ts.has_value()) {
+        iter->Seek(start_ts.value());
+    } else {
+        iter->SeekToFirst();
+    }
+    auto indexs = table->GetAllIndex();
+    while (iter->Valid()) {
+        if (end_ts.has_value() && iter->GetKey() <= end_ts.value()) {
+            break;
+        }
+        auto value = iter->GetValue();
+        uint32_t data_length = value.size();
+        const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+        std::string uncompress_data;
+        if (table->GetCompressType() == openmldb::type::kSnappy) {
+            snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+            data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+            data_length = uncompress_data.length();
+        }
+        if (data_length < codec::HEADER_LENGTH) {
+            return {base::ReturnCode::kDeleteFailed, "invalid value"};
+        }
+        uint8_t version = codec::RowView::GetSchemaVersion(data);
+        auto decoder = table->GetVersionDecoder(version);
+        if (decoder == nullptr) {
+            return {base::ReturnCode::kDeleteFailed, "invalid schema version"};
+        }
+        for (const auto& index : indexs) {
+            if (!index->IsReady()) {
+                continue;
+            }
+            if (cur_index && index->GetId() == cur_index->GetId()) {
+                continue;
+            }
+            sdk::DeleteOption option;
+            auto ts_col = index->GetTsColumn();
+            if (ts_col->IsAutoGenTs()) {
+                option.start_ts = iter->GetKey();
+            } else {
+                int64_t ts = 0;
+                if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
+                    return {base::ReturnCode::kDeleteFailed, "get ts value failed"};
+                }
+                option.ts_name = ts_col->GetName();
+                option.start_ts = ts;
+            }
+            // skip the data if option.start_ts in [start_ts, end_ts) if filter_range is true
+            if (filter_range && !((start_ts.has_value() && option.start_ts.value() > start_ts.value()) ||
+                        (end_ts.has_value() && option.start_ts.value() <= end_ts.value()))) {
+                continue;
+            }
+            if (option.start_ts.value() > 1) {
+                option.end_ts = option.start_ts.value() - 1;
+            }
+            const auto& cols = index->GetColumns();
+            // todo null/empty
+            if (cols.size() == 1) {
+                if (decoder->GetStrValue(data, cols.front().GetId(), &option.key) != 0) {
+                    return {base::ReturnCode::kDeleteFailed, "get key failed"};
+                }
+            } else {
+                for (const auto& col : cols) {
+                    std::string tmp;
+                    if (decoder->GetStrValue(data, col.GetId(), &tmp) != 0) {
+                        return {base::ReturnCode::kDeleteFailed, "get key failed"};
+                    }
+                    if (!option.key.empty()) {
+                        option.key.append("|");
+                    }
+                    option.key.append(tmp);
+                }
+            }
+            uint32_t cur_pid = static_cast<uint32_t>(base::hash64(option.key)) % partition_num;
+            auto client = client_manager->GetTablet(cur_pid)->GetClient();
+            std::string msg;
+            // do not delete other index data
+            option.enable_decode_value = false;
+            if (auto status = client->Delete(table->GetId(), cur_pid, option); !status.OK()) {
+                return {base::ReturnCode::kDeleteFailed,
+                    absl::StrCat("delete failed. key ", option.key, " pid ", cur_pid, " msg: ", status.GetMsg())};
+            }
+        }
+
+        iter->Next();
+    }
+    return {};
+}
+
 void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::DeleteRequest* request,
                         openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -1414,13 +1512,20 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     entry.set_term(replicator->GetLeaderTerm());
     entry.set_method_type(::openmldb::api::MethodType::kDelete);
     if (request->dimensions_size() > 0) {
-        entry.mutable_dimensions()->CopyFrom(request->dimensions());
+        entry.add_dimensions()->CopyFrom(request->dimensions(0));
+        auto index_def = table->GetIndex(request->dimensions(0).idx());
+        if (!index_def || !index_def->IsReady()) {
+            PDLOG(WARNING, "index %s not found in table tid %u, pid %u", request->dimensions(0).idx(), tid, pid);
+            response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("index not found");
+            return;
+        }
     } else if (request->has_idx_name() && !request->idx_name().empty()) {
-        std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
+        auto index_def = table->GetIndex(request->idx_name());
         if (!index_def || !index_def->IsReady()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(), tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
-            response->set_msg("idx name not found");
+            response->set_msg("index not found");
             return;
         }
         uint32_t idx = index_def->GetId();
@@ -1499,100 +1604,30 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         if (entry.dimensions_size() > 0) {
             const auto& dimension = entry.dimensions(0);
             uint32_t idx = dimension.idx();
+            auto index_def = table->GetIndex(idx);
             const auto& key = dimension.key();
             if (delete_others) {
-                storage::Ticket ticket;
-                std::unique_ptr<storage::TableIterator> iter(table->NewIterator(idx, key, ticket));
-                if (start_ts.has_value()) {
-                    iter->Seek(start_ts.value());
-                } else {
-                    iter->SeekToFirst();
-                }
-                while (iter->Valid()) {
-                    if (end_ts.has_value() && iter->GetKey() <= end_ts.value()) {
-                        break;
-                    }
-                    auto value = iter->GetValue();
-                    uint32_t data_length = value.size();
-                    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
-                    std::string uncompress_data;
-                    if (table->GetCompressType() == openmldb::type::kSnappy) {
-                        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
-                        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
-                        data_length = uncompress_data.length();
-                    }
-                    if (data_length < codec::HEADER_LENGTH) {
-                        iter->Next();
-                        continue;
-                    }
-                    uint8_t version = codec::RowView::GetSchemaVersion(data);
-                    auto decoder = table->GetVersionDecoder(version);
-                    if (decoder == nullptr) {
-                        iter->Next();
-                        continue;
-                    }
-                    auto indexs = table->GetAllIndex();
-                    for (const auto& index : indexs) {
-                        if (!index->IsReady() || index->GetId() == idx) {
-                            continue;
-                        }
-                        sdk::DeleteOption option;
-                        int64_t ts = 0;
-                        auto ts_col = index->GetTsColumn();
-                        if (ts_col->IsAutoGenTs()) {
-                            ts = iter->GetKey();
-                        } else {
-                            if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
-                                continue;
-                            }
-                            option.ts_name = ts_col->GetName();
-                        }
-                        option.start_ts = ts;
-                        if (ts > 1) {
-                            option.end_ts = ts - 1;
-                        }
-                        const auto& cols = index->GetColumns();
-                        // todo null/empty
-                        if (cols.size() == 1) {
-                            if (decoder->GetStrValue(data, cols.front().GetId(), &option.key) != 0) {
-                                continue;
-                            }
-                        } else {
-                            for (const auto& col : cols) {
-                                std::string tmp;
-                                if (decoder->GetStrValue(data, col.GetId(), &tmp) != 0) {
-                                    continue;
-                                }
-                                if (!option.key.empty()) {
-                                    option.key.append("|");
-                                }
-                                option.key.append(tmp);
-                            }
-                        }
-                        uint32_t cur_pid = static_cast<uint32_t>(::openmldb::base::hash64(option.key)) % pid_num;
-                        auto client = table_client_manager->GetTablet(cur_pid)->GetClient();
-                        std::string msg;
-                        option.enable_decode_value = false;
-                        client->Delete(tid, cur_pid, option);
-                    }
-                    iter->Next();
-                }
-            } else {
-                if (!table->Delete(idx, key, start_ts, end_ts)) {
-                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                    response->set_msg("delete failed");
+                auto status = DeleteAllIndex(table, index_def, key, start_ts, end_ts, false,
+                        table_client_manager, pid_num);
+                if (!status.OK()) {
+                    SET_RESP_AND_WARN(response, status.GetCode(), status.GetMsg());
                     return;
                 }
-                auto aggr = get_aggregator(aggrs, idx);
-                if (aggr) {
-                    if (!aggr->Delete(key, start_ts, end_ts)) {
-                        PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
-                                "aggr table: tid[%u]",
-                              tid, pid, idx, key.c_str(), aggr->GetAggrTid());
-                        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                        response->set_msg("delete from associated pre-aggr table failed");
-                        return;
-                    }
+            }
+            if (!table->Delete(idx, key, start_ts, end_ts)) {
+                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete failed");
+                return;
+            }
+            auto aggr = get_aggregator(aggrs, idx);
+            if (aggr) {
+                if (!aggr->Delete(key, start_ts, end_ts)) {
+                    PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
+                            "aggr table: tid[%u]",
+                          tid, pid, idx, key.c_str(), aggr->GetAggrTid());
+                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                    response->set_msg("delete from associated pre-aggr table failed");
+                    return;
                 }
             }
             DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, key.c_str());
@@ -1606,6 +1641,14 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
                 iter->SeekToFirst();
                 while (iter->Valid()) {
                     auto pk = iter->GetPK();
+                    if (delete_others) {
+                        auto status = DeleteAllIndex(table, index_def, pk, start_ts, end_ts, true,
+                                table_client_manager, pid_num);
+                        if (!status.OK()) {
+                            SET_RESP_AND_WARN(response, status.GetCode(), status.GetMsg());
+                            return;
+                        }
+                    }
                     iter->NextPK();
                     if (!table->Delete(idx, pk, start_ts, end_ts)) {
                         response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
@@ -3017,7 +3060,8 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
 
         std::string db_path = GetDBPath(root_path, tid, pid);
         if (!::openmldb::base::IsExists(db_path)) {
-            PDLOG(WARNING, "table db path does not exist, but still load. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
+            PDLOG(WARNING, "table db path does not exist, but still load. tid %u, pid %u, path %s",
+                    tid, pid, db_path.c_str());
         }
 
         std::shared_ptr<Table> table = GetTable(tid, pid);

@@ -435,6 +435,14 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     // refresh the pre-aggr tables info
     bool RefreshAggrCatalog();
+    base::Status DeleteAllIndex(const std::shared_ptr<storage::Table>& table,
+                                const std::shared_ptr<IndexDef>& cur_index,
+                                const std::string& key,
+                                std::optional<uint64_t> start_ts,
+                                std::optional<uint64_t> end_ts,
+                                bool filter_range,
+                                const std::shared_ptr<catalog::TableClientManager>& client_manager,
+                                uint32_t partition_num);
 
  private:
     Tables tables_;
