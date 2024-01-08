@@ -81,11 +81,12 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
                                            const udf::UdfLibrary* library, bool cluster_optimized_mode,
                                            bool enable_expr_opt, bool enable_window_parallelization,
                                            bool enable_window_column_pruning,
-                                           const std::unordered_map<std::string, std::string>* options)
+                                           const std::unordered_map<std::string, std::string>* options,
+                                           std::shared_ptr<IndexHintHandler> index_hints)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
-      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options),
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options, index_hints),
       module_(module),
       id_(0),
       cluster_optimized_mode_(cluster_optimized_mode),
@@ -2350,10 +2351,12 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
                                                udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
                                                const bool cluster_optimized, const bool enable_batch_request_opt,
                                                bool enable_expr_opt, bool performance_sensitive,
-                                               const std::unordered_map<std::string, std::string>* options)
+                                               const std::unordered_map<std::string, std::string>* options,
+                                               std::shared_ptr<IndexHintHandler> hints)
     : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, cluster_optimized,
-                           enable_expr_opt, true, false, options),
-      enable_batch_request_opt_(enable_batch_request_opt), performance_sensitive_(performance_sensitive) {
+                           enable_expr_opt, true, false, options, hints),
+      enable_batch_request_opt_(enable_batch_request_opt),
+      performance_sensitive_(performance_sensitive) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
 

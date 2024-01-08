@@ -248,7 +248,8 @@ try {
 
 1. Get `InsertPrepareStatement` by calling `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface.
 2. Use `PreparedStatement::setType(index, value)` interface to fill in data to the `InsertPrepareStatement`. Note that the index starts from 1.
-3. Use `PreparedStatement::execute()` interface to execute the insert statement.
+3. For String, Date and Timestamp types, null objects can be set using either `setType(index, null)` or `setNull(index)`.
+4. Use `PreparedStatement::execute()` interface to execute the insert statement.
 
 ```{note}
 When the conditions of the `PreparedStatement` are the same, you can repeatedly call the set method of the same object to fill in data before executing `execute`. There is no need to create a new `PreparedStatement` object.

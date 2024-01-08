@@ -17,6 +17,7 @@
 #define HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 
 #include <list>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -138,15 +139,20 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
 
-    bool TransformKeysAndOrderExpr(const node::ExprListNode* groups, const node::OrderByNode* order,
-                                   vm::PhysicalDataProviderNode* data_node, std::string* index,
-                                   IndexBitMap* best_bitmap);
+    bool TransformKeysAndOrderExpr(const std::vector<std::string>& keys, const std::vector<std::string>& orders,
+                                   vm::PhysicalDataProviderNode* data_node,
+                                   const std::map<size_t, size_t>& result_bitmap_mapping, std::string* index_name,
+                                   IndexBitMap* output_bitmap);
     bool MatchBestIndex(const std::vector<std::string>& columns,
                         const std::vector<std::string>& order_columns,
                         std::shared_ptr<TableHandler> table_handler,
                         IndexBitMap* bitmap,
                         std::string* index_name,
                         IndexBitMap* best_bitmap);
+
+    std::vector<std::optional<std::string>> ResolveExprToSrcColumnName(const node::ExprListNode*,
+                                                                       vm::PhysicalDataProviderNode*);
+    std::optional<std::string> ResolveExprToSrcColumnName(const node::ExprNode*, vm::PhysicalDataProviderNode*);
 
     absl::Status BuildExprCache(const node::ExprNode* node, const SchemasContext* sc);
 
@@ -160,6 +166,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
         expr_cache_;
 
     std::unique_ptr<OptimizeInfo> optimize_info_;
+
+    // The PhysicalOpNode where current optimizing expression comes from
+    const PhysicalOpNode* cur_optimizing_ = nullptr;
 };
 }  // namespace passes
 }  // namespace hybridse

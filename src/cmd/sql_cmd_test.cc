@@ -203,11 +203,11 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
-    // False - Option un-supported
+    // True - Option un-supported will be ignored
     select_into_sql =
         "select * from " + name + " into outfile '" + file_path + "' options (mode = 'overwrite', test = 'null')";
     router->ExecuteSQL(select_into_sql, &status);
-    ASSERT_FALSE(status.IsOK());
+    ASSERT_TRUE(status.IsOK());
 
     // False - Type un-supproted
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 1)";
@@ -619,10 +619,10 @@ TEST_P(DBSDKTest, LoadDataMultipleFiles) {
                            "' INTO TABLE trans options(load_mode='local', thread=10);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(status.msg, "Load 20 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(20, result->Size());
     while (result->Next()) {
         std::string col1 = result->GetStringUnsafe(0);
@@ -656,10 +656,10 @@ TEST_P(DBSDKTest, LoadData) {
                            "' INTO TABLE trans options(deep_copy=true, mode='append', load_mode='local', thread=60);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(status.msg, "Load 10 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(10, result->Size());
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");
@@ -695,18 +695,18 @@ TEST_P(DBSDKTest, LoadDataError) {
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='overwrite', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "online data load only supports 'append' mode");
+    ASSERT_EQ(status.msg, "INVALID_ARGUMENT: local load mode must be append\n");
 
     load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "local data load only supports 'csv' format");
+    ASSERT_EQ(status.msg, "INVALID_ARGUMENT: local load format must be csv\n");
 
     load_sql = "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "ERROR: parse option thread failed");
+    ASSERT_EQ(status.msg, "INVALID_ARGUMENT: thread must be positive\n");
 
     HandleSQL("SET @@execute_mode='offline';");
     load_sql =
@@ -719,7 +719,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         load_sql = "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='cluster');";
         sr->ExecuteSQL(load_sql, &status);
         ASSERT_FALSE(status.IsOK()) << status.msg;
-        ASSERT_TRUE(status.msg.find("Fail to get TaskManager client") != std::string::npos);
+        ASSERT_TRUE(status.msg.find("Fail to get TaskManager client") != std::string::npos) << status.msg;
     } else {
         ASSERT_TRUE(status.IsOK()) << status.msg;
     }
@@ -772,7 +772,7 @@ TEST_P(DBSDKTest, LoadDataMultipleThread) {
         std::string load_sql = absl::StrCat("LOAD DATA INFILE '", (tmp_path / "myfile*").string(),
                                             "' INTO TABLE trans options(load_mode='local', thread=", num_thread, ");");
         sr->ExecuteSQL(load_sql, &status);
-        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(status.msg, absl::StrCat("Load ", file_num * rows_per_file, " rows"));
     }
     auto result = sr->ExecuteSQL("select * from trans;", &status);

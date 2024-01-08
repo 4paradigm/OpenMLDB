@@ -106,11 +106,11 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
-                         ::llvm::Module* module, const udf::UdfLibrary* library,
-                         bool cluster_optimized_mode = false, bool enable_expr_opt = false,
-                         bool enable_window_parallelization = true,
+                         ::llvm::Module* module, const udf::UdfLibrary* library, bool cluster_optimized_mode = false,
+                         bool enable_expr_opt = false, bool enable_window_parallelization = true,
                          bool enable_window_column_pruning = false,
-                         const std::unordered_map<std::string, std::string>* options = nullptr);
+                         const std::unordered_map<std::string, std::string>* options = nullptr,
+                         std::shared_ptr<IndexHintHandler> = nullptr);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
@@ -284,10 +284,10 @@ class RequestModeTransformer : public BatchModeTransformer {
     RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
                            const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
                            ::llvm::Module* module, udf::UdfLibrary* library,
-                           const std::set<size_t>& common_column_indices,
-                           const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt,
-                           bool performance_sensitive = true,
-                           const std::unordered_map<std::string, std::string>* options = nullptr);
+                           const std::set<size_t>& common_column_indices, const bool cluster_optimized,
+                           const bool enable_batch_request_opt, bool enable_expr_opt, bool performance_sensitive = true,
+                           const std::unordered_map<std::string, std::string>* options = nullptr,
+                           std::shared_ptr<IndexHintHandler> = nullptr);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }

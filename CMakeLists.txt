@@ -86,6 +86,11 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions(-Wno-\#pragma-messages)
 endif ()
 add_definitions(-DHAVE_STDBOOL_H=1)
+
+# TODO(#1528): more strict flags
+# Specifically enable checking null pointers for nonnull functions
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wnonnull -Werror=nonnull")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)

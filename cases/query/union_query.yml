@@ -1,5 +1,6 @@
 cases:
   - id: 0
+    deployable: true
     inputs:
       - name: t1
         columns: ["id string","c2 int","c4 timestamp"]
@@ -62,6 +63,7 @@ cases:
         cc, cc, 6
         dd, dd, 7
   - id: 1
+    deployable: true
     desc: select project over union
     inputs:
       - name: t1
@@ -176,6 +178,7 @@ cases:
         cc, cc, 6
         dd, dd, 7
   - id: 3
+    deployable: true
     desc: lastjoin(filter<un-optimized>(union)
     inputs:
       - name: t1
@@ -239,6 +242,7 @@ cases:
         cc, cc, 3
         dd, NULL, NULL
   - id: 4
+    deployable: true
     desc: lastjoin(filter<optimized>(union)
     inputs:
       - name: t1
@@ -300,6 +304,7 @@ cases:
         cc, NULL, NULL
         dd, NULL, NULL
   - id: 5
+    deployable: true
     desc: union(filter<un-optimized>(t2), filter<un-optimized>(t3))
     inputs:
       - name: t0
@@ -361,6 +366,7 @@ cases:
         20, NULL, NULL, NULL, NULL
         30, bb, 30, bb, 5
   - id: 6
+    deployable: true
     desc: nested union
     inputs:
       - name: t1

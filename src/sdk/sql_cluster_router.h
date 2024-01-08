@@ -33,7 +33,7 @@
 #include "client/tablet_client.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
-#include "sdk/file_option_parser.h"
+#include "sdk/options_map_parser.h"
 #include "sdk/interactive.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
@@ -351,16 +351,16 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleLoadDataInfile(const std::string& database, const std::string& table,
                                                const std::string& file_path,
-                                               const openmldb::sdk::ReadFileOptionsParser& options_parser);
+                                               const openmldb::sdk::LoadOptionsMapParser& options_parser);
 
     hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database, const std::string& table,
                                                const std::vector<std::string>& file_list,
-                                               const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                               const openmldb::sdk::LoadOptionsMapParser& options_parser,
                                                uint64_t* count);
 
     hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database, const std::string& table,
                                              const std::string& file_path,
-                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                             const openmldb::sdk::LoadOptionsMapParser& options_parser,
                                              uint64_t* count);
 
     hybridse::sdk::Status InsertOneRow(const std::string& database, const std::string& insert_placeholder,
