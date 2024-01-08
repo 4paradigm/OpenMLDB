@@ -3463,7 +3463,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
         return status;
     }
     status = SendDeleteRequst(table_info, &option);
-    if (status.IsOK()) {
+    if (status.IsOK() && db != nameserver::INTERNAL_DB) {
         status = {
             StatusCode::kOk,
             "DELETE is a dangerous operation. Once deleted, it is very difficult to recover. You may also note that:\n"
