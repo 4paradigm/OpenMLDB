@@ -23,6 +23,10 @@ namespace openmldb {
 namespace sdk {
 
 struct DeleteOption {
+    DeleteOption(std::optional<uint32_t> idx_i, const std::string& key_i, const std::string& ts_name_i,
+            std::optional<uint64_t> start_ts_i, std::optional<uint64_t> end_ts_i) :
+        idx(idx_i), key(key_i), ts_name(ts_name_i), start_ts(start_ts_i), end_ts(end_ts_i) {}
+    DeleteOption() = default;
     std::optional<uint32_t> idx = std::nullopt;
     std::string key;
     std::string ts_name;
