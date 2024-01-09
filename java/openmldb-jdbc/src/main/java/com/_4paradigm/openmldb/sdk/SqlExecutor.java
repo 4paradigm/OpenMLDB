@@ -83,6 +83,13 @@ public interface SqlExecutor {
     NS.TableInfo getTableInfo(String db, String table);
 
     List<String> getTableNames(String db);
+    /**
+     * Parse SQL query into DAG representation
+     *
+     * @param query SQL query string
+     * @throws SQLException exception if input query not valid for SQL parser
+     */
+    DAGNode SQLToDAG(String query) throws SQLException;
 
     void close();
 }

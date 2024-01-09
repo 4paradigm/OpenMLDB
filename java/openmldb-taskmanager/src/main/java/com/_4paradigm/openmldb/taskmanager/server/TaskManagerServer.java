@@ -70,9 +70,12 @@ public class TaskManagerServer {
             logger.info("The server becomes active master and prepare to do business logic");
             if (TaskManagerConfig.getTrackUnfinishedJobs()) {
                 // Start threads to track unfinished jobs
-                JobTrackerService.startTrackerThreads();
+                JobTrackerService.startTrackerThreads(); // may throw exception
             }
-
+            // if blocking, start a bg thread to reconnect zk
+            if (blocking) {
+                failoverWatcher.startReconnectThread();
+            }
             // Start brpc server
             startRpcServer(blocking);
         }
