@@ -604,7 +604,7 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uin
 
 bool Segment::ListContains(KeyEntry* entry, uint64_t time, DataBlock* row, bool check_all_time) {
     // one key-time may have multi records
-    auto it = entry->entries.NewIterator();
+    std::unique_ptr<TimeEntries::Iterator> it(entry->entries.NewIterator());
     if (check_all_time) {
         it->SeekToFirst();
         while (it->Valid()) {
