@@ -188,7 +188,7 @@
 # max table traverse unique key number(batch query), default: 0
 #--max_traverse_key_cnt=0
 # max result size in byte (default: 0 unlimited)
-#--scan_max_bytes_size=2097152
+#--scan_max_bytes_size=0
 
 # loadtable
 # The number of data bars to submit a task to the thread pool when loading
