@@ -57,7 +57,7 @@ namespace openmldb::datacollector {
 std::string LogPartsToString(replica::LogParts* log_parts) {
     std::stringstream ss;
     ss << "[";
-    auto it = log_parts->NewIterator();
+    std::unique_ptr<replica::LogParts::Iterator> it(log_parts->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
         ss << "(" << it->GetKey() << ", " << it->GetValue() << "),";
