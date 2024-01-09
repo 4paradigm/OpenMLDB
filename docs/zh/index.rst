@@ -21,6 +21,7 @@ OpenMLDB 文档 (|version|)
 .. toctree::
     :maxdepth: 1
     :hidden:
-    :caption: 📚 Guides
-    
-    app_ecosystem/index
+    :caption: 📚 OpenMLDB应用生态
+
+    app_ecosystem/feature_platform/index
+    app_ecosystem/sql_emulator/index
