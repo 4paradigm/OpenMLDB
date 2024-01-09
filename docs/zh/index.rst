@@ -17,4 +17,7 @@ OpenMLDB 文档 (|version|)
     reference/index
     developer/index
     faq/index
+
+    :hidden:
+    :caption: 📚 Guides
     app_ecosystem/index
