@@ -58,7 +58,7 @@ FilePathPattern
 | load_mode   | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                                                                                                                                                                                                        |
 | thread      | Integer | 1                 | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                                                                                                                                                                                                       |
 | writer_type | String  | single            | 集群版在线导入中插入数据的writer类型。可选值为`single`和`batch`，默认为`single`。`single`表示数据即读即写，节省内存。`batch`则是将整个rdd分区读完，确认数据类型有效性后，再写入集群，需要更多内存。在部分情况下，`batch`模式有利于筛选未写入的数据，方便重试这部分数据。                                                                                                                                                       |
-| put_if_absent | Boolean | false             | 在源数据无重复行也不与表中已有数据重复时，可以使用此选项避免插入重复数据，特别是job失败后可以重试。等价于使用`INSERT OR IGNORE`。 |
+| put_if_absent | Boolean | false             | 在源数据无重复行也不与表中已有数据重复时，可以使用此选项避免插入重复数据，特别是job失败后可以重试。等价于使用`INSERT OR IGNORE`。更多详情见下文。 |
 
 ```{note}
 在集群版中，`LOAD DATA INFILE`语句会根据当前执行模式（execute_mode）决定将数据导入到在线或离线存储。单机版中没有存储区别，只会导入到在线存储中，同时也不支持`deep_copy`选项。
@@ -158,3 +158,12 @@ null,null
 第二行两列都是两个双引号。
 - cluster模式默认quote为`"`，所以这一行是两个空字符串。
 - local模式默认quote为`\0`，所以这一行两列都是两个双引号。local模式quote可以配置为`"`，但escape规则是`""`为单个`"`，和Spark不一致，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
+
+## PutIfAbsent说明
+
+PutIfAbsent是一个特殊的选项，它可以避免插入重复数据，仅需一个配置，操作简单，特别适合load datajob失败后重试，等价于使用`INSERT OR IGNORE`。如果你想要导入的数据中存在重复，那么通过PutIfAbsent导入，会导致部分数据丢失。如果你需要保留重复数据，不应使用此选项，建议通过其他方式去重后再导入。
+
+PutIfAbsent需要去重这一额外开销，所以，它的性能与去重的复杂度有关：
+
+- 表中只存在ts索引，且同一key+ts的数据量少于10k时（为了精确去重，在同一个key+ts下会逐行对比整行数据），PutIfAbsent的性能表现不会很差，通常导入时间在普通导入时间的2倍以内。
+- 表中如果存在time索引（ts列为空），或者ts索引同一key+ts的数据量大于100k时，PutIfAbsent的性能会很差，导入时间可能超过普通导入时间的10倍，无法正常使用。这样的数据条件下，更建议进行去重后再导入。

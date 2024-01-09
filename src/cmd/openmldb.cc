@@ -438,7 +438,7 @@ std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const ::openml
 
 void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "bad setttl format, eg settl t1 absolute 10" << std::endl;
+        std::cout << "bad setttl format, eg settl t1 absolute 10 [index0]" << std::endl;
         return;
     }
     std::string index_name;
@@ -2459,7 +2459,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
             printf("desc: set table ttl \n");
-            printf("usage: setttl table_name ttl_type ttl [ts_name]\n");
+            printf("usage: setttl table_name ttl_type ttl [index_name], abs ttl unit is minute\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
             printf("ex: setttl t3 latest 5 ts1\n");
