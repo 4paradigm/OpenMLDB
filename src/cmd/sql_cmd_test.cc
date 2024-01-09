@@ -1190,7 +1190,8 @@ TEST_P(DBSDKTest, DeletetSameColIndex) {
 
     auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 100);
-    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    sr->ExecuteSQL(absl::StrCat("delete from ", table_name, " where c1 = 'key2';"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 90);
     ProcessSQLs(sr, {

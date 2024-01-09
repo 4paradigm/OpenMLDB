@@ -1435,6 +1435,7 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
                 continue;
             }
             sdk::DeleteOption option;
+            option.idx = index->GetId();
             auto ts_col = index->GetTsColumn();
             if (ts_col->IsAutoGenTs()) {
                 option.start_ts = iter->GetKey();
@@ -1455,16 +1456,26 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
                 option.end_ts = option.start_ts.value() - 1;
             }
             const auto& cols = index->GetColumns();
-            // todo null/empty
             if (cols.size() == 1) {
-                if (decoder->GetStrValue(data, cols.front().GetId(), &option.key) != 0) {
+                const auto& col = cols.front();
+                if (decoder->IsNULL(data, col.GetId())) {
+                    option.key = hybridse::codec::NONETOKEN;
+                } else if (decoder->GetStrValue(data, col.GetId(), &option.key) != 0) {
                     return {base::ReturnCode::kDeleteFailed, "get key failed"};
+                }
+                if (option.key.empty()) {
+                    option.key = hybridse::codec::EMPTY_STRING;
                 }
             } else {
                 for (const auto& col : cols) {
                     std::string tmp;
-                    if (decoder->GetStrValue(data, col.GetId(), &tmp) != 0) {
+                    if (decoder->IsNULL(data, col.GetId())) {
+                        tmp = hybridse::codec::NONETOKEN;
+                    } else if (decoder->GetStrValue(data, col.GetId(), &tmp) != 0) {
                         return {base::ReturnCode::kDeleteFailed, "get key failed"};
+                    }
+                    if (tmp.empty()) {
+                        tmp = hybridse::codec::EMPTY_STRING;
                     }
                     if (!option.key.empty()) {
                         option.key.append("|");
@@ -1473,7 +1484,16 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
                 }
             }
             uint32_t cur_pid = static_cast<uint32_t>(base::hash64(option.key)) % partition_num;
-            auto client = client_manager->GetTablet(cur_pid)->GetClient();
+            auto tablet = client_manager->GetTablet(cur_pid);
+            if (tablet == nullptr) {
+                return {base::ReturnCode::kDeleteFailed, absl::StrCat("tablet is nullptr, pid ", cur_pid)};
+            }
+            auto client = tablet->GetClient();
+            if (client == nullptr) {
+                return {base::ReturnCode::kDeleteFailed, absl::StrCat("client is nullptr, pid ", cur_pid)};
+            }
+            DEBUGLOG("delete idx %u pid %u pk %s ts %lu end_ts %lu",
+                    option.idx.value(), cur_pid, option.key.c_str(), option.start_ts.value(), option.end_ts.value());
             std::string msg;
             // do not delete other index data
             option.enable_decode_value = false;
@@ -1593,10 +1613,16 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()} : std::nullopt;
         auto handler = catalog_->GetTable(table->GetDB(), table->GetName());
         if (!handler) {
+            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("no TableHandler");
+            PDLOG(WARNING, "no TableHandler. tid %u, pid %u", tid, pid);
             return;
         }
         auto tablet_table_handler = std::dynamic_pointer_cast<catalog::TabletTableHandler>(handler);
         if (!tablet_table_handler) {
+            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("convert TabletTableHandler failed");
+            PDLOG(WARNING, "convert TabletTableHandler failed. tid %u, pid %u", tid, pid);
             return;
         }
         uint32_t pid_num = tablet_table_handler->GetPartitionNum();
