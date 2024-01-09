@@ -17,7 +17,9 @@ OpenMLDB 文档 (|version|)
     reference/index
     developer/index
     faq/index
-
+    
+.. toctree::
+    :maxdepth: 1
     :hidden:
     :caption: 📚 Guides
     app_ecosystem/index
