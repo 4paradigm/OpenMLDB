@@ -1,4 +1,4 @@
-## Quickstart
+# OpenMLDB SQL Emulator
 
 OpenMLDB SQL Emulator is a lightweight SQL emulator for [OpenMLDB](https://github.com/4paradigm/OpenMLDB). It is hassle-free to develop and debug SQL without the OpenMLDB cluster deployment.
 
