@@ -7,5 +7,6 @@ OpenMLDB 特征平台
 
     concept
     installation
+    tutorial
     usage
     
