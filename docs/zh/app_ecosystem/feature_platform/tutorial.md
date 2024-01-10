@@ -19,7 +19,7 @@
 
 ## 创建特征
 数据准备完成后，用户可选择在线或离线场景创建特征。入口如下图所示：
-![cf_entry](../images/create_fe_entry.jpg)
+![cf_entry](../images/create_fe_entry.png)
 
 用户需要填写特征组名，数据库名，和SQL语句。可查看“SQL使用案例”和使用“[可视化SQL工具](#可视化sql工具)”方便SQL的填写。每个SQL对应一个特征组，点击”分析SQL”，系统将会自动分析出 SQL 对应的特征数量和类型。点击“提交”完成特征组的创建。
 
@@ -42,10 +42,10 @@
 由于OpenMLDB目前仅支持单条SQL语句生成特征组，我们提供了一个可视化的SQL工具，来方便用户通过拖拉拽SQL算子将多条SQL语句通过`WITH`语句生成一条复杂的SQL语句。
 
 可视化SQL工具的入口在创建特征页面中，如下图所示：
-![sql_tool](../images/sql_tool_entry.jpg)
+![sql_tool](../images/sql_tool_entry.png)
 
 使用SQL工具拖拽算子、连接、填入SQL后，可点击“预览生成SQL”生成对应的复杂SQL。如下图所示：
-![sql_tool_tutorial](../images/sql_tool_tutorial.jpg)
+![sql_tool_tutorial](../images/sql_tool_tutorial.png)
 
 ### 管理中心
 特征平台提供了对于数据表，特征，任务以及服务的管理功能。用户可以在管理中心查看和管理相关资源。目前支持查看和管理的资源如下：
