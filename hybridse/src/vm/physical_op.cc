@@ -1234,13 +1234,13 @@ Status PhysicalSetOperationNode::InitSchema(PhysicalPlanContext* ctx) {
 Status PhysicalSetOperationNode::WithNewChildren(node::NodeManager* nm, const std::vector<PhysicalOpNode*>& children,
                                                  PhysicalOpNode** out) {
     absl::Span<PhysicalOpNode* const> sp = absl::MakeSpan(children);
-    *out = nm->RegisterNode(new PhysicalSetOperationNode(op_type_, sp, distinct_));
+    *out = nm->RegisterNode(new PhysicalSetOperationNode(set_type_, sp, distinct_));
     return Status::OK();
 }
 
 void PhysicalSetOperationNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << node::SetOperatorName(op_type_, distinct_) << ")\n";
+    output << "(" << node::SetOperatorName(set_type_, distinct_) << ")\n";
     PrintChildren(output, tab);
 }
 

@@ -393,7 +393,7 @@ object HybridseUtil {
   // So we should fix it.
   private def autoFileLoad(openmldbSession: OpenmldbSession, file: String, format: String,
     options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
-    require(format.equals("csv") || format.equals("parquet"))
+    require(format.equals("csv") || format.equals("parquet"), s"unsupported format $format")
     val reader = openmldbSession.getSparkSession.read.options(options)
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
@@ -451,7 +451,7 @@ object HybridseUtil {
   }
 
   def hiveDest(path: String): String = {
-    require(path.toLowerCase.startsWith("hive://"))
+    require(path.toLowerCase.startsWith("hive://"), s"invalid hive path $path")
     // hive://<table_pattern>
     val tableStartPos = 7
     path.substring(tableStartPos)

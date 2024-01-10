@@ -15,11 +15,17 @@
  */
 
 #include "sdk/sql_router.h"
+
 #include <map>
+
+#include "absl/strings/substitute.h"
 #include "base/ddl_parser.h"
 #include "glog/logging.h"
 #include "schema/schema_adapter.h"
 #include "sdk/sql_cluster_router.h"
+#include "zetasql/parser/parser.h"
+#include "zetasql/public/error_helpers.h"
+#include "zetasql/public/error_location.pb.h"
 
 namespace openmldb::sdk {
 
@@ -272,6 +278,83 @@ std::vector<std::pair<std::string, std::string>> GetDependentTables(
     }
     tables.insert(tables.end(), explain.dependent_tables.begin(), explain.dependent_tables.end());
     return tables;
+}
+
+std::shared_ptr<DAGNode> QueryToDAG(const zetasql::ASTQuery* query, absl::string_view name) {
+    std::vector<std::shared_ptr<DAGNode>> producers;
+    if (query->with_clause() != nullptr) {
+        for (auto with_entry : query->with_clause()->with()) {
+            producers.push_back(QueryToDAG(with_entry->query(), with_entry->alias()->GetAsStringView()));
+        }
+    }
+
+    // SQL without WITH clause
+    std::string sql =  zetasql::Unparse(query->query_expr());
+    if (query->order_by() != nullptr) {
+        absl::StrAppend(&sql, zetasql::Unparse(query->order_by()));
+    }
+    if (query->limit_offset() != nullptr) {
+        absl::StrAppend(&sql, zetasql::Unparse(query->limit_offset()));
+    }
+
+    return std::make_shared<DAGNode>(name, sql, producers);
+}
+
+std::shared_ptr<DAGNode> SQLRouter::SQLToDAG(const std::string& query, hybridse::sdk::Status* status) {
+    std::unique_ptr<zetasql::ParserOutput> parser_output;
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    auto zetasql_status = zetasql::ParseStatement(query, parser_opts, &parser_output);
+    zetasql::ErrorLocation location;
+    if (!zetasql_status.ok()) {
+        zetasql::ErrorLocation location;
+        GetErrorLocation(zetasql_status, &location);
+        status->msg = zetasql::FormatError(zetasql_status);
+        status->code = hybridse::common::kSyntaxError;
+        return {};
+    }
+
+    auto stmt = parser_output->statement();
+    if (stmt == nullptr) {
+        status->msg = "not a statement";
+        status->code = hybridse::common::kSyntaxError;
+        return {};
+    }
+
+    if (stmt->node_kind() != zetasql::AST_QUERY_STATEMENT) {
+        status->msg = "not a query";
+        status->code = hybridse::common::kSyntaxError;
+        return {};
+    }
+
+    auto const query_stmt = stmt->GetAsOrNull<zetasql::ASTQueryStatement>();
+    if (query_stmt == nullptr) {
+        status->msg = "not a query";
+        status->code = hybridse::common::kSyntaxError;
+        return {};
+    }
+
+    status->code = hybridse::common::kOk;
+    return QueryToDAG(query_stmt->query(), "");
+}
+
+bool DAGNode::operator==(const DAGNode& rhs) const noexcept {
+    return name == rhs.name && sql == rhs.sql &&
+           absl::c_equal(producers, rhs.producers,
+                         [](const std::shared_ptr<DAGNode>& left, const std::shared_ptr<DAGNode>& right) {
+                             return left != nullptr && right != nullptr && *left == *right;
+                         });
+}
+
+std::ostream& operator<<(std::ostream& os, const DAGNode& obj) { return os << obj.DebugString(); }
+
+std::string DAGNode::DebugString() const {
+    return absl::Substitute("{$0, $1, [$2]}", name, sql,
+                            absl::StrJoin(producers, ",", [](std::string* out, const std::shared_ptr<DAGNode>& e) {
+                                absl::StrAppend(out, (e == nullptr ? "" : e->DebugString()));
+                            }));
 }
 
 }  // namespace openmldb::sdk

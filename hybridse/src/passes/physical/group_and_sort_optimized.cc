@@ -122,6 +122,12 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                       PhysicalOpNode** output) {
     *output = in;
     TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(in->GetOpType(), nullptr, nullptr, nullptr, nullptr));
+
+    // save current optimizing node (where expressions comes from) during optimization
+    auto* prev_node = cur_optimizing_;
+    cur_optimizing_ = in;
+    absl::Cleanup reset = [prev_node, this]() { cur_optimizing_ = prev_node; };
+
     switch (in->GetOpType()) {
         case PhysicalOpType::kPhysicalOpGroupBy: {
             PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
@@ -304,6 +310,17 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
     return false;
 }
 
+/**
+ *
+ * @param root_schemas_ctx the SchemasContext where left_key, index_key, right_key and sort can resolving on
+ * @param in Possible optimizable node
+ * @param left_key
+ * @param index_key
+ * @param right_key
+ * @param sort
+ * @param new_in optimized physical node for `in`
+ * @return true if optimized, new_in set to optimized node
+ */
 bool GroupAndSortOptimized::KeysOptimized(const vm::SchemasContext* root_schemas_ctx,
                                           PhysicalOpNode* in,
                                           Key* left_key,
@@ -399,12 +416,42 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
             PhysicalPartitionProviderNode* partition_op = nullptr;
             std::string index_name;
 
+            std::vector<std::string> keys;
+            std::vector<std::string> orders;
+            std::map<size_t, size_t> result_bitmap_mapping;
+
+            auto resolved_keys = ResolveExprToSrcColumnName(right_partition, scan_op);
+            for (size_t i = 0; i < resolved_keys.size(); ++i) {
+                if (resolved_keys[i].has_value()) {
+                    result_bitmap_mapping[keys.size()] = i;
+                    keys.push_back(resolved_keys[i].value());
+                }
+            }
+            if (keys.empty()) {
+                return false;
+            }
+            if (nullptr != sort && sort->orders() != nullptr) {
+                auto resolved_orders = ResolveExprToSrcColumnName(sort->orders()->order_expressions(), scan_op);
+                for (auto& val : resolved_orders) {
+                    if (val.has_value()) {
+                        orders.push_back(val.value());
+                    }
+                }
+
+                if (orders.size() != 1) {
+                    return false;
+                }
+            }
+
             if (DataProviderType::kProviderTypeTable == scan_op->provider_type_) {
                 // Apply key columns and order column optimization with all indexes binding to scan_op->table_handler_
                 // Return false if fail to find an appropriate index
-                if (!TransformKeysAndOrderExpr( right_partition,
-                                               nullptr == sort ? nullptr : sort->orders_, scan_op,
-                                               &index_name, &bitmap)) {
+                if (!TransformKeysAndOrderExpr(keys, orders, scan_op, result_bitmap_mapping, &index_name, &bitmap)) {
+                    // optimize failed ? report a index hint
+                    if (plan_ctx_->index_hints() != nullptr) {
+                        plan_ctx_->index_hints()->Report(scan_op->GetDb(), scan_op->GetName(), keys,
+                                                         orders.empty() ? "" : orders.at(0), cur_optimizing_);
+                    }
                     return false;
                 }
                 Status status = plan_ctx_->CreateOp<PhysicalPartitionProviderNode>(&partition_op, scan_op, index_name);
@@ -417,9 +464,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
                 index_name = partition_op->index_name_;
                 // Apply key columns and order column optimization with given index name
                 // Return false if given index do not match the keys and order column
-                if (!TransformKeysAndOrderExpr( right_partition,
-                                               nullptr == sort ? nullptr : sort->orders_, scan_op,
-                                               &index_name, &bitmap)) {
+                if (!TransformKeysAndOrderExpr(keys, orders, scan_op, result_bitmap_mapping, &index_name, &bitmap)) {
                     return false;
                 }
             }
@@ -729,7 +774,8 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
             }
             vm::PhysicalSetOperationNode* opt_set = nullptr;
             if (!plan_ctx_
-                     ->CreateOp<vm::PhysicalSetOperationNode>(&opt_set, set_op->op_type_, opt_inputs, set_op->distinct_)
+                     ->CreateOp<vm::PhysicalSetOperationNode>(&opt_set, set_op->set_type_, opt_inputs,
+                                                              set_op->distinct_)
                      .isOK()) {
                 return false;
             }
@@ -806,95 +852,23 @@ bool GroupAndSortOptimized::KeyAndOrderOptimized(
                                        sort, new_in);
 }
 
-bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const node::ExprListNode* groups, const node::OrderByNode* order,
-                                                      vm::PhysicalDataProviderNode* data_node, std::string* index_name,
-                                                      IndexBitMap* output_bitmap) {
-    if (nullptr == groups || nullptr == output_bitmap || nullptr == index_name) {
-        DLOG(WARNING) << "fail to transform keys expr : key expr or output "
-                         "or index_name ptr is null";
-        return false;
-    }
-
-    if (nullptr == order) {
-        DLOG(INFO) << "keys optimized: " << node::ExprString(groups);
-    } else {
-        DLOG(INFO) << "keys and order optimized: keys=" << node::ExprString(groups)
-                   << ", order=" << node::ExprString(order);
-    }
-    std::vector<std::string> columns;
-    std::vector<std::string> order_columns;
-    std::map<size_t, size_t> result_bitmap_mapping;
-
-    for (size_t i = 0; i < groups->children_.size(); ++i) {
-        auto group = groups->children_[i];
-        switch (group->expr_type_) {
-            case node::kExprColumnRef: {
-                auto column = dynamic_cast<node::ColumnRefNode*>(group);
-                auto oop = expr_cache_.find(column);
-                if (oop == expr_cache_.end()) {
-                    return false;
-                }
-
-                auto op = oop->second.find(data_node);
-                if (op == oop->second.end()) {
-                    return false;
-                }
-
-                if (data_node-> table_handler_->GetName() != op->second.tb_name ||
-                    data_node->table_handler_->GetDatabase() != op->second.db_name) {
-                    return false;
-                }
-
-                result_bitmap_mapping[columns.size()] = i;
-                columns.emplace_back(op->second.col_name);
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-    }
-
-    if (nullptr != order) {
-        for (size_t i = 0; i < order->order_expressions()->GetChildNum(); ++i) {
-            auto expr = order->GetOrderExpressionExpr(i);
-            if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
-                auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
-                auto oop = expr_cache_.find(column);
-                if (oop == expr_cache_.end()) {
-                    return false;
-                }
-
-                auto op = oop->second.find(data_node);
-                if (op == oop->second.end()) {
-                    return false;
-                }
-
-                if (data_node->table_handler_->GetName() != op->second.tb_name ||
-                    data_node->table_handler_->GetDatabase() != op->second.db_name) {
-                    return false;
-                }
-
-                order_columns.emplace_back(op->second.col_name);
-            }
-        }
-    }
-    if (columns.empty()) {
-        return false;
-    }
-
+bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const std::vector<std::string>& keys,
+                                                      const std::vector<std::string>& orders,
+                                                      vm::PhysicalDataProviderNode* data_node,
+                                                      const std::map<size_t, size_t>& result_bitmap_mapping,
+                                                      std::string* index_name, IndexBitMap* output_bitmap) {
     IndexBitMap match_bitmap;
     // internal structure for MatchBestIndex, initially turn every bit true
-    IndexBitMap state_bitmap(std::vector<std::optional<ColIndexInfo>>(columns.size(), std::make_optional(0)));
-    if (!MatchBestIndex(columns, order_columns, data_node->table_handler_, &state_bitmap, index_name, &match_bitmap)) {
+    IndexBitMap state_bitmap(std::vector<std::optional<ColIndexInfo>>(keys.size(), std::make_optional(0)));
+    if (!MatchBestIndex(keys, orders, data_node->table_handler_, &state_bitmap, index_name, &match_bitmap)) {
         return false;
     }
-    if (match_bitmap.bitmap.size() != columns.size()) {
+    if (match_bitmap.bitmap.size() != keys.size()) {
         return false;
     }
-    for (size_t i = 0; i < columns.size(); ++i) {
+    for (size_t i = 0; i < keys.size(); ++i) {
         if (match_bitmap.bitmap[i].has_value()) {
-            size_t origin_idx = result_bitmap_mapping[i];
+            size_t origin_idx = result_bitmap_mapping.at(i);
             output_bitmap->bitmap.at(origin_idx) = match_bitmap.bitmap[i].value();
         }
     }
@@ -1021,6 +995,51 @@ bool GroupAndSortOptimized::MatchBestIndex(const std::vector<std::string>& colum
     *index_name = best_index_name;
     *index_bitmap = best_index_bitmap;
     return succ;
+}
+
+std::vector<std::optional<std::string>> GroupAndSortOptimized::ResolveExprToSrcColumnName(
+    const node::ExprListNode* exprs, vm::PhysicalDataProviderNode* data_node) {
+    std::vector<std::optional<std::string>> columns;
+    for (auto node : exprs->children_) {
+        columns.push_back(ResolveExprToSrcColumnName(node, data_node));
+    }
+
+    return columns;
+}
+
+std::optional<std::string> GroupAndSortOptimized::ResolveExprToSrcColumnName(const node::ExprNode* node,
+                                                                             vm::PhysicalDataProviderNode* data_node) {
+    switch (node->expr_type_) {
+        case node::kExprColumnRef: {
+            auto ref = dynamic_cast<const node::ColumnRefNode*>(node);
+
+            auto oop = expr_cache_.find(ref);
+            if (oop == expr_cache_.end()) {
+                return std::nullopt;
+            }
+
+            auto op = oop->second.find(data_node);
+            if (op == oop->second.end()) {
+                return std::nullopt;
+            }
+
+            if (data_node->table_handler_->GetName() != op->second.tb_name ||
+                data_node->table_handler_->GetDatabase() != op->second.db_name) {
+                return std::nullopt;
+            }
+
+            return std::make_optional(op->second.col_name);
+        }
+        case node::kExprOrderExpression: {
+            auto order_expr = dynamic_cast<const node::OrderExpression*>(node);
+            return ResolveExprToSrcColumnName(order_expr->expr(), data_node);
+        }
+        default: {
+            break;
+        }
+    }
+
+    return std::nullopt;
 }
 
 }  // namespace passes

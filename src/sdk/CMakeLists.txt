@@ -68,6 +68,9 @@ if(TESTING_ENABLE)
 
     add_executable(split_test split_test.cc)
     target_link_libraries(split_test ${BIN_LIBS})
+
+    add_executable(options_map_parser_test options_map_parser_test.cc)
+    target_link_libraries(options_map_parser_test ${BIN_LIBS})
 endif()
 
 set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt)
