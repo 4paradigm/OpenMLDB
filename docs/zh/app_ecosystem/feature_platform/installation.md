@@ -1,6 +1,6 @@
-## 安装部署
+# 安装部署
 
-### Java
+## Java
 
 下载 Jar 文件。
 
@@ -26,7 +26,7 @@ openmldb:
 java -jar ./openmldb-feature-platform-0.8-SNAPSHOT.jar
 ```
 
-### Docker
+## Docker
 
 准备配置文件 `application.yml` 并启动 Docker 容器.
 
@@ -34,7 +34,7 @@ java -jar ./openmldb-feature-platform-0.8-SNAPSHOT.jar
 docker run -d -p 8888:8888 -v `pwd`/application.yml:/app/application.yml registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-feature-platform
 ```
 
-### 源码编译
+## 源码编译
 
 下载项目源码并从头编译。
 
