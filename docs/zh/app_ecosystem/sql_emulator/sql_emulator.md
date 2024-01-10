@@ -1,4 +1,4 @@
-# OpenMLDB SQL Emulator
+# 应用指南
 
 OpenMLDB SQL Emulator 是一个[OpenMLDB](https://github.com/4paradigm/OpenMLDB)的轻量级的SQL模拟器，旨在于更加高效方便的开发、调试 OpenMLDB SQL。
 
@@ -112,7 +112,7 @@ cases:
 - 必须修改表名，表schema及其数据，这些不可在Emulator中修改。
 - 可以修改运行`mode`，接受`batch`或`request`模式。
 - 可以不填写SQL，可以在Emulator中通过`dumpcase <sql>`写入文件。常见使用方法是，先validate SQL，SQL通过校验后dump到case中，再使用`run`命令确认 SQL 的计算符合预期。
-- 表的indexs也无需手动填写，`dumpcase`时可以根据表schema自动生成（indexs并非特殊的索引，与SQL也无关，仅仅是创建表时需要创建至少一个索引）。如果不使用`dumpcase`，那么请手动填写至少一个索引，索引没有特别要求。手动创建范例：`["index1:c1:c2", ".."]`，`["index1:c1:c4:(10m,2):absolute"]`。
+- 表的indexs也无需手动填写，`dumpcase`时可以根据表schema自动生成（indexs并非特殊的索引，与SQL也无关，仅仅是创建表时需要创建至少一个索引）。如果不使用`dumpcase`，那么请手动填写至少一个索引，索引没有特别要求。手动创建范例：`["index1:c1:c2", ".."]`，`["index1:c1:c4:(10m,2):absorlat"]`。
 
 **step 3:** 执行`loadcase`，这个case的表信息将被加载到Emulator中，通过`st/showtables`确认 case 的表加载成功，显示信息如下：
 ```bash
