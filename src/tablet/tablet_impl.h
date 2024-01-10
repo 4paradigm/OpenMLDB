@@ -440,7 +440,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 const std::string& key,
                                 std::optional<uint64_t> start_ts,
                                 std::optional<uint64_t> end_ts,
-                                bool filter_range,
+                                bool skip_cur_ts_col,
                                 const std::shared_ptr<catalog::TableClientManager>& client_manager,
                                 uint32_t partition_num);
 

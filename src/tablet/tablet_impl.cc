@@ -1395,7 +1395,7 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
                                         const std::string& key,
                                         std::optional<uint64_t> start_ts,
                                         std::optional<uint64_t> end_ts,
-                                        bool filter_range,
+                                        bool skip_cur_ts_col,
                                         const std::shared_ptr<catalog::TableClientManager>& client_manager,
                                         uint32_t partition_num) {
     storage::Ticket ticket;
@@ -1407,6 +1407,7 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
     }
     auto indexs = table->GetAllIndex();
     while (iter->Valid()) {
+        DEBUGLOG("cur ts %lu cur index pos %u", iter->GetKey(), cur_index->GetId());
         if (end_ts.has_value() && iter->GetKey() <= end_ts.value()) {
             break;
         }
@@ -1434,9 +1435,12 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
             if (cur_index && index->GetId() == cur_index->GetId()) {
                 continue;
             }
+            auto ts_col = index->GetTsColumn();
+            if (skip_cur_ts_col && ts_col->GetId() == cur_index->GetTsColumn()->GetId()) {
+                continue;
+            }
             sdk::DeleteOption option;
             option.idx = index->GetId();
-            auto ts_col = index->GetTsColumn();
             if (ts_col->IsAutoGenTs()) {
                 option.start_ts = iter->GetKey();
             } else {
@@ -1446,11 +1450,6 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
                 }
                 option.ts_name = ts_col->GetName();
                 option.start_ts = ts;
-            }
-            // skip the data if option.start_ts in [start_ts, end_ts) if filter_range is true
-            if (filter_range && !((start_ts.has_value() && option.start_ts.value() > start_ts.value()) ||
-                        (end_ts.has_value() && option.start_ts.value() <= end_ts.value()))) {
-                continue;
             }
             if (option.start_ts.value() > 1) {
                 option.end_ts = option.start_ts.value() - 1;
@@ -1660,6 +1659,9 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         } else {
             for (const auto& index_def : table->GetAllIndex()) {
                 if (!index_def || !index_def->IsReady()) {
+                    continue;
+                }
+                if (index_def->GetTsColumn()->GetName() != request->ts_name()) {
                     continue;
                 }
                 uint32_t idx = index_def->GetId();

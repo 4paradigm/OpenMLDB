@@ -1200,6 +1200,125 @@ TEST_P(DBSDKTest, DeletetSameColIndex) {
                     });
 }
 
+TEST_P(DBSDKTest, TestDelete) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    std::string db = "db" + GenRand();
+    ASSERT_TRUE(sr->CreateDB(db, &status));
+    sr->ExecuteSQL(db, "set @@execute_mode = 'online';", &status);
+    sr->ExecuteSQL(db, "use " + db + " ;", &status);
+    ddl = absl::StrCat("create table ", name,
+          "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
+          "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
+    ASSERT_TRUE(sr->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(sr->RefreshCatalog());
+    for (int i = 0; i < 10; i++) {
+        std::string key1 = absl::StrCat("key1_", i);
+        std::string key2 = absl::StrCat("key2_", i);
+        std::string key3 = absl::StrCat("key3_", i);
+        for (int j = 0; j < 10; j++) {
+            sr->ExecuteSQL(absl::StrCat("insert into ", name,
+                        " values ('", key1, "', '", key2, "', '", key3, "', ", 100 + j, ",", 1000 + j, ", 1, 'v');"),
+                           &status);
+        }
+    }
+    auto rs = sr->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_EQ(rs->Size(), 100);
+    rs = sr->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col5 > 100;", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = sr->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col6 > 100;", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = sr->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col3 = 'aaa';", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = sr->ExecuteSQL(db, "delete from " + name + " where col7 = 'xxx' and col3 = 'aaa';", &status);
+    ASSERT_FALSE(status.IsOK());
+    sr->ExecuteSQL(db, "delete from " + name + " where col6 > 100;", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = sr->ExecuteSQL(db, "delete from " + name + " where col1 = 'key1_1';", &status);
+    ASSERT_TRUE(status.IsOK());
+    rs = sr->ExecuteSQL(db, "select * from " + name + " where col1 = 'key1_1';", &status);
+    ASSERT_EQ(rs->Size(), 0);
+    rs = sr->ExecuteSQL(db, "select * from " + name + " where col1 = 'key1_1' and col2 = 'key2_1';", &status);
+    ASSERT_EQ(rs->Size(), 0);
+    rs = sr->ExecuteSQL(db, "select * from " + name + " where col3 = 'key3_1';", &status);
+    ASSERT_EQ(rs->Size(), 0);
+    sr->ExecuteSQL(db, "delete from " + name + " where col4 > 105;", &status);
+    ASSERT_TRUE(status.IsOK());
+    rs = sr->ExecuteSQL(db, "select * from " + name + " where col1 = 'key1_2';", &status);
+    ASSERT_EQ(rs->Size(), 6);
+    rs = sr->ExecuteSQL(db, "select * from " + name + " where col1 = 'key1_2' and col2 = 'key2_2';", &status);
+    ASSERT_EQ(rs->Size(), 6);
+    rs = sr->ExecuteSQL(db, "select * from " + name + " where col3 = 'key3_2';", &status);
+    ASSERT_EQ(rs->Size(), 6);
+
+    ASSERT_TRUE(sr->ExecuteDDL(db, "drop table " + name + ";", &status));
+    ASSERT_TRUE(sr->DropDB(db, &status));
+}
+
+
+TEST_P(DBSDKTest, DeletetMulIndex) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl =
+        "create table test1 (c1 string, c2 string, c3 bigint, c4 bigint, "
+        "INDEX(KEY=c1, ts=c3), INDEX(KEY=c2, ts=c4));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 10; i++) {
+        std::string key1 = absl::StrCat("key1_", i);
+        std::string key2 = absl::StrCat("key2_", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
+                        " values ('", key1, "', '", key2, "', ", ts, ",", ts, ");"),
+                           &status);
+        }
+    }
+
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c1 = \'key1_2\';"), &status);
+    ASSERT_EQ(res->Size(), 10);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c2 = \'key2_2\';"), &status);
+    ASSERT_EQ(res->Size(), 10);
+    sr->ExecuteSQL(absl::StrCat("delete from ", table_name, " where c1 = 'key1_2' and c3 = 1001;"), &status);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c1 = \'key1_2\';"), &status);
+    ASSERT_EQ(res->Size(), 9);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c2 = \'key2_2\';"), &status);
+    ASSERT_EQ(res->Size(), 9);
+    sr->ExecuteSQL(absl::StrCat("delete from ", table_name, " where c1 = 'key1_2';"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 90);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c1 = \'key1_2\';"), &status);
+    ASSERT_EQ(res->Size(), 0);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c2 = \'key2_2\';"), &status);
+    ASSERT_EQ(res->Size(), 0);
+    sr->ExecuteSQL(absl::StrCat("delete from ", table_name, " where c3 >= 1005 ;"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 45);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c1 = \'key1_3\';"), &status);
+    ASSERT_EQ(res->Size(), 5);
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, " where c2 = \'key2_3\';"), &status);
+    ASSERT_EQ(res->Size(), 5);
+    ProcessSQLs(sr, {
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
 TEST_P(DBSDKTest, SQLDeletetRow) {
     auto cli = GetParam();
     sr = cli->sr;
