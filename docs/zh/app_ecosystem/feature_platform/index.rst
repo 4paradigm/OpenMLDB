@@ -7,8 +7,8 @@ OpenMLDB 特征平台
 
     introduction
     quickstart
-    installation
-    functions
+    install/index
+    functions/index
     use_case/index
     
     

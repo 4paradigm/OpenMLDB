@@ -1,10 +1,12 @@
 =============================
-使用案例
+功能列表
 =============================
 
 .. toctree::
     :maxdepth: 1
 
-    basic_usage
-    recommand_system
-    kaggle_taxi_tour_features
+    binary
+    docker
+    source
+    upgrade
+    
