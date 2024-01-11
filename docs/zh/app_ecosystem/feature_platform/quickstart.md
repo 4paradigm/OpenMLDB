@@ -1,7 +1,7 @@
 # QuickStart
 
 ## 安装部署
-注意特征平台为独立于OpenMLDB的工具，用户需要首先进行OpenMLDB的安装部署，再启动特征平台。OpenMLDB的部署请参照[文档]（https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html#id3）。
+注意特征平台为独立于OpenMLDB的工具，用户需要首先进行OpenMLDB的安装部署，再启动特征平台。OpenMLDB的部署请参照[文档](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html#id3)。
 
 1. 准备配置文件并命名为 `application.yml`。其中，OpenMLDB的信息需要与已真实部署一致。
 
