@@ -6,7 +6,7 @@ OpenMLDB 特征平台
     :maxdepth: 1
 
     concept
-    qucikstart
+    quickstart
     usage
     functions
     installation
