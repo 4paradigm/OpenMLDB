@@ -1,9 +1,16 @@
-# QuickStart
+# 快速入门
 
 ## 安装部署
-注意特征平台为独立于OpenMLDB的工具，用户需要首先进行OpenMLDB的安装部署，再启动特征平台。OpenMLDB的部署请参照[文档](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html#id3)。
 
-1. 准备配置文件并命名为 `application.yml`。其中，OpenMLDB的信息需要与已真实部署一致。
+首先部署 OpenMLDB 集群，参考[部署文档](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html#id3)。
+
+然后部署 OpenMLDB 特征平台，下载 Jar 文件。
+
+```
+wget https://openmldb.ai/download/feature-platform/openmldb-feature-platform-0.8-SNAPSHOT.jar
+```
+
+准备配置文件并命名为 `application.yml`。
 
 ```
 server:
@@ -15,16 +22,24 @@ openmldb:
   apiserver: 127.0.0.1:9080
 ```
 
-2. 拉取镜像并启动Docker容器.
+启动特征平台服务。
 
 ```
-docker run -d -p 8888:8888 -v `pwd`/application.yml:/app/application.yml registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-feature-platform
+java -jar ./openmldb-feature-platform-0.8-SNAPSHOT.jar
 ```
 
-## 特征平台使用
-这里我们使用一个简单的例子来介绍特征平台的使用方法。使用任意网页浏览器访问特征平台服务地址 http://127.0.0.1:8888/ 。
+## 使用流程
+
+特征平台的基本使用流程包括以下的几个步骤：
+
+1. 导入数据：使用SQL命令或前端表单进行创建数据库、创建数据表、导入在线数据和导入离线数据等操作。
+2. 创建特征：使用SQL语句来定义特征视图，特征平台使用SQL编译器进行特征分析并创建对应的特征。
+3. 离线场景：选择想要导入的特征，可以同时选择不同特征视图的特征，并使用分布式计算把样本文件导入到本地或分布式存储。
+4. 在线场景：选择想要上线的特征，一键发布成在线特征抽取服务，然后可使用HTTP客户端进行请求和返回在线特征抽取结果。
+5. 
 
 ### 导入数据
+
 1. 创建数据库： 创建新的数据库`demo_db`
 
 ![create_db](../images/create_db.png)
