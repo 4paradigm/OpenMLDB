@@ -807,7 +807,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     return true;
 }
 
-base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const sdk::DeleteOption& option) {
+base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const sdk::DeleteOption& option, uint64_t timeout_ms) {
     ::openmldb::api::DeleteRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -828,7 +828,7 @@ base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const sdk::DeleteO
     }
     request.set_enable_decode_value(option.enable_decode_value);
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Delete, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                  timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }

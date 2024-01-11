@@ -3511,8 +3511,12 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
         }
         for (size_t pid = 0; pid < tablets.size(); pid++) {
             auto tablet_client = tablets.at(pid)->GetClient();
-            if (auto status = tablet_client->Delete(table_info->tid(), pid, option); !status.OK()) {
-                return {StatusCode::kCmdError, status.GetMsg()};
+            if (!tablet_client) {
+                return {StatusCode::kCmdError, "tablet client is null"};
+            }
+            auto ret = tablet_client->Delete(table_info->tid(), pid, option, options_->request_timeout);
+            if (!ret.OK()) {
+                return {StatusCode::kCmdError, ret.GetMsg()};
             }
         }
     } else {
@@ -3525,7 +3529,7 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
         if (!tablet_client) {
             return {StatusCode::kCmdError, "tablet client is null"};
         }
-        if (auto ret = tablet_client->Delete(table_info->tid(), pid, option); !ret.OK()) {
+        if (auto ret = tablet_client->Delete(table_info->tid(), pid, option, options_->request_timeout); !ret.OK()) {
             return {StatusCode::kCmdError, ret.GetMsg()};
         }
     }

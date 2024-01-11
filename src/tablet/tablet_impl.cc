@@ -100,6 +100,7 @@ DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_string(snapshot_compression);
 DECLARE_string(file_compression);
+DECLARE_int32(request_timeout_ms);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -1496,7 +1497,7 @@ base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& t
             std::string msg;
             // do not delete other index data
             option.enable_decode_value = false;
-            if (auto status = client->Delete(table->GetId(), cur_pid, option); !status.OK()) {
+            if (auto status = client->Delete(table->GetId(), cur_pid, option, FLAGS_request_timeout_ms); !status.OK()) {
                 return {base::ReturnCode::kDeleteFailed,
                     absl::StrCat("delete failed. key ", option.key, " pid ", cur_pid, " msg: ", status.GetMsg())};
             }
