@@ -519,9 +519,7 @@ void HandleNSClientDeleteOP(const std::vector<std::string>& parts, ::openmldb::c
     if (absl::SimpleAtoi(parts[1], &id)) {
         op_id = id;
     } else {
-        if (absl::EqualsIgnoreCase(parts[1], "doing")) {
-            status = openmldb::api::TaskStatus::kDoing;
-        } else if (absl::EqualsIgnoreCase(parts[1], "done")) {
+        if (absl::EqualsIgnoreCase(parts[1], "done")) {
             status = openmldb::api::TaskStatus::kDone;
         } else if (absl::EqualsIgnoreCase(parts[1], "failed")) {
             status = openmldb::api::TaskStatus::kFailed;
@@ -534,9 +532,9 @@ void HandleNSClientDeleteOP(const std::vector<std::string>& parts, ::openmldb::c
     }
     auto st = client->DeleteOP(op_id, status);
     if (st.OK()) {
-        std::cout << "Cancel op ok" << std::endl;
+        std::cout << "Delete op ok" << std::endl;
     } else {
-        std::cout << "Cancel op failed, error msg: " << st.ToString() << std::endl;
+        std::cout << "Delete op failed, error msg: " << st.ToString() << std::endl;
     }
 }
 
@@ -2273,6 +2271,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
         printf("addtablefield - add field to the schema table \n");
         printf("addreplica - add replica to leader\n");
         printf("cancelop - cancel the op\n");
+        printf("deleteop - delete the op\n");
         printf("create - create table\n");
         printf("confset - update conf\n");
         printf("confget - get conf\n");
@@ -2325,230 +2324,236 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf(
                 "usage: create table_name ttl partition_num replica_num "
                 "[colum_name1:type:index colum_name2:type ...]\n");
-            printf("ex: create ./table_meta.txt\n");
-            printf("ex: create table1 144000 8 3\n");
-            printf("ex: create table2 latest:10 8 3\n");
+            printf("example: create ./table_meta.txt\n");
+            printf("example: create table1 144000 8 3\n");
+            printf("example: create table2 latest:10 8 3\n");
             printf(
-                "ex: create table3 latest:10 8 3 card:string:index "
+                "example: create table3 latest:10 8 3 card:string:index "
                 "mcc:string:index value:float\n");
         } else if (parts[1] == "drop") {
             printf("desc: drop table\n");
             printf("usage: drop table_name\n");
-            printf("ex: drop table1\n");
+            printf("example: drop table1\n");
         } else if (parts[1] == "put") {
             printf("desc: insert data into table\n");
             printf("usage: put table_name pk ts value\n");
             printf("usage: put table_name ts key1 key2 ... value1 value2 ...\n");
-            printf("ex: put table1 key1 1528872944000 value1\n");
-            printf("ex: put table2 1528872944000 card0 mcc0 1.3\n");
+            printf("example: put table1 key1 1528872944000 value1\n");
+            printf("example: put table2 1528872944000 card0 mcc0 1.3\n");
         } else if (parts[1] == "scan") {
             printf("desc: get records for a period of time\n");
             printf("usage: scan table_name pk start_time end_time [limit]\n");
             printf(
                 "usage: scan table_name key key_name start_time end_time "
                 "[limit]\n");
-            printf("ex: scan table1 key1 1528872944000 1528872930000\n");
-            printf("ex: scan table1 key1 1528872944000 1528872930000 10\n");
-            printf("ex: scan table1 key1 0 0 10\n");
-            printf("ex: scan table2 card0 card 1528872944000 1528872930000\n");
-            printf("ex: scan table2 card0 card 1528872944000 1528872930000 10\n");
-            printf("ex: scan table2 card0 card  0 0 10\n");
+            printf("example: scan table1 key1 1528872944000 1528872930000\n");
+            printf("example: scan table1 key1 1528872944000 1528872930000 10\n");
+            printf("example: scan table1 key1 0 0 10\n");
+            printf("example: scan table2 card0 card 1528872944000 1528872930000\n");
+            printf("example: scan table2 card0 card 1528872944000 1528872930000 10\n");
+            printf("example: scan table2 card0 card  0 0 10\n");
         } else if (parts[1] == "get") {
             printf("desc: get only one record\n");
             printf("usage: get table_name key ts\n");
             printf("usage: get table_name key idx_name ts\n");
-            printf("ex: get table1 key1 1528872944000\n");
-            printf("ex: get table1 key1 0\n");
-            printf("ex: get table2 card0 card 1528872944000\n");
-            printf("ex: get table2 card0 card 0\n");
+            printf("example: get table1 key1 1528872944000\n");
+            printf("example: get table1 key1 0\n");
+            printf("example: get table2 card0 card 1528872944000\n");
+            printf("example: get table2 card0 card 0\n");
         } else if (parts[1] == "delete") {
             printf("desc: delete pk\n");
             printf("usage: delete table_name key idx_name\n");
-            printf("ex: delete table1 key1\n");
-            printf("ex: delete table2 card0 card\n");
+            printf("example: delete table1 key1\n");
+            printf("example: delete table2 card0 card\n");
         } else if (parts[1] == "count") {
             printf("desc: count the num of data in specified key\n");
             printf("usage: count table_name key [filter_expired_data]\n");
             printf("usage: count table_name key idx_name [filter_expired_data]\n");
-            printf("ex: count table1 key1\n");
-            printf("ex: count table1 key1 true\n");
-            printf("ex: count table2 card0 card\n");
-            printf("ex: count table2 card0 card true\n");
+            printf("example: count table1 key1\n");
+            printf("example: count table1 key1 true\n");
+            printf("example: count table2 card0 card\n");
+            printf("example: count table2 card0 card true\n");
         } else if (parts[1] == "preview") {
             printf("desc: preview data in table\n");
             printf("usage: preview table_name [limit]\n");
-            printf("ex: preview table1\n");
-            printf("ex: preview table1 10\n");
+            printf("example: preview table1\n");
+            printf("example: preview table1 10\n");
         } else if (parts[1] == "showtable") {
             printf("desc: show table info\n");
             printf("usage: showtable [table_name]\n");
-            printf("ex: showtable\n");
-            printf("ex: showtable table1\n");
+            printf("example: showtable\n");
+            printf("example: showtable table1\n");
         } else if (parts[1] == "showtablet") {
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
-            printf("ex: showtablet\n");
+            printf("example: showtablet\n");
         } else if (parts[1] == "showsdkendpoint") {
             printf("desc: show sdkendpoint info\n");
             printf("usage: showsdkendpoint\n");
-            printf("ex: showsdkendpoint\n");
+            printf("example: showsdkendpoint\n");
         } else if (parts[1] == "showns") {
             printf("desc: show nameserver info\n");
             printf("usage: showns\n");
-            printf("ex: showns\n");
+            printf("example: showns\n");
         } else if (parts[1] == "showschema") {
             printf("desc: show schema info\n");
             printf("usage: showschema table_name\n");
-            printf("ex: showschema table1\n");
+            printf("example: showschema table1\n");
         } else if (parts[1] == "showopstatus") {
             printf("desc: show op info\n");
             printf("usage: showopstatus [table_name pid]\n");
-            printf("ex: showopstatus\n");
-            printf("ex: showopstatus table1\n");
-            printf("ex: showopstatus table1 0\n");
+            printf("example: showopstatus\n");
+            printf("example: showopstatus table1\n");
+            printf("example: showopstatus table1 0\n");
         } else if (parts[1] == "makesnapshot") {
             printf("desc: make snapshot\n");
             printf("usage: makesnapshot name pid\n");
-            printf("ex: makesnapshot table1 0\n");
+            printf("example: makesnapshot table1 0\n");
         } else if (parts[1] == "addreplica") {
             printf("desc: add replica to leader\n");
             printf("usage: addreplica name pid_group endpoint\n");
-            printf("ex: addreplica table1 0 172.27.128.31:9527\n");
-            printf("ex: addreplica table1 0,3,5 172.27.128.31:9527\n");
-            printf("ex: addreplica table1 1-5 172.27.128.31:9527\n");
+            printf("example: addreplica table1 0 172.27.128.31:9527\n");
+            printf("example: addreplica table1 0,3,5 172.27.128.31:9527\n");
+            printf("example: addreplica table1 1-5 172.27.128.31:9527\n");
         } else if (parts[1] == "delreplica") {
             printf("desc: delete replica from leader\n\n");
             printf("usage: delreplica name pid_group endpoint\n");
-            printf("ex: delreplica table1 0 172.27.128.31:9527\n");
-            printf("ex: delreplica table1 0,3,5 172.27.128.31:9527\n");
-            printf("ex: delreplica table1 1-5 172.27.128.31:9527\n");
+            printf("example: delreplica table1 0 172.27.128.31:9527\n");
+            printf("example: delreplica table1 0,3,5 172.27.128.31:9527\n");
+            printf("example: delreplica table1 1-5 172.27.128.31:9527\n");
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
-            printf("ex: confset auto_failover true\n");
+            printf("example: confset auto_failover true\n");
         } else if (parts[1] == "confget") {
             printf("desc: get conf\n");
             printf("usage: confget\n");
             printf("usage: confget conf_name\n");
-            printf("ex: confget\n");
-            printf("ex: confget auto_failover\n");
+            printf("example: confget\n");
+            printf("example: confget auto_failover\n");
         } else if (parts[1] == "changeleader") {
             printf(
                 "desc: select leader again when the endpoint of leader "
                 "offline\n");
             printf("usage: changeleader table_name pid [candidate_leader]\n");
-            printf("ex: changeleader table1 0\n");
-            printf("ex: changeleader table1 0 auto\n");
-            printf("ex: changeleader table1 0 172.27.128.31:9527\n");
+            printf("example: changeleader table1 0\n");
+            printf("example: changeleader table1 0 auto\n");
+            printf("example: changeleader table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "offlineendpoint") {
             printf(
                 "desc: select leader and delete replica when endpoint "
                 "offline\n");
             printf("usage: offlineendpoint endpoint [concurrency]\n");
-            printf("ex: offlineendpoint 172.27.128.31:9527\n");
-            printf("ex: offlineendpoint 172.27.128.31:9527 2\n");
+            printf("example: offlineendpoint 172.27.128.31:9527\n");
+            printf("example: offlineendpoint 172.27.128.31:9527 2\n");
         } else if (parts[1] == "recovertable") {
             printf("desc: recover only one table partition\n");
             printf("usage: recovertable table_name pid endpoint\n");
-            printf("ex: recovertable table1 0 172.27.128.31:9527\n");
+            printf("example: recovertable table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "recoverendpoint") {
             printf("desc: recover all tables in endpoint when online\n");
             printf(
                 "usage: recoverendpoint endpoint [need_restore] "
                 "[concurrency]\n");
-            printf("ex: recoverendpoint 172.27.128.31:9527\n");
-            printf("ex: recoverendpoint 172.27.128.31:9527 false\n");
-            printf("ex: recoverendpoint 172.27.128.31:9527 true 2\n");
+            printf("example: recoverendpoint 172.27.128.31:9527\n");
+            printf("example: recoverendpoint 172.27.128.31:9527 false\n");
+            printf("example: recoverendpoint 172.27.128.31:9527 true 2\n");
         } else if (parts[1] == "migrate") {
             printf("desc: migrate partition form one endpoint to another\n");
             printf(
                 "usage: migrate src_endpoint table_name pid_group "
                 "des_endpoint\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 1,3,5 172.27.2.52:9992\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 1-5 172.27.2.52:9992\n");
+            printf("example: migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992\n");
+            printf("example: migrate 172.27.2.52:9991 table1 1,3,5 172.27.2.52:9992\n");
+            printf("example: migrate 172.27.2.52:9991 table1 1-5 172.27.2.52:9992\n");
         } else if (parts[1] == "gettablepartition") {
             printf("desc: get partition info\n");
             printf("usage: gettablepartition table_name pid\n");
-            printf("ex: gettablepartition table1 0\n");
+            printf("example: gettablepartition table1 0\n");
         } else if (parts[1] == "settablepartition") {
             printf("desc: set partition info\n");
             printf("usage: settablepartition table_name partition_file_path\n");
-            printf("ex: settablepartition table1 ./partition_file.txt\n");
+            printf("example: settablepartition table1 ./partition_file.txt\n");
         } else if (parts[1] == "showdb") {
             printf("desc: show all databases\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
             printf("desc: exit client\n");
-            printf("ex: quit\n");
-            printf("ex: exit\n");
+            printf("eamplex: quit\n");
+            printf("example: exit\n");
         } else if (parts[1] == "help" || parts[1] == "man") {
             printf("desc: get cmd info\n");
             printf("usage: help [cmd]\n");
             printf("usage: man [cmd]\n");
-            printf("ex:help\n");
-            printf("ex:help create\n");
-            printf("ex:man\n");
-            printf("ex:man create\n");
+            printf("example:help\n");
+            printf("example:help create\n");
+            printf("example:man\n");
+            printf("example:man create\n");
         } else if (parts[1] == "setttl") {
             printf("desc: set table ttl \n");
             printf("usage: setttl table_name ttl_type ttl [ts_name]\n");
-            printf("ex: setttl t1 absolute 10\n");
-            printf("ex: setttl t2 latest 5\n");
-            printf("ex: setttl t3 latest 5 ts1\n");
+            printf("example: setttl t1 absolute 10\n");
+            printf("example: setttl t2 latest 5\n");
+            printf("example: setttl t3 latest 5 ts1\n");
         } else if (parts[1] == "cancelop") {
             printf("desc: cancel the op\n");
             printf("usage: cancelop op_id\n");
-            printf("ex: cancelop 5\n");
+            printf("example: cancelop 5\n");
+        } else if (parts[1] == "deleteop") {
+            printf("desc: delete the op\n");
+            printf("usage1: delete op_id\n");
+            printf("usage2: delete op_status\n");
+            printf("example: delete 5\n");
+            printf("example: delete doing\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
             printf("usage: updatetablealive table_name pid endppoint is_alive\n");
-            printf("ex: updatetablealive t1 * 172.27.2.52:9991 no\n");
-            printf("ex: updatetablealive t1 0 172.27.2.52:9991 no\n");
+            printf("example: updatetablealive t1 * 172.27.2.52:9991 no\n");
+            printf("example: updatetablealive t1 0 172.27.2.52:9991 no\n");
         } else if (parts[1] == "addtablefield") {
             printf("desc: add table field (max adding field count is 63)\n");
             printf("usage: addtablefield table_name col_name col_type\n");
-            printf("ex: addtablefield test card string\n");
-            printf("ex: addtablefield test money float\n");
+            printf("example: addtablefield test card string\n");
+            printf("example: addtablefield test money float\n");
         } else if (parts[1] == "info") {
             printf("desc: show information of the table\n");
             printf("usage: info table_name \n");
-            printf("ex: info test\n");
+            printf("example: info test\n");
         } else if (parts[1] == "addrepcluster") {
             printf("desc: add remote replica cluster\n");
             printf("usage: addrepcluster zk_endpoints zk_path cluster_alias\n");
             printf(
-                "ex: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /openmldb_cluster "
+                "example: addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /openmldb_cluster "
                 "prod_dc01\n");
         } else if (parts[1] == "showrepcluster") {
             printf("desc: show remote replica cluster\n");
             printf("usage: showrepcluster\n");
-            printf("ex: showrepcluster\n");
+            printf("example: showrepcluster\n");
         } else if (parts[1] == "removerepcluster") {
             printf("desc: remove remote replica cluster\n");
             printf("usage: removerepcluster cluster_alias\n");
-            printf("ex: removerepcluster prod_dc01\n");
+            printf("example: removerepcluster prod_dc01\n");
         } else if (parts[1] == "switchmode") {
             printf("desc: switch cluster mode\n");
             printf("usage: switchmode normal|leader\n");
-            printf("ex: switchmode normal\n");
-            printf("ex: switchmode leader\n");
+            printf("example: switchmode normal\n");
+            printf("example: switchmode leader\n");
         } else if (parts[1] == "synctable") {
             printf("desc: synctable from leader cluster to replica cluster\n");
             printf("usage: synctable table_name cluster_alias [pid]\n");
-            printf("ex: synctable test bj\n");
-            printf("ex: synctable test bj 0\n");
+            printf("example: synctable test bj\n");
+            printf("example: synctable test bj 0\n");
         } else if (parts[1] == "setsdkendpoint") {
             printf("desc: set sdkendpoint for external network sdk\n");
             printf("usage: setsdkendpoint server_name sdkendpoint\n");
-            printf("eg: setsdkendpoint tb1 202.12.18.1:9527\n");
-            printf("eg: setsdkendpoint tb1 null\n");
+            printf("example: setsdkendpoint tb1 202.12.18.1:9527\n");
+            printf("example: setsdkendpoint tb1 null\n");
         } else if (parts[1] == "addindex") {
             printf("desc: add new index to table\n");
             printf("usage: addindex table_name index_name [col_name] [ts_name]\n");
-            printf("ex: addindex test card\n");
-            printf("ex: addindex test combine1 card,mcc\n");
-            printf("ex: addindex test combine2 id,name ts1,ts2\n");
-            printf("ex: addindex test combine3 id:string,name:int32 ts1,ts2\n");
+            printf("example: addindex test card\n");
+            printf("example: addindex test combine1 card,mcc\n");
+            printf("example: addindex test combine2 id,name ts1,ts2\n");
+            printf("example: addindex test combine3 id:string,name:int32 ts1,ts2\n");
         } else if (parts[1] == "deleteindex") {
             printf("desc: delete index of specified index\n");
             printf("usage: deleteindex table_name index_name");
@@ -2556,15 +2561,15 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
         } else if (parts[1] == "createdb") {
             printf("desc: create database\n");
             printf("usage: createdb database_name\n");
-            printf("eg: createdb db1");
+            printf("example: createdb db1");
         } else if (parts[1] == "use") {
             printf("desc: use database\n");
             printf("usage: use database_name\n");
-            printf("eg: use db1");
+            printf("example: use db1");
         } else if (parts[1] == "dropdb") {
             printf("desc: drop database\n");
             printf("usage: dropdb database_name\n");
-            printf("eg: dropdb db1");
+            printf("example: dropdb db1");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -2572,10 +2577,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
         printf("help format error!\n");
         printf("usage: help [cmd]\n");
         printf("usage: man [cmd]\n");
-        printf("ex: help\n");
-        printf("ex: help create\n");
-        printf("ex:man\n");
-        printf("ex:man create\n");
+        printf("example: help\n");
+        printf("example: help create\n");
+        printf("example:man\n");
+        printf("example:man create\n");
     }
 }
 

@@ -285,6 +285,22 @@ Command format: `cancelop op\_id`
 Cancel op ok!
 ```
 
+### deleteop
+
+Delete one or more op from nameserver
+
+Command format: deleteop op\_id / op\_type
+
+* op\_id: the operation ID to delete
+* op\_type: the operation type to delete
+
+```
+> deleteop 5
+Delete op ok!
+> deleteop done
+Delete op ok!
+```
+
 ### showopstatus
 
 Display operation execution information

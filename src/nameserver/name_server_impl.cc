@@ -2660,7 +2660,8 @@ void NameServerImpl::DeleteOP(RpcController* controller, const DeleteOPRequest* 
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    if (!request->has_op_id() && request->status() == ::openmldb::api::TaskStatus::kInited) {
+    if (!request->has_op_id() && (request->status() == ::openmldb::api::TaskStatus::kInited ||
+                request->status() == ::openmldb::api::TaskStatus::kDoing)) {
         response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
         response->set_msg("cannot delete the Inited OP");
         PDLOG(WARNING, "cannot delete the Inited OP");
