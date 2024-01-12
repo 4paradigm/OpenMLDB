@@ -8,5 +8,6 @@
     package
     docker
     source
+    config_file
     upgrade
     
