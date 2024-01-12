@@ -1,11 +1,11 @@
 =============================
-功能列表
+安装部署
 =============================
 
 .. toctree::
     :maxdepth: 1
 
-    binary
+    package
     docker
     source
     upgrade

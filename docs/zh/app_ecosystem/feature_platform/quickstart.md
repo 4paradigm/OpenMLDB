@@ -4,29 +4,7 @@
 
 首先部署 OpenMLDB 集群，参考[部署文档](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html#id3)。
 
-然后部署 OpenMLDB 特征平台，下载 Jar 文件。
-
-```
-wget https://openmldb.ai/download/feature-platform/openmldb-feature-platform-0.8-SNAPSHOT.jar
-```
-
-准备配置文件并命名为 `application.yml`。
-
-```
-server:
-  port: 8888
- 
-openmldb:
-  zk_cluster: 127.0.0.1:2181
-  zk_path: /openmldb
-  apiserver: 127.0.0.1:9080
-```
-
-启动特征平台服务。
-
-```
-java -jar ./openmldb-feature-platform-0.8-SNAPSHOT.jar
-```
+然后部署 OpenMLDB 特征平台，参考[部署文档](./install/package.md)。
 
 ## 使用流程
 
@@ -36,7 +14,6 @@ java -jar ./openmldb-feature-platform-0.8-SNAPSHOT.jar
 2. 创建特征：使用SQL语句来定义特征视图，特征平台使用SQL编译器进行特征分析并创建对应的特征。
 3. 离线场景：选择想要导入的特征，可以同时选择不同特征视图的特征，并使用分布式计算把样本文件导入到本地或分布式存储。
 4. 在线场景：选择想要上线的特征，一键发布成在线特征抽取服务，然后可使用HTTP客户端进行请求和返回在线特征抽取结果。
-5. 
 
 ### 导入数据
 
