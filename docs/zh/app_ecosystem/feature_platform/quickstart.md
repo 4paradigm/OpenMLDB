@@ -27,7 +27,7 @@ CREATE TABLE test_db.test_table (id STRING, trx_time DATE);
 
 ![](./images/create_test_table.png)
 
-为了测试方便，我们准备一个 CSV 文件并保存到 `/tmp/test_table.csv`。
+为了测试方便，我们准备一个 CSV 文件并保存到 `/tmp/test_table.csv`。注意，这里本地是 OpenMLDB TaskManager 服务器的本地路径，一般也是 OpenMLDB 特征平台的服务器路径，需要提前登陆编辑。
 
 ```
 id,trx_time
