@@ -10,7 +10,8 @@
     online_scenario
     offline_scenario
     sql_playground
+    manage_center
     computed_features
-    advanced_management
+    
     sql_tool
     
