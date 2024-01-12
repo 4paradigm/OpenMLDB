@@ -351,11 +351,17 @@ message UpdateTableAliveRequest {
     optional string db = 5 [default = ""];
 }
 
-message ShowOPStatusRequest{
+message ShowOPStatusRequest {
     optional string name = 1;
     optional uint32 pid = 2;
     optional string db = 3;
     optional uint64 op_id = 4;
+}
+
+message DeleteOPRequest {
+    optional string db = 1;
+    optional uint64 op_id = 2;
+    optional openmldb.api.TaskStatus status = 3;
 }
 
 message ConnectZKRequest {}
@@ -549,6 +555,7 @@ service NameServer {
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
+    rpc DeleteOP(DeleteOPRequest) returns (GeneralResponse);
     rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);

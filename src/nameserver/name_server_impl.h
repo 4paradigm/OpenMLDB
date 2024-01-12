@@ -264,6 +264,8 @@ class NameServerImpl : public NameServer {
 
     void CancelOP(RpcController* controller, const CancelOPRequest* request, GeneralResponse* response, Closure* done);
 
+    void DeleteOP(RpcController* controller, const DeleteOPRequest* request, GeneralResponse* response, Closure* done);
+
     void AddReplicaCluster(RpcController* controller, const ClusterAddress* request, GeneralResponse* response,
                            Closure* done);
 

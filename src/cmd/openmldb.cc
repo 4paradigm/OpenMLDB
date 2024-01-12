@@ -508,6 +508,38 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::openmldb::c
     }
 }
 
+void HandleNSClientDeleteOP(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "bad deleteop format, eg: deleteop 1002, deleteop doing" << std::endl;
+        return;
+    }
+    std::optional<uint64_t> op_id = std::nullopt;
+    openmldb::api::TaskStatus status = openmldb::api::TaskStatus::kDone;
+    uint64_t id = 0;
+    if (absl::SimpleAtoi(parts[1], &id)) {
+        op_id = id;
+    } else {
+        if (absl::EqualsIgnoreCase(parts[1], "doing")) {
+            status = openmldb::api::TaskStatus::kDoing;
+        } else if (absl::EqualsIgnoreCase(parts[1], "done")) {
+            status = openmldb::api::TaskStatus::kDone;
+        } else if (absl::EqualsIgnoreCase(parts[1], "failed")) {
+            status = openmldb::api::TaskStatus::kFailed;
+        } else if (absl::EqualsIgnoreCase(parts[1], "canceled")) {
+            status = openmldb::api::TaskStatus::kCanceled;
+        } else {
+            std::cout << "invalid args" << std::endl;
+            return;
+        }
+    }
+    auto st = client->DeleteOP(op_id, status);
+    if (st.OK()) {
+        std::cout << "Cancel op ok" << std::endl;
+    } else {
+        std::cout << "Cancel op failed, error msg: " << st.ToString() << std::endl;
+    }
+}
+
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
@@ -3803,6 +3835,8 @@ void StartNsClient() {
             HandleNSClientSetTTL(parts, &client);
         } else if (parts[0] == "cancelop") {
             HandleNSClientCancelOP(parts, &client);
+        } else if (parts[0] == "deleteop") {
+            HandleNSClientDeleteOP(parts, &client);
         } else if (parts[0] == "addtablefield") {
             HandleNSAddTableField(parts, &client);
         } else if (parts[0] == "info") {
