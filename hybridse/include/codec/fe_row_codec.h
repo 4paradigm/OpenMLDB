@@ -20,11 +20,10 @@
 #include <map>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
+
+#include "absl/status/statusor.h"
 #include "base/raw_buffer.h"
-#include "butil/iobuf.h"
-#include "gflags/gflags.h"
 #include "proto/fe_type.pb.h"
 
 namespace hybridse {
@@ -180,26 +179,38 @@ class RowView {
 };
 
 struct ColInfo {
-    ::hybridse::type::Type type;
+    // type is still used in same lagecy udf context,
+    // cautious use for non-base types
+    ::hybridse::type::Type type() const {
+        if (!schema.has_base_type()) {
+            return type::kNull;
+        }
+        return schema.base_type();
+    }
+
     uint32_t idx;
     uint32_t offset;
     std::string name;
+    type::ColumnSchema schema;
 
     ColInfo() {}
-    ColInfo(const std::string& name, ::hybridse::type::Type type, uint32_t idx,
-            uint32_t offset)
-        : type(type), idx(idx), offset(offset), name(name) {}
+    ColInfo(const std::string& name, ::hybridse::type::Type type, uint32_t idx, uint32_t offset)
+        : idx(idx), offset(offset), name(name) {
+        schema.set_base_type(type);
+    }
+
+    ColInfo(const std::string& name, const type::ColumnSchema& sc, uint32_t idx, uint32_t offset)
+        : idx(idx), offset(offset), name(name), schema(sc) {}
 };
 
 struct StringColInfo : public ColInfo {
     uint32_t str_next_offset;
     uint32_t str_start_offset;
 
-    StringColInfo() {}
-    StringColInfo(const std::string& name, ::hybridse::type::Type type,
+    StringColInfo(const std::string& name, ::hybridse::type::ColumnSchema sc,
                   uint32_t idx, uint32_t offset, uint32_t str_next_offset,
                   uint32_t str_start_offset)
-        : ColInfo(name, type, idx, offset),
+        : ColInfo(name, sc, idx, offset),
           str_next_offset(str_next_offset),
           str_start_offset(str_start_offset) {}
 };
@@ -209,7 +220,7 @@ class SliceFormat {
     explicit SliceFormat(const hybridse::codec::Schema* schema);
     virtual ~SliceFormat() {}
 
-    bool GetStringColumnInfo(size_t idx, StringColInfo* res) const;
+    absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t idx) const;
 
     const ColInfo* GetColumnInfo(size_t idx) const;
 
@@ -224,7 +235,7 @@ class SliceFormat {
 class RowFormat {
  public:
     virtual ~RowFormat() {}
-    virtual bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const = 0;
+    virtual absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t schema_idx, size_t idx) const = 0;
     virtual const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const = 0;
     virtual size_t GetSliceId(size_t schema_idx) const = 0;
 };
@@ -245,8 +256,8 @@ class MultiSlicesRowFormat : public RowFormat {
         slice_formats_.clear();
     }
 
-    bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
-        return slice_formats_[schema_idx].GetStringColumnInfo(idx, res);
+    absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t schema_idx, size_t idx) const override {
+        return slice_formats_[schema_idx].GetStringColumnInfo(idx);
     }
 
     const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const override {
@@ -287,8 +298,8 @@ class SingleSliceRowFormat : public RowFormat {
         }
     }
 
-    bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
-        return slice_format_->GetStringColumnInfo(offsets_[schema_idx] + idx, res);
+    absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t schema_idx, size_t idx) const override {
+        return slice_format_->GetStringColumnInfo(offsets_[schema_idx] + idx);
     }
 
     const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const override {

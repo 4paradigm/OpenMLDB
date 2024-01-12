@@ -235,8 +235,9 @@ Status RowFnLetIRBuilder::BuildProject(
                kCodegenError, "Fail to get output type at ", index, ", expect ",
                expr->GetOutputType()->GetName());
 
-    ::hybridse::type::Type ctype;
-    CHECK_TRUE(DataType2SchemaType(*data_type, &ctype), kCodegenError);
+    ::hybridse::type::ColumnSchema schema;
+    auto s = Type2ColumnSchema(data_type, &schema);
+    CHECK_TRUE(s.ok(), kCodegenError, s.ToString());
 
     outputs->insert(std::make_pair(index, expr_out_val));
     return Status::OK();

@@ -928,10 +928,18 @@ SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
     for (int32_t i = 0; i < schema_->size(); i++) {
         const ::hybridse::type::ColumnDef& column = schema_->Get(i);
         if (column.type() == ::hybridse::type::kVarchar) {
-            if (FLAGS_enable_spark_unsaferow_format) {
-                infos_.emplace_back(column.name(), column.type(), i, offset);
+            // backwards compatibility check
+            type::ColumnSchema col_schema;
+            if (column.has_schema()) {
+                col_schema = column.schema();
             } else {
-                infos_.emplace_back(column.name(), column.type(), i, string_field_cnt);
+                col_schema.set_base_type(column.type());
+            }
+
+            if (FLAGS_enable_spark_unsaferow_format) {
+                infos_.emplace_back(column.name(), col_schema, i, offset);
+            } else {
+                infos_.emplace_back(column.name(), col_schema, i, string_field_cnt);
             }
 
             infos_dict_[column.name()] = i;
@@ -943,13 +951,17 @@ SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
                 offset += 8;
             }
         } else {
-            auto TYPE_SIZE_MAP = codec::GetTypeSizeMap();
+            auto& TYPE_SIZE_MAP = codec::GetTypeSizeMap();
             auto it = TYPE_SIZE_MAP.find(column.type());
             if (it == TYPE_SIZE_MAP.end()) {
                 LOG(WARNING) << "fail to find column type "
                              << ::hybridse::type::Type_Name(column.type());
             } else {
-                infos_.emplace_back(column.name(), column.type(), i, offset);
+                if (column.has_schema()) {
+                    infos_.emplace_back(column.name(), column.schema(), i, offset);
+                } else {
+                    infos_.emplace_back(column.name(), column.type(), i, offset);
+                }
                 infos_dict_[column.name()] = i;
                 offset += it->second;
             }
@@ -969,17 +981,12 @@ const ColInfo* SliceFormat::GetColumnInfo(size_t idx) const {
     return idx < infos_.size() ? &infos_[idx] : nullptr;
 }
 
-bool SliceFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
-    if (nullptr == res) {
-        LOG(WARNING) << "input args have null";
-        return false;
-    }
+absl::StatusOr<StringColInfo> SliceFormat::GetStringColumnInfo(size_t idx) const {
     if (idx >= infos_.size()) {
-        return false;
+        return absl::NotFoundError("schemas empty");
     }
     // TODO(wangtaize) support null check
     auto& base_col_info = infos_[idx];
-    auto ty = base_col_info.type;
     uint32_t col_idx = base_col_info.idx;
     uint32_t offset = base_col_info.offset;
     uint32_t next_offset = -1;
@@ -990,17 +997,15 @@ bool SliceFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
         if (FLAGS_enable_spark_unsaferow_format) {
             // No need to get next offset for UnsafeRowOpt and ignore the warning
         } else {
-            LOG(WARNING) << "fail to get string field next offset";
-            return false;
+            return absl::NotFoundError("fail to get string field next offset");
         }
     }
     DLOG(INFO) << "get string with offset " << offset << " next offset "
                << next_offset << " str_field_start_offset "
                << str_field_start_offset_ << " for col " << base_col_info.name;
 
-    *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
-                        str_field_start_offset_);
-    return true;
+    return StringColInfo(base_col_info.name, base_col_info.schema, col_idx, offset, next_offset,
+                         str_field_start_offset_);
 }
 
 }  // namespace codec

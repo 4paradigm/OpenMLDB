@@ -15,30 +15,39 @@
  */
 #include "codegen/aggregate_ir_builder.h"
 
-#include <stdlib.h>
 #include <algorithm>
 #include <limits>
 #include <map>
 #include <memory>
 
+#include "absl/container/flat_hash_set.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
+#include "node/node_manager.h"
+
 namespace hybridse {
 namespace codegen {
 
-AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
-                                       ::llvm::Module* module,
-                                       const node::FrameNode* frame_node,
-                                       uint32_t id)
-    : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
-    available_agg_func_set_ = {"sum", "avg", "count", "min", "max"};
+static auto CreateAggFuncMap() {
+    absl::flat_hash_set<absl::string_view> res = {"sum", "avg", "count", "min", "max"};
+    return res;
 }
 
-bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
-    return available_agg_func_set_.find(fname) != available_agg_func_set_.end();
+static auto& GetAggFuncMap() {
+    static const absl::flat_hash_set<absl::string_view>& res = *new auto(CreateAggFuncMap());
+    return res;
+}
+
+AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc, ::llvm::Module* module,
+                                       const node::FrameNode* frame_node, uint32_t id)
+    : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {}
+
+bool AggregateIRBuilder::IsAggFuncName(absl::string_view fname) const {
+    auto& map = GetAggFuncMap();
+    return map.find(fname) != map.end();
 }
 
 bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
@@ -89,21 +98,23 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                 DLOG(ERROR) << status;
                 return false;
             }
-            const codec::ColInfo& col_info =
-                *schema_context_->GetRowFormat()
-                     ->GetColumnInfo(schema_idx, col_idx);
-            auto col_type = col_info.type;
+            const codec::ColInfo& col_info = *schema_context_->GetRowFormat()->GetColumnInfo(schema_idx, col_idx);
             uint32_t offset = col_info.offset;
 
             // resolve llvm agg type
-            node::DataType node_type;
-            if (!SchemaType2DataType(col_type, &node_type)) {
-                LOG(ERROR) << "unrecognized data type "
-                           << hybridse::type::Type_Name(col_type);
+            node::NodeManager nm;
+            auto s = ColumnSchema2Type(col_info.schema, &nm);
+            if (!s.ok()) {
+                // legacy udf resolve context, this only happens for base types
+                LOG(ERROR) << s.status();
                 return false;
             }
-            if (GetOutputLlvmType(module_->getContext(), agg_func_name,
-                                  node_type) == nullptr) {
+            auto* type = s.value();
+            if (!type->IsBaseType()) {
+                LOG(INFO) << "skip CollectAggColumn for non-base types";
+                return false;
+            }
+            if (GetOutputLlvmType(module_->getContext(), agg_func_name, type->base()) == nullptr) {
                 return false;
             }
             if (agg_func_name == "count") {
@@ -111,11 +122,11 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
             } else if (agg_func_name == "avg") {
                 *res_agg_type = ::hybridse::type::kDouble;
             } else {
-                *res_agg_type = col_type;
+                *res_agg_type = col_info.schema.base_type();
             }
 
             std::string col_key = absl::StrCat(rel_name, ".", col_name);
-            auto res = agg_col_infos_.try_emplace(col_key, col, node_type, schema_idx, col_idx, offset);
+            auto res = agg_col_infos_.try_emplace(col_key, col, type->base(), schema_idx, col_idx, offset);
             res.first->second.AddAgg(agg_func_name, output_idx);
             return true;
         }

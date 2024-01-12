@@ -15,15 +15,18 @@
  */
 
 #include "codegen/buf_ir_builder.h"
+
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "codec/fe_row_codec.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
+#include "node/node_manager.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -46,7 +49,6 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* slice_ptr,
         return false;
     }
 
-    node::TypeNode data_type;
     const codec::ColInfo* col_info = format_->GetColumnInfo(schema_idx_, col_idx);
     if (col_info == nullptr) {
         LOG(WARNING) << "fail to resolve field info at " << col_idx;
@@ -56,14 +58,16 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* slice_ptr,
     // Get the corrected column index from RowFormat
     auto row_format_corrected_col_idx = col_info->idx;
 
-    if (!SchemaType2DataType(col_info->type, &data_type)) {
-        LOG(WARNING) << "unrecognized data type " + hybridse::type::Type_Name(col_info->type);
+    node::NodeManager tmp_nm;
+    auto s = ColumnSchema2Type(col_info->schema, &tmp_nm);
+    if (!s.ok()) {
+        LOG(WARNING) << s.value();
         return false;
     }
     uint32_t offset = col_info->offset;
 
     ::llvm::IRBuilder<> builder(block_);
-    switch (data_type.base_) {
+    switch (s.value()->base()) {
         case ::hybridse::node::kBool: {
             llvm::Type* bool_ty = builder.getInt1Ty();
             return BuildGetPrimaryField("hybridse_storage_get_bool_field", row_ptr, row_format_corrected_col_idx,
@@ -125,17 +129,19 @@ bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* slice_ptr,
         }
 
         case ::hybridse::node::kVarchar: {
-            codec::StringColInfo str_info;
-            if (!format_->GetStringColumnInfo(schema_idx_, col_idx, &str_info)) {
-                LOG(WARNING) << "fail to get string filed offset and next offset " << col_info->name;
+            auto s = format_->GetStringColumnInfo(schema_idx_, col_idx);
+            if (!s.ok()) {
+                LOG(WARNING) << "fail to get string filed offset and next offset " << s.status();
+                return false;
             }
+            auto& str_info = s.value();
             DLOG(INFO) << "get string with offset " << offset << " next offset " << str_info.str_next_offset
                        << " for col " << col_idx;
             return BuildGetStringField(str_info.idx, offset, str_info.str_next_offset, str_info.str_start_offset,
                                        row_ptr, row_size, output);
         }
         default: {
-            LOG(WARNING) << "fail to get col for type: " << data_type.GetName();
+            LOG(WARNING) << "fail to get col for type: " << s.value()->DebugString();
             return false;
         }
     }

@@ -15,6 +15,7 @@
  */
 
 #include "codegen/ir_base_builder.h"
+#include <absl/status/status.h>
 
 #include <string>
 #include <utility>
@@ -27,6 +28,7 @@
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
+#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace codegen {
@@ -777,6 +779,104 @@ bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
     }
     return true;
 }
+
+static auto CreateBaseDataType2SchemaTypeMap() {
+    // type mapping for SQL base types only
+    absl::flat_hash_map<node::DataType, type::Type> map = {{node::DataType::kBool, type::kBool},
+                                                           {node::DataType::kInt16, type::kInt16},
+                                                           {node::DataType::kInt32, type::kInt32},
+                                                           {node::DataType::kInt64, type::kInt64},
+                                                           {node::DataType::kFloat, type::kFloat},
+                                                           {node::DataType::kDouble, type::kDouble},
+                                                           {node::DataType::kVarchar, type::kVarchar},
+                                                           {node::DataType::kDate, type::kDate},
+                                                           {node::DataType::kTimestamp, type::kTimestamp},
+
+                                                           // historic reason, null is bool during encoding
+                                                           {node::DataType::kNull, type::kBool},
+                                                           {node::DataType::kVoid, type::kBool}};
+    return map;
+}
+
+static const auto& GetBaseDataType2SchemaTypeMap() {
+    static const absl::flat_hash_map<node::DataType, type::Type>& map = *new auto(CreateBaseDataType2SchemaTypeMap());
+    return map;
+}
+static auto CreateSchemaType2BaseDataTypeMap() {
+    // type mapping for SQL base types only
+    absl::flat_hash_map<type::Type, node::DataType> map = {
+        {type::kBool, node::DataType::kBool},          {type::kInt16, node::DataType::kInt16},
+        {type::kInt32, node::DataType::kInt32},        {type::kInt64, node::DataType::kInt64},
+        {type::kFloat, node::DataType::kFloat},        {type::kDouble, node::DataType::kDouble},
+        {type::kVarchar, node::DataType::kVarchar},    {type::kDate, node::DataType::kDate},
+        {type::kTimestamp, node::DataType::kTimestamp}};
+    return map;
+}
+
+static const auto& GetSchemaType2BaseTypeMap() {
+    static const absl::flat_hash_map<type::Type, node::DataType>& map = *new auto(CreateSchemaType2BaseDataTypeMap());
+    return map;
+}
+
+absl::Status Type2ColumnSchema(const node::TypeNode* type, type::ColumnSchema* mut_schema) {
+    if (type->IsMap()) {
+        assert(type->GetGenericSize() == 2);
+        auto* mut_map_type = mut_schema->mutable_map_type();
+        auto* mut_map_key_type = mut_map_type->mutable_key_type();
+        auto* mut_map_value_type = mut_map_type->mutable_value_type();
+        auto s = Type2ColumnSchema(type->GetGenericType(0), mut_map_key_type);
+        s.Update(Type2ColumnSchema(type->GetGenericType(1), mut_map_value_type));
+        return s;
+    } else if (type->IsArray()) {
+        assert(type->GetGenericSize() == 1);
+        auto* mut_array_type = mut_schema->mutable_array_type();
+        auto* mut_array_ele_type = mut_array_type->mutable_ele_type();
+        return Type2ColumnSchema(type->GetGenericType(0), mut_array_ele_type);
+    }
+
+    // simple type
+    auto& map = GetBaseDataType2SchemaTypeMap();
+    auto it = map.find(type->base());
+    if (it == map.end()) {
+        return absl::UnimplementedError(absl::StrCat("unable to convert from ", type->DebugString()));
+    }
+    mut_schema->set_base_type(it->second);
+    return absl::OkStatus();
+}
+
+absl::StatusOr<node::TypeNode*> ColumnSchema2Type(const type::ColumnSchema& schema, node::NodeManager* tmp_nm) {
+    if (schema.has_map_type()) {
+        auto& map_type = schema.map_type();
+        auto s1 = ColumnSchema2Type(map_type.key_type(), tmp_nm);
+        if (!s1.ok()) {
+            return s1.status();
+        }
+        auto s2 = ColumnSchema2Type(map_type.value_type(), tmp_nm);
+        if (!s2.ok()) {
+            return s2.status();
+        }
+
+        return tmp_nm->MakeNode<node::MapType>(s1.value(), s2.value());
+    } else if (schema.has_array_type()) {
+        auto& arr_type = schema.array_type();
+        auto s = ColumnSchema2Type(arr_type.ele_type(), tmp_nm);
+        if (!s.ok()) {
+            return s.status();
+        }
+        return tmp_nm->MakeNode<node::TypeNode>(node::kArray, s.value());
+    } else if (schema.has_base_type()) {
+        auto& map = GetSchemaType2BaseTypeMap();
+        auto it = map.find(schema.base_type());
+        if (it == map.end()) {
+            return absl::UnimplementedError(absl::StrCat("column schema to type node: ", schema.DebugString()));
+        }
+
+        return tmp_nm->MakeNode<node::TypeNode>(it->second);
+    }
+
+    return absl::UnimplementedError(absl::StrCat("unknown type: ", schema.DebugString()));
+}
+
 bool SchemaType2DataType(const ::hybridse::type::Type type,
                          ::hybridse::node::TypeNode* output) {
     if (nullptr == output) {

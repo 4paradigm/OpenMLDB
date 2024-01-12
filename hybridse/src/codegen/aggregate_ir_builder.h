@@ -89,8 +89,6 @@ class AggregateIRBuilder {
     bool CollectAggColumn(const node::ExprNode* expr, size_t output_idx,
                           ::hybridse::type::Type* col_type);
 
-    bool IsAggFuncName(const std::string& fname);
-
     static llvm::Type* GetOutputLlvmType(
         ::llvm::LLVMContext& llvm_ctx,  // NOLINT
         const std::string& fname, const node::DataType& node_type);
@@ -105,13 +103,14 @@ class AggregateIRBuilder {
     bool empty() const { return agg_col_infos_.empty(); }
 
  private:
+    bool IsAggFuncName(absl::string_view fname) const;
+
     // schema context of input node
     const vm::SchemasContext* schema_context_;
 
     ::llvm::Module* module_;
     const node::FrameNode* frame_node_;
     uint32_t id_;
-    std::set<std::string> available_agg_func_set_;
     std::unordered_map<std::string, AggColumnInfo> agg_col_infos_;
 };
 

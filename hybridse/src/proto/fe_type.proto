@@ -40,12 +40,49 @@ enum TTLType {
     kTTLNone = 5;
 }
 
+message ArrayType {
+    optional ColumnSchema ele_type = 1;
+}
+
+message MapType {
+  optional ColumnSchema key_type = 1;
+  optional ColumnSchema value_type = 2;
+}
+
+message ColumnSchema {
+  oneof type {
+      Type base_type = 1;
+      ArrayType array_type = 2;
+      MapType map_type = 3;
+  }
+  // reserve 4 - 100 for futhur complex type
+
+  optional bool is_not_null = 101 [ default = false ]; // field attribute 'NOT NULL'
+}
+
 message ColumnDef {
     optional string name = 1;
-    optional Type type = 2;
-    optional uint32 offset = 3;
+
+    // legacy column type specification
+
+    // Deprecated: use ColumnSchema::type.
+    // Currently, both `type` and `schema` are set for base types;
+    // complex types, like array & map, only `schema` is set, be cautious accessing the type field.
+    optional Type type = 2 [deprecated = true];
+    optional uint32 offset = 3 [deprecated = true]; // I do not actually see usage of this field
+
+    // 'NOT NULL' is the only one special attribute from CREATE TABLE statement, that is valid for
+    // both column and field. So for example, 'col1 INT NOT NULL' and 'col2 ARRAY<INT NOT NULL>' are
+    // both valid.
+    //
+    // 'CONSTANT' seems not revelant to table definition, but from function parameter.
+    //
+    // For simplification and unclear requirements, we do not touch the two fileds
     optional bool is_not_null = 4;
     optional bool is_constant = 5 [default = false];
+
+    // new column type specification since v0.9.0
+    optional ColumnSchema schema = 6;
 }
 
 message IndexDef {

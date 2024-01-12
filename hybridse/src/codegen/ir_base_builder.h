@@ -19,6 +19,8 @@
 
 #include <string>
 #include <vector>
+
+#include "absl/base/attributes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"
@@ -48,12 +50,18 @@ bool IsStringType(::llvm::Type* type);
 bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
                  const ::hybridse::node::TypeNode** type_node);
 
-bool SchemaType2DataType(const ::hybridse::type::Type type,
-                         ::hybridse::node::DataType* output);
-bool SchemaType2DataType(const ::hybridse::type::Type type,
-                         ::hybridse::node::TypeNode* output);
-bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
-                         ::hybridse::type::Type* output);
+[[deprecated("can't handle comple data type, use ColumnSchema2Type instead")]]
+bool SchemaType2DataType(const ::hybridse::type::Type type, ::hybridse::node::DataType* output);
+
+[[deprecated("can't handle comple data type, use ColumnSchema2Type instead")]]
+bool SchemaType2DataType(const ::hybridse::type::Type type, ::hybridse::node::TypeNode* output);
+
+[[deprecated("can not handle complex type, use Type2ColumnSchema instead")]]
+bool DataType2SchemaType(const ::hybridse::node::TypeNode& type, ::hybridse::type::Type* output);
+
+absl::Status Type2ColumnSchema(const node::TypeNode* type, type::ColumnSchema* mut_schema) ABSL_ATTRIBUTE_NONNULL();
+
+absl::StatusOr<node::TypeNode*> ColumnSchema2Type(const type::ColumnSchema& schema, node::NodeManager* tmp_nm);
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
