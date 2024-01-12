@@ -1658,6 +1658,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
             }
             DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, key.c_str());
         } else {
+            bool is_first_hit_index = true;
             for (const auto& index_def : table->GetAllIndex()) {
                 if (!index_def || !index_def->IsReady()) {
                     continue;
@@ -1670,7 +1671,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
                 iter->SeekToFirst();
                 while (iter->Valid()) {
                     auto pk = iter->GetPK();
-                    if (delete_others) {
+                    if (delete_others && is_first_hit_index) {
                         auto status = DeleteAllIndex(table, index_def, pk, start_ts, end_ts, true,
                                 table_client_manager, pid_num);
                         if (!status.OK()) {
@@ -1695,6 +1696,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
                         }
                     }
                 }
+                is_first_hit_index = false;
             }
         }
     }
