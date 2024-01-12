@@ -2,7 +2,7 @@
 
 本文将介绍如何快速入门 OpenMLDB 特征平台，基于一个 SQL 示例来演示如何使用特征平台。
 
-安装部署可参考 [OpenMLDB 部署文档](../../../deploy/index.rst) 和 [OpenMLDB 特征平台部署文档](./install/package.md)。
+安装部署可参考 [OpenMLDB 部署文档](../../../deploy/index.rst) 和 [OpenMLDB 特征平台部署文档](./install/index.rst)。
 
 ## 使用流程
 
@@ -40,9 +40,9 @@ user6,2024-01-06
 user7,2024-01-07
 ```
 
-在线数据可以使用 `LOAD DATA` 命令或 `INSERT` 命令来导入。
+在线数据可以使用 `LOAD DATA` 或 `INSERT` 命令来导入，这里演示通过点击 “使用 CSV 导入” 来执行。
 
-![](./images/insert_test_table.png)
+![](./images/online_csv_import_test_table.png)
 
 通过前端页面可以预览已导入的在线数据。
 
