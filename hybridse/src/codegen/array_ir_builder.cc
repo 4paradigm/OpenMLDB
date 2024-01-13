@@ -50,7 +50,7 @@ void ArrayIRBuilder::InitStructType() {
     struct_type_ = stype;
 }
 
-absl::StatusOr<NativeValue> ArrayIRBuilder::Construct(CodeGenContext* ctx,
+absl::StatusOr<NativeValue> ArrayIRBuilder::Construct(CodeGenContextBase* ctx,
                                                       absl::Span<NativeValue const> elements) const {
     auto bb = ctx->GetCurrentBlock();
     // alloc array struct

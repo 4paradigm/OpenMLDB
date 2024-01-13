@@ -172,7 +172,8 @@ base::Status RowFnLetIRBuilder::EncodeBuf(
     VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
-    BufNativeEncoderIRBuilder encoder(values, &schema, block);
+    BufNativeEncoderIRBuilder encoder(ctx_, values, &schema);
+    CHECK_STATUS(encoder.Init());
     NativeValue row_ptr;
     variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
     CHECK_STATUS(status)

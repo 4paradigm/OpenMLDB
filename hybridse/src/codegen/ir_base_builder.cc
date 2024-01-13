@@ -15,15 +15,17 @@
  */
 
 #include "codegen/ir_base_builder.h"
-#include <absl/status/status.h>
 
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/strings/substitute.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/array_ir_builder.h"
 #include "codegen/date_ir_builder.h"
+#include "codegen/map_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
@@ -354,8 +356,18 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
             return true;
         }
         case hybridse::node::kMap: {
-            LOG(WARNING) << "fail to codegen map type, currently not support";
-            break;
+            auto* map_type = data_type->GetAsOrNull<node::MapType>();
+            llvm::Type* key_type = nullptr;
+            if (false == GetLlvmType(m, map_type->key_type(), &key_type)) {
+                return false;
+            }
+            llvm::Type* value_type = nullptr;
+            if (false == GetLlvmType(m, map_type->value_type(), &value_type)) {
+                return false;
+            }
+            MapIRBuilder builder(m, key_type, value_type);
+            *llvm_type = builder.GetType()->getPointerTo();
+            return true;
         }
         case hybridse::node::kArray: {
             if (data_type->generics_.size() != 1) {
@@ -411,37 +423,35 @@ bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
     return string_ir_builder.NewString(block, val, output);
 }
 
-bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-                       ::llvm::Value* ptr, ::llvm::Value* offset,
-                       ::llvm::Type* type, ::llvm::Value** outptr) {
-    if (outptr == NULL) {
-        LOG(WARNING) << "outptr is null";
-        return false;
-    }
-
-    if (!ptr->getType()->isPointerTy()) {
-        LOG(WARNING) << "ptr should be pointer but "
-                     << ptr->getType()->getTypeID();
-        return false;
+absl::StatusOr<llvm::Value*> BuildGetPtrOffset(::llvm::IRBuilder<>* builder, ::llvm::Value* ptr,
+                                               ::llvm::Value* offset, ::llvm::Type* dst_type) {
+    auto* ori_type = ptr->getType();
+    if (!ori_type->isPointerTy()) {
+        return absl::InvalidArgumentError(
+            absl::Substitute("expect pointer type, but got $0", GetLlvmObjectString(ori_type)));
     }
 
     if (!offset->getType()->isIntegerTy()) {
-        LOG(WARNING) << "offset should be integer type but "
-                     << ptr->getType()->getTypeID();
-        return false;
+        return absl::InvalidArgumentError(
+            absl::Substitute("expect integer type for offset, but got $0", GetLlvmObjectString(offset->getType())));
     }
 
     // cast ptr to int64
-    ::llvm::Type* int64_ty = builder.getInt64Ty();
-    ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
-    // TODO(wangtaize) no need cast if offset is int64
-    ::llvm::Value* offset_int64 =
-        builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
-    ::llvm::Value* ptr_add_offset =
-        builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
-    // todo check the type
-    *outptr = builder.CreateIntToPtr(ptr_add_offset, type);
-    return true;
+    ::llvm::Type* int64_ty = builder->getInt64Ty();
+    ::llvm::Value* ptr_int64_ty = builder->CreatePtrToInt(ptr, int64_ty);
+    ::llvm::Value* offset_int64 = offset;
+    if (offset->getType() != int64_ty) {
+        offset_int64 = builder->CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
+    }
+    ::llvm::Value* ptr_add_offset = builder->CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
+    llvm::Type* dst = ori_type;
+    if (dst_type != nullptr) {
+        if (!dst_type->isPointerTy()) {
+            return absl::InvalidArgumentError("dst type is not a pointer");
+        }
+        dst = dst_type;
+    }
+    return builder->CreateIntToPtr(ptr_add_offset, dst);
 }
 
 bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
@@ -708,25 +718,19 @@ bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     return true;
 }
 
-bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-                      ::llvm::Value* ptr, ::llvm::Value* offset,
-                      ::llvm::Value* value) {
+absl::Status BuildStoreOffset(::llvm::IRBuilder<>* builder, ::llvm::Value* ptr, ::llvm::Value* offset,
+                              ::llvm::Value* value) {
     if (ptr == NULL || offset == NULL || value == NULL) {
-        LOG(WARNING) << "ptr or offset or value is null";
-        return false;
+        return absl::InvalidArgumentError("ptr or offset or value is null");
     }
-    // TODO(wangtaize) check ptr type match value type
-    ::llvm::Value* ptr_with_offset = NULL;
-    bool ok =
-        BuildGetPtrOffset(builder, ptr, offset,
-                          value->getType()->getPointerTo(), &ptr_with_offset);
-    if (!ok || ptr_with_offset == NULL) {
-        LOG(WARNING) << "fail to get offset ptr";
-        return false;
+    auto s = BuildGetPtrOffset(builder, ptr, offset, value->getType()->getPointerTo());
+    if (!s.ok()) {
+        return s.status();
     }
-    builder.CreateStore(value, ptr_with_offset, false);
-    return true;
+    builder->CreateStore(value, s.value(), false);
+    return absl::OkStatus();
 }
+
 bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
                          ::hybridse::type::Type* output) {
     switch (type.base_) {
@@ -1062,5 +1066,15 @@ llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
     return entry_builder.CreateAlloca(dtype, size, name);
 }
 
+llvm::Value* CodecSizeForPrimitive(llvm::IRBuilder<>* builder, llvm::Type* type) {
+    return builder->getInt32((type->getPrimitiveSizeInBits() + 7) / 8);
+}
+
+std::string GetIRTypeName(llvm::Type* type)  {
+    std::string res;
+    llvm::raw_string_ostream ss(res);
+    type->print(ss, false, true);
+    return ss.str();
+}
 }  // namespace codegen
 }  // namespace hybridse

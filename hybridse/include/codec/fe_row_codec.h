@@ -41,8 +41,17 @@ static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
-// TODO(chendihao): Change to inline function if do not depend on gflags
 const std::unordered_map<::hybridse::type::Type, uint8_t>& GetTypeSizeMap();
+
+// return true if the column considered base type in row codec.
+// date & timestamp consider base type since they have single field in corresponding llvm struct,
+// while string, map and array consider complex type.
+//
+// for base types, the column is written into row ptr by just writing the value of primitive type,
+// for comple type, written is made by a string (or string-like) manner: str size + str data.
+// map, array, or any other complex types, takes a extra encoding from their struct value into str data.
+bool IsCodecBaseType(const type::ColumnSchema& sc);
+bool IsCodecStrLikeType(const type::ColumnSchema& sc);
 
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {

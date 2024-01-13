@@ -80,7 +80,7 @@ bool FnIRBuilder::Build(::hybridse::node::FnNodeFnDef *root,
 }
 
 bool FnIRBuilder::BuildFnHead(const ::hybridse::node::FnNodeFnHeander *header,
-                              CodeGenContext *ctx, ::llvm::Function **fn,
+                              CodeGenContextBase *ctx, ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
     ::llvm::Type *ret_type = NULL;
     bool ok = GetLlvmType(module_, header->ret_type_, &ret_type);

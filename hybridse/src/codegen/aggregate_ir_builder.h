@@ -83,9 +83,6 @@ class AggregateIRBuilder {
     AggregateIRBuilder(const vm::SchemasContext*, ::llvm::Module* module,
                        const node::FrameNode* frame_node, uint32_t id);
 
-    // TODO(someone): remove temporary implementations for row-wise agg
-    static bool EnableColumnAggOpt();
-
     bool CollectAggColumn(const node::ExprNode* expr, size_t output_idx,
                           ::hybridse::type::Type* col_type);
 

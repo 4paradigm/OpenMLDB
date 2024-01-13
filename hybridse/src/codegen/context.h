@@ -20,12 +20,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
 
+#include "absl/base/attributes.h"
 #include "base/fe_status.h"
 #include "codegen/native_value.h"
 #include "codegen/scope_var.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
 #include "vm/schemas_context.h"
 
 namespace hybridse {
@@ -33,13 +34,13 @@ namespace codegen {
 
 using ::hybridse::base::Status;
 
-class CodeGenContext;
+class CodeGenContextBase;
 
 class BlockGroup {
  public:
-    explicit BlockGroup(CodeGenContext* ctx);
-    BlockGroup(::llvm::BasicBlock* entry, CodeGenContext* ctx);
-    BlockGroup(const std::string& name, CodeGenContext* ctx);
+    explicit BlockGroup(CodeGenContextBase* ctx);
+    BlockGroup(::llvm::BasicBlock* entry, CodeGenContextBase* ctx);
+    BlockGroup(const std::string& name, CodeGenContextBase* ctx);
 
     llvm::BasicBlock* first() const;
     llvm::BasicBlock* last() const;
@@ -55,23 +56,23 @@ class BlockGroup {
         return this->blocks_;
     }
 
-    CodeGenContext* ctx() const { return this->ctx_; }
+    CodeGenContextBase* ctx() const { return this->ctx_; }
 
  private:
-    CodeGenContext* ctx_;
+    CodeGenContextBase* ctx_;
     std::string name_;
     std::vector<llvm::BasicBlock*> blocks_;
 };
 
 class CodeScope {
  public:
-    CodeScope(CodeGenContext* ctx, const std::string& name, CodeScope* parent);
-    CodeScope(CodeGenContext* ctx, ::llvm::BasicBlock* entry);
+    CodeScope(CodeGenContextBase* ctx, const std::string& name, CodeScope* parent);
+    CodeScope(CodeGenContextBase* ctx, ::llvm::BasicBlock* entry);
 
     BlockGroup* blocks() { return &blocks_; }
     ScopeVar* sv() { return &sv_; }
     CodeScope* parent() const { return parent_; }
-    CodeGenContext* ctx() const { return blocks_.ctx(); }
+    CodeGenContextBase* ctx() const { return blocks_.ctx(); }
 
  private:
     BlockGroup blocks_;
@@ -85,37 +86,35 @@ class CodeScopeGuard {
     ~CodeScopeGuard();
 
  private:
-    CodeGenContext* ctx_;
+    CodeGenContextBase* ctx_;
     CodeScope* prev_;
 };
 
 class BlockGuard {
  public:
-    BlockGuard(llvm::BasicBlock* block, CodeGenContext* ctx);
+    BlockGuard(llvm::BasicBlock* block, CodeGenContextBase* ctx);
     ~BlockGuard();
 
  private:
-    CodeGenContext* ctx_;
+    CodeGenContextBase* ctx_;
     llvm::BasicBlock* prev_;
 };
 
 class FunctionScopeGuard {
  public:
-    FunctionScopeGuard(llvm::Function* function, CodeGenContext* ctx);
+    FunctionScopeGuard(llvm::Function* function, CodeGenContextBase* ctx);
     ~FunctionScopeGuard();
 
  private:
-    CodeGenContext* ctx_;
+    CodeGenContextBase* ctx_;
     llvm::Function* prev_function_;
     CodeScopeGuard sub_guard_;
 };
 
-class CodeGenContext {
+class CodeGenContextBase {
  public:
-    CodeGenContext(::llvm::Module*, const vm::SchemasContext* schemas_context,
-                   const codec::Schema* parameter_types,
-                   node::NodeManager* node_manager);
-    ~CodeGenContext();
+    explicit CodeGenContextBase(::llvm::Module*);
+    virtual ~CodeGenContextBase() {}
 
     ::llvm::Function* GetCurrentFunction() const;
     void SetCurrentFunction(::llvm::Function*);
@@ -133,35 +132,33 @@ class CodeGenContext {
 
     CodeScope* GetFunctionScope(const std::string& name);
 
-    Status CreateBranch(const NativeValue& cond,
-                        const std::function<Status()>& left,
-                        const std::function<Status()>& right);
-    Status CreateBranch(::llvm::Value* cond,
-                        const std::function<Status()>& left,
-                        const std::function<Status()>& right);
-    Status CreateBranch(const NativeValue& cond,
-                        const std::function<Status()>& left);
-    Status CreateBranch(::llvm::Value* cond,
-                        const std::function<Status()>& left);
-    Status CreateBranchNot(const NativeValue& cond,
-                           const std::function<Status()>& right);
-    Status CreateBranchNot(::llvm::Value* cond,
-                           const std::function<Status()>& right);
+    ABSL_MUST_USE_RESULT
+    Status CreateBranch(const NativeValue& cond, const std::function<Status()>& left,
+                        const std::function<Status()>& right, absl::string_view name = "");
+    ABSL_MUST_USE_RESULT
+    Status CreateBranch(::llvm::Value* cond, const std::function<Status()>& left, const std::function<Status()>& right,
+                        absl::string_view name = "");
+    ABSL_MUST_USE_RESULT
+    Status CreateBranch(const NativeValue& cond, const std::function<Status()>& left, absl::string_view name = "");
+    ABSL_MUST_USE_RESULT
+    Status CreateBranch(::llvm::Value* cond, const std::function<Status()>& left, absl::string_view name = "");
+    ABSL_MUST_USE_RESULT
+    Status CreateBranchNot(const NativeValue& cond, const std::function<Status()>& right, absl::string_view name = "");
+    ABSL_MUST_USE_RESULT
+    Status CreateBranchNot(::llvm::Value* cond, const std::function<Status()>& right, absl::string_view name = "");
 
+    ABSL_MUST_USE_RESULT
     Status CreateWhile(const std::function<Status(::llvm::Value** res)>& cond,
-                       const std::function<Status()>& body);
+                       const std::function<Status()>& body,
+                       absl::string_view name = "");
 
     ::llvm::BasicBlock* AppendNewBlock(const std::string& name = "");
 
-    const vm::SchemasContext* schemas_context() const;
-    const codec::Schema* parameter_types() const;
-    const codec::RowFormat* parameter_row_format() const;
-    node::NodeManager* node_manager() const;
-
- private:
+ protected:
     Status CreateBranchImpl(::llvm::Value* cond,
                             const std::function<Status()>* left,
-                            const std::function<Status()>* right);
+                            const std::function<Status()>* right,
+                            absl::string_view name = "");
 
     ::llvm::LLVMContext* llvm_ctx_;
     ::llvm::Module* llvm_module_;
@@ -170,13 +167,26 @@ class CodeGenContext {
     ::llvm::Function* current_llvm_function_ = nullptr;
     CodeScope* current_scope_ = nullptr;
     ::llvm::BasicBlock* current_llvm_block_ = nullptr;
+    std::unordered_map<std::string, CodeScope> function_scopes_;
+};
 
+// extended codegen context, with extra schemas_context, parameter_types and node_manager
+class CodeGenContext : public CodeGenContextBase {
+ public:
+    CodeGenContext(::llvm::Module*, const vm::SchemasContext* schemas_context,
+                   const codec::Schema* parameter_types,
+                   node::NodeManager* node_manager);
+    ~CodeGenContext() override;
+
+    const vm::SchemasContext* schemas_context() const;
+    const codec::Schema* parameter_types() const;
+    const codec::RowFormat* parameter_row_format() const;
+    node::NodeManager* node_manager() const;
+
+ private:
     const vm::SchemasContext* schemas_context_;
     const codec::Schema* parameter_types_;
     codec::RowFormat* parameter_row_format_ = nullptr;
-
-    std::unordered_map<std::string, CodeScope> function_scopes_;
-
     node::NodeManager* node_manager_;
 };
 

@@ -588,3 +588,33 @@ cases:
       columns: ["e1 bool", "e2 bool", "e3 bool"]
       data: |
         true, false, true
+
+  - id: 15
+    mode: request-unsupport
+    sql: |
+      select map(1, 2, 3, 4) as c1
+
+  - id: 16
+    mode: request-unsupport
+    # this covers basic codec for map data type
+    sql: |
+      select
+        c1[3] as o1, c2[1] as o2, c3['6'] as o3, c4[timestamp(8000)] as o4,
+        c5[int64(12)] as o5
+      from (select
+          map(1, 2, 3, 4) as c1,
+          map(1, '2', 3, '4') as c2,
+          map('5', timestamp(8000), '6', timestamp(9000)) as c3,
+          map(timestamp(8000), date("2012-12-12"), timestamp(9000), date("2014-11-11")) as c4,
+          map(int64(10), int16(11), int64(12), int16(13)) as c5
+        )
+    expect:
+      columns: ["o1 int", "o2 string", "o3 timestamp", "o4 date", "o5 int16"]
+      data: |
+        4, 2, 9000, 2012-12-12, 13
+
+  - id: 17
+    mode: request-unsupport
+    sql: |
+      select c1 + 8 from (select 9 as c1)
+

@@ -576,7 +576,8 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                                             const std::string& output_ptr_name,
                                             const vm::Schema& output_schema) {
     ::llvm::LLVMContext& llvm_ctx = module_->getContext();
-    ::llvm::IRBuilder<> builder(llvm_ctx);
+    CodeGenContextBase ctx(module_);
+    auto& builder = *ctx.GetBuilder();
     auto void_ty = llvm::Type::getVoidTy(llvm_ctx);
     auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
     expr_ir_builder->set_frame(nullptr, frame_node_);
@@ -596,7 +597,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         llvm::Type::getVoidTy(llvm_ctx), {ptr_ty, ptr_ty}, false);
     ::llvm::Function* fn = ::llvm::Function::Create(
         fnt, llvm::Function::ExternalLinkage, fn_name, module_);
-    builder.SetInsertPoint(cur_block);
+    BlockGuard bg0(cur_block, &ctx);
     builder.CreateCall(
         module_->getOrInsertFunction(fn_name, fnt),
         {window_ptr.GetValue(&builder), builder.CreateLoad(output_buf)});
@@ -615,7 +616,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                  "Schedule agg ops failed")
 
     // gen head
-    builder.SetInsertPoint(head_block);
+    BlockGuard bg1(head_block, &ctx);
     for (auto& agg_generator : generators) {
         agg_generator.GenInitState(&builder);
     }
@@ -634,7 +635,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     builder.CreateBr(enter_block);
 
     // gen iter begin
-    builder.SetInsertPoint(enter_block);
+    BlockGuard bg2(enter_block, &ctx);
     auto bool_ty = llvm::Type::getInt1Ty(llvm_ctx);
     auto has_next_func = module_->getOrInsertFunction(
         "hybridse_storage_row_iter_has_next",
@@ -643,7 +644,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     builder.CreateCondBr(has_next, body_block, exit_block);
 
     // gen iter body
-    builder.SetInsertPoint(body_block);
+    BlockGuard bg3(body_block, &ctx);
     auto get_slice_func = module_->getOrInsertFunction(
         "hybridse_storage_row_iter_get_cur_slice",
         ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
@@ -693,9 +694,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
             auto& slice_info = used_slices[slice_idx];
 
             ScopeVar dummy_scope_var;
-            BufNativeIRBuilder buf_builder(
-                schema_idx, schema_context_->GetRowFormat(),
-                body_block, &dummy_scope_var);
+            BufNativeIRBuilder buf_builder(&ctx, schema_idx, schema_context_->GetRowFormat(), &dummy_scope_var);
             NativeValue field_value;
             CHECK_TRUE(buf_builder.BuildGetField(info.col_idx, slice_info.first, slice_info.second, &field_value),
                        common::kCodegenGetFieldError, "fail to gen fetch column")
@@ -723,7 +722,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     builder.CreateBr(enter_block);
 
     // gen iter end
-    builder.SetInsertPoint(exit_block);
+    BlockGuard bg4(exit_block, &ctx);
     auto delete_iter_func = module_->getOrInsertFunction(
         "hybridse_storage_row_iter_delete",
         ::llvm::FunctionType::get(void_ty, {ptr_ty}, false));
@@ -731,8 +730,8 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
     // store results to output row
     std::map<uint32_t, NativeValue> dummy_map;
-    BufNativeEncoderIRBuilder output_encoder(&dummy_map, &output_schema,
-                                             exit_block);
+    BufNativeEncoderIRBuilder output_encoder(&ctx, &dummy_map, &output_schema);
+    CHECK_STATUS(output_encoder.Init());
     for (auto& agg_generator : generators) {
         std::vector<std::pair<size_t, NativeValue>> outputs;
         agg_generator.GenOutputs(&builder, &outputs);

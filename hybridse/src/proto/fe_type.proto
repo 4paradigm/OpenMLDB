@@ -68,7 +68,7 @@ message ColumnDef {
     // Deprecated: use ColumnSchema::type.
     // Currently, both `type` and `schema` are set for base types;
     // complex types, like array & map, only `schema` is set, be cautious accessing the type field.
-    optional Type type = 2 [deprecated = true];
+    optional Type type = 2 [deprecated = true, default = kNull ];
     optional uint32 offset = 3 [deprecated = true]; // I do not actually see usage of this field
 
     // 'NOT NULL' is the only one special attribute from CREATE TABLE statement, that is valid for
