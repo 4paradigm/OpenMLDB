@@ -437,6 +437,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     // refresh the pre-aggr tables info
     bool RefreshAggrCatalog();
 
+    void UpdateMemoryUsage();
+
  private:
     Tables tables_;
     std::mutex mu_;
@@ -446,7 +448,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     Snapshots snapshots_;
     Aggregators aggregators_;
     ZkClient* zk_client_;
-    ThreadPool keep_alive_pool_;
+    ThreadPool trivial_task_pool_;
     ThreadPool task_pool_;
     ThreadPool io_pool_;
     ThreadPool snapshot_pool_;
@@ -476,6 +478,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::unique_ptr<openmldb::statistics::DeploymentMetricCollector> deploy_collector_;
     std::atomic<uint64_t> memory_used_ = 0;
+    std::atomic<uint32_t> system_memory_usage_rate_ = 0;  // [0, 100]
 };
 
 }  // namespace tablet
