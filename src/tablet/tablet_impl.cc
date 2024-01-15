@@ -3468,12 +3468,6 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
             return {::openmldb::base::ReturnCode::kTableMetaIsIllegal, "fail to init table"};
         }
         new_table->SetTableStat(::openmldb::storage::kNormal);
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            tables_[tid].insert_or_assign(pid, new_table);
-        }
-        auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
-        mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
         if (table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
             if (catalog_->AddTable(*table_meta, new_table)) {
                 LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
@@ -3483,6 +3477,14 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
                 return {::openmldb::base::ReturnCode::kCatalogUpdateFailed, "fail to update catalog"};
             }
         }
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            tables_[tid].insert_or_assign(pid, new_table);
+        }
+        auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
+        mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
+        // running ResetTable after this function return
+        task_pool_.DelayTask(10, boost::bind(&TabletImpl::ResetTable, this, table));
     } else {
         auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
         if (auto status = disk_table->Truncate(); !status.OK()) {
