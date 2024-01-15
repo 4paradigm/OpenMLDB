@@ -8521,7 +8521,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     for (const auto& column_key : column_key_vec) {
         if (schema::IndexUtil::IsExist(column_key, table_info->column_key())) {
             base::SetResponseStatus(ReturnCode::kIndexAlreadyExists, "index has already exist!", response);
-            LOG(WARNING) << "index" << column_key.index_name() << " has already exist! table " << name;
+            LOG(WARNING) << "index " << column_key.index_name() << " has already exist! table " << name;
             return;
         }
     }
@@ -9908,7 +9908,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
                 uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
                 std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
                 auto table_ptr = GetTablet(endpoint);
-                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
+                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions).OK()) {
                     return {ReturnCode::kPutFailed, "fail to make a put request to table"};
                 }
                 break;

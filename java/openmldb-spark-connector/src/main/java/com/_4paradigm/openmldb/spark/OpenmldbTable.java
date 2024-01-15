@@ -49,15 +49,17 @@ public class OpenmldbTable implements SupportsWrite, SupportsRead {
     private final String tableName;
     private final SdkOption option;
     private final String writerType;
+    private final int insertMemoryUsageLimit;
     private SqlExecutor executor = null;
 
     private Set<TableCapability> capabilities;
 
-    public OpenmldbTable(String dbName, String tableName, SdkOption option, String writerType) {
+    public OpenmldbTable(String dbName, String tableName, SdkOption option, String writerType, int insertMemoryUsageLimit) {
         this.dbName = dbName;
         this.tableName = tableName;
         this.option = option;
         this.writerType = writerType;
+        this.insertMemoryUsageLimit = insertMemoryUsageLimit;
         try {
             this.executor = new SqlClusterExecutor(option);
             // no need to check table exists, schema() will check it later
@@ -69,7 +71,7 @@ public class OpenmldbTable implements SupportsWrite, SupportsRead {
 
     @Override
     public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
-        OpenmldbWriteConfig config = new OpenmldbWriteConfig(dbName, tableName, option, writerType);
+        OpenmldbWriteConfig config = new OpenmldbWriteConfig(dbName, tableName, option, writerType, insertMemoryUsageLimit);
         return new OpenmldbWriteBuilder(config, info);
     }
 

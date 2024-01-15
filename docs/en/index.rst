@@ -17,3 +17,10 @@ OpenMLDB Docs (|version|)
     reference/index
     developer/index
 
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+    :caption: 📚 Application Ecosystem
+
+    app_ecosystem/feature_platform/index
+    app_ecosystem/sql_emulator/index

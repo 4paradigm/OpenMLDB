@@ -34,6 +34,7 @@ DEFINE_string(zk_auth_schema, "digest", "config the id of authentication schema"
 DEFINE_string(zk_cert, "", "config the application credentials");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
+DEFINE_int32(get_sys_mem_interval, 10000, "config the interval of get system memory. unit is milliseconds");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check. unit is milliseconds");
 DEFINE_uint32(zk_log_level, 0,
               "CLI: set level integer, DISABLE_LOGGING=0, "
