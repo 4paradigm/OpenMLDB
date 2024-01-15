@@ -106,13 +106,14 @@ __attribute__((unused)) static void PrintColumnKey(
     t.add("ttl");
     t.add("ttl_type");
     t.end_of_row();
-
+    int index_pos = 1;
     for (int i = 0; i < column_key_field.size(); i++) {
         const auto& column_key = column_key_field.Get(i);
         if (column_key.flag() == 1) {
             continue;
         }
-        t.add(std::to_string(i + 1));
+        t.add(std::to_string(index_pos));
+        index_pos++;
         t.add(column_key.index_name());
         std::string key;
         for (const auto& name : column_key.col_name()) {
@@ -146,7 +147,7 @@ __attribute__((unused)) static void PrintColumnKey(
     stream << t;
 }
 
-__attribute__((unused)) static void ShowTableRows(bool is_compress, ::openmldb::codec::SDKCodec* codec,
+__attribute__((unused)) static void ShowTableRows(::openmldb::codec::SDKCodec* codec,
                                                   ::openmldb::cmd::SDKIterator* it) {
     std::vector<std::string> row = codec->GetColNames();
     if (!codec->HasTSCol()) {
@@ -160,12 +161,7 @@ __attribute__((unused)) static void ShowTableRows(bool is_compress, ::openmldb::
     while (it->Valid()) {
         std::vector<std::string> vrow;
         openmldb::base::Slice data = it->GetValue();
-        std::string value;
-        if (is_compress) {
-            ::snappy::Uncompress(data.data(), data.size(), &value);
-        } else {
-            value.assign(data.data(), data.size());
-        }
+        std::string value(data.data(), data.size());
         codec->DecodeRow(value, &vrow);
         if (!codec->HasTSCol()) {
             vrow.insert(vrow.begin(), std::to_string(it->GetKey()));
@@ -186,19 +182,16 @@ __attribute__((unused)) static void ShowTableRows(bool is_compress, ::openmldb::
 __attribute__((unused)) static void ShowTableRows(const ::openmldb::api::TableMeta& table_info,
                                                   ::openmldb::cmd::SDKIterator* it) {
     ::openmldb::codec::SDKCodec codec(table_info);
-    bool is_compress = table_info.compress_type() == ::openmldb::type::CompressType::kSnappy ? true : false;
-    ShowTableRows(is_compress, &codec, it);
+    ShowTableRows(&codec, it);
 }
 
 __attribute__((unused)) static void ShowTableRows(const ::openmldb::nameserver::TableInfo& table_info,
                                                   ::openmldb::cmd::SDKIterator* it) {
     ::openmldb::codec::SDKCodec codec(table_info);
-    bool is_compress = table_info.compress_type() == ::openmldb::type::CompressType::kSnappy ? true : false;
-    ShowTableRows(is_compress, &codec, it);
+    ShowTableRows(&codec, it);
 }
 
-__attribute__((unused)) static void ShowTableRows(const std::string& key, ::openmldb::cmd::SDKIterator* it,
-                                                  const ::openmldb::type::CompressType compress_type) {
+__attribute__((unused)) static void ShowTableRows(const std::string& key, ::openmldb::cmd::SDKIterator* it) {
     ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     row.push_back("#");
@@ -209,11 +202,6 @@ __attribute__((unused)) static void ShowTableRows(const std::string& key, ::open
     uint32_t index = 1;
     while (it->Valid()) {
         std::string value = it->GetValue().ToString();
-        if (compress_type == ::openmldb::type::CompressType::kSnappy) {
-            std::string uncompressed;
-            ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-            value = uncompressed;
-        }
         row.clear();
         row.push_back(std::to_string(index));
         row.push_back(key);

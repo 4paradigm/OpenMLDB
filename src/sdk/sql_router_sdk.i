@@ -65,9 +65,11 @@
 %shared_ptr(openmldb::sdk::QueryFuture);
 %shared_ptr(openmldb::sdk::TableReader);
 %shared_ptr(hybridse::node::CreateTableLikeClause);
+%shared_ptr(openmldb::sdk::DefaultValueContainer);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 
+%shared_ptr(openmldb::sdk::DAGNode);
 %{
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"
@@ -93,6 +95,7 @@ using openmldb::sdk::ExplainInfo;
 using hybridse::sdk::ProcedureInfo;
 using openmldb::sdk::QueryFuture;
 using openmldb::sdk::TableReader;
+using openmldb::sdk::DefaultValueContainer;
 %}
 
 %include "sdk/sql_router.h"
@@ -115,3 +118,5 @@ using openmldb::sdk::TableReader;
 
 %template(DBTable) std::pair<std::string, std::string>;
 %template(DBTableVector) std::vector<std::pair<std::string, std::string>>;
+
+%template(DAGNodeList) std::vector<std::shared_ptr<openmldb::sdk::DAGNode>>;

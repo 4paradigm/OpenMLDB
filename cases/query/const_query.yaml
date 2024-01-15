@@ -126,15 +126,55 @@ cases:
       columns: ['c1 bool', 'c2 int16', 'c3 int', 'c4 double', 'c5 string', 'c6 date', 'c7 timestamp' ]
       rows:
         - [ true, 3, 13, 10.0, 'a string', '2020-05-22', 1590115420000 ]
+
+  # =================================================================================
+  # Null safe for structure types: String, Date, Timestamp and Array
+  # creating struct from:
+  # 1. NULL liternal (const null)
+  # 2. another supported date type but fails to cast, e.g. timestamp(-1) returns NULL of timestamp
+  #
+  # casting to array type un-implemented
+  # =================================================================================
   - id: 10
+    desc: null safe for date
     mode: procedure-unsupport
     sql: |
       select
         datediff(Date(timestamp(-1)), Date("2021-05-01")) as out1,
         datediff(Date(timestamp(-2177481600)), Date("2021-05-01")) as out2,
-        datediff(cast(NULL as date), Date("2021-05-01")) as out3
-        ;
+        datediff(cast(NULL as date), Date("2021-05-01")) as out3,
+        date(NULL) as out4,
+        date("abc") as out5,
+        date(timestamp("abc")) as out6
     expect:
-      columns: ["out1 int", "out2 int", "out3 int"]
+      columns: ["out1 int", "out2 int", "out3 int", "out4 date", "out5 date", "out6 date"]
       data: |
-        NULL, NULL, NULL
+        NULL, NULL, NULL, NULL, NULL, NULL
+  - id: 11
+    desc: null safe for timestamp
+    mode: procedure-unsupport
+    sql: |
+      select
+        month(cast(NULL as timestamp)) as out1,
+        month(timestamp(NULL)) as out2,
+        month(timestamp(-1)) as out3,
+        month(timestamp("abc")) as out4,
+        month(timestamp(date("abc"))) as out5
+    expect:
+      columns: ["out1 int", "out2 int", "out3 int", "out4 int", "out5 int"]
+      data: |
+        NULL, NULL, NULL, NULL, NULL
+  - id: 12
+    desc: null safe for string
+    mode: procedure-unsupport
+    sql: |
+      select
+        char_length(cast(NULL as string)) as out1,
+        char_length(string(int(NULL))) as out2,
+        char_length(string(bool(null))) as out3,
+        char_length(string(timestamp(null))) as out4,
+        char_length(string(date(null))) as out5
+    expect:
+      columns: ["out1 int", "out2 int", "out3 int", "out4 int", "out5 int"]
+      data: |
+        NULL, NULL, NULL, NULL, NULL

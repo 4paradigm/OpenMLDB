@@ -213,6 +213,8 @@ object HybridseUtil {
     // load data: read format, select into: write format
     val format = if (file.toLowerCase().startsWith("hive://")) {
       "hive"
+    } else if (file.toLowerCase().startsWith("openmldb://")) {
+      "openmldb"
     } else {
       parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
     }
@@ -252,7 +254,11 @@ object HybridseUtil {
     // only for select into, "" means N/A
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
     extraOptions += ("sql" -> parseOption(getOptionFromNode(node, "sql"), "", getStringOrDefault))
-    extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single", getStringOrDefault)
+    extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single",
+      getStringOrDefault)
+
+    extraOptions += ("create_if_not_exists" -> parseOption(getOptionFromNode(node, "create_if_not_exists"),
+      "true", getBoolOrDefault))
 
     (format, options.toMap, mode, extraOptions.toMap)
   }
@@ -387,7 +393,7 @@ object HybridseUtil {
   // So we should fix it.
   private def autoFileLoad(openmldbSession: OpenmldbSession, file: String, format: String,
     options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
-    require(format.equals("csv") || format.equals("parquet"))
+    require(format.equals("csv") || format.equals("parquet"), s"unsupported format $format")
     val reader = openmldbSession.getSparkSession.read.options(options)
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
@@ -445,10 +451,23 @@ object HybridseUtil {
   }
 
   def hiveDest(path: String): String = {
-    require(path.toLowerCase.startsWith("hive://"))
+    require(path.toLowerCase.startsWith("hive://"), s"invalid hive path $path")
     // hive://<table_pattern>
     val tableStartPos = 7
     path.substring(tableStartPos)
+  }
+
+  def getOpenmldbDbAndTable(path: String): (String, String) = {
+    require(path.toLowerCase.startsWith("openmldb://"))
+    // openmldb://<table_pattern>
+    val tableStartPos = 11
+    val dbAndTableString = path.substring(tableStartPos)
+
+    require(dbAndTableString.split("\\.").size == 2)
+
+    val db = dbAndTableString.split("\\.")(0)
+    val table = dbAndTableString.split("\\.")(1)
+    (db, table)
   }
 
   private def hiveLoad(openmldbSession: OpenmldbSession, file: String, columns: util.List[Common.ColumnDesc],

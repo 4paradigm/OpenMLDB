@@ -203,8 +203,7 @@ object JobInfoManager {
       val offlineTableInfo = tableInfo.getOfflineTableInfo
 
       val filePath = offlineTableInfo.getPath
-      if(offlineTableInfo.getDeepCopy) {
-
+      if(filePath.nonEmpty) {
         if (filePath.startsWith("file://")) {
           val dir = new File(filePath.substring(7))
           logger.info(s"Try to delete the path ${filePath.substring(7)}")
@@ -217,7 +216,7 @@ object JobInfoManager {
           throw new Exception(s"Get unsupported file path: $filePath")
         }
       } else {
-        logger.info(s"Do not delete file $filePath for non deep copy data")
+        logger.info(s"Do not delete for empty hard path")
       }
     }
 

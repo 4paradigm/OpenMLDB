@@ -26,10 +26,8 @@
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
-#include "codegen/fn_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
-#include "codegen/struct_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/udf_ir_builder.h"
@@ -217,8 +215,7 @@ Status ExprIRBuilder::BuildConstExpr(
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     switch (const_node->GetDataType()) {
         case ::hybridse::node::kNull: {
-            *output = NativeValue::CreateNull(
-                llvm::Type::getTokenTy(builder.getContext()));
+            *output = NativeValue(nullptr, nullptr, llvm::Type::getTokenTy(builder.getContext()));
             break;
         }
         case ::hybridse::node::kBool: {

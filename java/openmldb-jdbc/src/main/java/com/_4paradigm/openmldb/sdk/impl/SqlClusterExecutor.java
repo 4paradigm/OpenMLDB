@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -61,26 +62,28 @@ public class SqlClusterExecutor implements SqlExecutor {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private SQLRouter sqlRouter;
     private DeploymentManager deploymentManager;
-    private ZKClient zkClient;
+    private InsertPreparedStatementCache insertCache;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
-
+        ZKClient zkClient = null;
         if (option.isClusterMode()) {
             SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
-            zkClient = new ZKClient(ZKConfig.builder()
-                    .cluster(option.getZkCluster())
-                    .namespace(option.getZkPath())
-                    .sessionTimeout((int)option.getSessionTimeout())
-                    .build());
-            try {
-                if (!zkClient.connect()) {
-                    throw new SqlException("zk client connect failed.");
+            if (!option.isLight()) {
+                zkClient = new ZKClient(ZKConfig.builder()
+                        .cluster(option.getZkCluster())
+                        .namespace(option.getZkPath())
+                        .sessionTimeout((int)option.getSessionTimeout())
+                        .build());
+                try {
+                    if (!zkClient.connect()) {
+                        throw new SqlException("zk client connect failed.");
+                    }
+                } catch (Exception e) {
+                    throw new SqlException("init zk client failed", e);
                 }
-            } catch (Exception e) {
-                throw new SqlException("init zk client failed. " + e.getMessage());
             }
         } else {
             StandaloneOptions sqlOpt = option.buildStandaloneOptions();
@@ -91,6 +94,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SqlException("fail to create sql executor");
         }
         deploymentManager = new DeploymentManager(zkClient);
+        insertCache = new InsertPreparedStatementCache(option.getMaxSqlCacheSize(), zkClient);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
@@ -183,7 +187,26 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
-        return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+        InsertPreparedStatementMeta meta = insertCache.get(db, sql);
+        if (meta == null) {
+            Status status = new Status();
+            SQLInsertRow row = sqlRouter.GetInsertRow(db, sql, status);
+            if (!status.IsOK()) {
+                String msg = status.ToString();
+                status.delete();
+                if (row != null) {
+                    row.delete();
+                }
+                throw new SQLException("getSQLInsertRow failed, " + msg);
+            }
+            status.delete();
+            String name = row.GetTableInfo().getName();
+            NS.TableInfo tableInfo = getTableInfo(db, name);
+            meta = new InsertPreparedStatementMeta(sql, tableInfo, row);
+            row.delete();
+            insertCache.put(db, sql, meta);
+        }
+        return new InsertPreparedStatementImpl(meta, this.sqlRouter);
     }
 
     @Override
@@ -641,5 +664,31 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     public boolean refreshCatalog() {
         return sqlRouter.RefreshCatalog();
+    }
+
+    @Override
+    public DAGNode SQLToDAG(String query) throws SQLException {
+        Status status = new Status();
+        final com._4paradigm.openmldb.DAGNode dag = sqlRouter.SQLToDAG(query, status);
+
+        try {
+            if (status.getCode() != 0) {
+                throw new SQLException(status.ToString());
+            }
+            return convertDAG(dag);
+        } finally {
+            dag.delete();
+            status.delete();
+        }
+    }
+
+    private static DAGNode convertDAG(com._4paradigm.openmldb.DAGNode dag) {
+        ArrayList<DAGNode> convertedProducers = new ArrayList<>();
+        for (com._4paradigm.openmldb.DAGNode producer : dag.getProducers()) {
+            final DAGNode converted = convertDAG(producer);
+            convertedProducers.add(converted);
+        }
+
+        return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
     }
 }

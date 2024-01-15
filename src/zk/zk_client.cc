@@ -55,7 +55,7 @@ void NodeWatcher(zhandle_t* zh, int type, int state, const char* path, void* wat
 }
 
 void ItemWatcher(zhandle_t* zh, int type, int state, const char* path, void* watcher_ctx) {
-    PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
+    PDLOG(INFO, "item watcher with event type %d, state %d", type, state);
     if (zoo_get_context(zh)) {
         ZkClient* client = const_cast<ZkClient*>(reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         std::string path_str(path);
@@ -64,11 +64,15 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path, void* wat
 }
 
 ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint, int32_t session_timeout,
-                   const std::string& endpoint, const std::string& zk_root_path)
+                   const std::string& endpoint, const std::string& zk_root_path, const std::string& auth_schema,
+                   const std::string& cert)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      auth_schema_(auth_schema),
+      cert_(cert),
+      acl_vector_(ZOO_OPEN_ACL_UNSAFE),
       real_endpoint_(real_endpoint),
       nodes_root_path_(zk_root_path_ + "/nodes"),
       nodes_watch_callbacks_(),
@@ -88,11 +92,15 @@ ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint, i
 }
 
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout, const std::string& endpoint,
-                   const std::string& zk_root_path, const std::string& zone_path)
+                   const std::string& zk_root_path, const std::string& zone_path, const std::string& auth_schema,
+                   const std::string& cert)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      auth_schema_(auth_schema),
+      cert_(cert),
+      acl_vector_(ZOO_OPEN_ACL_UNSAFE),
       nodes_root_path_(zone_path),
       nodes_watch_callbacks_(),
       mu_(),
@@ -132,6 +140,14 @@ bool ZkClient::Init(int log_level, const std::string& log_file) {
     if (zk_ == NULL || !connected_) {
         PDLOG(WARNING, "fail to init zk handler with hosts %s, session_timeout %d", hosts_.c_str(), session_timeout_);
         return false;
+    }
+    if (!cert_.empty()) {
+        if (zoo_add_auth(zk_, auth_schema_.c_str(), cert_.data(), cert_.length(), NULL, NULL) != ZOK) {
+            PDLOG(WARNING, "auth failed. schema: %s cert: %s", auth_schema_.c_str(), cert_.c_str());
+            return false;
+        }
+        acl_vector_ = ZOO_CREATOR_ALL_ACL;
+        PDLOG(INFO, "auth ok. schema: %s cert: %s", auth_schema_.c_str(), cert_.c_str());
     }
     return true;
 }
@@ -173,7 +189,7 @@ bool ZkClient::Register(bool startup_flag) {
     if (startup_flag) {
         value = "startup_" + endpoint_;
     }
-    int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, ZOO_EPHEMERAL, NULL, 0);
+    int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &acl_vector_, ZOO_EPHEMERAL, NULL, 0);
     if (ret == ZOK) {
         PDLOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
         registed_.store(true, std::memory_order_relaxed);
@@ -231,7 +247,7 @@ bool ZkClient::RegisterName() {
         }
         PDLOG(WARNING, "set node with name %s value %s failed", sname.c_str(), value.c_str());
     } else {
-        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(), &acl_vector_, 0, NULL, 0);
         if (ret == ZOK) {
             PDLOG(INFO, "register with name %s value %s ok", sname.c_str(), value.c_str());
             return true;
@@ -280,8 +296,7 @@ bool ZkClient::CreateNode(const std::string& node, const std::string& value, int
     }
     uint32_t size = node.size() + 11;
     char path_buffer[size];  // NOLINT
-    int ret =
-        zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, flags, path_buffer, size);
+    int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(), &acl_vector_, flags, path_buffer, size);
     if (ret == ZOK) {
         assigned_path_name.assign(path_buffer, size - 1);
         PDLOG(INFO, "create node %s ok and real node name %s", node.c_str(), assigned_path_name.c_str());
@@ -371,9 +386,11 @@ bool ZkClient::GetNodeValueAndStat(const char* node, std::string* value, Stat* s
 
 bool ZkClient::DeleteNode(const std::string& node) {
     std::lock_guard<std::mutex> lock(mu_);
-    if (zoo_delete(zk_, node.c_str(), -1) == ZOK) {
+    int ret = zoo_delete(zk_, node.c_str(), -1);
+    if (ret == ZOK) {
         return true;
     }
+    PDLOG(WARNING, "delete %s failed. error no is %d", node.c_str(), ret);
     return false;
 }
 
@@ -565,7 +582,12 @@ void ZkClient::LogEvent(int type, int state, const char* path) {
     if (type == ZOO_SESSION_EVENT) {
         if (state == ZOO_CONNECTED_STATE) {
             Connected();
+        } else if (state == ZOO_CONNECTING_STATE || state == ZOO_ASSOCIATING_STATE) {
+            // just wait
         } else if (state == ZOO_EXPIRED_SESSION_STATE) {
+            connected_ = false;
+        } else {
+            // unknow state, should retry
             connected_ = false;
         }
     }
@@ -597,7 +619,7 @@ bool ZkClient::MkdirNoLock(const std::string& path) {
         }
         full_path += *it;
         index++;
-        int ret = zoo_create(zk_, full_path.c_str(), "", 0, &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        int ret = zoo_create(zk_, full_path.c_str(), "", 0, &acl_vector_, 0, NULL, 0);
         if (ret == ZNODEEXISTS || ret == ZOK) {
             continue;
         }
@@ -610,6 +632,19 @@ bool ZkClient::MkdirNoLock(const std::string& path) {
 bool ZkClient::Mkdir(const std::string& path) {
     std::lock_guard<std::mutex> lock(mu_);
     return MkdirNoLock(path);
+}
+
+bool ZkClient::EnsureConnected() {
+    if (!IsConnected()) {
+        LOG(WARNING) << "reconnect zk";
+        if (Reconnect()) {
+            LOG(INFO) << "reconnect zk ok";
+        } else {
+            LOG(WARNING) << "reconnect zk failed";
+            return false;
+        }
+    }
+    return true;
 }
 
 }  // namespace zk

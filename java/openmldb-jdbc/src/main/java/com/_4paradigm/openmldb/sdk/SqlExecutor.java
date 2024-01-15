@@ -48,10 +48,13 @@ public interface SqlExecutor {
     @Deprecated
     java.sql.ResultSet executeSQL(String db, String sql);
 
+    @Deprecated
     SQLInsertRow getInsertRow(String db, String sql);
 
+    @Deprecated
     SQLInsertRows getInsertRows(String db, String sql);
 
+    @Deprecated
     ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row);
 
     Statement getStatement();
@@ -80,6 +83,13 @@ public interface SqlExecutor {
     NS.TableInfo getTableInfo(String db, String table);
 
     List<String> getTableNames(String db);
+    /**
+     * Parse SQL query into DAG representation
+     *
+     * @param query SQL query string
+     * @throws SQLException exception if input query not valid for SQL parser
+     */
+    DAGNode SQLToDAG(String query) throws SQLException;
 
     void close();
 }

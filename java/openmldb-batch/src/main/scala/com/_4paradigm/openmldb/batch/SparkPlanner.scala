@@ -23,11 +23,11 @@ import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, Ph
   PhysicalDataProviderNode, PhysicalFilterNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode,
   PhysicalLimitNode, PhysicalLoadDataNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode,
   PhysicalSelectIntoNode, PhysicalSimpleProjectNode, PhysicalSortNode, PhysicalTableProjectNode,
-  PhysicalWindowAggrerationNode, ProjectType}
+  PhysicalWindowAggrerationNode, ProjectType, PhysicalSetOperationNode}
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, CreateTablePlan, DataProviderPlan, FilterPlan,
   GroupByAggregationPlan, GroupByPlan, JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SelectIntoPlan,
-  SimpleProjectPlan, SortByPlan, WindowAggPlan}
+  SimpleProjectPlan, SortByPlan, WindowAggPlan, SetOperationPlan}
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExternalUdfUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo,
   NodeIndexType}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
@@ -271,6 +271,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
         SelectIntoPlan.gen(ctx, PhysicalSelectIntoNode.CastFrom(root), children.head)
       case PhysicalOpType.kPhysicalCreateTable =>
         CreateTablePlan.gen(ctx, PhysicalCreateTableNode.CastFrom(root))
+      case PhysicalOpType.kPhysicalOpSetOperation =>
+        SetOperationPlan.gen(ctx, PhysicalSetOperationNode.CastFrom(root), children)
       case _ =>
         throw new UnsupportedHybridSeException(s"Plan type $opType not supported")
     }
@@ -399,5 +401,3 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
     }
   }
 }
-
-

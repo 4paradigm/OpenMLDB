@@ -71,7 +71,14 @@ class WindowIterator {
     virtual bool Valid() = 0;
     /// Return the RowIterator of current segment
     /// of dataset if Valid() return `true`.
-    virtual std::unique_ptr<RowIterator> GetValue() = 0;
+    virtual std::unique_ptr<RowIterator> GetValue() {
+        auto p = GetRawValue();
+        if (!p) {
+            return nullptr;
+        }
+
+        return std::unique_ptr<RowIterator>(p);
+    }
     /// Return the RowIterator of current segment
     /// of dataset if Valid() return `true`.
     virtual RowIterator *GetRawValue() = 0;

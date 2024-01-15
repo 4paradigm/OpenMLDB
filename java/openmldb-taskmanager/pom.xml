@@ -6,7 +6,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.8.3-SNAPSHOT</version>
+        <version>0.8.4-SNAPSHOT</version>
     </parent>
     <artifactId>openmldb-taskmanager</artifactId>
     <name>openmldb-taskmanager</name>
@@ -156,12 +156,6 @@
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
 
