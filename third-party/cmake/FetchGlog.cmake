@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(GLOG_URL https://github.com/google/glog/archive/refs/tags/v0.4.0.tar.gz)
+set(GLOG_URL https://github.com/google/glog/archive/refs/tags/v0.6.0.tar.gz)
 
 message(STATUS "build glog from ${GLOG_URL}")
 
@@ -20,7 +20,7 @@ find_program(MAKE_EXE NAMES gmake nmake make)
 ExternalProject_Add(
   glog
   URL ${GLOG_URL}
-  URL_HASH SHA256=f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c
+  URL_HASH SHA256=8a83bf982f37bb70825df71a9709fa90ea9f4447fb3c099e1d720a439d88bad6
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/glog
   INSTALL_DIR ${DEPS_INSTALL_DIR}
