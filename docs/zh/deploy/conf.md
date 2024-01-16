@@ -193,7 +193,7 @@
 # 最大扫描不同key的个数(批处理)，默认：0
 #--max_traverse_key_cnt=0
 # 结果最大大小（byte)，默认：0 unlimited
-#--scan_max_bytes_size=2097152
+#--scan_max_bytes_size=0
 
 # loadtable
 # load时給线程池提交一次任务的数据条数
