@@ -92,7 +92,7 @@ SELECT id, dayofweek(trx_time) as trx_day FROM test_table
 
 ### 4. 创建在线服务
 
-在“特征服务”页面可以选择创建特征服务，同样是之需要选择上线的特征，以及提供特征服务名称和版本即可。
+在“特征服务”页面可以选择创建特征服务，同样是只需要选择上线的特征，以及提供特征服务名称和版本即可。
 
 ![](./images/create_test_feature_service.png)
 
