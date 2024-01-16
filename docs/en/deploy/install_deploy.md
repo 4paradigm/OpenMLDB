@@ -50,7 +50,7 @@ The compatible operating systems are as follows:
 
 If your operating system is not mentioned above or if you want to compile from source code, please refer [here](compile.md) to compile from source code. 
 
-### Linux Platform Compatibility pre-test
+### Linux Platform Compatibility Pre-test
 
 Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. Download the pre-compiled package `openmldb-0.8.4-linux.tar.gz`, and execute:
 
@@ -704,7 +704,7 @@ Insert into t1 values (1, 'a'),(2,'b');
 select * from t1;
 ```
 
-### Deployed in offline synchronization tool (optional)
+### Deployed in Offline Synchronization Tool (optional)
 
 DataCollector in the offline synchronization tool needs to be deployed on the same machine as the TabletServer. Therefore, if offline synchronization is required, DataCollector can be deployed in all TabletServer deployment directories.
 

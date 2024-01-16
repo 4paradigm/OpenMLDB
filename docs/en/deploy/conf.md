@@ -1,6 +1,6 @@
 # Configuration File
 
-## The Configuration File for Nameserver: conf/nameserver.flags
+## Nameserver Configuration File - conf/nameserver.flags
 
 ```
 # nameserver.conf
@@ -62,7 +62,7 @@
 --system_table_replica_num=2
 ```
 
-## The Configuration File for Tablet: conf/tablet.flags
+## Tablet Configuration File - conf/tablet.flags
 
 ```
 # tablet.conf
@@ -209,7 +209,7 @@
 #--keep_log_file_num=5
 ```
 
-## The Configuration file for APIServer: conf/apiserver.flags
+## APIServer Configuration File - conf/apiserver.flags
 
 ```
 # apiserver.conf
@@ -232,7 +232,7 @@
 #--thread_pool_size=16
 ```
 
-## he Configuration file for TaskManager: conf/taskmanager.properties
+## TaskManager Configuration File - conf/taskmanager.properties
 
 ```
 # Server Config
@@ -259,7 +259,7 @@ zookeeper.max_connect_waitTime=30000
 
 # Spark Config
 spark.home=
-spark.master=local
+spark.master=local[*]
 spark.yarn.jars=
 spark.default.conf=
 spark.eventLog.dir=
@@ -268,7 +268,74 @@ batchjob.jar.path=
 namenode.uri=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
 hadoop.conf.dir=
+#enable.hive.support=false
 ```
 
-* If configuration of `spark.home` is not set，please set the environment variable of `SPARK_HOME` in TaskManager server.
-* The default value of configruation `spark.master` is `local`. We can set `local[*]`, `yarn`, `yarn-cluster` or `yarn-client` as well. If we are using Yarn mode, please set configuration `offline.data.prefix` as the HDFS path to avoid saving offline data in local filesystem of Yarn containers. Meanwhile we need to set environment variable of `HADOOP_CONF_DIR` as the directory of Hadoop configuration files.
+### Details on Spark Config
+
+Some of the important configurations for Spark Config is as follows:
+
+```{note}
+Understand the relationships between configurations and environment variables.
+
+TaskManager will start a Spark process with SparkSubmit, therefore the environment variables cannot be automatically set. For example, before version 0.8.2, in order for Spark process to access HADOOP and connect to YARN cluster, the environment variable `HADOOP_CONF_DIR` needs to be set. In later versions, the Hadoop configuration file location can be specified with configuration item `hadoop.conf.dir`. With this configuration, TaskManager will pass the respective environment variable to the Spark process. However, higher priority is given to `spark-env.sh` within Spark configuration. If this config is set, TaskManager will not be able to make further changes. Therefore, the priority goes as: spark-env.sh > TaskManager configuration > current environment variable `HADOOP_CONF_DIR`.
+
+`spark.home` is only used for TaskManager to identify the installation location for Spark. `hadoop.conf.dir`, `hadoop.user.name` will be passed to Spark process. If any other variables are required, modifications to code is required.
+```
+
+#### `spark.home`
+
+`spark.home` is the installation location, which is used by TaskManager for offline tasks. It is usually configured as the installation location for [OpenMLDB Spark distribution](../../tutorial/openmldbspark_distribution.md).
+
+If `spark.home` in TaskManager configuration file is not set, TaskManager will try to read the environment variable `SPARK_HOME`. If none is set, TaskManager will fail and prompt `spark.home` not set.
+
+With one-clock deployment, SPARK_HOME will be set as `<package_home>/spark`. For example, if `work/taskmanager` is deployed for host1, SPARK_HOME will be set as `/work/taskmanager/spark`. You can configure it in `openmldb-env.sh`. Please do not modify properties template files, and pay attention to `OPENMLDB envs:` during deployment.
+
+#### `spark.master`
+
+`spark.master` configures Spark modes, more information can be found at [Spark Master URL](https://spark.apache.org/docs/latest/submitting-applications.html#master-urls).
+
+
+
+TaskManager only allows `local` and its variants, `yarn`, `yarn-cluster` and `yarn-client` modes. Default mode is `local[*]`, which is milti-process local mode (thread count is cpu counts). Spark cluster `spark://`, Mesos cluster `mesos://` and Kubernetes `k8s://` cluster modes are currently not supported.
+
+##### `local` Mode
+
+Spark tasks are executed locally on TaskManager deployment machine. Please note the following:
+- `offline.data.prefix` is set by default as `file:///tmp/openmldb_offline_storage/`, which is on TaskManager deployment machine. This can be set to other locations as required. 
+- **Before starting TaskManager**, HDFS path can be configured by setting environment variable `HADOOP_CONF_DIR` to Hadoop configuration directory (Note: it is the environment variable, not the configuration item). The directory needs to include `core-site.xml`, `hdfs-site.xml` configuration files. For more information, refer to [Spark documentation](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration).
+
+```{note}
+Currently, `namenode.uri` needs to be configured. When deleting an offline table, HDFS FileSystem `namenode.uri` will be connected, and offline table path will be deleted. This item will be discarded in future updates.
+```
+- batchjob path `batchjob.jar.path` can be set automativally. It can be configured to other paths.
+
+```{seealso}
+if Hadoop/Yarm requires Kerberos authentication, refer to [FAQ](../faq.md).
+```
+##### `yarn/yarn-cluster` Mode
+
+`yarn` and `yarn-cluster` is the same mode, where Spark tasks execute on the Yarn cluster. The configuration items are:
+
+- **Before starting TaskManager**, configure environment variable `HADOOP_CONF_DIR` to Hadoop and Yarn configuration directory. The directory should include `core-site.xml` and `hdfs-site.xml` for hadoop, and `yarn-site.xml` for Yarn. For more details, refer to [Spark documentation](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn).
+
+- `spark.yarn.jars` Configure Spark jar for Yarn. It has to be a `hdfs://` path. You can update the `jars` directory from [OpenMLDB Spark distribution](../../tutorial/openmldbspark_distribution.md) to HDFS, and set it as `hdfs://<hdfs_path>/jars/*`. If not set, Yarn will package and distribute `$SPARK_HOME/jars`, and will do so [for each offline task](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#preparations). Therefore, we recommend it to be set.
+
+- `batchjob.jar.path` It has to be a HDFS path. Upload batchjob jar to HDFS and configure the respective path. Make sure that all Workers in Yarn cluster have access to the batchjob jar.
+
+- `offline.data.prefix` It has to be a HDFS path. Make sure that all Workers in Yarn cluster have access. Use the environment variable `HADOOP_CONF_DIR`.
+
+
+##### `yarn-client` Mode
+
+[Driver executes locally](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)，and executor execute on the Yarn cluster. Configurations are the same as `yarn-cluster`.
+
+#### `spark.default.conf`
+
+Format is `key=value`, use `;` to separate. For example:
+
+```
+spark.default.conf=spark.executor.instances=2;spark.executor.memory=2g;spark.executor.cores=2
+```
+Same affect as `--conf`. For more configurations, refer to [Spark documentation](https://spark.apache.org/docs/3.1.2/configuration.html).
+
