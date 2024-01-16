@@ -5,8 +5,12 @@ OpenMLDB 特征平台
 .. toctree::
     :maxdepth: 1
 
-    concept
+    introduction
     quickstart
-    usage
-    functions
-    installation
+    install/index
+    functions/index
+
+
+    
+    
+    

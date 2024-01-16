@@ -240,8 +240,6 @@ class InnerIndexSt {
     std::vector<uint32_t> ts_;
 };
 
-bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
-
 class TableIndex {
  public:
     TableIndex();
