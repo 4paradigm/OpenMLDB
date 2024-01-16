@@ -117,6 +117,8 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1;
 
 在线导入只允许`mode='append'`，无法`overwrite`或`error_if_exists`。
 
+如果设置了 `insert_memory_usage_limit` session变量，服务端内存使用率超过设定的值就会返回失败。
+
 ## 离线导入规则
 
 表的离线信息可通过`desc <table>`查看。我们将数据地址分为两类，离线地址是OpenMLDB的内部存储路径，硬拷贝将写入此地址，仅一个；软链接地址是软链接导入的地址列表。

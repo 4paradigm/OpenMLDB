@@ -1924,7 +1924,6 @@ TEST_P(TableTest, NegativeTs) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);

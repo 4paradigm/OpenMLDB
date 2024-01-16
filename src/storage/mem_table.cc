@@ -25,6 +25,7 @@
 #include "base/slice.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
+#include "schema/index_util.h"
 #include "storage/record.h"
 #include "storage/mem_table_iterator.h"
 
@@ -626,13 +627,15 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             PDLOG(WARNING, "index %s is exist. tid %u pid %u", column_key.index_name().c_str(), id_, pid_);
             return false;
         }
-        new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
         if (column_key.has_ttl()) {
             index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
         }
+    }
+    int index_pos = schema::IndexUtil::GetPosition(column_key, new_table_meta->column_key());
+    if (index_pos >= 0) {
+        new_table_meta->mutable_column_key(index_pos)->CopyFrom(column_key);
     } else {
-        ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
-        added_column_key->CopyFrom(column_key);
+        new_table_meta->add_column_key()->CopyFrom(column_key);
     }
     if (!index_def) {
         auto cols = GetSchema();

@@ -17,8 +17,9 @@
 
 package com._4paradigm.openmldb.spark.write;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
+
 import com._4paradigm.openmldb.sdk.Schema;
-import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import com.google.common.base.Preconditions;
@@ -36,19 +37,16 @@ public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
     private final long taskId;
     private PreparedStatement preparedStatement = null;
 
-    public OpenmldbDataSingleWriter(OpenmldbWriteConfig config, int partitionId, long taskId) {
+    public OpenmldbDataSingleWriter(OpenmldbConfig config, int partitionId, long taskId) {
         try {
-            SdkOption option = new SdkOption();
-            option.setZkCluster(config.zkCluster);
-            option.setZkPath(config.zkPath);
-            option.setLight(true);
-            SqlClusterExecutor executor = new SqlClusterExecutor(option);
-            String dbName = config.dbName;
-            String tableName = config.tableName;
+            SqlClusterExecutor executor = new SqlClusterExecutor(config.getSdkOption());
+            String dbName = config.getDB();
+            String tableName = config.getTable();
+            executor.executeSQL(dbName, "SET @@insert_memory_usage_limit=" + config.getInsertMemoryUsageLimit());
 
             Schema schema = executor.getTableSchema(dbName, tableName);
             // create insert placeholder
-            String insert_part = config.putIfAbsent? "insert or ignore into " : "insert into ";
+            String insert_part = config.putIfAbsent()? "insert or ignore into " : "insert into ";
             StringBuilder insert = new StringBuilder(insert_part + tableName + " values(?");
             for (int i = 1; i < schema.getColumnList().size(); i++) {
                 insert.append(",?");

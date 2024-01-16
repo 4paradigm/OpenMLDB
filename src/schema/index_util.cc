@@ -154,14 +154,11 @@ base::Status IndexUtil::CheckUnique(const PBIndex& index) {
 bool IndexUtil::IsExist(const ::openmldb::common::ColumnKey& column_key, const PBIndex& index) {
     std::string id_str = GetIDStr(column_key);
     for (int32_t index_pos = 0; index_pos < index.size(); index_pos++) {
-        if (index.Get(index_pos).index_name() == column_key.index_name()) {
-            if (index.Get(index_pos).flag() == 0) {
+        if (index.Get(index_pos).flag() == 0) {
+            if (index.Get(index_pos).index_name() == column_key.index_name() ||
+                    id_str == GetIDStr(index.Get(index_pos))) {
                 return true;
             }
-            break;
-        }
-        if (id_str == GetIDStr(index.Get(index_pos))) {
-            return true;
         }
     }
     return false;
@@ -170,12 +167,6 @@ bool IndexUtil::IsExist(const ::openmldb::common::ColumnKey& column_key, const P
 int IndexUtil::GetPosition(const ::openmldb::common::ColumnKey& column_key, const PBIndex& index) {
     std::string id_str = GetIDStr(column_key);
     for (int32_t index_pos = 0; index_pos < index.size(); index_pos++) {
-        if (index.Get(index_pos).index_name() == column_key.index_name()) {
-            if (index.Get(index_pos).flag() == 0) {
-                return index_pos;
-            }
-            break;
-        }
         if (id_str == GetIDStr(index.Get(index_pos))) {
             return index_pos;
         }

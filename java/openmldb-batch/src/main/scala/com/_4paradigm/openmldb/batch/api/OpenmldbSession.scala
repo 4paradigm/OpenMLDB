@@ -174,6 +174,8 @@ class OpenmldbSession {
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
+    logger.info("Try to execute OpenMLDB SQL: " + sqlText)
+
     if (config.enableSparksql) {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
@@ -278,7 +280,15 @@ class OpenmldbSession {
   def close(): Unit = stop()
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
+    if (catalogService == null) {
+      return
+    }
+
     val databases = catalogService.getDatabases
+    if (databases == null) {
+      return
+    }
+
     databases.map(dbName => {
       val tableInfos = catalogService.getTableInfos(dbName)
       tableInfos.map(tableInfo => {
@@ -323,7 +333,7 @@ class OpenmldbSession {
             }
           } catch {
             case e: Exception => {
-              logger.warn(s"Fail to register table $dbName.$tableName " + ExceptionUtils.getStackTrace(e))
+              logger.warn(s"Fail to register table $dbName.$tableName, exception: " + ExceptionUtils.getStackTrace(e))
             }
           }
         }

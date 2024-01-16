@@ -435,6 +435,7 @@ class SQLClusterRouter : public SQLRouter {
         input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
+    std::atomic<uint32_t> insert_memory_usage_limit_ = 0;  // [0-100], the default value 0 means unlimited
 };
 
 class Bias {

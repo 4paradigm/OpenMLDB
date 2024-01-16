@@ -259,7 +259,8 @@ void DataCollectorImpl::CreateTaskEnv(const datasync::AddSyncTaskRequest* reques
         auto tablet_client = tablet_client_map_[tablet_endpoint];
         api::TableStatus table_status;
         if (auto st = tablet_client->GetTableStatus(tid, pid, table_status); !st.OK()) {
-            SET_RESP_AND_WARN(response, -1, "get table status from tablet server failed, maybe table doesn't exist: " + st.GetMsg());
+            SET_RESP_AND_WARN(response, -1, "get table status from tablet server failed, maybe table doesn't exist: "
+                    + st.GetMsg());
             return;
         }
         if (!ValidateTableStatus(table_status)) {
