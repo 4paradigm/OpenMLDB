@@ -431,6 +431,12 @@ class SQLClusterRouter : public SQLRouter {
     hybridse::sdk::Status UpdateUser(const UserInfo& user_info, const std::string& password);
     hybridse::sdk::Status DeleteUser(const std::string& name);
     void AddUserToConfig(std::map<std::string, std::string>* config);
+    ::hybridse::sdk::Status RevertPut(const nameserver::TableInfo& table_info,
+            uint32_t end_pid,
+            const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+            uint64_t ts,
+            const base::Slice& value,
+            const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;
@@ -443,6 +449,7 @@ class SQLClusterRouter : public SQLRouter {
         input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
+    std::atomic<uint32_t> insert_memory_usage_limit_ = 0;  // [0-100], the default value 0 means unlimited
 };
 
 struct UserInfo {

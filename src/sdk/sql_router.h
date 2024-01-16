@@ -53,6 +53,22 @@ class ExplainInfo {
     virtual const std::string& GetRequestDbName() = 0;
 };
 
+struct DAGNode {
+    DAGNode(absl::string_view name, absl::string_view sql) : name(name), sql(sql) {}
+    DAGNode(absl::string_view name, absl::string_view sql, const std::vector<std::shared_ptr<DAGNode>>& producers)
+        : name(name), sql(sql), producers(producers) {}
+
+    std::string name;
+    std::string sql;
+    std::vector<std::shared_ptr<DAGNode>> producers;
+
+    bool operator==(const DAGNode& op) const noexcept;
+
+    std::string DebugString() const;
+
+    friend std::ostream& operator<<(std::ostream& os, const DAGNode& obj);
+};
+
 class QueryFuture {
  public:
     QueryFuture() {}
@@ -207,6 +223,11 @@ class SQLRouter {
     virtual bool IsOnlineMode() = 0;
 
     virtual std::string GetDatabase() = 0;
+
+    // parse SQL query into DAG representation
+    //
+    // Optional CONFIG clause from SQL query statement is skipped in output DAG
+    std::shared_ptr<DAGNode> SQLToDAG(const std::string& query, hybridse::sdk::Status* status);
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

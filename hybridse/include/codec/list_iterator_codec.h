@@ -534,7 +534,7 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
     ColumnIterator(ListV<Row> *list, const ColumnImpl<V> *column_impl)
         : ConstIterator<uint64_t, V>(), column_impl_(column_impl) {
         row_iter_ = list->GetIterator();
-        if (!row_iter_) {
+        if (row_iter_ != nullptr) {
             row_iter_->SeekToFirst();
         }
     }

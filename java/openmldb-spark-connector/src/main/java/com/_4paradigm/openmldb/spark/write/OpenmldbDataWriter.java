@@ -50,6 +50,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             SqlClusterExecutor executor = new SqlClusterExecutor(option);
             String dbName = config.dbName;
             String tableName = config.tableName;
+            executor.executeSQL(dbName, "SET @@insert_memory_usage_limit=" + config.insertMemoryUsageLimit);
 
             Schema schema = executor.getTableSchema(dbName, tableName);
             // create insert placeholder

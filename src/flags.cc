@@ -36,6 +36,7 @@ DEFINE_string(zk_auth_schema, "digest", "config the id of authentication schema"
 DEFINE_string(zk_cert, "", "config the application credentials");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
+DEFINE_int32(get_sys_mem_interval, 10000, "config the interval of get system memory. unit is milliseconds");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check. unit is milliseconds");
 DEFINE_uint32(zk_log_level, 0,
               "CLI: set level integer, DISABLE_LOGGING=0, "
@@ -78,7 +79,8 @@ DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when d
 DEFINE_string(bucket_size, "1d", "the default bucket size in pre-aggr table");
 
 // scan configuration
-DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
+// max bytes size: write all even if scan result is too large, let it fail in client(receiver)
+DEFINE_uint32(scan_max_bytes_size, 0, "config the max size of scan bytes size, 0 means unlimit");
 DEFINE_uint32(scan_reserve_size, 1024, "config the size of vec reserve");
 DEFINE_uint32(preview_limit_max_num, 1000, "config the max num of preview limit");
 DEFINE_uint32(preview_default_limit, 100, "config the default limit of preview");

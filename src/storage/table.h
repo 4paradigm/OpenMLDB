@@ -153,13 +153,7 @@ class Table {
 
     std::shared_ptr<IndexDef> GetIndex(const std::string& name) { return table_index_.GetIndex(name); }
 
-    std::shared_ptr<IndexDef> GetIndex(const std::string& name, uint32_t ts_idx) {
-        return table_index_.GetIndex(name, ts_idx);
-    }
-
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx) { return table_index_.GetIndex(idx); }
-
-    std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx) { return table_index_.GetIndex(idx, ts_idx); }
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
 

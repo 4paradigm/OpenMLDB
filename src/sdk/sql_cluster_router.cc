@@ -194,6 +194,7 @@ bool SQLClusterRouter::Init() {
         session_variables_.emplace("enable_trace", "false");
         session_variables_.emplace("sync_job", "false");
         session_variables_.emplace("job_timeout", "60000");  // rpc request timeout for taskmanager
+        session_variables_.emplace("insert_memory_usage_limit", "0");
         session_variables_.emplace("spark_config", "");
     }
     return Auth();
@@ -1274,13 +1275,20 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second);
-                    if (!ret) {
-                        SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                            "INSERT failed, tid " + std::to_string(tid) +
-                                                ". Note that data might have been partially inserted. "
-                                                "You are encouraged to perform DELETE to remove any partially "
-                                                "inserted data before trying INSERT again.");
+                    auto ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
+                            insert_memory_usage_limit_.load(std::memory_order_relaxed));
+                    if (!ret.OK()) {
+                        if (RevertPut(row->GetTableInfo(), pid, dimensions, cur_ts,
+                                    base::Slice(row->GetRow()), tablets).IsOK()) {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::StrCat("INSERT failed, tid ", tid));
+                        } else {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    "INSERT failed, tid " + std::to_string(tid) +
+                                    ". Note that data might have been partially inserted. "
+                                    "You are encouraged to perform DELETE to remove any partially "
+                                    "inserted data before trying INSERT again.");
+                        }
                         return false;
                     }
                     continue;
@@ -1390,13 +1398,30 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = client->Put(tid, pid, cur_ts, row_value, &kv.second);
-                    if (!ret) {
+                    auto ret = client->Put(tid, pid, cur_ts, row_value, &kv.second,
+                            insert_memory_usage_limit_.load(std::memory_order_relaxed));
+                    if (!ret.OK()) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                            "INSERT failed, tid " + std::to_string(tid) +
-                                                ". Note that data might have been partially inserted. "
-                                                "You are encouraged to perform DELETE to remove any partially "
-                                                "inserted data before trying INSERT again.");
+                                "INSERT failed, tid " + std::to_string(tid) +
+                                ". Note that data might have been partially inserted. "
+                                "You are encouraged to perform DELETE to remove any partially "
+                                "inserted data before trying INSERT again.");
+                        std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
+                        for (const auto& val : dimensions_map) {
+                            std::vector<std::pair<std::string, uint32_t>> vec;
+                            for (const auto& data : val.second) {
+                                vec.emplace_back(data.key(), data.idx());
+                            }
+                            dimensions.emplace(val.first, std::move(vec));
+                        }
+                        auto table_info = cluster_sdk_->GetTableInfo(db, name);
+                        if (!table_info) {
+                            return false;
+                        }
+                        if (RevertPut(*table_info, pid, dimensions, cur_ts, row_value, tablets).IsOK()) {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::StrCat("INSERT failed, tid ", tid));
+                        }
                         return false;
                     }
                     continue;
@@ -2697,6 +2722,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return {};
             }
             column_key.set_index_name(create_index_node->index_name_);
+            // no skip load data, so it's always be a async op
             if (ns_ptr->AddIndex(db_name, create_index_node->table_name_, column_key, nullptr, msg)) {
                 *status = {::hybridse::common::StatusCode::kOk,
                            "AddIndex is an asynchronous job. Run 'SHOW JOBS FROM NAMESERVER' to see the job status"};
@@ -2805,7 +2831,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             if (!cluster_sdk_->IsClusterMode() || is_local.value()) {
                 if (cluster_sdk_->IsClusterMode() && !IsOnlineMode()) {
-                    *status = {::hybridse::common::StatusCode::kCmdError, "local load only supports loading data to online storage"};
+                    *status = {::hybridse::common::StatusCode::kCmdError,
+                        "local load only supports loading data to online storage"};
                     return {};
                 }
 
@@ -2837,6 +2864,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
                     // Handle in online mode
+                    config.emplace("insert_memory_usage_limit",
+                            std::to_string(insert_memory_usage_limit_.load(std::memory_order_relaxed)));
                     base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 } else {
                     // Handle in offline mode
@@ -3091,6 +3120,15 @@ std::string SQLClusterRouter::GetSparkConfig() {
         if (!absl::SimpleAtoi(value, &new_timeout)) {
             return {StatusCode::kCmdError, "Fail to parse value, can't set the request timeout"};
         }
+    } else if (key == "insert_memory_usage_limit") {
+        int limit = 0;
+        if (!absl::SimpleAtoi(value, &limit)) {
+            return {StatusCode::kCmdError, "Fail to parse value, can't set the insert_memory_usage_limit"};
+        }
+        if (limit < 0 || limit > 100) {
+            return {StatusCode::kCmdError, "Invalid value! The value must be between 0 and 100"};
+        }
+        insert_memory_usage_limit_.store(limit, std::memory_order_relaxed);
     } else if (key == "spark_config") {
         if (!CheckSparkConfigString(value)) {
             return {StatusCode::kCmdError,
@@ -3734,6 +3772,19 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
+    std::stringstream index_stream;
+    for (auto[db, db_map] : new_index_map) {
+        for (auto[table, index_list] : db_map) {
+            for (auto index : index_list) {
+                index_stream << db << "-" << table << "-";
+                for (auto col : index.col_name()) {
+                    index_stream << col << ",";
+                }
+                index_stream << "|" << index.ts_name() << ";";
+            }
+        }
+    }
+    LOG(INFO) << "should create new indexs: " << index_stream.str();
 
     if (!new_index_map.empty()) {
         if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
@@ -4759,6 +4810,56 @@ void SQLClusterRouter::AddUserToConfig(std::map<std::string, std::string>* confi
     if (!GetRouterOptions()->password.empty()) {
         config->emplace("spark.openmldb.password", GetRouterOptions()->password);
     }
+}
+
+::hybridse::sdk::Status SQLClusterRouter::RevertPut(const nameserver::TableInfo& table_info,
+        uint32_t end_pid,
+        const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+        uint64_t ts,
+        const base::Slice& value,
+        const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets) {
+    codec::RowView row_view(table_info.column_desc());
+    std::map<std::string, uint32_t> column_map;
+    for (int32_t i = 0; i < table_info.column_desc_size(); i++) {
+        column_map.emplace(table_info.column_desc(i).name(), i);
+    }
+    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    for (const auto& kv : dimensions) {
+        if (static_cast<size_t>(kv.first) > tablets.size()) {
+            return {StatusCode::kCmdError, absl::StrCat("pid ", kv.first,
+                    " is greater than the tablets size ", tablets.size())};
+        }
+        auto tablet = tablets[kv.first];
+        if (!tablet) {
+            continue;
+        }
+        auto client = tablet->GetClient();
+        for (const auto& val : kv.second) {
+            if (val.second >= static_cast<uint32_t>(table_info.column_key_size())) {
+                return {StatusCode::kCmdError, absl::StrCat("invalid index pos ", val.second)};
+            }
+            const auto& index = table_info.column_key(val.second);
+            if (index.flag()) {
+                continue;
+            }
+            int64_t cur_ts = ts;
+            if (!index.ts_name().empty()) {
+                if (auto it = column_map.find(index.ts_name()); it == column_map.end()) {
+                    return {StatusCode::kCmdError, absl::StrCat("invalid ts name ", index.ts_name())};
+                } else if (row_view.GetInteger(data, it->second,
+                            table_info.column_desc(it->second).data_type(), &cur_ts) != 0) {
+                    return {StatusCode::kCmdError, "get ts failed"};
+                }
+            }
+            std::map<uint32_t, std::string> index_val = { {val.second, val.first} };
+            uint64_t end_ts = cur_ts > 0 ? cur_ts - 1 : 0;
+            client->Delete(table_info.tid(), kv.first, index_val, "", cur_ts, end_ts);
+        }
+        if (kv.first == end_pid) {
+            break;
+        }
+    }
+    return {};
 }
 
 common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {

@@ -138,7 +138,7 @@ TableAsName
 
 ```{warning}
 The `SELECT` running in online mode or the stand-alone version may not obtain complete data.
-Because a query may perform a large number of scans on multiple tablets, for stability, the largest number of bytes to scan is limited, namely `scan_max_bytes_size`.
+The largest number of bytes to scan is limited, namely `scan_max_bytes_size`, default value is unlimited. But if you set the value of `scan_max_bytes_size` to a specific value, the `SELECT` statement will only scan the data within the specified size. If the select results are truncated, the message of `reach the max byte ...` will be recorded in the tablet's log, but there will be no error.
 
-If the select results are truncated, the message of `reach the max byte ...` will be recorded in the tablet's log, but there will be no error.
+Even if the `scan_max_bytes_size` is set to unlimited, the `SELECT` statement may failed, e.g. client errors `body_size=xxx from xx:xxxx is too large`, ` Fail to parse response from xx:xxxx by baidu_std at client-side`. We don't recommend to use `SELECT` in online mode or the stand-alone version. If you want to get the count of the online table, please use `SELECT COUNT(*) FROM table_name;`.
 ```
