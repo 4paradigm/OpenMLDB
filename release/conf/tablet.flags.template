@@ -17,6 +17,7 @@
 # log conf
 --openmldb_log_dir=./logs
 --log_level=info
+#--log_overdue_days=0
 
 #--max_memory_mb=0
 
