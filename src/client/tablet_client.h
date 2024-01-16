@@ -80,7 +80,7 @@ class TabletClient : public Client {
 
     base::Status Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
             ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
-            int memory_usage_limit = 0, bool put_if_absent = false)
+            int memory_usage_limit = 0, bool put_if_absent = false);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,  // NOLINT
              uint64_t& ts,                                                                          // NOLINT
