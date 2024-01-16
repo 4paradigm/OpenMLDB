@@ -26,5 +26,5 @@ openmldb:
 | server.port | 服务端口 | int | 8888 |
 | openmldb.zk_cluster | ZooKeeper 集群地址 | string | 127.0.0.1:2181 |
 | openmldb.zk_path | OpenMLDB 根路径 | string | /openmldb |
-| openmldb.apiserver | OpenMLDB APIServer 地址 | string | 127.0.0.1:90 |
+| openmldb.apiserver | OpenMLDB APIServer 地址 | string | 127.0.0.1:9080 |
 | openmldb.skip_index_check | 是否跳过索引检查 | boolean | false |
