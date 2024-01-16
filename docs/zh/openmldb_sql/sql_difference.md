@@ -41,10 +41,10 @@
 相关参数会在 tablet 配置文件 conf/tablet.flags 里进行配置，详见文档[配置文件](../deploy/conf.md#tablet配置文件-conftabletflags) 。影响到扫描限制的参数为：
 
 - 最大扫描条数 `--max_traverse_cnt`
-- 最大扫描 key 的个数 `--max_traverse_pk_cnt`
+- 最大扫描 key 的个数 `--max_traverse_pk_cnt/max_traverse_key_cnt`
 - 返回的结果大小限制 `--scan_max_bytes_size`
 
-预计在 v0.7.3 以及以后版本中，以上参数的默认值都为 0，即不做相关限制。之前的版本需要注意相关参数的设置。
+v0.8.0及以后版本，删除`max_traverse_pk_cnt`，使用`max_traverse_key_cnt`，前两个参数默认值改为0，即不受限制。v0.8.4以后（不包括）版本`--scan_max_bytes_size`默认也为0。之前的版本需要注意相关参数的设置。
 
 ### WHERE 子句
 

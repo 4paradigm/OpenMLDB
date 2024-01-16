@@ -2724,6 +2724,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return {};
             }
             column_key.set_index_name(create_index_node->index_name_);
+            // no skip load data, so it's always be a async op
             if (ns_ptr->AddIndex(db_name, create_index_node->table_name_, column_key, nullptr, msg)) {
                 *status = {::hybridse::common::StatusCode::kOk,
                            "AddIndex is an asynchronous job. Run 'SHOW JOBS FROM NAMESERVER' to see the job status"};
@@ -3769,6 +3770,19 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
+    std::stringstream index_stream;
+    for (auto[db, db_map] : new_index_map) {
+        for (auto[table, index_list] : db_map) {
+            for (auto index : index_list) {
+                index_stream << db << "-" << table << "-";
+                for (auto col : index.col_name()) {
+                    index_stream << col << ",";
+                }
+                index_stream << "|" << index.ts_name() << ";";
+            }
+        }
+    }
+    LOG(INFO) << "should create new indexs: " << index_stream.str();
 
     if (!new_index_map.empty()) {
         if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
