@@ -1226,6 +1226,69 @@ TEST_F(SQLRouterTest, DDLParseMethodsCombineIndex) {
         ddl_list.at(0));
 }
 
+TEST_F(SQLRouterTest, SQLToDAG) {
+    auto sql = R"(WITH q1 as (
+        WITH q3 as (select * from t1 ORDER BY ts),
+        q4 as (select * from t2 LIMIT 10)
+
+        select * from q3 left join q4 on q3.key = q4.key
+        ),
+        q2 as (select * from t3)
+
+        select * from q1 last join q2 on q1.id = q2.id)";
+
+
+    hybridse::sdk::Status status;
+    auto dag = router_->SQLToDAG(sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    std::string_view q3 = R"(SELECT
+  *
+FROM
+  t1
+ORDER BY ts
+)";
+    std::string_view q4 = R"(SELECT
+  *
+FROM
+  t2
+LIMIT 10
+)";
+    std::string_view q2 = R"(SELECT
+  *
+FROM
+  t3
+)";
+    std::string_view q1 = R"(SELECT
+  *
+FROM
+  q3
+  LEFT JOIN
+  q4
+  ON q3.key = q4.key
+)";
+    std::string_view q = R"(SELECT
+  *
+FROM
+  q1
+  LAST JOIN
+  q2
+  ON q1.id = q2.id
+)";
+
+    std::shared_ptr<DAGNode> dag_q3 = std::make_shared<DAGNode>("q3", q3);
+    std::shared_ptr<DAGNode> dag_q4 = std::make_shared<DAGNode>("q4", q4);
+
+    std::shared_ptr<DAGNode> dag_q1 =
+        std::make_shared<DAGNode>("q1", q1, std::vector<std::shared_ptr<DAGNode>>({dag_q3, dag_q4}));
+    std::shared_ptr<DAGNode> dag_q2 = std::make_shared<DAGNode>("q2", q2);
+
+    std::shared_ptr<DAGNode> expect =
+        std::make_shared<DAGNode>("", q, std::vector<std::shared_ptr<DAGNode>>({dag_q1, dag_q2}));
+
+    EXPECT_EQ(*dag, *expect);
+}
+
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {

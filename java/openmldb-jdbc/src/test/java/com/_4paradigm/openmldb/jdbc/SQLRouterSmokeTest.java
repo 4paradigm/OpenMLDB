@@ -21,6 +21,7 @@ import com._4paradigm.openmldb.SQLInsertRows;
 import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
+import com._4paradigm.openmldb.sdk.DAGNode;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -869,5 +870,61 @@ public class SQLRouterSmokeTest {
                 + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 last join "
                 + "(select db.main.id as merge_id_3, db.main.c1 as merge_c1_3, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out3 "
                 + "on out0.merge_id_0 = out3.merge_id_3 and out0.merge_c1_0 = out3.merge_c1_3;");
+    }
+
+    @Test(dataProvider = "executor")
+    public void testSQLToDag(SqlExecutor router) throws SQLException {
+        String sql = " WITH q1 as (WITH q3 as (select * from t1 LIMIT 10), q4 as (select * from t2) select * from q3 left join q4 on q3.id = q4.id),"
+                +
+                "q2 as (select * from t3)" +
+                "select * from q1 last join q2 on q1.id = q2.id";
+
+        DAGNode dag = router.SQLToDAG(sql);
+
+        Assert.assertEquals(dag.name, "");
+        Assert.assertEquals(dag.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  q1\n" +
+                "  LAST JOIN\n" +
+                "  q2\n" +
+                "  ON q1.id = q2.id\n");
+        Assert.assertEquals(dag.producers.size(), 2);
+
+        DAGNode input1 = dag.producers.get(0);
+        Assert.assertEquals(input1.name, "q1");
+        Assert.assertEquals(input1.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  q3\n" +
+                "  LEFT JOIN\n" +
+                "  q4\n" +
+                "  ON q3.id = q4.id\n");
+        Assert.assertEquals(2, input1.producers.size());
+
+        DAGNode input2 = dag.producers.get(1);
+        Assert.assertEquals(input2.name, "q2");
+        Assert.assertEquals(input2.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  t3\n");
+        Assert.assertEquals(input2.producers.size(), 0);
+
+        DAGNode q1In1 = input1.producers.get(0);
+        Assert.assertEquals(q1In1.producers.size(), 0);
+        Assert.assertEquals(q1In1.name, "q3");
+        Assert.assertEquals(q1In1.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  t1\n" +
+                "LIMIT 10\n");
+
+        DAGNode q1In2 = input1.producers.get(1);
+        Assert.assertEquals(q1In2.producers.size(), 0);
+        Assert.assertEquals(q1In2.name, "q4");
+        Assert.assertEquals(q1In2.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  t2\n");
     }
 }
