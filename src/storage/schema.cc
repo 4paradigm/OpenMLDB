@@ -129,8 +129,6 @@ uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t la
     return max_height;
 }
 
-bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b) { return (cd_a.GetId() < cd_b.GetId()); }
-
 TableIndex::TableIndex() {
     indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
     inner_indexs_ = std::make_shared<std::vector<std::shared_ptr<InnerIndexSt>>>();
