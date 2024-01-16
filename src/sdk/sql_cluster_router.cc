@@ -320,6 +320,7 @@ bool SQLClusterRouter::Init() {
         session_variables_.emplace("enable_trace", "false");
         session_variables_.emplace("sync_job", "false");
         session_variables_.emplace("job_timeout", "60000");  // rpc request timeout for taskmanager
+        session_variables_.emplace("insert_memory_usage_limit", "0");
         session_variables_.emplace("spark_config", "");
     }
     return true;
@@ -1366,8 +1367,9 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second);
-                    if (!ret) {
+                    auto ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
+                            insert_memory_usage_limit_.load(std::memory_order_relaxed));
+                    if (!ret.OK()) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
                                             "INSERT failed, tid " + std::to_string(tid) +
                                                 ". Note that data might have been partially inserted. "
@@ -1482,8 +1484,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    bool ret = client->Put(tid, pid, cur_ts, row_value, &kv.second);
-                    if (!ret) {
+                    auto ret = client->Put(tid, pid, cur_ts, row_value, &kv.second,
+                            insert_memory_usage_limit_.load(std::memory_order_relaxed));
+                    if (!ret.OK()) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
                                             "INSERT failed, tid " + std::to_string(tid) +
                                                 ". Note that data might have been partially inserted. "
@@ -2859,6 +2862,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
                     // Handle in online mode
+                    config.emplace("insert_memory_usage_limit",
+                            std::to_string(insert_memory_usage_limit_.load(std::memory_order_relaxed)));
                     base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 } else {
                     // Handle in offline mode
@@ -3112,6 +3117,15 @@ std::string SQLClusterRouter::GetSparkConfig() {
         if (!absl::SimpleAtoi(value, &new_timeout)) {
             return {StatusCode::kCmdError, "Fail to parse value, can't set the request timeout"};
         }
+    } else if (key == "insert_memory_usage_limit") {
+        int limit = 0;
+        if (!absl::SimpleAtoi(value, &limit)) {
+            return {StatusCode::kCmdError, "Fail to parse value, can't set the insert_memory_usage_limit"};
+        }
+        if (limit < 0 || limit > 100) {
+            return {StatusCode::kCmdError, "Invalid value! The value must be between 0 and 100"};
+        }
+        insert_memory_usage_limit_.store(limit, std::memory_order_relaxed);
     } else if (key == "spark_config") {
         if (!CheckSparkConfigString(value)) {
             return {StatusCode::kCmdError,

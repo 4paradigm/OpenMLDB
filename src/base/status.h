@@ -96,6 +96,7 @@ enum ReturnCode {
     kInvalidArgs = 161,
     kCheckIndexFailed = 162,
     kCatalogUpdateFailed = 163,
+    kExceedPutMemoryLimit = 164,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
