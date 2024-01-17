@@ -1,13 +1,9 @@
 =============================
-安装部署
+应用案例
 =============================
 
 .. toctree::
     :maxdepth: 1
 
-    docker
-    package
-    source
-    config_file
-    upgrade
-    
+    taxi_tour_duration_prediction
+    recommend_system

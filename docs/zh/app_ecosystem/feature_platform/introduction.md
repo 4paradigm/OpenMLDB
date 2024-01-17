@@ -14,7 +14,8 @@ OpenMLDB 特征平台包括以下几个主要功能：
 - [特征管理](./functions/manage_feature.md)：用于存储原始特征数据和派生特征数据的存储系统。
 - [在线场景](./functions/online_scenario.md)：上线特征服务，使用在线数据提供硬实时的在线特征抽取接口。
 - [离线场景](./functions/offline_scenario.md)：对离线数据进行特征计算并导出样本文件，提供离线样本、任务管理功能。
-
+- [SQL实验室](./functions/sql_playground.md)：可调试和执行任意的 OpenMLDB SQL 语句，使用在线模式或离线模型完成特征计算任务。
+- [预计算特征](./functions/computed_features.md)：用户可以通过预计算把特征值直接存入 OpenMLDB 在线表中，然后访问在线表数据进行读写特征。
 
 ## 核心特性
 
