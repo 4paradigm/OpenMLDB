@@ -12,7 +12,7 @@
 docker run -d -p 8888:8888 registry.cn-shenzhen.aliyuncs.com/tobe43/portable-openmldb
 ```
 
-启动 OpenMLDB 集群和特征平台需要约一分钟，可通过 `docker logs` 查看日志，启动成功后在本地浏览器打开 `http://127.0.0.1:8888` 即可访问特征平台。
+启动 OpenMLDB 和 FeatInsight 需要约一分钟，可通过 `docker logs` 查看日志，启动成功后在本地浏览器打开 `http://127.0.0.1:8888` 即可访问 FeatInsight 服务。
 
 
 ## 不包含 OpenMLDB 镜像
@@ -21,7 +21,7 @@ docker run -d -p 8888:8888 registry.cn-shenzhen.aliyuncs.com/tobe43/portable-ope
 
 首先参考 [OpenMLDB 部署文档](../../../deploy/index.rst) 提前部署 OpenMLDB 集群。
 
-然后参考[特征平台配置文件](./config_file.md)，创建 `application.yml` 配置文件。
+然后参考 [FeatInsight 配置文件](./config_file.md)，创建 `application.yml` 配置文件。
 
 ```
 server:
@@ -33,14 +33,14 @@ openmldb:
   apiserver: 127.0.0.1:9080
 ```
 
-对于 Linux 操作系统可以使用下面命令启动 OpenMLDB 特征平台 容器.
+对于 Linux 操作系统可以使用下面命令启动 FeatInsight 容器.
 
 ```
-docker run -d -p 8888:8888 --net=host -v `pwd`/application.yml:/app/application.yml registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-feature-platform
+docker run -d -p 8888:8888 --net=host -v `pwd`/application.yml:/app/application.yml registry.cn-shenzhen.aliyuncs.com/tobe43/featinsight
 ```
 
 由于 MacOS 通过虚拟机启动 Docker 容器，使用 `--net=host` 参数无法正常工作，需要提前修改配置文件指向正确的 OpenMLDB 服务。
 
 ```
-docker run -d -p 8888:8888  -v `pwd`/application.yml:/app/application.yml registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-feature-platform
+docker run -d -p 8888:8888  -v `pwd`/application.yml:/app/application.yml registry.cn-shenzhen.aliyuncs.com/tobe43/featinsight
 ```

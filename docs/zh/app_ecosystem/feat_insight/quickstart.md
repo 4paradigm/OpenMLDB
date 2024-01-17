@@ -1,15 +1,15 @@
 # 快速入门
 
-本文将介绍如何快速入门 OpenMLDB 特征平台，基于一个 SQL 示例来演示如何使用特征平台。
+本文将介绍如何快速入门 FeatInsight，基于一个 SQL 示例来演示如何使用。
 
-安装部署可参考 [OpenMLDB 部署文档](../../../deploy/index.rst) 和 [OpenMLDB 特征平台部署文档](./install/index.rst)。
+安装部署可参考 [OpenMLDB 部署文档](../../../deploy/index.rst) 和 [FeatInsight 部署文档](./install/index.rst)。
 
 ## 使用流程
 
-特征平台的基本使用流程包括以下几个步骤：
+FeatInsight 的基本使用流程包括以下几个步骤：
 
 1. 导入数据：使用SQL命令或前端表单进行创建数据库、创建数据表、导入在线数据和导入离线数据等操作。
-2. 创建特征：使用SQL语句来定义特征视图，特征平台使用SQL编译器进行特征分析并创建对应的特征。
+2. 创建特征：使用SQL语句来定义特征视图，FeatInsight 使用SQL编译器进行特征分析并创建对应的特征。
 3. 离线场景：选择想要导入的特征，可以同时选择不同特征视图的特征，并使用分布式计算把样本文件导入到本地或分布式存储。
 4. 在线场景：选择想要上线的特征，一键发布成在线特征抽取服务，然后可使用HTTP客户端进行请求和返回在线特征抽取结果。
 
@@ -23,11 +23,11 @@ CREATE DATABASE test_db;
 CREATE TABLE test_db.test_table (id STRING, trx_time DATE);
 ```
 
-也可以在特征平台的“数据导入”前端页面直接创建。
+也可以在 FeatInsight 的“数据导入”前端页面直接创建。
 
 ![](./images/create_test_table.png)
 
-为了测试方便，我们准备一个 CSV 文件并保存到 `/tmp/test_table.csv`。注意，这里本地是 OpenMLDB TaskManager 服务器的本地路径，一般也是 OpenMLDB 特征平台的服务器路径，需要提前登陆编辑。
+为了测试方便，我们准备一个 CSV 文件并保存到 `/tmp/test_table.csv`。注意，这里本地是 OpenMLDB TaskManager 服务器的本地路径，一般也是 FeatInsight 的服务器路径，需要提前登陆编辑。
 
 ```
 id,trx_time
@@ -86,7 +86,7 @@ SELECT id, dayofweek(trx_time) as trx_day FROM test_table
 
 ![](./images/test_offline_sample_detail.png)
 
-在本地即可查看导出的样本文件内容。为了验证 OpenMLDB 特征平台提供的在线离线一致性，可记录离线特征结果，并于后面的在线特征计算做比较。
+在本地即可查看导出的样本文件内容。为了验证 FeatInsight 提供的在线离线一致性，可记录离线特征结果，并于后面的在线特征计算做比较。
 
 ![](./images/local_test_offline_samples.png)
 
@@ -106,11 +106,11 @@ SELECT id, dayofweek(trx_time) as trx_day FROM test_table
 
 ## 总结
 
-本示例演示了使用 OpenMLDB 特征平台的完整流程，通过编写简单的 SQL 即可实现在线和离线的特征定义，通过选择不同的特征，甚至是组合不同特征组的特征，即可实现快速的特征复用和上线，并且对比离线和在线的计算结果验证了特征计算的一致性。
+本示例演示了使用 FeatInsight 的完整流程，通过编写简单的 SQL 即可实现在线和离线的特征定义，通过选择不同的特征，甚至是组合不同特征组的特征，即可实现快速的特征复用和上线，并且对比离线和在线的计算结果验证了特征计算的一致性。
 
 ## 附录：高级功能
 
-除了特征工程的基本功能之外，特征平台还提供了高级功能以方便用户进行特征工程的开发：
+除了特征工程的基本功能之外，FeatInsight 还提供了高级功能以方便用户进行特征工程的开发：
 
 * SQL 实验室：提供了 OpenMLDB SQL 语句的调试和执行功能，方便用户执行任意 SQL 操作并调试特征抽取的 SQL 语句。详情请见[这里](./functions/sql_playground)。
 * 预计算特征：可以将通过外部批计算或流式处理后得到的特征值直接存入OpenMLDB在线表中，然后访问在线表数据进行读写特征。详情请见[这里](./functions/computed_features)。
