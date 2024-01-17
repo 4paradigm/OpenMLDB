@@ -6,17 +6,16 @@
 
 ## 场景数据
 
-这里准备3张数据表，首先是请求数据表，用户传递 ID 以及请求时间，可以查询当前推荐窗口所需的特征，为了方便上线这里把索引也提前加上了。
+这里准备3张数据表，首先是请求数据表，用户通过 ID 以及请求时间查询当前窗口所需的特征。
 
 ```
-CREATE TABLE recommend_system.request (uid string, event_time timestamp, INDEX(key=uid, TS=event_time))
-
+CREATE TABLE recommend_system.request (uid string, event_time timestamp)
 ```
 
 然后是曝光表，需要提供用户 ID 以及物料 ID 信息，为了简化把其他无关的列都去掉。
 
 ```
-CREATE TABLE recommend_system.feeds (uid string, material_id string, event_time timestamp, INDEX(key=uid, TS=event_time))
+CREATE TABLE recommend_system.feeds (uid string, material_id string, event_time timestamp)
 ```
 
 最后是物料表，主要包含物料基本信息，包括本场景需要统计的物料类型等，同样简化把无关的字段先去掉。
@@ -45,7 +44,7 @@ WINDOW
   PARTITION BY uid ORDER BY event_time ROWS_RANGE BETWEEN 7d PRECEDING AND CURRENT ROW)
 ```
 
-请按照以下执行逻辑来理解 SQL 语句的含义：
+可以参考下面的逻辑来理解 SQL 语句的含义：
 
 1. 将曝光表与物料表进行 Join 操作，这样拼接后的表就可以获得物料的标签类型等需要的属性。
 2. 对请求表进行拓展，增加 material_id 和 tag 列并使用 null 值填充，这样方便后续与第一步的输出表进行 Union 操作。
@@ -56,7 +55,7 @@ WINDOW
 
 ### 1. 数据导入
 
-首先创建数据库和数据表。
+首先创建数据库和数据表，为了方便上线这里把索引也提前加上了。
 
 ```
 CREATE DATABASE recommend_system;
@@ -100,7 +99,7 @@ WINDOW
 
 ### 3. 特征上线
 
-在在线场景页面，选择需要上线的特征，并点击上线按钮。
+在在线场景页面，选择需要上线的特征，并确认创建。
 
 ![](./images/recommend_create_feature_service.png)
 
