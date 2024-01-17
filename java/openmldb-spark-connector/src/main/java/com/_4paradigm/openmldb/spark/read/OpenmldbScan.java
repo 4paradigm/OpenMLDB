@@ -17,6 +17,7 @@
 
 package com._4paradigm.openmldb.spark.read;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
@@ -24,9 +25,9 @@ import org.apache.spark.sql.connector.read.Scan;
 import org.apache.spark.sql.types.StructType;
 
 public class OpenmldbScan implements Scan, Batch {
-    private final OpenmldbReadConfig config;
+    private final OpenmldbConfig config;
 
-    public OpenmldbScan(OpenmldbReadConfig config) {
+    public OpenmldbScan(OpenmldbConfig config) {
         this.config = config;
     }
 
