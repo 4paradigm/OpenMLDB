@@ -4722,12 +4722,6 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         response->set_msg("table does not exist");
         return;
     }
-    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
     std::string root_path;
     if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4735,8 +4729,7 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
         return;
     }
-    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (!mem_table->DeleteIndex(request->idx_name())) {
+    if (!table->DeleteIndex(request->idx_name())) {
         response->set_code(::openmldb::base::ReturnCode::kDeleteIndexFailed);
         response->set_msg("delete index failed");
         PDLOG(WARNING, "delete index %s failed. tid %u pid %u", request->idx_name().c_str(), tid, pid);
@@ -5161,43 +5154,14 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
+    auto table = GetTable(tid, pid);
     if (!table) {
         PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
         return;
     }
-    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
-    auto* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (mem_table == nullptr) {
-        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
-        return;
-    }
-    if (request->column_keys_size() > 0) {
-        for (const auto& column_key : request->column_keys()) {
-            // TODO(denglong): support add multi indexs in memory table
-            if (!mem_table->AddIndex(column_key)) {
-                PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
-                base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
-                return;
-            }
-        }
-    } else {
-        if (!mem_table->AddIndex(request->column_key())) {
-            PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
-            base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
-            return;
-        }
-    }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
-    if (!ok) {
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
         base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
         PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
         return;
@@ -5207,6 +5171,22 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
         base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path does not exist", response);
         return;
+    }
+    if (request->column_keys_size() > 0) {
+        for (const auto& column_key : request->column_keys()) {
+            // TODO(denglong): support add multi indexs in memory table
+            if (!table->AddIndex(column_key)) {
+                PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
+                base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
+                return;
+            }
+        }
+    } else {
+        if (!table->AddIndex(request->column_key())) {
+            PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
+            return;
+        }
     }
     if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
         PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);

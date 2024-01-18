@@ -226,7 +226,6 @@ class DiskTable : public Table {
 
     int CreateCheckPoint(const std::string& checkpoint_dir);
 
-    bool DeleteIndex(const std::string& idx_name) override;
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;
     uint64_t GetRecordPkCnt() override;
@@ -235,8 +234,12 @@ class DiskTable : public Table {
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
 
+ protected:
+    bool AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) override;
+
  private:
     base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);
+    void HandleDeletedIndex();
 
  private:
     rocksdb::DB* db_;

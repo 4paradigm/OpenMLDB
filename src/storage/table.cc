@@ -21,6 +21,7 @@
 
 #include "base/glog_wrapper.h"
 #include "codec/schema_codec.h"
+#include "schema/index_util.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
 
@@ -165,6 +166,109 @@ void Table::UpdateTTL() {
             }
         }
     }
+}
+
+bool Table::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
+    // TODO(denglong): support ttl type and merge index
+    auto table_meta = GetTableMeta();
+    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
+    std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
+    if (index_def) {
+        if (index_def->GetStatus() != IndexStatus::kDeleted) {
+            PDLOG(WARNING, "index %s is exist. tid %u pid %u", column_key.index_name().c_str(), id_, pid_);
+            return false;
+        }
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
+        }
+    }
+    int index_pos = schema::IndexUtil::GetPosition(column_key, new_table_meta->column_key());
+    if (index_pos >= 0) {
+        new_table_meta->mutable_column_key(index_pos)->CopyFrom(column_key);
+    } else {
+        new_table_meta->add_column_key()->CopyFrom(column_key);
+    }
+    if (!index_def) {
+        auto cols = GetSchema();
+        if (!cols) {
+            return false;
+        }
+        std::map<std::string, ColumnDef> schema;
+        for (int idx = 0; idx < cols->size(); idx++) {
+            const auto& col = cols->Get(idx);
+            schema.emplace(col.name(), ColumnDef(col.name(), idx, col.data_type(), col.not_null()));
+        }
+        std::vector<ColumnDef> col_vec;
+        for (const auto& col_name : column_key.col_name()) {
+            auto it = schema.find(col_name);
+            if (it == schema.end()) {
+                PDLOG(WARNING, "not found col_name[%s]. tid %u pid %u", col_name.c_str(), id_, pid_);
+                return false;
+            }
+            col_vec.push_back(it->second);
+        }
+        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
+                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
+        if (!column_key.ts_name().empty()) {
+            if (auto ts_iter = schema.find(column_key.ts_name()); ts_iter == schema.end()) {
+                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
+                return false;
+            } else {
+                index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
+            }
+        } else {
+            index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+                        ::openmldb::type::kTimestamp, true));
+        }
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
+        } else {
+            index_def->SetTTL(*(table_index_.GetIndex(0)->GetTTL()));
+        }
+        uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
+        index_def->SetInnerPos(inner_id);
+        if (!AddIndexToTable(index_def)) {
+            PDLOG(WARNING, "add index to table failed. tid %u pid %u", id_, pid_);
+            return false;
+        }
+        if (table_index_.AddIndex(index_def) < 0) {
+            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
+            return false;
+        }
+        std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
+        auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
+        table_index_.AddInnerIndex(inner_index_st);
+        table_index_.SetInnerIndexPos(new_table_meta->column_key_size() - 1, inner_id);
+    }
+    index_def->SetStatus(IndexStatus::kReady);
+    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
+    return true;
+}
+
+bool Table::DeleteIndex(const std::string& idx_name) {
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
+    if (!index_def) {
+        PDLOG(WARNING, "index %s does not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
+        return false;
+    }
+    if (!index_def->IsReady()) {
+        PDLOG(WARNING, "index %s can't delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
+        return false;
+    }
+    auto table_meta = GetTableMeta();
+    uint32_t index_id = index_def->GetId();
+    if (index_id == 0) {
+        PDLOG(WARNING, "index %s is primary key, cannot delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
+        return false;
+    } else if (index_id >= static_cast<uint32_t>(table_meta->column_key_size())) {
+        PDLOG(WARNING, "invalid index id %u. tid %u pid %u", index_id, id_, pid_);
+        return false;
+    }
+    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
+    new_table_meta->mutable_column_key(index_id)->set_flag(1);
+    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
+    index_def->SetStatus(IndexStatus::kWaiting);
+    return true;
 }
 
 bool Table::InitFromMeta() {

@@ -171,7 +171,9 @@ class Table {
 
     bool CheckFieldExist(const std::string& name);
 
-    virtual bool DeleteIndex(const std::string& idx_name) = 0;
+    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
+
+    bool DeleteIndex(const std::string& idx_name);
 
     virtual uint64_t GetRecordIdxCnt() = 0;
     virtual bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) = 0;
@@ -184,6 +186,7 @@ class Table {
  protected:
     void UpdateTTL();
     bool InitFromMeta();
+    virtual bool AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) = 0;
 
     ::openmldb::common::StorageMode storage_mode_;
     std::string name_;

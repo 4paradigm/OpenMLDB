@@ -102,9 +102,8 @@ class MemTable : public Table {
 
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 
-    bool DeleteIndex(const std::string& idx_name) override;
-
-    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
+ protected:
+    bool AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) override;
 
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);

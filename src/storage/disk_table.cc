@@ -208,8 +208,9 @@ bool DiskTable::Init() {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
     }
-    PDLOG(INFO, "Open DB. tid %u pid %u ColumnFamilyHandle size %u with data path %s", id_, pid_, GetIdxCnt(),
-          path.c_str());
+    PDLOG(INFO, "Open DB. tid %u pid %u ColumnFamilyHandle size %u with data path %s",
+        id_, pid_, cf_hs_.size(), path.c_str());
+    cf_hs_.resize(MAX_INDEX_NUM, nullptr);
     return true;
 }
 
@@ -406,8 +407,39 @@ base::Status DiskTable::Truncate() {
 }
 
 void DiskTable::SchedGc() {
+    HandleDeletedIndex();
     GcHead();
     UpdateTTL();
+}
+
+void DiskTable::HandleDeletedIndex() {
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    for (const auto& inner_index : *inner_indexs) {
+        // kWaiting -> kDeleting -> kDeleted
+        const auto& indexs = inner_index->GetIndex();
+        for (const auto& cur_index : indexs) {
+            switch (cur_index->GetStatus()) {
+                case IndexStatus::kWaiting:
+                    cur_index->SetStatus(IndexStatus::kDeleting);
+                    break;
+                case IndexStatus::kDeleting: {
+                    if (indexs.size() == 1) {
+                        uint32_t idx = inner_index->GetId();
+                        db_->DropColumnFamily(cf_hs_[idx + 1]);
+                        db_->DestroyColumnFamilyHandle(cf_hs_[idx + 1]);
+                        cf_hs_[idx + 1] = nullptr;
+                        PDLOG(INFO, "drop column family. tid %u pid %u index name %s idx %u",
+                            id_, pid_, cur_index->GetName().c_str(), idx);
+                    }
+                    cur_index->SetStatus(IndexStatus::kDeleted);
+                    break;
+                }
+                case IndexStatus::kDeleted:
+                case IndexStatus::kReady:
+                    break;
+            }
+        }
+    }
 }
 
 void DiskTable::GcHead() {
@@ -644,8 +676,30 @@ TraverseIterator* DiskTable::NewTraverseIterator(uint32_t index) {
             cf_hs_[inner_pos + 1], GetCompressType());
 }
 
-bool DiskTable::DeleteIndex(const std::string& idx_name) {
-    // TODO(litongxin)
+bool DiskTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
+    rocksdb::ColumnFamilyOptions cfo;
+    if (storage_mode_ == ::openmldb::common::StorageMode::kSSD) {
+        cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
+    } else {
+        cfo = rocksdb::ColumnFamilyOptions(hdd_option_template);
+    }
+    cfo.comparator = &cmp_;
+    cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
+    if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
+        index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
+        uint32_t inner_pos = index_def->GetInnerPos();
+        cfo.compaction_filter_factory =
+            std::make_shared<AbsoluteTTLFilterFactory>(table_index_.GetInnerIndex(inner_pos));
+    }
+    rocksdb::ColumnFamilyHandle* handle;
+    rocksdb::Status s = db_->CreateColumnFamily(cfo, index_def->GetName(), &handle);
+    if (!s.ok()) {
+        PDLOG(WARNING, "failed to create ColumnFamily in rocksdb. tid %u pid %u error %s",
+                id_, pid_, s.ToString().c_str());
+        return false;
+    }
+    cf_hs_[index_def->GetInnerPos() + 1] = handle;
+    PDLOG(INFO, "add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     return true;
 }
 
