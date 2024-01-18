@@ -449,6 +449,9 @@ void DiskTable::GcHead() {
     absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
     for (const auto& inner_index : *inner_indexs) {
         uint32_t idx = inner_index->GetId();
+        if (cf_hs_[idx + 1] == nullptr) {
+            continue;
+        }
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
         ro.snapshot = snapshot;
         // ro.prefix_same_as_start = true;
