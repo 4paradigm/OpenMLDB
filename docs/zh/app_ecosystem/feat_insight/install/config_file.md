@@ -1,8 +1,8 @@
-# 特征平台配置文件
+# FeatInsight 配置文件
 
 ## 介绍
 
-OpenMLDB 特征平台基于 Spring Boot 开发，使用 `application.yml` 规范作为配置文件。
+FeatInsight 基于 Spring Boot 开发，使用 `application.yml` 规范作为配置文件。
 
 ## 配置示例
 

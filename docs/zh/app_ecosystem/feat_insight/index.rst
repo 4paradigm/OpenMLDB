@@ -1,5 +1,5 @@
 =============================
-OpenMLDB 特征平台
+FeatInsight
 =============================
 
 .. toctree::
@@ -9,8 +9,5 @@ OpenMLDB 特征平台
     quickstart
     install/index
     functions/index
-
-
-    
-    
-    
+    use_cases/index
+    faq
