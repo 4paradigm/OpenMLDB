@@ -33,6 +33,12 @@ do
 
   echo "start zookeeper in $dir with endpoint $host:$port "
   cmd="cd $dir && bin/zkServer.sh start"
-  run_auto "$host" "$cmd"
+  # special for java
+  pre=""
+  if [[ -n $RUNNER_JAVA_HOME ]]; then
+    echo "overwrite java env by RUNNER_JAVA_HOME:$RUNNER_JAVA_HOME"
+    pre="export JAVA_HOME=$RUNNER_JAVA_HOME && export PATH=$JAVA_HOME/bin:$PATH &&"
+  fi
+  run_auto "$host" "$pre $cmd"
 done
 IFS="$old_IFS"
