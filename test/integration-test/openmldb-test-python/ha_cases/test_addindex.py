@@ -41,14 +41,14 @@ class TestAddIndex:
         cls.cursor = cls.db.cursor()
         cls.executor = Executor(cls.manager.GetBinPath(), cls.conf["zk_cluster"], cls.conf["zk_root_path"])
 
-    @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("memory", False)])
+    @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("memory", False), ("hdd", True), ("hdd", False)])
     def test_addindex(self, storage_mode, snapshot):
         database = "test"
         self.cursor.execute(f"create database if not exists {database}")
         self.cursor.execute(f"use {database}")
         table_name = "table" + str(random.randint(0, 10000))
         partition_num = 8
-        ddl = f"create table if not exists {table_name} (col1 string, col2 string, col3 bigint, index(key=col1, ts=col3));"
+        ddl = f"create table if not exists {table_name} (col1 string, col2 string, col3 bigint, index(key=col1, ts=col3)) OPTIONS (storage_mode='{storage_mode}');"
         self.cursor.execute(ddl)
         status, indexs = self.executor.GetIndexs(database, table_name)
         assert status.OK() and len(indexs) == 1
@@ -93,13 +93,14 @@ class TestAddIndex:
                 assert status.OK() and len(result) == 1 and result[0][0] == "key1" + str(i)
         self.cursor.execute(f"drop table {table_name}")
 
-    def test_add_deleted_index(self):
+    @pytest.mark.parametrize("storage_mode", ["memory", "hdd"])
+    def test_add_deleted_index(self, storage_mode):
         database = "test"
         self.cursor.execute(f"create database if not exists {database}")
         self.cursor.execute(f"use {database}")
         table_name = "table" + str(random.randint(0, 10000))
         partition_num = 1
-        ddl = f"create table if not exists {table_name} (col1 string, col2 string, col3 bigint, index(key=col1, ts=col3), index(key=col1)) options (partitionnum=1, replicanum=1);"
+        ddl = f"create table if not exists {table_name} (col1 string, col2 string, col3 bigint, index(key=col1, ts=col3), index(key=col1)) options (storage_mode='{storage_mode}', partitionnum=1, replicanum=1);"
         self.cursor.execute(ddl)
         status, indexs = self.executor.GetIndexs(database, table_name)
         assert status.OK() and len(indexs) == 2
