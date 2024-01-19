@@ -686,22 +686,24 @@ bool DiskTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
     } else {
         cfo = rocksdb::ColumnFamilyOptions(hdd_option_template);
     }
+    uint32_t inner_id = index_def->GetInnerPos();
     cfo.comparator = &cmp_;
     cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
     if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
         index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
-        uint32_t inner_pos = index_def->GetInnerPos();
+        std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
+        auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
         cfo.compaction_filter_factory =
-            std::make_shared<AbsoluteTTLFilterFactory>(table_index_.GetInnerIndex(inner_pos));
+            std::make_shared<AbsoluteTTLFilterFactory>(inner_index_st);
     }
-    rocksdb::ColumnFamilyHandle* handle;
+    rocksdb::ColumnFamilyHandle* handle = nullptr;
     rocksdb::Status s = db_->CreateColumnFamily(cfo, index_def->GetName(), &handle);
     if (!s.ok()) {
         PDLOG(WARNING, "failed to create ColumnFamily in rocksdb. tid %u pid %u error %s",
                 id_, pid_, s.ToString().c_str());
         return false;
     }
-    cf_hs_[index_def->GetInnerPos() + 1] = handle;
+    cf_hs_[inner_id + 1] = handle;
     PDLOG(INFO, "add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     return true;
 }
