@@ -2339,13 +2339,7 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         sr.set_et(1000);
         ::openmldb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
-        // Some functions in tablet_impl only support memtable now
-        // refer to issue #1438
-        if (storage_mode == ::openmldb::common::kMemory) {
-            ASSERT_EQ(108, srp.code());
-        } else {
-            ASSERT_EQ(0, srp.code());
-        }
+        ASSERT_EQ(108, srp.code());
         sr.set_pk("card0");
         sr.set_idx_name("card");
         tablet.Scan(NULL, &sr, &srp, &closure);

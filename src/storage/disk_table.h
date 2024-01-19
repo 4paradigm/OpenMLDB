@@ -220,7 +220,9 @@ class DiskTable : public Table {
 
     void CompactDB() {
         for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
-            db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
+            if (cf != nullptr) {
+                db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
+            }
         }
     }
 
