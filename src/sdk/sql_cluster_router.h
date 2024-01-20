@@ -87,7 +87,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
                 hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) override;
+                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) override;
 
     bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
 
@@ -316,10 +316,11 @@ class SQLClusterRouter : public SQLRouter {
 
     bool GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                        std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info, DefaultValueMap* default_map,
-                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table);
+                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table, bool* put_if_absent);
     bool GetMultiRowInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
-                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
+                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths,
+                               bool* put_if_absent);
 
     DefaultValueMap GetDefaultMap(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,

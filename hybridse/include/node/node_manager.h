@@ -166,7 +166,7 @@ class NodeManager {
     SqlNode *MakeInsertTableNode(const std::string &db_name,
                                  const std::string &table_name,
                                  const ExprListNode *column_names,
-                                 const ExprListNode *values);
+                                 const ExprListNode *values, InsertStmt::InsertMode insert_mode);
     CreateStmt *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &db_name,
                                  const std::string &table_name,

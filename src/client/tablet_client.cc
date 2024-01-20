@@ -203,19 +203,21 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
 
 base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
                        const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-                       int memory_usage_limit) {
+                       int memory_usage_limit, bool put_if_absent) {
+
     ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> pb_dimensions;
     for (size_t i = 0; i < dimensions.size(); i++) {
         ::openmldb::api::Dimension* d = pb_dimensions.Add();
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
-    return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit);
+
+    return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit, put_if_absent);
 }
 
 base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
             ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
-            int memory_usage_limit) {
+            int memory_usage_limit, bool put_if_absent) {
     ::openmldb::api::PutRequest request;
     if (memory_usage_limit < 0 || memory_usage_limit > 100) {
         return {base::ReturnCode::kError, absl::StrCat("invalid memory_usage_limit ", memory_usage_limit)};
@@ -227,6 +229,7 @@ base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const 
     request.set_tid(tid);
     request.set_pid(pid);
     request.mutable_dimensions()->Swap(dimensions);
+    request.set_put_if_absent(put_if_absent);
     ::openmldb::api::PutResponse response;
     auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
             &request, &response, FLAGS_request_timeout_ms, 1);
