@@ -85,7 +85,7 @@ Wait for about half a minute and you can check the status at "Offline Samples".
 
 You can check the content of the exported samples. To verify online-offline consistency provided by FeatInsight, you can record the result and compare it with online feature computation results.
 
-![](./images/local_test_offline_samples.png
+![](./images/local_test_offline_samples.png)
 
 ### 4. Online Feature Service
 
