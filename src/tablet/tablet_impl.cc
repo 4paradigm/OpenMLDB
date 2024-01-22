@@ -4772,19 +4772,6 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
             response->set_msg("table does not exist");
             break;
         }
-        if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", request->tid(), request->pid());
-            return;
-        }
-        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table == nullptr) {
-            PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
-            response->set_msg("table is not memtable");
-            break;
-        }
         std::map<uint32_t, std::string> pid_endpoint_map;
         for (int idx = 0; idx < request->pairs_size(); idx++) {
             pid_endpoint_map.insert(std::make_pair(request->pairs(idx).pid(), request->pairs(idx).endpoint()));
@@ -4893,7 +4880,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
 }
 
 void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                          std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+                                          std::shared_ptr<::openmldb::storage::Snapshot> snapshot,
                                           const std::vector<::openmldb::common::ColumnKey>& column_keys,
                                           uint32_t partition_num, uint64_t offset, bool dump_data,
                                           std::shared_ptr<::openmldb::api::TaskInfo> task) {
@@ -4926,7 +4913,7 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::T
             whs[i] = std::make_shared<::openmldb::log::WriteHandle>("off", index_file_name, fd);
         }
     }
-    auto status = memtable_snapshot->ExtractIndexData(table, column_keys, whs, offset, dump_data);
+    auto status = snapshot->ExtractIndexData(table, column_keys, whs, offset, dump_data);
     if (status.OK()) {
         PDLOG(INFO, "extract index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::openmldb::api::kDone);
@@ -4960,12 +4947,6 @@ void TabletImpl::LoadIndexData(RpcController* controller, const ::openmldb::api:
             PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table does not exist");
-            break;
-        }
-        if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
             break;
         }
         if (table->GetTableStat() != ::openmldb::storage::kNormal) {
@@ -5120,12 +5101,6 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
                 base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
                 break;
             }
-            if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-                response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-                PDLOG(WARNING, "only support mem_table. tid %u pid %u", tid, pid);
-                response->set_msg("only support mem_table");
-                break;
-            }
             if (table->GetTableStat() != ::openmldb::storage::kNormal) {
                 PDLOG(WARNING, "table state is %d, cannot extract index data. tid %u, pid %u", table->GetTableStat(),
                       tid, pid);
@@ -5145,13 +5120,12 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
         for (const auto& cur_column_key : request->column_key()) {
             index_vec.push_back(cur_column_key);
         }
-        auto memtable_snapshot = std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
         if (IsClusterMode()) {
-            task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot,
+            task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, snapshot,
                                            index_vec, request->partition_num(), request->offset(), request->dump_data(),
                                            task_ptr));
         } else {
-            ExtractIndexDataInternal(table, memtable_snapshot, index_vec, request->partition_num(), request->offset(),
+            ExtractIndexDataInternal(table, snapshot, index_vec, request->partition_num(), request->offset(),
                                      false, nullptr);
         }
         base::SetResponseOK(response);

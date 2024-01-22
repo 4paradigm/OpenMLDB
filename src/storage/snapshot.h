@@ -18,7 +18,9 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
+#include "base/status.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 #include "storage/table.h"
@@ -52,6 +54,12 @@ class Snapshot {
     static int GetLocalManifest(const std::string& full_path,
                                 ::openmldb::api::Manifest& manifest);  // NOLINT
     std::string GetSnapshotPath() { return snapshot_path_; }
+
+    virtual base::Status ExtractIndexData(const std::shared_ptr<Table>& table,
+            const std::vector<::openmldb::common::ColumnKey>& add_indexs,
+            const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
+            uint64_t offset, bool dump_data) = 0;
+
  protected:
     uint32_t tid_;
     uint32_t pid_;

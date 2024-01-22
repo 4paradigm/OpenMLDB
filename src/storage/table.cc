@@ -217,7 +217,7 @@ bool Table::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
                 index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
             }
         } else {
-            index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+            index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
                         ::openmldb::type::kTimestamp, true));
         }
         if (column_key.has_ttl()) {

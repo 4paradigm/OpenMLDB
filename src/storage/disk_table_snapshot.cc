@@ -133,5 +133,13 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
 
 bool DiskTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) { return true; }
 
+base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& table,
+            const std::vector<::openmldb::common::ColumnKey>& add_indexs,
+            const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
+            uint64_t offset, bool dump_data) {
+    auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
+    return {};
+}
+
 }  // namespace storage
 }  // namespace openmldb
