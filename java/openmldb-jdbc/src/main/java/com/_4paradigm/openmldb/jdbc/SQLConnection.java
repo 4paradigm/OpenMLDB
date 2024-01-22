@@ -82,7 +82,8 @@ public class SQLConnection implements Connection {
     @Override
     public java.sql.PreparedStatement prepareStatement(String sql) throws SQLException {
         String lower = sql.toLowerCase();
-        if (lower.startsWith("insert into")) {
+        // insert, insert or xxx
+        if (lower.startsWith("insert ")) {
             return client.getInsertPreparedStmt(this.defaultDatabase, sql);
         } else if (lower.startsWith("select")) {
             return client.getPreparedStatement(this.defaultDatabase, sql);

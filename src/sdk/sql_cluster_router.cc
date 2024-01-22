@@ -455,39 +455,40 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
             *status = {};
             return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
                                                   insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
-                                                  insert_cache->GetHoleIdxArr());
+                                                  insert_cache->GetHoleIdxArr(), insert_cache->IsPutIfAbsent());
         }
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     std::vector<uint32_t> stmt_column_idx_arr;
-    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr)) {
+    bool put_if_absent = false;
+    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr, &put_if_absent)) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "get insert information failed");
         return {};
     }
     auto schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    auto insert_cache =
-        std::make_shared<InsertSQLCache>(table_info, schema, default_map, str_length,
-                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema));
+    auto insert_cache = std::make_shared<InsertSQLCache>(
+        table_info, schema, default_map, str_length,
+        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, schema), put_if_absent);
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     *status = {};
     return std::make_shared<SQLInsertRow>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
                                           insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
-                                          insert_cache->GetHoleIdxArr());
+                                          insert_cache->GetHoleIdxArr(), insert_cache->IsPutIfAbsent());
 }
 
 bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::string& sql,
                                              ::hybridse::sdk::Status* status,
                                              std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
                                              std::vector<DefaultValueMap>* default_maps,
-                                             std::vector<uint32_t>* str_lengths) {
+                                             std::vector<uint32_t>* str_lengths, bool* put_if_absent) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     // TODO(hw): return status?
     RET_FALSE_IF_NULL_AND_WARN(table_info, "output table_info is nullptr");
     RET_FALSE_IF_NULL_AND_WARN(default_maps, "output default_maps is nullptr");
     RET_FALSE_IF_NULL_AND_WARN(str_lengths, "output str_lengths is nullptr");
-
+    RET_FALSE_IF_NULL_AND_WARN(put_if_absent, "output put_if_absent is nullptr");
     ::hybridse::node::NodeManager nm;
     ::hybridse::plan::PlanNodeList plans;
     bool ok = GetSQLPlan(sql, &nm, &plans);
@@ -506,6 +507,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         SET_STATUS_AND_WARN(status, StatusCode::kPlanError, "insert stmt is null");
         return false;
     }
+    *put_if_absent = insert_stmt->insert_mode_ == ::hybridse::node::InsertStmt::IGNORE;
     std::string db_name;
     if (!insert_stmt->db_name_.empty()) {
         db_name = insert_stmt->db_name_;
@@ -576,7 +578,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
 bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                      std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
                                      DefaultValueMap* default_map, uint32_t* str_length,
-                                     std::vector<uint32_t>* stmt_column_idx_in_table) {
+                                     std::vector<uint32_t>* stmt_column_idx_in_table, bool* put_if_absent) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     RET_FALSE_IF_NULL_AND_WARN(table_info, "output table_info is nullptr");
     RET_FALSE_IF_NULL_AND_WARN(default_map, "output default_map is nullptr");
@@ -636,6 +638,7 @@ bool SQLClusterRouter::GetInsertInfo(const std::string& db, const std::string& s
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "get default value map of " + sql + " failed");
         return false;
     }
+    *put_if_absent = insert_stmt->insert_mode_ == ::hybridse::node::InsertStmt::IGNORE;
     return true;
 }
 
@@ -771,23 +774,24 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(const std::string
             status->SetOK();
             return std::make_shared<SQLInsertRows>(insert_cache->GetTableInfo(), insert_cache->GetSchema(),
                                                    insert_cache->GetDefaultValue(), insert_cache->GetStrLength(),
-                                                   insert_cache->GetHoleIdxArr());
+                                                   insert_cache->GetHoleIdxArr(), insert_cache->IsPutIfAbsent());
         }
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
     uint32_t str_length = 0;
     std::vector<uint32_t> stmt_column_idx_arr;
-    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr)) {
+    bool put_if_absent = false;
+    if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr, &put_if_absent)) {
         return {};
     }
     auto col_schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
-    insert_cache =
-        std::make_shared<InsertSQLCache>(table_info, col_schema, default_map, str_length,
-                                         SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema));
+    insert_cache = std::make_shared<InsertSQLCache>(
+        table_info, col_schema, default_map, str_length,
+        SQLInsertRow::GetHoleIdxArr(default_map, stmt_column_idx_arr, col_schema), put_if_absent);
     SetCache(db, sql, hybridse::vm::kBatchMode, insert_cache);
     return std::make_shared<SQLInsertRows>(table_info, insert_cache->GetSchema(), default_map, str_length,
-                                           insert_cache->GetHoleIdxArr());
+                                           insert_cache->GetHoleIdxArr(), insert_cache->IsPutIfAbsent());
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql, hybridse::sdk::Status* status) {
@@ -1303,7 +1307,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     std::vector<DefaultValueMap> default_maps;
     std::vector<uint32_t> str_lengths;
-    if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths)) {
+    bool put_if_absent;
+    if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths, &put_if_absent)) {
         CODE_PREPEND_AND_WARN(status, StatusCode::kCmdError, "Fail to get insert info");
         return false;
     }
@@ -1318,7 +1323,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     }
     std::vector<size_t> fails;
     for (size_t i = 0; i < default_maps.size(); i++) {
-        auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i]);
+        auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i], put_if_absent);
         if (!row) {
             LOG(WARNING) << "fail to parse row[" << i << "]";
             fails.push_back(i);
@@ -1368,13 +1373,19 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
                     auto ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
-                            insert_memory_usage_limit_.load(std::memory_order_relaxed));
+                            insert_memory_usage_limit_.load(std::memory_order_relaxed), row->IsPutIfAbsent());
                     if (!ret.OK()) {
-                        SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                            "INSERT failed, tid " + std::to_string(tid) +
-                                                ". Note that data might have been partially inserted. "
-                                                "You are encouraged to perform DELETE to remove any partially "
-                                                "inserted data before trying INSERT again.");
+                        if (RevertPut(row->GetTableInfo(), pid, dimensions, cur_ts,
+                                    base::Slice(row->GetRow()), tablets).IsOK()) {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::StrCat("INSERT failed, tid ", tid));
+                        } else {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    "INSERT failed, tid " + std::to_string(tid) +
+                                    ". Note that data might have been partially inserted. "
+                                    "You are encouraged to perform DELETE to remove any partially "
+                                    "inserted data before trying INSERT again.");
+                        }
                         return false;
                     }
                     continue;
@@ -1442,8 +1453,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
 }
 
 bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
-                                     hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                                     hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) {
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (dimension == nullptr || dimension_len <= 0 || value == nullptr || len <= 0 || partition_num <= 0) {
         *status = {StatusCode::kCmdError, "invalid parameter"};
@@ -1485,13 +1496,29 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
                     auto ret = client->Put(tid, pid, cur_ts, row_value, &kv.second,
-                            insert_memory_usage_limit_.load(std::memory_order_relaxed));
+                            insert_memory_usage_limit_.load(std::memory_order_relaxed), put_if_absent);
                     if (!ret.OK()) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                            "INSERT failed, tid " + std::to_string(tid) +
-                                                ". Note that data might have been partially inserted. "
-                                                "You are encouraged to perform DELETE to remove any partially "
-                                                "inserted data before trying INSERT again.");
+                                "INSERT failed, tid " + std::to_string(tid) +
+                                ". Note that data might have been partially inserted. "
+                                "You are encouraged to perform DELETE to remove any partially "
+                                "inserted data before trying INSERT again.");
+                        std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
+                        for (const auto& val : dimensions_map) {
+                            std::vector<std::pair<std::string, uint32_t>> vec;
+                            for (const auto& data : val.second) {
+                                vec.emplace_back(data.key(), data.idx());
+                            }
+                            dimensions.emplace(val.first, std::move(vec));
+                        }
+                        auto table_info = cluster_sdk_->GetTableInfo(db, name);
+                        if (!table_info) {
+                            return false;
+                        }
+                        if (RevertPut(*table_info, pid, dimensions, cur_ts, row_value, tablets).IsOK()) {
+                            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::StrCat("INSERT failed, tid ", tid));
+                        }
                         return false;
                     }
                     continue;
@@ -2832,7 +2859,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             if (!cluster_sdk_->IsClusterMode() || is_local.value()) {
                 if (cluster_sdk_->IsClusterMode() && !IsOnlineMode()) {
-                    *status = {::hybridse::common::StatusCode::kCmdError, "local load only supports loading data to online storage"};
+                    *status = {::hybridse::common::StatusCode::kCmdError,
+                        "local load only supports loading data to online storage"};
                     return {};
                 }
 
@@ -4751,6 +4779,56 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
         return std::make_shared<ReadableResultSetSQL>(rs);
     }
     return rs;
+}
+
+::hybridse::sdk::Status SQLClusterRouter::RevertPut(const nameserver::TableInfo& table_info,
+        uint32_t end_pid,
+        const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+        uint64_t ts,
+        const base::Slice& value,
+        const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets) {
+    codec::RowView row_view(table_info.column_desc());
+    std::map<std::string, uint32_t> column_map;
+    for (int32_t i = 0; i < table_info.column_desc_size(); i++) {
+        column_map.emplace(table_info.column_desc(i).name(), i);
+    }
+    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    for (const auto& kv : dimensions) {
+        if (static_cast<size_t>(kv.first) > tablets.size()) {
+            return {StatusCode::kCmdError, absl::StrCat("pid ", kv.first,
+                    " is greater than the tablets size ", tablets.size())};
+        }
+        auto tablet = tablets[kv.first];
+        if (!tablet) {
+            continue;
+        }
+        auto client = tablet->GetClient();
+        for (const auto& val : kv.second) {
+            if (val.second >= static_cast<uint32_t>(table_info.column_key_size())) {
+                return {StatusCode::kCmdError, absl::StrCat("invalid index pos ", val.second)};
+            }
+            const auto& index = table_info.column_key(val.second);
+            if (index.flag()) {
+                continue;
+            }
+            int64_t cur_ts = ts;
+            if (!index.ts_name().empty()) {
+                if (auto it = column_map.find(index.ts_name()); it == column_map.end()) {
+                    return {StatusCode::kCmdError, absl::StrCat("invalid ts name ", index.ts_name())};
+                } else if (row_view.GetInteger(data, it->second,
+                            table_info.column_desc(it->second).data_type(), &cur_ts) != 0) {
+                    return {StatusCode::kCmdError, "get ts failed"};
+                }
+            }
+            std::map<uint32_t, std::string> index_val = { {val.second, val.first} };
+            uint64_t end_ts = cur_ts > 0 ? cur_ts - 1 : 0;
+            client->Delete(table_info.tid(), kv.first, index_val, "", cur_ts, end_ts);
+        }
+        if (kv.first == end_pid) {
+            break;
+        }
+    }
+    return {};
 }
 
 common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {

@@ -87,7 +87,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
                 hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) override;
+                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) override;
 
     bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
 
@@ -316,10 +316,11 @@ class SQLClusterRouter : public SQLRouter {
 
     bool GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                        std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info, DefaultValueMap* default_map,
-                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table);
+                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table, bool* put_if_absent);
     bool GetMultiRowInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
-                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
+                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths,
+                               bool* put_if_absent);
 
     DefaultValueMap GetDefaultMap(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,
@@ -422,6 +423,13 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
             int64_t timeout_ms, const base::Slice& row,
             const std::string& router_col, hybridse::sdk::Status* status);
+
+    ::hybridse::sdk::Status RevertPut(const nameserver::TableInfo& table_info,
+            uint32_t end_pid,
+            const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+            uint64_t ts,
+            const base::Slice& value,
+            const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

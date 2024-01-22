@@ -76,20 +76,18 @@ class TabletClient : public Client {
 
     base::Status Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-             int memory_usage_limit = 0);
+             int memory_usage_limit = 0, bool put_if_absent = false);
 
     base::Status Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
             ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
-            int memory_usage_limit = 0);
+            int memory_usage_limit = 0, bool put_if_absent = false);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,  // NOLINT
              uint64_t& ts,                                                                          // NOLINT
              std::string& msg);  // NOLINT
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
-             std::string& value,  // NOLINT
-             uint64_t& ts,        // NOLINT
-             std::string& msg);   // NOLINT
+             std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                 std::string& msg);  // NOLINT

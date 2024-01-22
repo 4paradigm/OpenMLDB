@@ -792,9 +792,10 @@ AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::s
 }
 
 SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std::string &table_name,
-                                          const ExprListNode *columns_expr, const ExprListNode *values) {
+                                          const ExprListNode *columns_expr, const ExprListNode *values,
+                                          InsertStmt::InsertMode insert_mode) {
     if (nullptr == columns_expr) {
-        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, values->children_, insert_mode);
         return RegisterNode(node_ptr);
     } else {
         std::vector<std::string> column_names;
@@ -811,7 +812,7 @@ SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std:
                 }
             }
         }
-        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, column_names, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, column_names, values->children_, insert_mode);
         return RegisterNode(node_ptr);
     }
 }

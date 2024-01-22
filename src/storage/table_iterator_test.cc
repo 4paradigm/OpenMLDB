@@ -450,7 +450,7 @@ TEST_P(TableIteratorTest, SeekNonExistent) {
     ASSERT_EQ(0, now - wit->GetKey());
 }
 
-INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableIteratorTest,
+INSTANTIATE_TEST_SUITE_P(TestMemAndHDD, TableIteratorTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
 }  // namespace storage
