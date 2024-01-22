@@ -153,6 +153,7 @@ base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& t
     it->SeekToFirst();
     while (it->Valid()) {
         auto data = it->GetValue();
+        uint64_t ts = it->GetKey();
         std::vector<std::string> index_row;
         auto staus = DecodeData(table, data, table_index_info.GetAllIndexCols(), &index_row);
         std::map<uint32_t, std::vector<::openmldb::api::Dimension>> dimension_map;
@@ -174,6 +175,7 @@ base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& t
         }
         api::LogEntry entry;
         entry.set_value(data.ToString());
+        entry.set_ts(ts);
         std::string tmp_buf;
         auto iter = dimension_map.find(pid);
         if (iter != dimension_map.end()) {
@@ -181,7 +183,8 @@ base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& t
             for (const auto& dim : iter->second) {
                 entry.add_dimensions()->CopyFrom(dim);
             }
-            DLOG(INFO) << "extract: dim size " << entry.dimensions_size() << " key " << entry.dimensions(0).key();
+            DLOG(INFO) << "extract: dim size " << entry.dimensions_size() << " key " << entry.dimensions(0).key()
+                << " pid " << pid;
             table->Put(entry);
         }
         if (dump_data) {
@@ -199,7 +202,7 @@ base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& t
                     return  {-1, "fail to dump index entry"};
                 }
                 DLOG(INFO) << "dump " << pid << " dim size " << entry.dimensions_size()
-                    << " key " << entry.dimensions(0).key();
+                    << " key " << entry.dimensions(0).key() << " des pid " << kv.first; ;
             }
         }
         it->Next();
