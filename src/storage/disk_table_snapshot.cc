@@ -20,11 +20,14 @@
 #include <gflags/gflags.h>
 #include <memory>
 #include <string>
+
 #include "absl/strings/str_cat.h"
 #include "absl/strings/match.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
+#include "base/hash.h"
 #include "base/strings.h"
+#include "schema/index_util.h"
 
 namespace openmldb {
 namespace storage {
@@ -137,7 +140,70 @@ base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& t
             const std::vector<::openmldb::common::ColumnKey>& add_indexs,
             const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
             uint64_t offset, bool dump_data) {
-    auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
+    uint32_t pid = table->GetPid();
+    schema::TableIndexInfo table_index_info(*(table->GetTableMeta()), add_indexs);
+    if (!table_index_info.Init()) {
+        return {-1, "parse TableIndexInfo failed"};
+    }
+    std::unique_ptr<TraverseIterator> it(table->NewTraverseIterator(0));
+    if (it == nullptr) {
+        PDLOG(WARNING, "fail to get iterator");
+        return {-1, "fail to get iterator"};
+    }
+    it->SeekToFirst();
+    while (it->Valid()) {
+        auto data = it->GetValue();
+        std::vector<std::string> index_row;
+        auto staus = DecodeData(table, data, table_index_info.GetAllIndexCols(), &index_row);
+        std::map<uint32_t, std::vector<::openmldb::api::Dimension>> dimension_map;
+        for (auto idx : table_index_info.GetAddIndexIdx()) {
+            std::string index_key;
+            for (auto pos : table_index_info.GetRealIndexCols(idx)) {
+                if (index_key.empty()) {
+                    index_key = index_row.at(pos);
+                } else {
+                    absl::StrAppend(&index_key, "|", index_row.at(pos));
+                }
+            }
+            ::openmldb::api::Dimension dim;
+            dim.set_idx(idx);
+            dim.set_key(index_key);
+            uint32_t index_pid = ::openmldb::base::hash64(index_key) % whs.size();
+            auto iter = dimension_map.emplace(index_pid, std::vector<::openmldb::api::Dimension>()).first;
+            iter->second.push_back(dim);
+        }
+        api::LogEntry entry;
+        entry.set_value(data.ToString());
+        std::string tmp_buf;
+        auto iter = dimension_map.find(pid);
+        if (iter != dimension_map.end()) {
+            entry.clear_dimensions();
+            for (const auto& dim : iter->second) {
+                entry.add_dimensions()->CopyFrom(dim);
+            }
+            DLOG(INFO) << "extract: dim size " << entry.dimensions_size() << " key " << entry.dimensions(0).key();
+            table->Put(entry);
+        }
+        if (dump_data) {
+            for (const auto& kv : dimension_map) {
+                if (kv.first == pid) {
+                    continue;
+                }
+                entry.clear_dimensions();
+                for (const auto& dim : kv.second) {
+                    entry.add_dimensions()->CopyFrom(dim);
+                }
+                tmp_buf.clear();
+                entry.SerializeToString(&tmp_buf);
+                if (!whs[kv.first]->Write(::openmldb::base::Slice(tmp_buf)).ok()) {
+                    return  {-1, "fail to dump index entry"};
+                }
+                DLOG(INFO) << "dump " << pid << " dim size " << entry.dimensions_size()
+                    << " key " << entry.dimensions(0).key();
+            }
+        }
+        it->Next();
+    }
     return {};
 }
 
