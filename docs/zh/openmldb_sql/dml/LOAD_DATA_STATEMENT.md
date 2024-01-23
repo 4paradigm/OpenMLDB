@@ -1,10 +1,10 @@
 # LOAD DATA INFILE
-`LOAD DATA INFILE`语句能高效地将文件中的数据读取到数据库中的表中。`LOAD DATA INFILE` 与 `SELECT INTO OUTFILE`互补。要将数据从 table导出到文件，请使用[SELECT INTO OUTFILE](../dql/SELECT_INTO_STATEMENT.md)。要将文件数据导入到 table 中，请使用`LOAD DATA INFILE`。
+`LOAD DATA INFILE`语句能高效地将文件中的数据读取到数据库中的表中。`LOAD DATA INFILE` 与 `SELECT INTO OUTFILE`互补。要将数据从 table导出到文件，请使用[SELECT INTO OUTFILE](../dql/SELECT_INTO_STATEMENT.md)。要将文件数据导入到 table 中，请使用`LOAD DATA INFILE`。注意，导入的文件schema顺序应与表的schema顺序一致。
 
 ```{note}
 无论何种load_mode，INFILE 的 filePath既可以是单个文件名，也可以是目录，也可以使用`*`通配符。
 - load_mode=cluster的具体格式等价于`DataFrameReader.read.load(String)`，可以使用spark shell来read你想要的文件路径，确认能否读入成功。如果目录中存在多格式的文件，只会选择 LoadDataInfileOptionsList 中指定的FORMAT格式文件。
-- load_mode=local则使用glob选择出符合的所有文件，不会检查单个文件的格式，所以，请保证满足条件的是csv格式，建议使用`*.csv`限制文件格式。
+- load_mode=local则使用glob选择出符合的所有文件，不会检查单个文件的格式，所以，请保证满足条件的文件都是csv格式，建议使用`*.csv`限制文件格式。
 ```
 
 ## Syntax
@@ -55,7 +55,7 @@ FilePathPattern
 | quote       | String  | "                 | 输入数据的包围字符串。字符串长度<=1。<br />load_mode=`cluster`默认为双引号`"`。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#, normal_string`将为解析为三个filed，第一个是整数1，第二个是浮点1.0，第三个是一个字符串，第四个虽然没有quote，但也是一个字符串。<br /> **local_mode=`local`默认为`\0`，也可使用空字符串赋值，不处理包围字符。** |
 | mode        | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。<br /> **local_mode=`local`默认为`append`**                                                                                                                              |
 | deep_copy   | Boolean | true              | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                                                                                                                                                                                                                           |
-| load_mode   | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                                                                                                                                                                                                        |
+| load_mode   | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式 <br />local模式的使用限制见[local导入模式说明](#local导入模式说明)                                                                                                                                                                                                                                                       |
 | thread      | Integer | 1                 | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                                                                                                                                                                                                       |
 | writer_type | String  | single            | 集群版在线导入中插入数据的writer类型。可选值为`single`和`batch`，默认为`single`。`single`表示数据即读即写，节省内存。`batch`则是将整个rdd分区读完，确认数据类型有效性后，再写入集群，需要更多内存。在部分情况下，`batch`模式有利于筛选未写入的数据，方便重试这部分数据。                                                                                                                                                       |
 | put_if_absent | Boolean | false             | 在源数据无重复行也不与表中已有数据重复时，可以使用此选项避免插入重复数据，特别是job失败后可以重试。等价于使用`INSERT OR IGNORE`。更多详情见下文。 |
@@ -121,7 +121,36 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1;
 
 ## 离线导入规则
 
-表的离线信息可通过`desc <table>`查看。我们将数据地址分为两类，离线地址是OpenMLDB的内部存储路径，硬拷贝将写入此地址，仅一个；软链接地址是软链接导入的地址列表。
+表的离线信息可通过`desc <table>`查看。我们将数据地址分为两类，Data path与Symbolic path，离线地址Data path是OpenMLDB的内部存储路径，硬拷贝将写入此地址，仅一个；软链接地址Symbolic path，则是软链接导入的地址列表，可以是多个。
+```
+ --- ------- ----------- ------ ---------
+  #   Field   Type        Null   Default
+ --- ------- ----------- ------ ---------
+  1   c1      Varchar     YES
+  2   c2      Int         YES
+  3   c3      BigInt      YES
+  4   c4      Float       YES
+  5   c5      Double      YES
+  6   c6      Timestamp   YES
+  7   c7      Date        YES
+ --- ------- ----------- ------ ---------
+ --- -------------------- ------ ---- ------ ---------------
+  #   name                 keys   ts   ttl    ttl_type
+ --- -------------------- ------ ---- ------ ---------------
+  1   INDEX_0_1705743486   c1     -    0min   kAbsoluteTime
+ --- -------------------- ------ ---- ------ ---------------
+ ---------------------------------------------------------- ------------------------------------------ --------- ---------
+  Data path                                                  Symbolic paths                             Format    Options
+ ---------------------------------------------------------- ------------------------------------------ --------- ---------
+  file:///tmp/openmldb_offline_storage/demo_db/demo_table1   file:///work/taxi-trip/data/data.parquet   parquet
+ ---------------------------------------------------------- ------------------------------------------ --------- ---------
+
+ --------------- --------------
+  compress_type   storage_mode
+ --------------- --------------
+  NoCompress      Memory
+ --------------- --------------
+```
 根据模式的不同，对离线信息的修改也不同。
 - overwrite模式，将会覆盖原有的所有字段，包括离线地址、软链接地址、格式、读取选项，仅保留当前overwrite进入的信息。
  - overwrite 硬拷贝，离线地址如果存在数据将被覆盖，软链接全部清空，格式更改为内部默认格式parquet，读取选项全部清空。
@@ -169,3 +198,10 @@ PutIfAbsent需要去重这一额外开销，所以，它的性能与去重的复
 
 - 表中只存在ts索引，且同一key+ts的数据量少于10k时（为了精确去重，在同一个key+ts下会逐行对比整行数据），PutIfAbsent的性能表现不会很差，通常导入时间在普通导入时间的2倍以内。
 - 表中如果存在time索引（ts列为空），或者ts索引同一key+ts的数据量大于100k时，PutIfAbsent的性能会很差，导入时间可能超过普通导入时间的10倍，无法正常使用。这样的数据条件下，更建议进行去重后再导入。
+
+## local导入模式说明
+
+load_mode可使用local模式，但与cluster模式有一些不同，如果你部署了TaskManager，我们建议使用cluster模式。不同之处如下：
+
+- local模式仅支持在线，不支持离线。也只支持csv格式，不支持parquet格式。
+- csv的读取支持有限，（SplitLineWithDelimiterForStrings）

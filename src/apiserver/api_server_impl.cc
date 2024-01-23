@@ -30,6 +30,31 @@
 namespace openmldb {
 namespace apiserver {
 
+std::string PrintJsonValue(const Value& v) {
+    if (v.IsNull()) {
+        return "null";
+    }
+    if (v.IsBool()) {
+        return v.GetBool() ? "true" : "false";
+    }
+    if (v.IsInt()) {
+        return std::to_string(v.GetInt());
+    }
+    if (v.IsInt64()) {
+        return std::to_string(v.GetInt64());
+    }
+    if (v.IsFloat()) {
+        return std::to_string(v.GetFloat());
+    }
+    if (v.IsDouble()) {
+        return std::to_string(v.GetDouble());
+    }
+    if (v.IsString()) {
+        return v.GetString();
+    }
+    return "unknown";
+}
+
 APIServerImpl::APIServerImpl(const std::string& endpoint)
     : md_recorder_("rpc_server_" + endpoint.substr(endpoint.find(":") + 1), "http_method", {"method"}),
       provider_("rpc_server_" + endpoint.substr(endpoint.find(":") + 1)) {}
@@ -129,11 +154,10 @@ void APIServerImpl::RegisterQuery() {
         }
         auto db = db_it->second;
 
-        QueryReq req;
         JsonReader query_reader(req_body.to_string().c_str());
-        query_reader >> req;
-        if (!query_reader) {
-            writer << resp.Set("Json parse failed, " + req_body.to_string());
+        QueryReq req(query_reader);
+        if (!req.status().ok()) {
+            writer << resp.Set("Json parse failed, " + req.status().ToString());
             return;
         }
         auto mode = boost::to_lower_copy(req.mode);
@@ -200,14 +224,14 @@ absl::Status APIServerImpl::JsonArray2SQLRequestRow(const Value& non_common_cols
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
                 return absl::InvalidArgumentError(
-                    absl::StrCat("trans const ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
+                    absl::StrCat("trans const failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(common_cols_v[common_idx])));
             }
             ++common_idx;
         } else {
             if (!AppendJsonValue(non_common_cols_v[non_common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i),
                                  row)) {
                 return absl::InvalidArgumentError(
-                    absl::StrCat("trans ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
+                    absl::StrCat("trans failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(non_common_cols_v[non_common_idx])));
             }
             ++non_common_idx;
         }
@@ -327,7 +351,7 @@ absl::Status APIServerImpl::JsonMap2SQLRequestRow(const Value& non_common_cols_v
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
                 return absl::InvalidArgumentError(
-                    absl::StrCat("trans const ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
+                    absl::StrCat("trans const failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(common_cols_v[common_idx])));
             }
             ++common_idx;
         } else {
@@ -337,7 +361,7 @@ absl::Status APIServerImpl::JsonMap2SQLRequestRow(const Value& non_common_cols_v
             }
             if (!AppendJsonValue(v->value, sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
                 return absl::InvalidArgumentError(
-                    absl::StrCat("trans ", sch->GetColumnName(i), "[", sch->GetColumnType(i), "] failed"));
+                    absl::StrCat("trans failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(v->value)));
             }
         }
     }
@@ -381,7 +405,7 @@ void APIServerImpl::RegisterPut() {
         std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
         auto row = sql_router_->GetInsertRow(db, insert_placeholder, &status);
         if (!row) {
-            writer << resp.Set(status.msg);
+            writer << resp.Set(status.code, status.msg);
             return;
         }
         auto schema = row->GetSchema();
@@ -408,7 +432,8 @@ void APIServerImpl::RegisterPut() {
 
         for (int i = 0; i < cnt; ++i) {
             if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                writer << resp.Set("convertion failed for col " + schema->GetColumnName(i));
+                writer << resp.Set(absl::StrCat("convertion failed on col ", schema->GetColumnName(i), "[",
+                                                schema->GetColumnType(i), "] with value ", arr[i].GetString()));
                 return;
             }
         }
@@ -736,25 +761,29 @@ std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
     return out;
 }
 
-JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
-    ar.StartObject();
+JsonReader& QueryReq::parse(JsonReader& ar) {  // NOLINT
+    RETURN_AR_IF_ERROR(ar.StartObject(), "req is not object");
     // mode is not optional
-    ar.Member("mode") & s.mode;
-    ar.Member("sql") & s.sql;
+    RETURN_AR_IF_ERROR(ar.Member("mode") & mode, "mode parse failed");
+
+    RETURN_AR_IF_ERROR(ar.Member("sql") & sql, "sql parse failed");
+
     if (ar.HasMember("timeout")) {
-        ar.Member("timeout") & s.timeout;
+        RETURN_AR_IF_ERROR(ar.Member("timeout") & timeout, "timeout parse failed");
     }
+
     if (ar.HasMember("input")) {
-        ar.Member("input") & s.parameter;
+        RETURN_AR_IF_ERROR(parse(ar.Member("input"), parameter), "input parse failed");
     }
     if (ar.HasMember("write_nan_and_inf_null")) {
-        ar.Member("write_nan_and_inf_null") & s.write_nan_and_inf_null;
+        RETURN_AR_IF_ERROR(ar.Member("write_nan_and_inf_null") & write_nan_and_inf_null, "write_nan_and_inf_null parse failed");
     }
-    return ar.EndObject();
+    RETURN_AR_IF_ERROR(ar.EndObject(), "req object end error");
+    return ar;
 }
 
-JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
-    ar.StartObject();
+JsonReader& QueryReq::parse(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
+    RETURN_AR_IF_ERROR(ar.StartObject(), "input is not object");
 
     if (!ar.HasMember("schema") || !ar.HasMember("data")) return ar.EndObject();
 
@@ -789,18 +818,20 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
             } else if (type == "TIMESTAMP") {
                 col->set_type(::hybridse::type::kTimestamp);
             } else {
+                status_.Update(absl::InvalidArgumentError("invalid type " + type));
                 return ar;
             }
         }
-        ar.EndArray();  // end "schema"
+        // end "schema"
+        RETURN_AR_IF_ERROR(ar.EndArray(), "schema parse failed");
     }
-
+    
     int32_t str_length = 0;
     {
         ar.Member("data");
         size_t size;
         ar.StartArray(&size);  // start first iter "data"
-        if (static_cast<int>(size) != schema.size()) return ar;
+        RETURN_AR_IF_NOT_OK(static_cast<int>(size) == schema.size(), ar, absl::StrCat("data size ", size," != schema size ", schema.size()));
 
         for (auto col = schema.begin(); col != schema.end(); col++) {
             if (col->type() == ::hybridse::type::kVarchar) {
@@ -811,21 +842,21 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
                 ar.Next();
             }
         }
-        ar.EndArray();  // end first iter "data"
+        // end first iter "data"
+        RETURN_AR_IF_ERROR(ar.EndArray(), "data array end error");
     }
     {
-        ::hybridse::sdk::SchemaImpl* schema_impl = new ::hybridse::sdk::SchemaImpl(schema);
-        parameter.reset(new openmldb::sdk::SQLRequestRow(std::shared_ptr<::hybridse::sdk::Schema>(schema_impl),
+        parameter.reset(new openmldb::sdk::SQLRequestRow(std::shared_ptr<::hybridse::sdk::Schema>(new ::hybridse::sdk::SchemaImpl(schema)),
                                                          std::set<std::string>({})));
-
         ar.Member("data");
         size_t size;
         ar.StartArray(&size);  // start second iter "data"
-        if (!parameter->Init(str_length)) return ar;
+        RETURN_AR_IF_NOT_OK(parameter->Init(str_length), ar, "init parameter row failed");
 
-        for (auto col = schema.begin(); col != schema.end(); col++) {
+        for (size_t i = 0; i < size; i++) {
+            auto& col = schema.Get(i);
             bool ok;
-            switch (col->type()) {
+            switch (col.type()) {
                 case ::hybridse::type::kBool: {
                     bool b;
                     ar& b;
@@ -874,15 +905,18 @@ JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestR
                 default:
                     ok = false;
             }
-            if (!ok) return ar;
+            // get value from ar failed, debug string is only type, add the idx
+            RETURN_AR_IF_ERROR(ar, absl::StrCat("append failed on ", i, " type ", col.type()));
+            // append failed
+            RETURN_AR_IF_NOT_OK(ok, ar, absl::StrCat("append failed on ", i, " type ", col.type()));
         }
-
-        if (!parameter->Build()) return ar;
-
-        ar.EndArray();  // end second iter "data"
+        RETURN_AR_IF_NOT_OK(parameter->Build(), ar, "build parameter failed");
+        // end second iter "data"
+        RETURN_AR_IF_ERROR(ar.EndArray(), "data array end error");
     }
 
-    return ar.EndObject();
+    RETURN_AR_IF_ERROR(ar.EndObject(), "input object end error");
+    return ar;
 }
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
