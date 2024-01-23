@@ -18,6 +18,7 @@
 #include <map>
 #include <string>
 #include <set>
+#include <utility>
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "vm/catalog.h"

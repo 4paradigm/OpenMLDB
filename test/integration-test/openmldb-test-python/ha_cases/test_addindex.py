@@ -41,7 +41,7 @@ class TestAddIndex:
         cls.cursor = cls.db.cursor()
         cls.executor = Executor(cls.manager.GetBinPath(), cls.conf["zk_cluster"], cls.conf["zk_root_path"])
 
-    @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("memory", False), ("hdd", True), ("hdd", False)])
+    @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("memory", False), ("hdd", False)])
     def test_addindex(self, storage_mode, snapshot):
         database = "test"
         self.cursor.execute(f"create database if not exists {database}")

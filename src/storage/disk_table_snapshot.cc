@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <gflags/gflags.h>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -202,7 +203,7 @@ base::Status DiskTableSnapshot::ExtractIndexData(const std::shared_ptr<Table>& t
                     return  {-1, "fail to dump index entry"};
                 }
                 DLOG(INFO) << "dump " << pid << " dim size " << entry.dimensions_size()
-                    << " key " << entry.dimensions(0).key() << " des pid " << kv.first; ;
+                    << " key " << entry.dimensions(0).key() << " des pid " << kv.first;
             }
         }
         it->Next();
