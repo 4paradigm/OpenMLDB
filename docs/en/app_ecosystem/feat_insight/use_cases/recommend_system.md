@@ -1,5 +1,3 @@
-# 电商推荐系统物料统计场景
-
 # E-commerce Recommendation System
 
 ## Background

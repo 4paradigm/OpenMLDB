@@ -1,6 +1,6 @@
-# Taxi Journey Time Prediction (OpenMLDB+LightGBM)
+# Taxi Trip Duration Prediction (OpenMLDB+LightGBM)
 
-This article will use [The Problem of Predicting Taxi Travel Time on Kaggle](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) as an example to demonstrate how to use the combination of OpenMLDB and LightGBM to create a complete machine-learning application.
+This article will use [New York City Taxi Trip Duration](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) from Kaggle as an example to demonstrate how to use the combination of OpenMLDB and LightGBM to create a complete machine-learning application.
 
 Please note that this document employs a pre-compiled Docker image. If you wish to perform tests in your self-compiled and built OpenMLDB environment, you will need to configure and utilize the [Spark Distribution Documentation for Feature Engineering Optimization](https://github.com/4paradigm/Spark/). Refer to the [Spark Distribution Documentation for OpenMLDB Optimization](../tutorial/openmldbspark_distribution.md#openmldb-spark-distribution) and the [Installation and Deployment Documentation](../deploy/install_deploy.md#modifyingtheconfigurationfileconftaskmanagerproperties) for more detailed information.
 

@@ -2,7 +2,7 @@
 
 ## What are the differences between FeatInsight and mainstream Feature Stores?
 
-Mainstream Feature Stores, such as Feast, Tecton, Feathr, provide feature management and computation capabilities, with online storage mainly using pre-aggregated Key-value stores like Redis. FeatInsight provides real-time feature computation capabilities, and feature extraction solutions can be directly deployed with a single click without the need to re-deploy and synchronize online data. The main feature comparisons are as follows.
+Mainstream Feature Stores, such as Feast, Tecton, Feathr, provide feature management and computation capabilities, with online storage mainly using pre-aggregated key-value stores like Redis. FeatInsight provides real-time feature computation capabilities, and feature extraction solutions can be directly deployed with a single click without the need to re-deploy and synchronize online data. The main feature comparisons are as follows.
 
 | Feature Store System	    | Feast            	| Tecton	        | Feathr	        | FeatInsight |
 | --------------------------| ------------------ | ----------------- | ----------------- | ----------------- |
