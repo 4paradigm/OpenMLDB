@@ -9,4 +9,4 @@ FeatInsight
     quickstart
     install/index
     use_cases/index
-
+    faq
