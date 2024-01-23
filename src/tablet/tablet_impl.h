@@ -303,9 +303,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
-    int CheckTableMeta(const openmldb::api::TableMeta* table_meta,
-                       std::string& msg);  // NOLINT
-
     int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,

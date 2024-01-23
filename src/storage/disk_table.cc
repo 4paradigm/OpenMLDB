@@ -163,21 +163,9 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     options_.keep_log_file_num = FLAGS_keep_log_file_num;
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
-        rocksdb::Options cur_options = options_;
-        bool use_compaction_filter = false;
-        for (const auto& index_def : inner_index->GetIndex()) {
-            if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
-                cur_options.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
-                use_compaction_filter = true;
-                break;
-            }
-        }
-        rocksdb::ColumnFamilyOptions cfo(cur_options);
+        rocksdb::ColumnFamilyOptions cfo(options_);
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
-        if (use_compaction_filter) {
-            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
-        }
         const auto& indexs = inner_index->GetIndex();
         auto index_def = indexs.front();
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
@@ -347,14 +335,12 @@ bool DiskTable::Delete(uint32_t idx, const std::string& pk,
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
     Ticket ticket;
-    auto it = NewIterator(idx, pk, ticket);
+    std::unique_ptr<TableIterator> it(NewIterator(idx, pk, ticket));
     it->Seek(ts);
     if ((it->Valid()) && (it->GetKey() == ts)) {
         value = it->GetValue().ToString();
-        delete it;
         return true;
     } else {
-        delete it;
         return false;
     }
 }
@@ -427,6 +413,8 @@ void DiskTable::HandleDeletedIndex() {
                         cf_hs_[idx + 1] = nullptr;
                         PDLOG(INFO, "drop column family. tid %u pid %u index name %s idx %u",
                             id_, pid_, cur_index->GetName().c_str(), idx);
+                    } else {
+                        DeleteIndexData(cur_index);
                     }
                     cur_index->SetStatus(IndexStatus::kDeleted);
                     break;
@@ -435,6 +423,47 @@ void DiskTable::HandleDeletedIndex() {
                 case IndexStatus::kReady:
                     break;
             }
+        }
+    }
+}
+
+void DiskTable::DeleteIndexData(const std::shared_ptr<IndexDef>& index_def) {
+    uint32_t inner_pos = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_pos);
+    if (!inner_index) {
+        return;
+    }
+    if (inner_index->GetIndex().size() == 1) {
+        return;
+    }
+    uint32_t ts_idx = index_def->GetTsColumn()->GetId();
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
+    // ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    std::unique_ptr<rocksdb::Iterator> it(db_->NewIterator(ro, cf_hs_[inner_pos + 1]));
+    it->SeekToFirst();
+    rocksdb::Slice last_pk;
+    while (it->Valid()) {
+        rocksdb::Slice cur_pk;
+        uint64_t ts = 0;
+        uint32_t cur_ts_idx = 0;
+        while (it->Valid()) {
+            ParseKeyAndTs(true, it->key(), &cur_pk, &ts, &cur_ts_idx);
+            if (cur_pk != last_pk) {
+                last_pk = cur_pk;
+                break;
+            }
+            it->Next();
+        }
+        if (it->Valid()) {
+            std::string combine_key1 = CombineKeyTs(cur_pk, UINT64_MAX, ts_idx);
+            std::string combine_key2 = CombineKeyTs(cur_pk, 0, ts_idx);
+            db_->DeleteRange(write_opts_, cf_hs_[inner_pos + 1], rocksdb::Slice(combine_key1),
+                                                    rocksdb::Slice(combine_key2));
+            it->Seek(combine_key2);
         }
     }
 }
@@ -686,13 +715,6 @@ bool DiskTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
     uint32_t inner_id = index_def->GetInnerPos();
     cfo.comparator = &cmp_;
     cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
-    if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
-        index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
-        std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
-        auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
-        cfo.compaction_filter_factory =
-            std::make_shared<AbsoluteTTLFilterFactory>(inner_index_st);
-    }
     rocksdb::ColumnFamilyHandle* handle = nullptr;
     rocksdb::Status s = db_->CreateColumnFamily(cfo, index_def->GetName(), &handle);
     if (!s.ok()) {
@@ -738,7 +760,7 @@ int DiskTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) 
     ro.snapshot = snapshot;
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[inner_pos + 1]);
+    std::unique_ptr<rocksdb::Iterator> it(db_->NewIterator(ro, cf_hs_[inner_pos + 1]));
 
     bool has_ts_idx = false;
     uint32_t ts_idx = 0;

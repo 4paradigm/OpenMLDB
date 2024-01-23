@@ -366,7 +366,36 @@ std::map<std::string, openmldb::type::DataType> SchemaAdapter::GetColMap(const n
     return col_map;
 }
 
+base::Status SchemaAdapter::CheckTableMeta(const openmldb::api::TableMeta& table_meta) {
+    if (table_meta.name().empty()) {
+        return {base::ReturnCode::kError, "table name is empty"};
+    }
+    if (table_meta.tid() <= 0) {
+        return {base::ReturnCode::kError, "tid <= 0, invalid tid"};
+    }
+    if (table_meta.storage_mode() == common::kUnknown) {
+        return {base::ReturnCode::kError, "storage_mode is unknown"};
+    }
+    if (table_meta.column_desc_size() == 0) {
+        return {base::ReturnCode::kError, "no column"};
+    }
+    std::map<std::string, ::openmldb::common::ColumnDesc> column_map;
+    for (const auto& column_desc : table_meta.column_desc()) {
+        if (!column_map.emplace(column_desc.name(), column_desc).second) {
+            return {base::ReturnCode::kError, "duplicated column: " + column_desc.name()};
+        }
+    }
+    auto status = IndexUtil::CheckIndex(column_map, table_meta.column_key());
+    if (!status.OK()) {
+        return status;
+    }
+    return {};
+}
+
 base::Status SchemaAdapter::CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info) {
+    if (table_info.name().empty()) {
+        return {base::ReturnCode::kError, "table name is empty"};
+    }
     if (table_info.column_desc_size() == 0) {
         return {base::ReturnCode::kError, "no column"};
     }

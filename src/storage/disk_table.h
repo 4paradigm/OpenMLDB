@@ -27,7 +27,6 @@
 #include "common/timer.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
-#include "rocksdb/compaction_filter.h"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/options.h"
@@ -82,75 +81,6 @@ class KeyTsPrefixTransform : public rocksdb::SliceTransform {
     bool FullLengthEnabled(size_t* len) const override { return false; }
 
     bool SameResultWhenAppended(const rocksdb::Slice& prefix) const override { return InDomain(prefix); }
-};
-
-class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
- public:
-    explicit AbsoluteTTLCompactionFilter(std::shared_ptr<InnerIndexSt> inner_index) : inner_index_(inner_index) {}
-    virtual ~AbsoluteTTLCompactionFilter() {}
-
-    const char* Name() const override { return "AbsoluteTTLCompactionFilter"; }
-
-    bool Filter(int /*level*/, const rocksdb::Slice& key, const rocksdb::Slice& /*existing_value*/,
-                std::string* /*new_value*/, bool* /*value_changed*/) const override {
-        if (key.size() < TS_LEN) {
-            return false;
-        }
-        uint64_t real_ttl = 0;
-        const auto& indexs = inner_index_->GetIndex();
-        if (indexs.size() > 1) {
-            if (key.size() < TS_LEN + TS_POS_LEN) {
-                return false;
-            }
-            uint32_t ts_idx = *((uint32_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
-                                            TS_POS_LEN));
-            bool has_found = false;
-            for (const auto& index : indexs) {
-                auto ts_col = index->GetTsColumn();
-                if (!ts_col) {
-                    return false;
-                }
-                if (ts_col->GetId() == ts_idx &&
-                    index->GetTTL()->ttl_type == openmldb::storage::TTLType::kAbsoluteTime) {
-                    real_ttl = index->GetTTL()->abs_ttl;
-                    has_found = true;
-                    break;
-                }
-            }
-            if (!has_found) {
-                return false;
-            }
-        } else {
-            real_ttl = indexs.front()->GetTTL()->abs_ttl;
-        }
-        if (real_ttl < 1) {
-            return false;
-        }
-        uint64_t ts = 0;
-        memcpy(static_cast<void*>(&ts), key.data() + key.size() - TS_LEN, TS_LEN);
-        memrev64ifbe(static_cast<void*>(&ts));
-        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        if (ts < cur_time - real_ttl) {
-            return true;
-        }
-        return false;
-    }
-
- private:
-    std::shared_ptr<InnerIndexSt> inner_index_;
-};
-
-class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
- public:
-    explicit AbsoluteTTLFilterFactory(const std::shared_ptr<InnerIndexSt>& inner_index) : inner_index_(inner_index) {}
-    std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
-        const rocksdb::CompactionFilter::Context& context) override {
-        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
-    }
-    const char* Name() const override { return "AbsoluteTTLFilterFactory"; }
-
- private:
-    std::shared_ptr<InnerIndexSt> inner_index_;
 };
 
 class DiskTable : public Table {
@@ -244,6 +174,7 @@ class DiskTable : public Table {
  private:
     base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);
     void HandleDeletedIndex();
+    void DeleteIndexData(const std::shared_ptr<IndexDef>& index_def);
 
  private:
     rocksdb::DB* db_;

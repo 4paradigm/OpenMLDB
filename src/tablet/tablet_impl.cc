@@ -852,83 +852,6 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     }
 }
 
-int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::string& msg) {
-    msg.clear();
-    if (table_meta->name().empty()) {
-        msg = "table name is empty";
-        return -1;
-    }
-    if (table_meta->tid() <= 0) {
-        msg = "tid <= 0, invalid";
-        return -1;
-    }
-    std::map<std::string, ::openmldb::type::DataType> column_map;
-    if (table_meta->column_desc_size() > 0) {
-        for (const auto& column_desc : table_meta->column_desc()) {
-            if (column_map.find(column_desc.name()) != column_map.end()) {
-                msg = "has repeated column name " + column_desc.name();
-                return -1;
-            }
-            column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
-        }
-    }
-    std::set<std::string> index_set;
-    if (table_meta->column_key_size() > 0) {
-        for (const auto& column_key : table_meta->column_key()) {
-            if (index_set.find(column_key.index_name()) != index_set.end()) {
-                msg = "has repeated index name " + column_key.index_name();
-                return -1;
-            }
-            index_set.insert(column_key.index_name());
-            bool has_col = false;
-            for (const auto& column_name : column_key.col_name()) {
-                has_col = true;
-                auto iter = column_map.find(column_name);
-                if (iter == column_map.end()) {
-                    msg = "not found column name " + column_name;
-                    return -1;
-                }
-                if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
-                    msg = "float or double column can not be index" + column_name;
-                    return -1;
-                }
-            }
-            if (!has_col) {
-                auto iter = column_map.find(column_key.index_name());
-                if (iter == column_map.end()) {
-                    msg = "index must member of columns when column key col name is empty";
-                    return -1;
-                } else {
-                    if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
-                        msg = "indxe name column type can not float or column";
-                        return -1;
-                    }
-                }
-            }
-            if (!column_key.ts_name().empty()) {
-                auto iter = column_map.find(column_key.ts_name());
-                if (iter == column_map.end()) {
-                    msg = "not found column name " + column_key.ts_name();
-                    return -1;
-                }
-            }
-            if (column_key.has_ttl()) {
-                if (column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ||
-                    column_key.ttl().lat_ttl() > FLAGS_latest_ttl_max) {
-                    msg = "ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) +
-                          ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max);
-                    return -1;
-                }
-            }
-        }
-    }
-    if (table_meta->storage_mode() == common::kUnknown) {
-        msg = "storage_mode is unknown";
-        return -1;
-    }
-    return 0;
-}
-
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
                               const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, bool use_attachment,
                               CombineIterator* combine_it, butil::IOBuf* io_buf, uint32_t* count, bool* is_finish) {
@@ -2990,11 +2913,10 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
         table_meta.CopyFrom(request->table_meta());
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
-        std::string msg;
-        if (CheckTableMeta(&table_meta, msg) != 0) {
+        if (auto status = schema::SchemaAdapter::CheckTableMeta(table_meta); !status.OK()) {
             response->set_code(::openmldb::base::ReturnCode::kTableMetaIsIllegal);
-            response->set_msg(msg);
-            PDLOG(WARNING, "CheckTableMeta failed. tid %u, pid %u", tid, pid);
+            response->set_msg(status.GetMsg());
+            PDLOG(WARNING, "CheckTableMeta failed. tid %u, pid %u, msg %s", tid, pid, status.GetMsg().c_str());
             break;
         }
         std::string root_path;
@@ -3027,7 +2949,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
             response->set_msg("write data failed");
             break;
         }
-
+        std::string msg;
         if (table_meta.storage_mode() == openmldb::common::kMemory) {
             if (CreateTableInternal(&table_meta, msg) < 0) {
                 response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
@@ -3357,13 +3279,12 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
                              ::openmldb::api::CreateTableResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     const ::openmldb::api::TableMeta* table_meta = &request->table_meta();
-    std::string msg;
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    if (CheckTableMeta(table_meta, msg) != 0) {
+    if (auto status = schema::SchemaAdapter::CheckTableMeta(*table_meta); !status.OK()) {
         response->set_code(::openmldb::base::ReturnCode::kTableMetaIsIllegal);
-        response->set_msg(msg);
-        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
+        response->set_msg(status.GetMsg());
+        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, status.GetMsg().c_str());
         return;
     }
     std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -3399,6 +3320,7 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
         response->set_msg("write data failed");
         return;
     }
+    std::string msg;
     if (CreateTableInternal(table_meta, msg) < 0) {
         response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
         response->set_msg(msg.c_str());
