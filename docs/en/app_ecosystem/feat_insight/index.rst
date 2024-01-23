@@ -8,3 +8,5 @@ FeatInsight
     introduction
     quickstart
     install/index
+    use_cases/index
+
