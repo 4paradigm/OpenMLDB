@@ -144,9 +144,7 @@ class DiskTable : public Table {
 
     void SchedGc() override;
 
-    void GcHead();
-    void GcTTLAndHead();
-    void GcTTLOrHead();
+    void GcAll();
 
     bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
 
@@ -175,6 +173,8 @@ class DiskTable : public Table {
     base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);
     void HandleDeletedIndex();
     void DeleteIndexData(const std::shared_ptr<IndexDef>& index_def);
+    void GcData(const std::shared_ptr<IndexDef>& index_def, rocksdb::Iterator* it);
+    void GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t pos, uint32_t min_ts_idx, rocksdb::Iterator* it);
 
  private:
     rocksdb::DB* db_;

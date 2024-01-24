@@ -391,7 +391,7 @@ base::Status DiskTable::Truncate() {
 
 void DiskTable::SchedGc() {
     HandleDeletedIndex();
-    GcHead();
+    GcAll();
     UpdateTTL();
 }
 
@@ -436,6 +436,9 @@ void DiskTable::DeleteIndexData(const std::shared_ptr<IndexDef>& index_def) {
     if (inner_index->GetIndex().size() == 1) {
         return;
     }
+    if (cf_hs_[inner_pos + 1] == nullptr) {
+        return;
+    }
     uint32_t ts_idx = index_def->GetTsColumn()->GetId();
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
@@ -445,7 +448,7 @@ void DiskTable::DeleteIndexData(const std::shared_ptr<IndexDef>& index_def) {
     ro.pin_data = true;
     std::unique_ptr<rocksdb::Iterator> it(db_->NewIterator(ro, cf_hs_[inner_pos + 1]));
     it->SeekToFirst();
-    rocksdb::Slice last_pk;
+    std::string last_pk;
     while (it->Valid()) {
         rocksdb::Slice cur_pk;
         uint64_t ts = 0;
@@ -453,7 +456,7 @@ void DiskTable::DeleteIndexData(const std::shared_ptr<IndexDef>& index_def) {
         while (it->Valid()) {
             ParseKeyAndTs(true, it->key(), &cur_pk, &ts, &cur_ts_idx);
             if (cur_pk != last_pk) {
-                last_pk = cur_pk;
+                last_pk.assign(cur_pk.data(), cur_pk.size());
                 break;
             }
             it->Next();
@@ -468,7 +471,7 @@ void DiskTable::DeleteIndexData(const std::shared_ptr<IndexDef>& index_def) {
     }
 }
 
-void DiskTable::GcHead() {
+void DiskTable::GcAll() {
     uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
     auto inner_indexs = table_index_.GetAllInnerIndex();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
@@ -483,117 +486,137 @@ void DiskTable::GcHead() {
         // ro.prefix_same_as_start = true;
         ro.pin_data = true;
         std::unique_ptr<rocksdb::Iterator> it(db_->NewIterator(ro, cf_hs_[idx + 1]));
-        it->SeekToFirst();
         const auto& indexs = inner_index->GetIndex();
         if (indexs.size() > 1) {
-            bool need_ttl = false;
-            std::map<uint32_t, uint64_t> ttl_map;
+            std::map<uint32_t, TTLSt> ttl_map;
+            uint32_t min_ts_idx = UINT32_MAX;
             for (const auto& index : indexs) {
-                if (index->GetTTLType() != ::openmldb::storage::TTLType::kLatestTime) {
+                uint32_t ts_idx = index->GetTsColumn()->GetId();
+                if (!index->IsReady()) {
                     continue;
                 }
-                auto ts_col = index->GetTsColumn();
-                if (ts_col) {
-                    auto lat_ttl = index->GetTTL()->lat_ttl;
-                    if (lat_ttl > 0) {
-                        ttl_map.emplace(ts_col->GetId(), lat_ttl);
-                        need_ttl = true;
-                    }
+                if (ts_idx < min_ts_idx) {
+                    min_ts_idx = ts_idx;
+                }
+                if (index->GetTTL()->NeedGc()) {
+                    ttl_map.emplace(ts_idx, *(index->GetTTL()));
                 }
             }
-            if (!need_ttl) {
+            if (ttl_map.empty()) {
                 continue;
             }
-            std::map<uint32_t, uint32_t> key_cnt;
-            std::map<uint32_t, uint64_t> delete_key_map;
-            std::string last_pk;
-            while (it->Valid()) {
-                rocksdb::Slice cur_pk;
-                uint64_t ts = 0;
-                uint32_t ts_idx = 0;
-                ParseKeyAndTs(true, it->key(), &cur_pk, &ts, &ts_idx);
-                if (!last_pk.empty() && cur_pk.compare(rocksdb::Slice(last_pk)) == 0) {
-                    auto ttl_iter = ttl_map.find(ts_idx);
-                    if (ttl_iter != ttl_map.end() && ttl_iter->second > 0) {
-                        auto key_cnt_iter = key_cnt.find(ts_idx);
-                        if (key_cnt_iter == key_cnt.end()) {
-                            key_cnt.insert(std::make_pair(ts_idx, 1));
-                        } else {
-                            key_cnt_iter->second++;
-                        }
-                        if (key_cnt_iter->second > ttl_iter->second &&
-                            delete_key_map.find(ts_idx) == delete_key_map.end()) {
-                            delete_key_map.insert(std::make_pair(ts_idx, ts));
-                        }
-                    }
-                } else {
-                    for (const auto& kv : delete_key_map) {
-                        std::string combine_key1 = CombineKeyTs(rocksdb::Slice(last_pk), kv.second, kv.first);
-                        std::string combine_key2 = CombineKeyTs(rocksdb::Slice(last_pk), 0, kv.first);
-                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
-                                                             rocksdb::Slice(combine_key2));
-                        if (!s.ok()) {
-                            PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-                        }
-                    }
-                    delete_key_map.clear();
-                    key_cnt.clear();
-                    key_cnt.insert(std::make_pair(ts_idx, 1));
-                    last_pk.assign(cur_pk.data(), cur_pk.size());
-                }
-                it->Next();
-            }
-            for (const auto& kv : delete_key_map) {
-                std::string combine_key1 = CombineKeyTs(last_pk, kv.second, kv.first);
-                std::string combine_key2 = CombineKeyTs(last_pk, 0, kv.first);
-                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
-                                                     rocksdb::Slice(combine_key2));
-                if (!s.ok()) {
-                    PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-                }
-            }
+            GcData(ttl_map, idx, min_ts_idx, it.get());
         } else {
             auto index = indexs.front();
-            auto ttl_num = index->GetTTL()->lat_ttl;
-            if (ttl_num < 1 || index->GetTTLType() != ::openmldb::storage::TTLType::kLatestTime) {
+            if (!index->IsReady()) {
                 continue;
             }
-            std::string last_pk;
-            uint64_t count = 0;
-            while (it->Valid()) {
-                rocksdb::Slice cur_pk;
-                uint64_t ts = 0;
-                ParseKeyAndTs(it->key(), &cur_pk, &ts);
-                if (!last_pk.empty() && cur_pk.compare(rocksdb::Slice(last_pk)) == 0) {
-                    if (ts == 0 || count < ttl_num) {
-                        it->Next();
-                        count++;
-                        continue;
-                    } else {
-                        std::string combine_key1 = CombineKeyTs(cur_pk, ts);
-                        std::string combine_key2 = CombineKeyTs(cur_pk, 0);
-                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], rocksdb::Slice(combine_key1),
-                                                             rocksdb::Slice(combine_key2));
-                        if (!s.ok()) {
-                            PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-                        }
-                        it->Seek(rocksdb::Slice(combine_key2));
-                    }
-                } else {
-                    count = 1;
-                    last_pk.assign(cur_pk.data(), cur_pk.size());
-                    it->Next();
-                }
+            if (!index->GetTTL()->NeedGc()) {
+                continue;
             }
+            GcData(index, it.get());
         }
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
 
-void DiskTable::GcTTLOrHead() {}
+void DiskTable::GcData(const std::shared_ptr<IndexDef>& index_def, rocksdb::Iterator* it) {
+    if (it == nullptr) {
+        return;
+    }
+    const auto& ttl = *(index_def->GetTTL());
+    uint64_t start_ts = UINT64_MAX;
+    if (ttl.ttl_type == storage::TTLType::kAbsoluteTime) {
+        start_ts = ::baidu::common::timer::get_micros() / 1000 - ttl.abs_ttl;
+    }
+    std::string last_pk;
+    it->SeekToFirst();
+    while (it->Valid()) {
+        rocksdb::Slice cur_pk;
+        uint64_t ts = 0;
+        ParseKeyAndTs(it->key(), &cur_pk, &ts);
+        if (cur_pk == last_pk) {
+            it->Next();
+            continue;
+        }
+        last_pk.assign(cur_pk.data(), cur_pk.size());
+        if (ttl.ttl_type == storage::TTLType::kAbsoluteTime) {
+            std::string combine_key = CombineKeyTs(cur_pk, start_ts);
+            it->Seek(rocksdb::Slice(combine_key));
+        }
+        uint64_t count = 1;
+        while (it->Valid()) {
+            ParseKeyAndTs(it->key(), &cur_pk, &ts);
+            if (cur_pk != last_pk) {
+                break;
+            }
+            if (ttl.IsExpired(ts, count)) {
+                std::string combine_key1 = CombineKeyTs(cur_pk, ts);
+                std::string combine_key2 = CombineKeyTs(cur_pk, 0);
+                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[index_def->GetInnerPos() + 1],
+                            rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+                if (!s.ok()) {
+                    PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                }
+                it->Seek(rocksdb::Slice(combine_key2));
+                break;
+            }
+            count++;
+            it->Next();
+        }
+    }
+}
 
-void DiskTable::GcTTLAndHead() {}
+void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t pos,
+    uint32_t min_ts_idx, rocksdb::Iterator* it) {
+    if (it == nullptr) {
+        return;
+    }
+    it->SeekToFirst();
+    uint64_t ts = 0;
+    uint32_t cur_ts_idx = 0;
+    std::string last_pk;
+    while (it->Valid()) {
+        rocksdb::Slice cur_pk;
+        ParseKeyAndTs(true, it->key(), &cur_pk, &ts, &cur_ts_idx);
+        if (cur_pk == last_pk) {
+            it->Next();
+            continue;
+        }
+        last_pk.assign(cur_pk.data(), cur_pk.size());
+        for (const auto& kv : ttl_map) {
+            uint32_t ts_idx = kv.first;
+            uint64_t start_ts = UINT64_MAX;
+            if (kv.second.ttl_type == storage::TTLType::kAbsoluteTime) {
+                 start_ts = ::baidu::common::timer::get_micros() / 1000 - kv.second.abs_ttl;
+            }
+            std::string combine_key = CombineKeyTs(last_pk, start_ts, ts_idx);
+            it->Seek(rocksdb::Slice(combine_key));
+            uint64_t count = 1;
+            while (it->Valid()) {
+                ParseKeyAndTs(true, it->key(), &cur_pk, &ts, &cur_ts_idx);
+                if (cur_pk != last_pk || ts_idx != cur_ts_idx) {
+                    break;
+                }
+                if (kv.second.IsExpired(ts, count)) {
+                    std::string combine_key1 = CombineKeyTs(cur_pk, ts, ts_idx);
+                    std::string combine_key2 = CombineKeyTs(cur_pk, 0, ts_idx);
+                    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[pos + 1],
+                                rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+                    if (!s.ok()) {
+                        PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                    }
+                    break;
+                }
+                count++;
+                it->Next();
+            }
+        }
+        std::string combine_key = CombineKeyTs(last_pk, 0, min_ts_idx);
+        it->Seek(rocksdb::Slice(combine_key));
+    }
+}
 
 // ttl as ms
 uint64_t DiskTable::GetExpireTime(const TTLSt& ttl_st) {
