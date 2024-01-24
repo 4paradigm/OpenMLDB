@@ -96,7 +96,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     uint32_t tid = sdk.GetTableId(db, name);
     {
         for (int32_t i = 0; i < 1000; i++) {
-            ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value);
+            tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value);
         }
     }
     std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";

@@ -17,8 +17,9 @@
 
 package com._4paradigm.openmldb.spark.write;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
+
 import com._4paradigm.openmldb.sdk.Schema;
-import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import com.google.common.base.Preconditions;
@@ -27,31 +28,26 @@ import org.apache.spark.sql.connector.write.DataWriter;
 import org.apache.spark.sql.connector.write.WriterCommitMessage;
 
 import java.io.IOException;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
 
 public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
     private final int partitionId;
     private final long taskId;
     private PreparedStatement preparedStatement = null;
 
-    public OpenmldbDataSingleWriter(OpenmldbWriteConfig config, int partitionId, long taskId) {
+    public OpenmldbDataSingleWriter(OpenmldbConfig config, int partitionId, long taskId) {
         try {
-            SdkOption option = new SdkOption();
-            option.setZkCluster(config.zkCluster);
-            option.setZkPath(config.zkPath);
-            option.setLight(true);
-            SqlClusterExecutor executor = new SqlClusterExecutor(option);
-            String dbName = config.dbName;
-            String tableName = config.tableName;
+            SqlClusterExecutor executor = new SqlClusterExecutor(config.getSdkOption());
+            String dbName = config.getDB();
+            String tableName = config.getTable();
+            executor.executeSQL(dbName, "SET @@insert_memory_usage_limit=" + config.getInsertMemoryUsageLimit());
 
             Schema schema = executor.getTableSchema(dbName, tableName);
             // create insert placeholder
-            StringBuilder insert = new StringBuilder("insert into " + tableName + " values(?");
+            String insert_part = config.putIfAbsent()? "insert or ignore into " : "insert into ";
+            StringBuilder insert = new StringBuilder(insert_part + tableName + " values(?");
             for (int i = 1; i < schema.getColumnList().size(); i++) {
                 insert.append(",?");
             }
@@ -59,6 +55,7 @@ public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
             preparedStatement = executor.getInsertPreparedStmt(dbName, insert.toString());
         } catch (SQLException | SqlException e) {
             e.printStackTrace();
+            throw new RuntimeException("create openmldb writer failed", e);
         }
 
         this.partitionId = partitionId;
@@ -72,7 +69,12 @@ public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
             ResultSetMetaData metaData = preparedStatement.getMetaData();
             Preconditions.checkState(record.numFields() == metaData.getColumnCount());
             OpenmldbDataWriter.addRow(record, preparedStatement);
-            preparedStatement.execute();
+            // check return for put result
+            // you can cache failed rows and throw exception when commit/close,
+            // but it still may interrupt other writers(pending or slow writers)
+            if(!preparedStatement.execute()) {
+                throw new IOException("execute failed");
+            }
         } catch (Exception e) {
             throw new IOException("write row to openmldb failed on " + record, e);
         }
@@ -80,24 +82,13 @@ public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
 
     @Override
     public WriterCommitMessage commit() throws IOException {
-        try {
-            preparedStatement.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new IOException("commit error", e);
-        }
-        // TODO(hw): need to return new WriterCommitMessageImpl(partitionId, taskId); ?
+        // no transaction, no commit
         return null;
     }
 
     @Override
     public void abort() throws IOException {
-        try {
-            preparedStatement.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new IOException("abort error", e);
-        }
+        // no transaction, no abort
     }
 
     @Override

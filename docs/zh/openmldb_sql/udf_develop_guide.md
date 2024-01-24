@@ -1,18 +1,19 @@
 # 自定义函数（UDF）开发
-## 1. 背景
+## 背景
 虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，为了便于用户快速灵活实现特定的特征计算需求，我们支持了基于 C++ 的用户自定义函数（UDF）开发，以及动态用户自定义函数库的加载。
 
 ```{seealso}
 用户也可以使用内置函数开发的方式扩展 OpenMLDB 的计算函数库。但是内置函数开发需要修改源代码和重新编译。如果用户希望贡献扩展函数到 OpenMLDB 代码库，那么可以参考[内置函数的开发文档](../developer/built_in_function_develop_guide.md)。
 ```
 
-## 2. 开发步骤
-### 2.1 开发自定义函数
-#### 2.1.1 C++函数名规范
+## 开发步骤
+### 开发自定义函数
+#### C++函数名规范
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case)风格
 - 要求函数名能清晰表达函数功能
 - 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../openmldb_sql/udfs_8h.md)
-#### 2.1.2 C++类型与SQL类型对应关系
+#### C++类型与SQL类型对应关系
+
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
 
 | SQL类型   | C/C++ 类型         |
@@ -26,7 +27,7 @@
 | STRING    | `StringRef` |
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
-#### 2.1.3 函数参数和返回值
+#### 函数参数和返回值
 返回值:  
 * 如果udf输出类型是基本类型，并且`return_nullable`设置为false, 则通过函数返回值返回
 * 如果udf输出类型是基本类型，并且`return_nullable`设置为true, 则通过函数参数返回
@@ -46,7 +47,7 @@
 函数声明:  
 * 函数必须用extern "C"来声明
 
-#### 2.1.4 内存管理
+#### 内存管理
 
 - 在单行函数中，不允许使用`new`和`malloc`给输入和输出参数开辟空间。函数内部可以使用`new`和`malloc`申请临时空间, 申请的空间在函数返回前需要释放掉。
 - 在聚合函数中，在init函数中可以使用`new`/`malloc`开辟空间，但是必须在output函数中释放。最后的返回值如果是string需要保存在mempool开辟的空间中
@@ -67,7 +68,7 @@ extern "C"
 void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null) {
 ```
 
-#### 2.1.5 单行函数开发
+#### 单行函数开发
 
 单行函数（scalar function）对单行数据进行处理，返回单个值，比如 `abs`, `sin`, `cos`, `date`, `year` 等。
 
@@ -94,7 +95,7 @@ void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input,
 }
 ```
 
-#### 2.1.6 聚合函数开发
+#### 聚合函数开发
 
 聚合函数（aggregate function）对一个数据集（比如一列数据）执行计算，返回单个值，比如 `sum`, `avg`, `max`, `min`, `count` 等。
 
@@ -144,15 +145,15 @@ int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
 
 更多udf/udaf实现参考[这里](../../../src/examples/test_udf.cc)。
 
-### 2.2 编译动态库
+### 编译动态库
 - 拷贝include目录 `https://github.com/4paradigm/OpenMLDB/tree/main/include` 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
 - 执行编译命令，其中 -I 指定inlcude目录的路径 -o 指定产出动态库的名称
-- 
+  
 ```shell
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++17 -fPIC
 ```
 
-### 2.3 拷贝动态库
+### 拷贝动态库
 编译过的动态库需要被拷贝到 TaskManager 和 tablets中。如果 TaskManager 和 tablets中不存在`udf`目录，请先创建并重启这些进程（保证环境变量生效）。
 - tablet的UDF目录是 `path_to_tablet/udf`。
 - TaskManager的UDF目录是 `path_to_taskmanager/taskmanager/bin/udf`。
@@ -181,7 +182,7 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 - 在执行' DROP FUNCTION '之前请勿删除动态库。
 ```
 
-### 2.4 注册、删除和查看函数
+### 注册、删除和查看函数
 注册函数使用[CREATE FUNCTION](../openmldb_sql/ddl/CREATE_FUNCTION.md)
 
 注册单行函数

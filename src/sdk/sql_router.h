@@ -80,6 +80,22 @@ class ExplainInfo {
     virtual const std::string& GetRequestDbName() = 0;
 };
 
+struct DAGNode {
+    DAGNode(absl::string_view name, absl::string_view sql) : name(name), sql(sql) {}
+    DAGNode(absl::string_view name, absl::string_view sql, const std::vector<std::shared_ptr<DAGNode>>& producers)
+        : name(name), sql(sql), producers(producers) {}
+
+    std::string name;
+    std::string sql;
+    std::vector<std::shared_ptr<DAGNode>> producers;
+
+    bool operator==(const DAGNode& op) const noexcept;
+
+    std::string DebugString() const;
+
+    friend std::ostream& operator<<(std::ostream& os, const DAGNode& obj);
+};
+
 class QueryFuture {
  public:
     QueryFuture() {}
@@ -114,7 +130,7 @@ class SQLRouter {
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
                 hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) = 0;
+                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteDelete(std::shared_ptr<openmldb::sdk::SQLDeleteRow> row, hybridse::sdk::Status* status) = 0;
 
@@ -234,6 +250,11 @@ class SQLRouter {
     virtual bool IsOnlineMode() = 0;
 
     virtual std::string GetDatabase() = 0;
+
+    // parse SQL query into DAG representation
+    //
+    // Optional CONFIG clause from SQL query statement is skipped in output DAG
+    std::shared_ptr<DAGNode> SQLToDAG(const std::string& query, hybridse::sdk::Status* status);
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

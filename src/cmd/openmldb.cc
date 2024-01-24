@@ -304,7 +304,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
             }
         }
 
-        if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second)) {
+        if (!clients[endpoint]->Put(tid, pid, ts, value, iter->second).OK()) {
             printf("put failed. tid %u pid %u endpoint %s ts %lu \n", tid, pid, endpoint.c_str(), ts);
             return -1;
         }
@@ -438,7 +438,7 @@ std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const ::openml
 
 void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "bad setttl format, eg settl t1 absolute 10" << std::endl;
+        std::cout << "bad setttl format, eg settl t1 absolute 10 [index0]" << std::endl;
         return;
     }
     std::string index_name;
@@ -1307,14 +1307,14 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get "
                      "table_name key idx_name ts | get table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx "
+                     "index_name=xxx ts=xxx"
                   << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "get format error. eg: get table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx "
+                     "index_name=xxx ts=xxx"
                   << std::endl;
         return;
     }
@@ -1382,7 +1382,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     ::openmldb::codec::SDKCodec codec(tables[0]);
-    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;
         uint64_t ts = 0;
@@ -2459,7 +2459,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
             printf("desc: set table ttl \n");
-            printf("usage: setttl table_name ttl_type ttl [ts_name]\n");
+            printf("usage: setttl table_name ttl_type ttl [index_name], abs ttl unit is minute\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
             printf("ex: setttl t3 latest 5 ts1\n");

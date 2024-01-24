@@ -17,26 +17,26 @@
 #include "codegen/array_ir_builder.h"
 
 #include <string>
+
+#include "codegen/context.h"
 #include "codegen/ir_base_builder.h"
 
 namespace hybridse {
 namespace codegen {
+
+#define SZ_IDX 2
+#define RAW_IDX 0
+#define NULL_IDX 1
 
 ArrayIRBuilder::ArrayIRBuilder(::llvm::Module* m, llvm::Type* ele_ty)
     : StructTypeIRBuilder(m), element_type_(ele_ty) {
     InitStructType();
 }
 
-ArrayIRBuilder::ArrayIRBuilder(::llvm::Module* m, llvm::Type* ele_ty, llvm::Value* num_ele)
-    : StructTypeIRBuilder(m), element_type_(ele_ty), num_elements_(num_ele) {
-    InitStructType();
-}
-
 void ArrayIRBuilder::InitStructType() {
     // name must unique between different array type
     std::string name = absl::StrCat("fe.array_", GetLlvmObjectString(element_type_));
-    ::llvm::StringRef sr(name);
-    ::llvm::StructType* stype = m_->getTypeByName(sr);
+    ::llvm::StructType* stype = m_->getTypeByName(name);
     if (stype != NULL) {
         struct_type_ = stype;
         return;
@@ -46,29 +46,36 @@ void ArrayIRBuilder::InitStructType() {
     ::llvm::Type* arr_type = element_type_->getPointerTo();
     ::llvm::Type* nullable_type = ::llvm::IntegerType::getInt1Ty(m_->getContext())->getPointerTo();
     ::llvm::Type* size_type = ::llvm::IntegerType::getInt64Ty(m_->getContext());
-    std::vector<::llvm::Type*> elements = {arr_type, nullable_type, size_type};
-    stype->setBody(::llvm::ArrayRef<::llvm::Type*>(elements));
+    stype->setBody({arr_type, nullable_type, size_type});
     struct_type_ = stype;
 }
 
-base::Status ArrayIRBuilder::NewFixedArray(llvm::BasicBlock* bb, const std::vector<NativeValue>& elements,
-                                           NativeValue* output) const {
-    // TODO(ace): reduce IR size with loop block
-
-    CHECK_TRUE(num_elements_ != nullptr, common::kCodegenError, "num elements unknown");
-
+absl::StatusOr<NativeValue> ArrayIRBuilder::Construct(CodeGenContext* ctx,
+                                                      absl::Span<NativeValue const> elements) const {
+    auto bb = ctx->GetCurrentBlock();
     // alloc array struct
     llvm::Value* array_alloca = nullptr;
-    CHECK_TRUE(Create(bb, &array_alloca), common::kCodegenError, "can't create struct type for array");
+    if (!Allocate(bb, &array_alloca)) {
+        return absl::InternalError("can't create struct type for array");
+    }
 
     // ============================
     // Init array elements
     // ============================
     llvm::IRBuilder<> builder(bb);
+    auto num_elements = ctx->GetBuilder()->getInt64(elements.size());
+    if (!Set(bb, array_alloca, SZ_IDX, num_elements)) {
+        return absl::InternalError("fail to set array size");
+    }
+
+    if (elements.empty()) {
+        // empty array
+        return NativeValue::Create(array_alloca);
+    }
 
     // init raw array and nullable array
-    auto* raw_array_ptr = builder.CreateAlloca(element_type_, num_elements_);
-    auto* nullables_ptr = builder.CreateAlloca(builder.getInt1Ty(), num_elements_);
+    auto* raw_array_ptr = builder.CreateAlloca(element_type_, num_elements);
+    auto* nullables_ptr = builder.CreateAlloca(builder.getInt1Ty(), num_elements);
 
     // fullfill the array struct
     auto* idx_val_ptr = builder.CreateAlloca(builder.getInt64Ty());
@@ -88,41 +95,26 @@ base::Status ArrayIRBuilder::NewFixedArray(llvm::BasicBlock* bb, const std::vect
     }
 
     // Set raw array
-    CHECK_TRUE(Set(bb, array_alloca, 0, raw_array_ptr), common::kCodegenError);
+    if (!Set(bb, array_alloca, RAW_IDX, raw_array_ptr)) {
+        return absl::InternalError("fail to set array values");
+    }
     // Set nullable list
-    CHECK_TRUE(Set(bb, array_alloca, 1, nullables_ptr), common::kCodegenError);
+    if (!Set(bb, array_alloca, NULL_IDX, nullables_ptr)) {
+        return absl::InternalError("fail to set array nulls");
+    }
 
-    ::llvm::Value* array_sz = builder.CreateLoad(idx_val_ptr);
-    CHECK_TRUE(Set(bb, array_alloca, 2, array_sz), common::kCodegenError);
-
-    *output = NativeValue::Create(array_alloca);
-    return base::Status::OK();
-}
-
-
-base::Status ArrayIRBuilder::NewEmptyArray(llvm::BasicBlock* bb, NativeValue* output) const {
-    llvm::Value* array_alloca = nullptr;
-    CHECK_TRUE(Create(bb, &array_alloca), common::kCodegenError, "can't create struct type for array");
-
-    llvm::IRBuilder<> builder(bb);
-
-    ::llvm::Value* array_sz = builder.getInt64(0);
-    CHECK_TRUE(Set(bb, array_alloca, 2, array_sz), common::kCodegenError);
-
-    *output = NativeValue::Create(array_alloca);
-
-    return base::Status::OK();
+    return NativeValue::Create(array_alloca);
 }
 
 bool ArrayIRBuilder::CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) {
     llvm::Value* array_alloca = nullptr;
-    if (!Create(block, &array_alloca)) {
+    if (!Allocate(block, &array_alloca)) {
         return false;
     }
 
     llvm::IRBuilder<> builder(block);
     ::llvm::Value* array_sz = builder.getInt64(0);
-    if (!Set(block, array_alloca, 2, array_sz)) {
+    if (!Set(block, array_alloca, SZ_IDX, array_sz)) {
         return false;
     }
 

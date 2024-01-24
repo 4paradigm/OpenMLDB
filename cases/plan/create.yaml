@@ -163,12 +163,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a, b]
@@ -218,12 +216,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int16
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: float
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -274,12 +270,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -627,12 +621,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -685,33 +677,27 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: int32
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int32 NOT NULL
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
-          |  |    +-column_type: int16
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int16 NOT NULL
           |  +-2:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column5
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-3:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column6
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-4:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_ts
-          |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: timestamp NOT NULL
           |  +-5:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_date
-          |  |    +-column_type: date
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: date NOT NULL
           |  +-6:
           |    +-node[kColumnIndex]
           |      +-keys: [column2]
@@ -743,33 +729,27 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: int32
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int32 NOT NULL
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
-          |  |    +-column_type: int16
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int16 NOT NULL
           |  +-2:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column5
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-3:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column6
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-4:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_ts
-          |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: timestamp NOT NULL
           |  +-5:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_date
-          |  |    +-column_type: date
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: date NOT NULL
           |  +-6:
           |    +-node[kColumnIndex]
           |      +-keys: [column2]
@@ -796,17 +776,11 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
-          |  |    +-default_value:
-          |  |      +-expr[primary]
-          |  |        +-value: 1
-          |  |        +-type: int32
+          |  |    +-column_type: int32 DEFAULT 1
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column2
           |      +-column_type: int32
-          |      +-NOT NULL: 0
           +-table_option_list: []
   - id: 27
     desc: Column default value with explicit type
@@ -824,20 +798,11 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
-          |  |    +-default_value:
-          |  |      +-expr[cast]
-          |  |        +-cast_type: string
-          |  |        +-expr:
-          |  |          +-expr[primary]
-          |  |            +-value: 1
-          |  |            +-type: int32
+          |  |    +-column_type: string DEFAULT string(1)
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column3
           |      +-column_type: int32
-          |      +-NOT NULL: 0
           +-table_option_list: []
   - id: 28
     desc: Create table with database.table
@@ -856,12 +821,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
           |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column3
           |      +-column_type: int32
-          |      +-NOT NULL: 0
           +-table_option_list: []
   - id: 29
     desc: create index with db name prefix
@@ -898,12 +861,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [column1]
@@ -934,12 +895,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -1049,12 +1008,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [column1]
@@ -1068,3 +1025,45 @@ cases:
             +-0:
               +-node[kCompressType]
                 +-compress_type: snappy
+  - id: 35
+    desc: Create table with array & map type
+    sql: |
+      create table t1 (id int,
+        member ARRAY <STRING> NOT NULL,
+        attrs MAP <STRING, INT NOT NULL > NOT NULL);
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t1
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: id
+          |  |    +-column_type: int32
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: member
+          |  |    +-column_type: array<string> NOT NULL
+          |  +-2:
+          |    +-node[kColumnDesc]
+          |      +-column_name: attrs
+          |      +-column_type: map<string, int32 NOT NULL> NOT NULL
+          +-table_option_list: []
+      plan_tree_str: |
+        +-[kCreatePlan]
+          +-table: t1
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: id
+          |  |    +-column_type: int32
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: member
+          |  |    +-column_type: array<string> NOT NULL
+          |  +-2:
+          |    +-node[kColumnDesc]
+          |      +-column_name: attrs
+          |      +-column_type: map<string, int32 NOT NULL> NOT NULL
+          +-table_option_list: []

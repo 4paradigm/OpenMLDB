@@ -49,6 +49,7 @@ class Planner {
     virtual ~Planner() {}
     virtual base::Status CreatePlanTree(const NodePointVector &parser_trees,
                                         PlanNodeList &plan_trees) = 0;  // NOLINT (runtime/references)
+
     static base::Status TransformTableDef(const std::string &table_name, const NodePointVector &column_desc_list,
                                           type::TableDef *table);
     bool MergeWindows(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
@@ -132,11 +133,11 @@ class SimplePlanner : public Planner {
                   bool enable_batch_window_parallelization = true,
                   const std::unordered_map<std::string, std::string>* extra_options = nullptr)
         : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization, extra_options) {}
-    ~SimplePlanner() {}
+    ~SimplePlanner() override {}
 
  protected:
     base::Status CreatePlanTree(const NodePointVector &parser_trees,
-                                PlanNodeList &plan_trees);  // NOLINT
+                                PlanNodeList &plan_trees) override;  // NOLINT
 };
 
 }  // namespace plan

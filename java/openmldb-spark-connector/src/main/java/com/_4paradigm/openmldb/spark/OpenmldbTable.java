@@ -22,10 +22,8 @@ import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
-import com._4paradigm.openmldb.spark.read.OpenmldbReadConfig;
 import com._4paradigm.openmldb.spark.read.OpenmldbScanBuilder;
 import com._4paradigm.openmldb.spark.write.OpenmldbWriteBuilder;
-import com._4paradigm.openmldb.spark.write.OpenmldbWriteConfig;
 import org.apache.spark.sql.connector.catalog.SupportsRead;
 import org.apache.spark.sql.connector.catalog.SupportsWrite;
 import org.apache.spark.sql.connector.catalog.TableCapability;
@@ -45,38 +43,32 @@ import java.util.List;
 import java.util.Set;
 
 public class OpenmldbTable implements SupportsWrite, SupportsRead {
-    private final String dbName;
-    private final String tableName;
-    private final SdkOption option;
-    private final String writerType;
-    private SqlExecutor executor = null;
+    private OpenmldbConfig config;
+    private SqlExecutor executor;
 
     private Set<TableCapability> capabilities;
 
-    public OpenmldbTable(String dbName, String tableName, SdkOption option, String writerType) {
-        this.dbName = dbName;
-        this.tableName = tableName;
-        this.option = option;
-        this.writerType = writerType;
+    public OpenmldbTable(OpenmldbConfig config) {
+        this.config = config;
         try {
-            this.executor = new SqlClusterExecutor(option);
+            this.executor = new SqlClusterExecutor(config.getSdkOption());
             // no need to check table exists, schema() will check it later
         } catch (SqlException e) {
             e.printStackTrace();
+            throw new RuntimeException("conn openmldb failed", e);
         }
         // TODO: cache schema & delete executor?
     }
 
     @Override
     public WriteBuilder newWriteBuilder(LogicalWriteInfo info) {
-        OpenmldbWriteConfig config = new OpenmldbWriteConfig(dbName, tableName, option, writerType);
         return new OpenmldbWriteBuilder(config, info);
     }
 
     @Override
     public String name() {
         // TODO(hw): db?
-        return tableName;
+        return config.getTable();
     }
 
     public static DataType sdkTypeToSparkType(int sqlType) {
@@ -107,7 +99,7 @@ public class OpenmldbTable implements SupportsWrite, SupportsRead {
     @Override
     public StructType schema() {
         try {
-            Schema schema = executor.getTableSchema(dbName, tableName);
+            Schema schema = executor.getTableSchema(config.getDB(), config.getTable());
             List<Column> schemaList = schema.getColumnList();
             StructField[] fields = new StructField[schemaList.size()];
             for (int i = 0; i < schemaList.size(); i++) {
@@ -134,7 +126,6 @@ public class OpenmldbTable implements SupportsWrite, SupportsRead {
 
     @Override
     public ScanBuilder newScanBuilder(CaseInsensitiveStringMap caseInsensitiveStringMap) {
-        OpenmldbReadConfig config = new OpenmldbReadConfig(dbName, tableName, option);
         return new OpenmldbScanBuilder(config);
     }
 }

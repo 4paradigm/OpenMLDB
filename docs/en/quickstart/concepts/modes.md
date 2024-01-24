@@ -59,7 +59,7 @@ The main features of the online preview mode are:
 - Online preview mode is mainly used for previewing limited data. Selecting and viewing data directly through SELECT in OpenMLDB CLI or SDKs may result in data truncation. If the data volume is large, it is recommended to use an [export tool](../../tutorial/data_export.html) to view the complete data.
 - SELECT statements in online preview mode currently do not support more complex queries such as `LAST JOIN` and `ORDER BY`. Refer to [SELECT](../../openmldb_sql/dql/SELECT_STATEMENT.html).
 - The server in the online preview mode executes SQL statements on a single thread. For large data processing, it may be slow and may trigger a timeout. To increase the timeout period, the `--request_timeout` can be configured on the client.
-- To prevent impact on online services, online preview mode limits the maximum number of accessed records and the number of different keys. This can be configured using `--max_traverse_cnt` and `--max_traverse_key_cnt`. Similarly, the maximum result size can be set using `--scan_max_bytes_size`. For detailed configuration, refer to the [configuration file](../../deploy/conf.md).
+- To prevent impact on online services, you can limit the maximum number of accessed records and the number of different keys in online preview mode. This can be configured using `--max_traverse_cnt` and `--max_traverse_key_cnt`. Similarly, the maximum result size can be set using `--scan_max_bytes_size`. For detailed configuration, refer to the [configuration file](../../deploy/conf.md).
 
 The command for setting online preview mode in OpenMLDB CLI: `SET @@execute_mode='online'`
 

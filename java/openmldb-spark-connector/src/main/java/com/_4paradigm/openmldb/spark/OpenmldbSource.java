@@ -18,7 +18,6 @@
 package com._4paradigm.openmldb.spark;
 
 import com._4paradigm.openmldb.sdk.SdkOption;
-import com.google.common.base.Preconditions;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.connector.expressions.Transform;
@@ -29,31 +28,20 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import java.util.Map;
 
 public class OpenmldbSource implements TableProvider, DataSourceRegister {
-    private final String DB = "db";
-    private final String TABLE = "table";
-    private final String ZK_CLUSTER = "zkCluster";
-    private final String ZK_PATH = "zkPath";
 
-    private String dbName;
-    private String tableName;
-    private SdkOption option = null;
-    // single: insert when read one row
-    // batch: insert when commit(after read a whole partition)
-    private String writerType = "single";
+    private OpenmldbConfig config = new OpenmldbConfig();
 
     @Override
     public StructType inferSchema(CaseInsensitiveStringMap options) {
-        Preconditions.checkNotNull(dbName = options.get(DB));
-        Preconditions.checkNotNull(tableName = options.get(TABLE));
+        config.setDB(options.get(OpenmldbConfig.DB));
+        config.setTable(options.get(OpenmldbConfig.TABLE));
 
-        String zkCluster = options.get(ZK_CLUSTER);
-        String zkPath = options.get(ZK_PATH);
-        Preconditions.checkNotNull(zkCluster);
-        Preconditions.checkNotNull(zkPath);
-        option = new SdkOption();
-        option.setZkCluster(zkCluster);
-        option.setZkPath(zkPath);
+        SdkOption option = new SdkOption();
+        option.setZkCluster(options.get(OpenmldbConfig.ZK_CLUSTER));
+        option.setZkPath(options.get(OpenmldbConfig.ZK_PATH));
         option.setLight(true);
+        config.setSdkOption(option);
+
         String timeout = options.get("sessionTimeout");
         if (timeout != null) {
             option.setSessionTimeout(Integer.parseInt(timeout));
@@ -68,15 +56,21 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
         }
 
         if (options.containsKey("writerType")) {
-            writerType = options.get("writerType");
+            config.setWriterType(options.get("writerType"));
+        }
+        if (options.containsKey("putIfAbsent")) {
+            config.setPutIfAbsent(Boolean.valueOf(options.get("putIfAbsent")));
         }
 
+        if (options.containsKey("insert_memory_usage_limit")) {
+            config.setInsertMemoryUsageLimit(Integer.parseInt(options.get("insert_memory_usage_limit")));
+        }
         return null;
     }
 
     @Override
     public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> properties) {
-        return new OpenmldbTable(dbName, tableName, option, writerType);
+        return new OpenmldbTable(config);
     }
 
     @Override

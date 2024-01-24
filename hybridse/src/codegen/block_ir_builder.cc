@@ -15,15 +15,15 @@
  */
 
 #include "codegen/block_ir_builder.h"
+
 #include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
 #include "codegen/struct_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
 
 using ::hybridse::common::kCodegenError;
