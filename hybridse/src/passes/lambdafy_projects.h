@@ -17,16 +17,12 @@
 #ifndef HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_
 #define HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_
 
-#include <map>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include "node/expr_node.h"
-#include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "udf/udf_library.h"
-#include "vm/schemas_context.h"
 
 namespace hybridse {
 namespace passes {

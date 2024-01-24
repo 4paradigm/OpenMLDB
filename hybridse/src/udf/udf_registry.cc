@@ -206,20 +206,17 @@ Status ExprUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
 Status LlvmUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                                         node::FnDefNode** result) {
     std::vector<const node::TypeNode*> arg_types;
-    std::vector<const ExprAttrNode*> arg_attrs;
+    std::vector<ExprAttrNode> arg_attrs;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         auto arg_type = ctx->arg_type(i);
         bool nullable = ctx->arg_nullable(i);
         CHECK_TRUE(arg_type != nullptr, kCodegenError, i,
                    "th argument node type is unknown: ", name());
         arg_types.push_back(arg_type);
-        arg_attrs.push_back(new ExprAttrNode(arg_type, nullable));
+        arg_attrs.emplace_back(arg_type, nullable);
     }
     ExprAttrNode out_attr(nullptr, true);
     auto status = gen_impl_func_->infer(ctx, arg_attrs, &out_attr);
-    for (auto ptr : arg_attrs) {
-        delete const_cast<ExprAttrNode*>(ptr);
-    }
     CHECK_STATUS(status, "Infer llvm output attr failed: ", status.str());
 
     auto return_type = out_attr.type();
