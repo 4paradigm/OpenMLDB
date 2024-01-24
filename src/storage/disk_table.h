@@ -173,8 +173,9 @@ class DiskTable : public Table {
     base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);
     void HandleDeletedIndex();
     void DeleteIndexData(const std::shared_ptr<IndexDef>& index_def);
-    void GcData(const std::shared_ptr<IndexDef>& index_def, rocksdb::Iterator* it);
-    void GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t pos, uint32_t min_ts_idx, rocksdb::Iterator* it);
+    void GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnFamilyHandle* handle);
+    void GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t min_ts_idx,
+            rocksdb::Iterator* it, rocksdb::ColumnFamilyHandle* handle);
 
  private:
     rocksdb::DB* db_;

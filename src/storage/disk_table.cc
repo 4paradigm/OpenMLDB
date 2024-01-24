@@ -477,8 +477,19 @@ void DiskTable::GcAll() {
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
     for (const auto& inner_index : *inner_indexs) {
+        bool all_deleted = true;
+        for (const auto& index : inner_index->GetIndex()) {
+            if (index->IsReady()) {
+                all_deleted = false;
+                break;
+            }
+        }
+        if (all_deleted) {
+            continue;
+        }
         uint32_t idx = inner_index->GetId();
-        if (cf_hs_[idx + 1] == nullptr) {
+        auto handle = cf_hs_[idx + 1];
+        if (handle == nullptr) {
             continue;
         }
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
@@ -505,7 +516,7 @@ void DiskTable::GcAll() {
             if (ttl_map.empty()) {
                 continue;
             }
-            GcData(ttl_map, idx, min_ts_idx, it.get());
+            GcData(ttl_map, min_ts_idx, it.get(), handle);
         } else {
             auto index = indexs.front();
             if (!index->IsReady()) {
@@ -514,18 +525,17 @@ void DiskTable::GcAll() {
             if (!index->GetTTL()->NeedGc()) {
                 continue;
             }
-            GcData(index, it.get());
+            GcData(*(index->GetTTL()), it.get(), handle);
         }
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
 
-void DiskTable::GcData(const std::shared_ptr<IndexDef>& index_def, rocksdb::Iterator* it) {
-    if (it == nullptr) {
+void DiskTable::GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnFamilyHandle* handle) {
+    if (it == nullptr || handle == nullptr) {
         return;
     }
-    const auto& ttl = *(index_def->GetTTL());
     uint64_t start_ts = UINT64_MAX;
     if (ttl.ttl_type == storage::TTLType::kAbsoluteTime) {
         start_ts = ::baidu::common::timer::get_micros() / 1000 - ttl.abs_ttl;
@@ -554,7 +564,7 @@ void DiskTable::GcData(const std::shared_ptr<IndexDef>& index_def, rocksdb::Iter
             if (ttl.IsExpired(ts, count)) {
                 std::string combine_key1 = CombineKeyTs(cur_pk, ts);
                 std::string combine_key2 = CombineKeyTs(cur_pk, 0);
-                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[index_def->GetInnerPos() + 1],
+                rocksdb::Status s = db_->DeleteRange(write_opts_, handle,
                             rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
                 if (!s.ok()) {
                     PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -568,9 +578,9 @@ void DiskTable::GcData(const std::shared_ptr<IndexDef>& index_def, rocksdb::Iter
     }
 }
 
-void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t pos,
-    uint32_t min_ts_idx, rocksdb::Iterator* it) {
-    if (it == nullptr) {
+void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t min_ts_idx,
+        rocksdb::Iterator* it, rocksdb::ColumnFamilyHandle* handle) {
+    if (it == nullptr || handle == nullptr) {
         return;
     }
     it->SeekToFirst();
@@ -602,7 +612,7 @@ void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t pos,
                 if (kv.second.IsExpired(ts, count)) {
                     std::string combine_key1 = CombineKeyTs(cur_pk, ts, ts_idx);
                     std::string combine_key2 = CombineKeyTs(cur_pk, 0, ts_idx);
-                    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[pos + 1],
+                    rocksdb::Status s = db_->DeleteRange(write_opts_, handle,
                                 rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
                     if (!s.ok()) {
                         PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
