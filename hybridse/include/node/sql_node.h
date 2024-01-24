@@ -1900,6 +1900,9 @@ class ColumnDefNode : public SqlNode {
 
     std::string GetColumnName() const { return column_name_; }
 
+    const ColumnSchemaNode *schema() const { return schema_; }
+
+    // deprecated, use ColumnDefNode::schema instead
     DataType GetColumnType() const { return schema_->type(); }
 
     const ExprNode* GetDefaultValue() const { return schema_->default_value(); }

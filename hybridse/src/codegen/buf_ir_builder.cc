@@ -530,7 +530,7 @@ absl::StatusOr<llvm::Function*> BufNativeEncoderIRBuilder::GetOrBuildAppendMapFn
         auto bs = ctx_->CreateBranchNot(is_null, [&]() -> base::Status {
             auto row_ptr = BuildGetPtrOffset(sub_builder, i8_ptr, str_body_offset);
             CHECK_TRUE(row_ptr.ok(), common::kCodegenError, row_ptr.status().ToString());
-            auto sz = map_builder.Encode(ctx_, map_ptr, row_ptr.value());
+            auto sz = map_builder.Encode(ctx_, row_ptr.value(), map_ptr);
             CHECK_TRUE(sz.ok(), common::kCodegenError, sz.status().ToString());
             sub_builder->CreateStore(sz.value(), encode_sz_alloca);
             return {};

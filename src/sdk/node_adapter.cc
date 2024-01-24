@@ -314,16 +314,17 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     return false;
                 }
                 add_column_desc->set_name(column_def->GetColumnName());
-                add_column_desc->set_not_null(column_def->GetIsNotNull());
                 column_names.insert(std::make_pair(column_def->GetColumnName(), add_column_desc));
-                openmldb::type::DataType data_type;
-                if (!openmldb::schema::SchemaAdapter::ConvertType(column_def->GetColumnType(), &data_type)) {
-                    status->msg = "column type " +
-                                  hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
+                auto s = openmldb::schema::SchemaAdapter::ConvertType(column_def->schema(),
+                                                                      add_column_desc->mutable_schema());
+                if (!s.ok()) {
+                    status->msg = s.ToString();
                     status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
-                add_column_desc->set_data_type(data_type);
+                add_column_desc->set_data_type(add_column_desc->schema().type());
+                add_column_desc->set_not_null(add_column_desc->schema().not_null());
+
                 auto default_val = column_def->GetDefaultValue();
                 if (default_val) {
                     if (default_val->GetExprType() != hybridse::node::kExprPrimary) {

@@ -31,31 +31,34 @@ StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
 StructTypeIRBuilder::~StructTypeIRBuilder() {}
 
 bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) {
-    StructTypeIRBuilder* struct_builder = CreateStructTypeIRBuilder(block->getModule(), src->getType());
-    bool ok = struct_builder->CopyFrom(block, src, dist);
-    delete struct_builder;
-    return ok;
+    auto struct_builder = CreateStructTypeIRBuilder(block->getModule(), src->getType());
+    if (struct_builder.ok()) {
+        return struct_builder.value()->CopyFrom(block, src, dist);
+    }
+    return false;
 }
 
-StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(::llvm::Module* m, ::llvm::Type* type) {
+absl::StatusOr<std::unique_ptr<StructTypeIRBuilder>> StructTypeIRBuilder::CreateStructTypeIRBuilder(
+    ::llvm::Module* m, ::llvm::Type* type) {
     node::DataType base_type;
     if (!GetBaseType(type, &base_type)) {
-        return nullptr;
+        return absl::UnimplementedError(
+            absl::StrCat("fail to create struct type ir builder for ", GetLlvmObjectString(type)));
     }
 
     switch (base_type) {
         case node::kTimestamp:
-            return new TimestampIRBuilder(m);
+            return std::make_unique<TimestampIRBuilder>(m);
         case node::kDate:
-            return new DateIRBuilder(m);
+            return std::make_unique<DateIRBuilder>(m);
         case node::kVarchar:
-            return new StringIRBuilder(m);
+            return std::make_unique<StringIRBuilder>(m);
         default: {
-            LOG(WARNING) << "fail to create struct type ir builder for " << DataTypeName(base_type);
-            return nullptr;
+            break;
         }
     }
-    return nullptr;
+    return absl::UnimplementedError(
+        absl::StrCat("fail to create struct type ir builder for ", GetLlvmObjectString(type)));
 }
 
 absl::StatusOr<NativeValue> StructTypeIRBuilder::CreateNull(::llvm::BasicBlock* block) {

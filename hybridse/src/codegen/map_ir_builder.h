@@ -17,8 +17,6 @@
 #ifndef HYBRIDSE_SRC_CODEGEN_MAP_IR_BUILDER_H_
 #define HYBRIDSE_SRC_CODEGEN_MAP_IR_BUILDER_H_
 
-#include <utility>
-
 #include "codegen/struct_ir_builder.h"
 
 namespace hybridse {
@@ -43,9 +41,13 @@ class MapIRBuilder final : public StructTypeIRBuilder {
 
     absl::StatusOr<llvm::Value*> CalEncodeByteSize(CodeGenContextBase* ctx, llvm::Value*) const;
 
+    absl::StatusOr<llvm::Function*> BuildEncodeByteSizeFn(CodeGenContextBase* ctx) const;
+
     // Encode the `map_ptr` into `row_ptr`, returns byte size written on success
     // `row_ptr` is ensured to have enough space
-    absl::StatusOr<llvm::Value*> Encode(CodeGenContextBase*, llvm::Value* map_ptr, llvm::Value* row_ptr) const;
+    absl::StatusOr<llvm::Value*> Encode(CodeGenContextBase*, llvm::Value* row_ptr, llvm::Value* map_ptr) const;
+
+    absl::StatusOr<llvm::Function*> BuildEncodeFn(CodeGenContextBase*) const;
 
     // Decode the stored map value at address row_ptr
     absl::StatusOr<llvm::Value*> Decode(CodeGenContextBase*, llvm::Value* row_ptr) const;

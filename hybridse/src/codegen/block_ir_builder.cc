@@ -290,16 +290,18 @@ bool BlockIRBuilder::BuildReturnStmt(const ::hybridse::node::FnReturnStmt *node,
     }
     ::llvm::Value *value = value_wrapper.GetValue(&builder);
     if (TypeIRBuilder::IsStructPtr(value->getType())) {
-        StructTypeIRBuilder *struct_builder =
-            StructTypeIRBuilder::CreateStructTypeIRBuilder(block->getModule(),
-                                                           value->getType());
+        auto struct_builder = StructTypeIRBuilder::CreateStructTypeIRBuilder(block->getModule(), value->getType());
+        if (!struct_builder.ok()) {
+            status.code = kCodegenError;
+            status.msg = struct_builder.status().ToString();
+            return false;
+        }
         NativeValue ret_value;
         if (!var_ir_builder.LoadRetStruct(&ret_value, status)) {
             LOG(WARNING) << "fail to load ret struct address";
             return false;
         }
-        if (!struct_builder->CopyFrom(block, value,
-                                      ret_value.GetValue(&builder))) {
+        if (!struct_builder.value()->CopyFrom(block, value, ret_value.GetValue(&builder))) {
             return false;
         }
         value = builder.getInt1(true);

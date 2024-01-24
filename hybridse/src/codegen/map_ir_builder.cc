@@ -197,7 +197,7 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
                                         ctx->GetBuilder()->getInt1Ty()->getPointerTo()  // output is null ptr
                                     },
                                     false);
-        fn = llvm::Function::Create(fnt, llvm::Function::ExternalLinkage, fn_name, ctx->GetModule());
+        fn = llvm::Function::Create(fnt, llvm::GlobalValue::ExternalLinkage, fn_name, ctx->GetModule());
 
         FunctionScopeGuard fg(fn, ctx);
 
@@ -362,6 +362,53 @@ absl::StatusOr<NativeValue> MapIRBuilder::MapKeys(CodeGenContextBase* ctx, const
     return out;
 }
 
+absl::StatusOr<llvm::Function*> MapIRBuilder::BuildEncodeByteSizeFn(CodeGenContextBase* ctx) const {
+    std::string fn_name = absl::StrCat("calc_encode_map_sz_", GetIRTypeName(struct_type_));
+    llvm::Function* fn = ctx->GetModule()->getFunction(fn_name);
+    auto builder = ctx->GetBuilder();
+    if (fn == nullptr) {
+        llvm::FunctionType* fnt = llvm::FunctionType::get(builder->getInt32Ty(),  // return size
+                                                          {
+                                                              struct_type_->getPointerTo(),
+                                                          },
+                                                          false);
+        fn = llvm::Function::Create(fnt, llvm::GlobalValue::ExternalLinkage, fn_name, ctx->GetModule());
+        FunctionScopeGuard fg(fn, ctx);
+
+        llvm::Value* raw = fn->arg_begin();
+        // map_size + [key_ele_sz * map_size] + [val_ele_sz * map_sz] + [sizeof(bool) * map_size]
+        llvm::Value* final_size = CodecSizeForPrimitive(builder, builder->getInt32Ty());
+
+        auto elements = Load(ctx, raw);
+        if (!elements.ok()) {
+            return elements.status();
+        }
+
+        if (elements->size() != FIELDS_CNT) {
+            return absl::FailedPreconditionError(
+                absl::Substitute("element count error, expect $0, got $1", FIELDS_CNT, elements->size()));
+        }
+        auto& elements_vec = elements.value();
+        auto& map_size = elements_vec[0];
+        auto& key_vec = elements_vec[1];
+        auto& value_vec = elements_vec[2];
+        auto& value_null_vec = elements_vec[3];
+
+        auto keys_sz = CalEncodeSizeForArray(ctx, key_vec, map_size);
+        CHECK_ABSL_STATUSOR(keys_sz);
+        auto values_sz = CalEncodeSizeForArray(ctx, value_vec, map_size);
+        CHECK_ABSL_STATUSOR(values_sz);
+        auto values_null_sz = CalEncodeSizeForArray(ctx, value_null_vec, map_size);
+        CHECK_ABSL_STATUSOR(values_null_sz);
+
+        builder->CreateRet(builder->CreateAdd(
+            final_size,
+            builder->CreateAdd(keys_sz.value(), builder->CreateAdd(values_sz.value(), values_null_sz.value()))));
+    }
+
+    return fn;
+}
+
 absl::StatusOr<llvm::Value*> MapIRBuilder::CalEncodeByteSize(CodeGenContextBase* ctx, llvm::Value* raw) const {
     auto builder = ctx->GetBuilder();
     if (!raw->getType()->isPointerTy() || raw->getType()->getPointerElementType() != struct_type_) {
@@ -370,33 +417,11 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::CalEncodeByteSize(CodeGenContextBase*
                                                               GetLlvmObjectString(raw->getType())));
     }
 
-    // map_size + [key_ele_sz * map_size] + [val_ele_sz * map_sz] + [sizeof(bool) * map_size]
-    llvm::Value* final_size = CodecSizeForPrimitive(builder, builder->getInt32Ty());
+    auto fns = BuildEncodeByteSizeFn(ctx);
 
-    auto elements = Load(ctx, raw);
-    if (!elements.ok()) {
-        return elements.status();
-    }
+    CHECK_ABSL_STATUSOR(fns);
 
-    if (elements->size() != FIELDS_CNT) {
-        return absl::FailedPreconditionError(
-            absl::Substitute("element count error, expect $0, got $1", FIELDS_CNT, elements->size()));
-    }
-    auto& elements_vec = elements.value();
-    auto& map_size = elements_vec[0];
-    auto& key_vec = elements_vec[1];
-    auto& value_vec = elements_vec[2];
-    auto& value_null_vec = elements_vec[3];
-
-    auto keys_sz = CalEncodeSizeForArray(ctx, key_vec, map_size);
-    CHECK_ABSL_STATUSOR(keys_sz);
-    auto values_sz = CalEncodeSizeForArray(ctx, value_vec, map_size);
-    CHECK_ABSL_STATUSOR(values_sz);
-    auto values_null_sz = CalEncodeSizeForArray(ctx, value_null_vec, map_size);
-    CHECK_ABSL_STATUSOR(values_null_sz);
-
-    return builder->CreateAdd(
-        final_size, builder->CreateAdd(keys_sz.value(), builder->CreateAdd(values_sz.value(), values_null_sz.value())));
+    return builder->CreateCall(fns.value(), {raw});
 }
 
 absl::StatusOr<llvm::Value*> MapIRBuilder::CalEncodeSizeForArray(CodeGenContextBase* ctx, llvm::Value* arr_ptr,
@@ -429,7 +454,7 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::CalEncodeSizeForArray(CodeGenContextB
                                                               builder->getInt32Ty()  // arr size
                                                           },
                                                           false);
-        fn = llvm::Function::Create(fnt, llvm::Function::ExternalLinkage, fn_name, ctx->GetModule());
+        fn = llvm::Function::Create(fnt, llvm::GlobalValue::ExternalLinkage, fn_name, ctx->GetModule());
 
         FunctionScopeGuard fg(fn, ctx);
         auto sub_builder = ctx->GetBuilder();
@@ -508,10 +533,82 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::TypeEncodeByteSize(CodeGenContextBase
     return absl::UnimplementedError(absl::StrCat("encode type ", GetLlvmObjectString(ele_type)));
 }
 
-absl::StatusOr<llvm::Value*> MapIRBuilder::Encode(CodeGenContextBase* ctx, llvm::Value* map_ptr,
-                                                  llvm::Value* row_ptr) const {
+absl::StatusOr<llvm::Function*> MapIRBuilder::BuildEncodeFn(CodeGenContextBase* ctx) const {
+    std::string fn_name = absl::StrCat("encode_map_", GetIRTypeName(struct_type_));
+    llvm::Function* fn = ctx->GetModule()->getFunction(fn_name);
+
     auto builder = ctx->GetBuilder();
-    llvm::Value* written = builder->getInt32(0);
+    if (fn == nullptr) {
+        llvm::FunctionType* fnt = llvm::FunctionType::get(builder->getInt32Ty(),  // encoded byte size
+                                                          {
+                                                              builder->getInt8PtrTy(),       // row ptr
+                                                              struct_type_->getPointerTo(),  // map ptr
+                                                          },
+                                                          false);
+        fn = llvm::Function::Create(fnt, llvm::GlobalValue::ExternalLinkage, fn_name, ctx->GetModule());
+
+        FunctionScopeGuard fg(fn, ctx);
+
+        llvm::Value* row_ptr = fn->arg_begin();
+        llvm::Value* map_ptr = fn->arg_begin() + 1;
+        llvm::Value* written = builder->getInt32(0);
+
+        auto elements = Load(ctx, map_ptr);
+        if (!elements.ok()) {
+            return elements.status();
+        }
+
+        if (elements->size() != FIELDS_CNT) {
+            return absl::FailedPreconditionError(
+                absl::Substitute("element count error, expect $0, got $1", FIELDS_CNT, elements->size()));
+        }
+
+        auto& elements_vec = elements.value();
+        auto& map_size = elements_vec[0];
+        auto& key_vec = elements_vec[1];
+        auto& value_vec = elements_vec[2];
+        auto& value_null_vec = elements_vec[3];
+
+        // *(int32*) row_ptr = map_size
+        {
+            CHECK_ABSL_STATUS(BuildStoreOffset(builder, row_ptr, builder->getInt32(0), map_size));
+
+            written = builder->CreateAdd(written, builder->getInt32(4));
+        }
+        {
+            // *(key_type[map_size]) (row_ptr + 4) = key_vec
+            auto row_ptr_with_offset = BuildGetPtrOffset(builder, row_ptr, written);
+            CHECK_ABSL_STATUSOR(row_ptr_with_offset);
+            auto s = EncodeArray(ctx, row_ptr_with_offset.value(), key_vec, map_size);
+            CHECK_ABSL_STATUSOR(s);
+            written = builder->CreateAdd(written, s.value());
+        }
+        {
+            // *(value_type[map_size]) (row_ptr + ?) = value_vec
+            auto row_ptr_with_offset = BuildGetPtrOffset(builder, row_ptr, written);
+            CHECK_ABSL_STATUSOR(row_ptr_with_offset);
+            auto s = EncodeArray(ctx, row_ptr_with_offset.value(), value_vec, map_size);
+            CHECK_ABSL_STATUSOR(s);
+            written = builder->CreateAdd(written, s.value());
+        }
+        {
+            // *(bool[map_size]) (row_ptr + ?) = value_null_vec
+            auto row_ptr_with_offset = BuildGetPtrOffset(builder, row_ptr, written);
+            CHECK_ABSL_STATUSOR(row_ptr_with_offset);
+            // TODO(someone): alignment issue, bitwise operation for better performance ?
+            auto s = EncodeArray(ctx, row_ptr_with_offset.value(), value_null_vec, map_size);
+            CHECK_ABSL_STATUSOR(s);
+            written = builder->CreateAdd(written, s.value());
+        }
+
+        builder->CreateRet(written);
+    }
+    return fn;
+}
+
+absl::StatusOr<llvm::Value*> MapIRBuilder::Encode(CodeGenContextBase* ctx, llvm::Value* row_ptr,
+                                                  llvm::Value* map_ptr) const {
+    auto builder = ctx->GetBuilder();
 
     if (row_ptr->getType() != builder->getInt8Ty()->getPointerTo()) {
         return absl::FailedPreconditionError(
@@ -525,55 +622,10 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::Encode(CodeGenContextBase* ctx, llvm:
                              GetLlvmObjectString(map_ptr->getType()->getPointerElementType())));
     }
 
-    auto elements = Load(ctx, map_ptr);
-    if (!elements.ok()) {
-        return elements.status();
-    }
+    auto fns = BuildEncodeFn(ctx);
+    CHECK_ABSL_STATUSOR(fns);
 
-    if (elements->size() != FIELDS_CNT) {
-        return absl::FailedPreconditionError(
-            absl::Substitute("element count error, expect $0, got $1", FIELDS_CNT, elements->size()));
-    }
-
-    auto& elements_vec = elements.value();
-    auto& map_size = elements_vec[0];
-    auto& key_vec = elements_vec[1];
-    auto& value_vec = elements_vec[2];
-    auto& value_null_vec = elements_vec[3];
-
-    // *(int32*) row_ptr = map_size
-    {
-        CHECK_ABSL_STATUS(BuildStoreOffset(builder, row_ptr, builder->getInt32(0), map_size));
-
-        written = builder->CreateAdd(written, builder->getInt32(4));
-    }
-    {
-        // *(key_type[map_size]) (row_ptr + 4) = key_vec
-        auto row_ptr_with_offset = BuildGetPtrOffset(builder, row_ptr, written);
-        CHECK_ABSL_STATUSOR(row_ptr_with_offset);
-        auto s = EncodeArray(ctx, row_ptr_with_offset.value(), key_vec, map_size);
-        CHECK_ABSL_STATUSOR(s);
-        written = builder->CreateAdd(written, s.value());
-    }
-    {
-        // *(value_type[map_size]) (row_ptr + ?) = value_vec
-        auto row_ptr_with_offset = BuildGetPtrOffset(builder, row_ptr, written);
-        CHECK_ABSL_STATUSOR(row_ptr_with_offset);
-        auto s = EncodeArray(ctx, row_ptr_with_offset.value(), value_vec, map_size);
-        CHECK_ABSL_STATUSOR(s);
-        written = builder->CreateAdd(written, s.value());
-    }
-    {
-        // *(bool[map_size]) (row_ptr + ?) = value_null_vec
-        auto row_ptr_with_offset = BuildGetPtrOffset(builder, row_ptr, written);
-        CHECK_ABSL_STATUSOR(row_ptr_with_offset);
-        // TODO(someone): alignment issue, bitwise operation for better performance ?
-        auto s = EncodeArray(ctx, row_ptr_with_offset.value(), value_null_vec, map_size);
-        CHECK_ABSL_STATUSOR(s);
-        written = builder->CreateAdd(written, s.value());
-    }
-
-    return written;
+    return builder->CreateCall(fns.value(), {row_ptr, map_ptr});
 }
 
 absl::StatusOr<llvm::Value*> MapIRBuilder::EncodeArray(CodeGenContextBase* ctx_, llvm::Value* row_ptr,
@@ -737,7 +789,7 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::DecodeArrayValue(CodeGenContextBase* 
                                     },
                                     false);
 
-        fn = llvm::Function::Create(fnt, llvm::Function::ExternalLinkage, fn_name, ctx->GetModule());
+        fn = llvm::Function::Create(fnt, llvm::GlobalValue::ExternalLinkage, fn_name, ctx->GetModule());
 
         FunctionScopeGuard fg(fn, ctx);
         auto* sub_builder = ctx->GetBuilder();
@@ -855,7 +907,7 @@ absl::StatusOr<llvm::Function*> MapIRBuilder::GetOrBuildEncodeArrFunction(CodeGe
         builder->getInt32Ty(), {builder->getInt8Ty()->getPointerTo(), ele_type->getPointerTo(), builder->getInt32Ty()},
         false);
 
-    fn = llvm::Function::Create(fnt, llvm::Function::ExternalLinkage, fn_name, ctx->GetModule());
+    fn = llvm::Function::Create(fnt, llvm::GlobalValue::ExternalLinkage, fn_name, ctx->GetModule());
 
     // enter function
     FunctionScopeGuard fg(fn, ctx);
