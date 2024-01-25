@@ -68,7 +68,7 @@ TEST_P(SplitTest, SplitLineWithDelimiterForStrings) {
 }
 
 TEST_F(SplitTest, failedCases) {
-    // escape 
+    // escape
     std::vector<std::string> splited;
     // "abc\"", quote is ", should be abc\"(char 4), but this method will return abc\, missing the last char
     SplitLineWithDelimiterForStrings("\"abc\\\"\"", ",", &splited, '"');

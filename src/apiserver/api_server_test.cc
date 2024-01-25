@@ -108,7 +108,7 @@ class APIServerTestEnv : public testing::Environment {
     std::shared_ptr<APIServerImpl> server_process;
     brpc::Server server;
     std::string db;
-    
+
     // http client for api server
     brpc::Channel http_channel;
     std::shared_ptr<sdk::SQLRouter> cluster_remote;

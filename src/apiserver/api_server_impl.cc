@@ -223,15 +223,17 @@ absl::Status APIServerImpl::JsonArray2SQLRequestRow(const Value& non_common_cols
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                return absl::InvalidArgumentError(
-                    absl::StrCat("trans const failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(common_cols_v[common_idx])));
+                return absl::InvalidArgumentError(absl::StrCat("trans const failed on ", sch->GetColumnName(i), "(",
+                                                               sch->GetColumnType(i),
+                                                               "): ", PrintJsonValue(common_cols_v[common_idx])));
             }
             ++common_idx;
         } else {
             if (!AppendJsonValue(non_common_cols_v[non_common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i),
                                  row)) {
                 return absl::InvalidArgumentError(
-                    absl::StrCat("trans failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(non_common_cols_v[non_common_idx])));
+                    absl::StrCat("trans failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i),
+                                 "): ", PrintJsonValue(non_common_cols_v[non_common_idx])));
             }
             ++non_common_idx;
         }
@@ -350,8 +352,9 @@ absl::Status APIServerImpl::JsonMap2SQLRequestRow(const Value& non_common_cols_v
     for (decltype(sch->GetColumnCnt()) i = 0; i < sch->GetColumnCnt(); ++i) {
         if (sch->IsConstant(i)) {
             if (!AppendJsonValue(common_cols_v[common_idx], sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                return absl::InvalidArgumentError(
-                    absl::StrCat("trans const failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(common_cols_v[common_idx])));
+                return absl::InvalidArgumentError(absl::StrCat("trans const failed on ", sch->GetColumnName(i), "(",
+                                                               sch->GetColumnType(i),
+                                                               "): ", PrintJsonValue(common_cols_v[common_idx])));
             }
             ++common_idx;
         } else {
@@ -360,8 +363,8 @@ absl::Status APIServerImpl::JsonMap2SQLRequestRow(const Value& non_common_cols_v
                 return absl::InvalidArgumentError("can't find " + sch->GetColumnName(i));
             }
             if (!AppendJsonValue(v->value, sch->GetColumnType(i), sch->IsColumnNotNull(i), row)) {
-                return absl::InvalidArgumentError(
-                    absl::StrCat("trans failed on ", sch->GetColumnName(i), "(", sch->GetColumnType(i), "): ", PrintJsonValue(v->value)));
+                return absl::InvalidArgumentError(absl::StrCat("trans failed on ", sch->GetColumnName(i), "(",
+                                                               sch->GetColumnType(i), "): ", PrintJsonValue(v->value)));
             }
         }
     }
@@ -776,7 +779,8 @@ JsonReader& QueryReq::parse(JsonReader& ar) {  // NOLINT
         RETURN_AR_IF_ERROR(parse(ar.Member("input"), parameter), "input parse failed");
     }
     if (ar.HasMember("write_nan_and_inf_null")) {
-        RETURN_AR_IF_ERROR(ar.Member("write_nan_and_inf_null") & write_nan_and_inf_null, "write_nan_and_inf_null parse failed");
+        RETURN_AR_IF_ERROR(ar.Member("write_nan_and_inf_null") & write_nan_and_inf_null,
+                           "write_nan_and_inf_null parse failed");
     }
     RETURN_AR_IF_ERROR(ar.EndObject(), "req object end error");
     return ar;
@@ -825,18 +829,19 @@ JsonReader& QueryReq::parse(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRe
         // end "schema"
         RETURN_AR_IF_ERROR(ar.EndArray(), "schema parse failed");
     }
-    
+
     int32_t str_length = 0;
     {
         ar.Member("data");
         size_t size;
         ar.StartArray(&size);  // start first iter "data"
-        RETURN_AR_IF_NOT_OK(static_cast<int>(size) == schema.size(), ar, absl::StrCat("data size ", size," != schema size ", schema.size()));
+        RETURN_AR_IF_NOT_OK(static_cast<int>(size) == schema.size(), ar,
+                            absl::StrCat("data size ", size, " != schema size ", schema.size()));
 
         for (auto col = schema.begin(); col != schema.end(); col++) {
             if (col->type() == ::hybridse::type::kVarchar) {
                 std::string str;
-                ar& str;
+                ar & str;
                 str_length += str.length();
             } else {
                 ar.Next();
@@ -846,8 +851,8 @@ JsonReader& QueryReq::parse(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRe
         RETURN_AR_IF_ERROR(ar.EndArray(), "data array end error");
     }
     {
-        parameter.reset(new openmldb::sdk::SQLRequestRow(std::shared_ptr<::hybridse::sdk::Schema>(new ::hybridse::sdk::SchemaImpl(schema)),
-                                                         std::set<std::string>({})));
+        parameter.reset(new openmldb::sdk::SQLRequestRow(
+            std::shared_ptr<::hybridse::sdk::Schema>(new ::hybridse::sdk::SchemaImpl(schema)), {}));
         ar.Member("data");
         size_t size;
         ar.StartArray(&size);  // start second iter "data"
