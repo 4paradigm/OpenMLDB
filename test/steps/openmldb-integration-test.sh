@@ -42,16 +42,17 @@ fi
 
 JAVA_SDK_VERSION=$(more java/pom.xml | grep "<version>.*</version>" | head -1 | sed 's#.*<version>\(.*\)</version>.*#\1#')
 sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAR_VERSION}" "" "${JAR_VERSION}" "${JAR_VERSION}" "${TABLE_STORAGE_MODE}"
-mkdir -p mvnrepo
-export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-mvn install:install-file -Dfile=openmldb-batch.jar -DartifactId=openmldb-batch -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
-mvn install:install-file -Dfile=openmldb-jdbc.jar -DartifactId=openmldb-jdbc -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
-mvn install:install-file -Dfile=openmldb-native.jar -DartifactId=openmldb-native -DgroupId=com.4paradigm.openmldb -Dversion=${JAR_VERSION} -Dpackaging=jar
+mkdir -p ../mvnrepo
+export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/../mvnrepo"
+mvn install:install-file -Dfile=openmldb-batch.jar -DartifactId=openmldb-batch -DgroupId=com.4paradigm.openmldb -Dversion="${JAR_VERSION}" -Dpackaging=jar
+mvn install:install-file -Dfile=openmldb-jdbc.jar -DartifactId=openmldb-jdbc -DgroupId=com.4paradigm.openmldb -Dversion="${JAR_VERSION}" -Dpackaging=jar
+mvn install:install-file -Dfile=openmldb-native.jar -DartifactId=openmldb-native -DgroupId=com.4paradigm.openmldb -Dversion="${JAR_VERSION}" -Dpackaging=jar
+mvn install:install-file -Dfile=openmldb-spark-connector.jar -DartifactId=openmldb-spark-connector -DgroupId=com.4paradigm.openmldb -Dversion="${JAR_VERSION}" -Dpackaging=jar
 
 mvn clean install -B -Dmaven.test.skip=true -f test/test-tool/command-tool/pom.xml
-mvn clean install -B -Dmaven.test.skip=true -f test/integration-test/openmldb-test-java/pom.xml -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+mvn clean install -B -Dmaven.test.skip=true -f test/integration-test/openmldb-test-java/pom.xml -Dopenmldb.native.version="${JAR_VERSION}" -Dopenmldb.jdbc.version="${JAR_VERSION}" -Dopenmldb.batch.version="${JAR_VERSION}"
 if [[ "${EXECUTE_MODE}" == "javasdk" ]]; then
-  mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-sdk-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+  mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-sdk-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version="${JAR_VERSION}" -Dopenmldb.jdbc.version="${JAR_VERSION}" -Dopenmldb.batch.version="${JAR_VERSION}"
 elif [[ "${EXECUTE_MODE}" == "apiserver" ]]; then
-  mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-http-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version=${JAR_VERSION} -Dopenmldb.jdbc.version=${JAR_VERSION} -Dopenmldb.batch.version=${JAR_VERSION}
+  mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -f test/integration-test/openmldb-test-java/openmldb-http-test/pom.xml -DcaseLevel="${CASE_LEVEL}" -Dopenmldb.native.version="${JAR_VERSION}" -Dopenmldb.jdbc.version="${JAR_VERSION}" -Dopenmldb.batch.version="${JAR_VERSION}"
 fi
