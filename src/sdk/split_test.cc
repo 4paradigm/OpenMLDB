@@ -67,6 +67,15 @@ TEST_P(SplitTest, SplitLineWithDelimiterForStrings) {
     }
 }
 
+TEST_F(SplitTest, failedCases) {
+    // escape 
+    std::vector<std::string> splited;
+    // "abc\"", quote is ", should be abc\"(char 4), but this method will return abc\, missing the last char
+    SplitLineWithDelimiterForStrings("\"abc\\\"\"", ",", &splited, '"');
+    ASSERT_EQ(1, splited.size());
+    EXPECT_STREQ("abc\\", splited[0].c_str());
+}
+
 }  // namespace sdk
 }  // namespace openmldb
 

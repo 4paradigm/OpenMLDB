@@ -173,26 +173,37 @@ curl http://<ns_endpoint>/NameServer/UpdateOfflineTableInfo -d '{"db":"<db_name>
 ## CSV源数据格式说明
 
 导入支持csv和parquet两种数据格式，csv的格式需要特别注意，下面举例说明。
+1. csv的列分隔符默认为`,`，不允许出现空格，否则，"a, b"将被解析为两列，第一列为`a`，第二列为` b`（有一个空格）。
+	1. local模式会trim掉列分隔符两边的空格，所以`a, b`会被解析为两列，第一列为`a`，第二列为`b`。但从规范上来说，csv的列分隔符左右不应该有空格，请不要依赖这个特性。
+2. cluster和local模式对于空值的处理不同，具体为：
+	```
+	c1, c2
+	,
+	"",""
+	ab,cd
+	"ef","gh"
+	null,null
+	```
+	这个csv源数据中，第一行两个空值（blank value）。
+	- cluster模式空值会被当作`null`（无论null_value是什么）。
+	- local模式空值会被当作空字符串，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
 
-```
-c1, c2
-,
-"",""
-ab,cd
-"ef","gh"
-null,null
-```
-这个csv源数据中，第一行两个空值（blank value）。
-- cluster模式空值会被当作`null`（无论null_value是什么）。
-- local模式空值会被当作空字符串，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
+	第二行两列都是两个双引号。
+	- cluster模式默认quote为`"`，所以这一行是两个空字符串。
+	- local模式默认quote为`\0`，所以这一行两列都是两个双引号。local模式quote可以配置为`"`，但escape规则是`""`为单个`"`，和Spark不一致，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
 
-第二行两列都是两个双引号。
-- cluster模式默认quote为`"`，所以这一行是两个空字符串。
-- local模式默认quote为`\0`，所以这一行两列都是两个双引号。local模式quote可以配置为`"`，但escape规则是`""`为单个`"`，和Spark不一致，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
+3. cluster的csv格式支持两种格式的timestamp，但同一次load只会选择一种格式，不会混合使用。如果csv中存在两种格式的timestamp，会导致解析失败。选择哪种格式由第一行数据决定，如果第一行数据是`2020-01-01 00:00:00`，则后续所有timestamp都会按照`yyyy-MM-dd HH:mm:ss`格式解析；如果第一行数据是整型`1577808000000`，则后续所有timestamp都会按照整型格式解析。
+	1. timestamp可以为字符串格式，比如`"2020-01-01 00:00:00"`。
+	2. date可以是年月日（`yyyy-MM-dd`）或者年月日时分秒（`yyyy-MM-dd HH:mm:ss`）。
+4. local的csv格式只支持整型timestamp，date类型为年月日，例如`2022-2-2`。
+	1. timestamp和date均不可以为字符串格式，比如`"2020-01-01"`将解析失败。
+	2. date不可以是年月日时分秒，例如`2022-2-2 00:00:00`将解析失败。
+5. local的字符串不支持quote转义，所以如果你的字符串中存在quote字符，请使用cluster模式。
+6. cluster如果读取csv时解析失败，将会把失败的列值设为NULL，继续导入流程，但local模式会直接报错，不会继续导入。
 
 ## PutIfAbsent说明
 
-PutIfAbsent是一个特殊的选项，它可以避免插入重复数据，仅需一个配置，操作简单，特别适合load datajob失败后重试，等价于使用`INSERT OR IGNORE`。如果你想要导入的数据中存在重复，那么通过PutIfAbsent导入，会导致部分数据丢失。如果你需要保留重复数据，不应使用此选项，建议通过其他方式去重后再导入。
+PutIfAbsent是一个特殊的选项，它可以避免插入重复数据，仅需一个配置，操作简单，特别适合load datajob失败后重试，等价于使用`INSERT OR IGNORE`。如果你想要导入的数据中存在重复，那么通过PutIfAbsent导入，会导致部分数据丢失。如果你需要保留重复数据，不应使用此选项，建议通过其他方式去重后再导入。local模式暂不支持此选项。
 
 PutIfAbsent需要去重这一额外开销，所以，它的性能与去重的复杂度有关：
 
