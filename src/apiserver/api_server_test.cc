@@ -1407,7 +1407,7 @@ TEST_F(APIServerTest, jsonInput) {
 }  // namespace openmldb::apiserver
 
 int main(int argc, char* argv[]) {
-    // testing::AddGlobalTestEnvironment(openmldb::apiserver::APIServerTestEnv::Instance());
+    testing::AddGlobalTestEnvironment(openmldb::apiserver::APIServerTestEnv::Instance());
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetupGlog(true);
