@@ -464,7 +464,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
     std::vector<uint32_t> stmt_column_idx_arr;
     bool put_if_absent = false;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr, &put_if_absent)) {
-        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "get insert information failed");
+        PREPEND_AND_WARN(status, "fail to get insert info");
         return {};
     }
     auto schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
@@ -2887,7 +2887,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
                     // Handle in online mode
-                    config.emplace("insert_memory_usage_limit",
+                    config.emplace("park.insert_memory_usage_limit",
                                    std::to_string(insert_memory_usage_limit_.load(std::memory_order_relaxed)));
                     base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 } else {

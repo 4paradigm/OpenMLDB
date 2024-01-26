@@ -547,7 +547,7 @@ TEST_F(APIServerTest, invalidPut) {
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
     }
-    ASSERT_EQ(-1, resp.code);
+    ASSERT_EQ(2000, resp.code) << resp.msg;
     LOG(INFO) << resp.msg;
 
     // Invalid table
@@ -561,7 +561,7 @@ TEST_F(APIServerTest, invalidPut) {
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
     }
-    ASSERT_EQ(-1, resp.code);
+    ASSERT_EQ(2000, resp.code) << resp.msg;
     LOG(INFO) << resp.msg;
 
     // Invalid pattern
@@ -610,7 +610,7 @@ TEST_F(APIServerTest, validPut) {
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(-1, resp.code) << resp.msg;
-        ASSERT_STREQ("convertion failed for col field4", resp.msg.c_str());
+        ASSERT_STREQ("convertion failed on col field4[7] with value 2021-0 4-27", resp.msg.c_str());
     }
 
     // valid data
@@ -655,7 +655,7 @@ TEST_F(APIServerTest, putCase1) {
     const auto env = APIServerTestEnv::Instance();
 
     // create table
-    std::string table = "put";
+    std::string table = "putCase1";
     std::string ddl = "create table if not exists " + table +
                       "(c1 string, "
                       "c3 int, "
