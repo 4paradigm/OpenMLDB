@@ -392,6 +392,10 @@ public class FlexibleRowBuilder implements RowBuilder {
         result.put(baseFieldBuf.array());               // Base data type
         result.put(strAddrBuf.array());                 // String addr
         result.put(stringWriter.toByteArray());         // String value
+
+        // reset strAddrBuf
+        strAddrLen = metaData.getStrFieldCnt();
+        strAddrBuf = ByteBuffer.allocate(strAddrLen).order(ByteOrder.LITTLE_ENDIAN);
         return true;
     }
 
