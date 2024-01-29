@@ -104,7 +104,7 @@ class DiskTable : public Table {
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
 
     absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
-                     bool put_if_absent) override;
+                     bool put_if_absent = false) override;
 
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts,
              std::string& value);  // NOLINT
@@ -147,14 +147,6 @@ class DiskTable : public Table {
     void GcAll();
 
     bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
-
-    void CompactDB() {
-        for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
-            if (cf != nullptr) {
-                db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
-            }
-        }
-    }
 
     int CreateCheckPoint(const std::string& checkpoint_dir);
 

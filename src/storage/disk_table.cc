@@ -537,8 +537,9 @@ void DiskTable::GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnF
         return;
     }
     uint64_t start_ts = UINT64_MAX;
+    uint64_t current_time = ::baidu::common::timer::get_micros() / 1000;
     if (ttl.ttl_type == storage::TTLType::kAbsoluteTime) {
-        start_ts = ::baidu::common::timer::get_micros() / 1000 - ttl.abs_ttl;
+        start_ts = current_time - ttl.abs_ttl;
     }
     std::string last_pk;
     it->SeekToFirst();
@@ -561,7 +562,7 @@ void DiskTable::GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnF
             if (cur_pk != last_pk) {
                 break;
             }
-            if (ttl.IsExpired(ts, count)) {
+            if (ttl.IsExpired(ts, count, current_time)) {
                 std::string combine_key1 = CombineKeyTs(cur_pk, ts);
                 std::string combine_key2 = CombineKeyTs(cur_pk, 0);
                 rocksdb::Status s = db_->DeleteRange(write_opts_, handle,
@@ -583,6 +584,7 @@ void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t min_ts
     if (it == nullptr || handle == nullptr) {
         return;
     }
+    uint64_t current_time = ::baidu::common::timer::get_micros() / 1000;
     it->SeekToFirst();
     uint64_t ts = 0;
     uint32_t cur_ts_idx = 0;
@@ -599,7 +601,7 @@ void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t min_ts
             uint32_t ts_idx = kv.first;
             uint64_t start_ts = UINT64_MAX;
             if (kv.second.ttl_type == storage::TTLType::kAbsoluteTime) {
-                 start_ts = ::baidu::common::timer::get_micros() / 1000 - kv.second.abs_ttl;
+                 start_ts = current_time - kv.second.abs_ttl;
             }
             std::string combine_key = CombineKeyTs(last_pk, start_ts, ts_idx);
             it->Seek(rocksdb::Slice(combine_key));
@@ -609,7 +611,7 @@ void DiskTable::GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t min_ts
                 if (cur_pk != last_pk || ts_idx != cur_ts_idx) {
                     break;
                 }
-                if (kv.second.IsExpired(ts, count)) {
+                if (kv.second.IsExpired(ts, count, current_time)) {
                     std::string combine_key1 = CombineKeyTs(cur_pk, ts, ts_idx);
                     std::string combine_key2 = CombineKeyTs(cur_pk, 0, ts_idx);
                     rocksdb::Status s = db_->DeleteRange(write_opts_, handle,

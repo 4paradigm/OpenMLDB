@@ -50,7 +50,7 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  private:
     TimeEntries::Iterator* it_;
     uint32_t record_idx_;
-    TTLSt expire_value_;
+    ExpiredChecker expire_value_;
     ::hybridse::codec::Row row_;
     type::CompressType compress_type_;
     std::string tmp_buf_;
@@ -118,7 +118,7 @@ class MemTableTraverseIterator : public TraverseIterator {
     TimeEntries::Iterator* it_;
     uint32_t record_idx_;
     uint32_t ts_idx_;
-    TTLSt expire_value_;
+    ExpiredChecker expire_value_;
     Ticket ticket_;
     uint64_t traverse_cnt_;
     type::CompressType compress_type_;
