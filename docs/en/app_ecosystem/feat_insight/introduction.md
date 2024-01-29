@@ -22,10 +22,10 @@ FeatInsight includes the following major functionalities:
 The main objective of FeatInsight is to address common challenges in machine learning development, including facilitating easy and quick feature extraction, transformation, combination, and selection, managing feature lineage, enabling feature reuse and sharing, version control for feature services, and ensuring consistency and reliability of feature data used in both training and inference processes. Application scenarios include the following:
 
 * Online Feature Service Deployment: Provides high-performance feature storage and online feature computation functions for localized deployment.
-* MLOps Platform: Establishs MLOps workflow with OpenMLDB online-offline consistent computations.
+* MLOps Platform: Establishes MLOps workflow with OpenMLDB online-offline consistent computations.
 * FeatureStore Platform: Provides comprehensive feature extraction, deletion, online deployment, and lineage management functionality to achieve low-cost local FeatureStore services.
 * Open-Source Feature Solution Reuse: Supports solution reuse locally for feature reuse and sharing.
-* Business Component for Machine Learning: Provides a one-stop feature engineering solution machine learning models in recommendation systems, natural language processing, finance, healthcare, and other areas of machine learning implementation.
+* Business Component for Machine Learning: Provides a one-stop feature engineering solution for machine learning models in recommendation systems, natural language processing, finance, healthcare, and other areas of machine learning implementation.
 
 
 ## Core Concepts
