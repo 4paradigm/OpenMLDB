@@ -23,11 +23,11 @@ CREATE DATABASE test_db;
 CREATE TABLE test_db.test_table (id STRING, trx_time DATE);
 ```
 
-Or can use the UI and create under "Data Import".
+Or you can use the UI and create it under "Data Import".
 
 ![](./images/create_test_table.png)
 
-For easier testing, we prepare a CSV file and save it to `/tmp/test_table.csv`. Note that, this path is a local path for the machine that runs the OpenMLDB TaskManager, usually also the machine for FeatInsight. You will need the access to the machine for edition.
+For easier testing, we prepare a CSV file and save it to `/tmp/test_table.csv`. Note that, this path is a local path for the machine that runs the OpenMLDB TaskManager, usually also the machine for FeatInsight. You will need access to the machine for the edition.
 
 ```
 id,trx_time
@@ -40,7 +40,7 @@ user6,2024-01-06
 user7,2024-01-07
 ```
 
-For online scenarios, you can use command `LOAD DATA` or `INSERT`. Here we use "Import from CSV".
+For online scenarios, you can use the command `LOAD DATA` or `INSERT`. Here we use "Import from CSV".
 
 ![](./images/online_csv_import_test_table.png)
 
@@ -58,13 +58,13 @@ Wait for about half a minute for the task to finish. You can also check the stat
 
 ### 2. Feature Creation
 
-After data import, we can create features. Here we use SQL to create two basic features.
+After data imports, we can create features. Here we use SQL to create two basic features.
 
 ```
 SELECT id, dayofweek(trx_time) as trx_day FROM test_table
 ```
 
-In "Features", the button beside "All Features" is to create new features. Fill in the from accordingly.
+In "Features", the button beside "All Features" is to create new features. Fill in the form accordingly.
 
 ![](./images/create_test_featureview.png)
 
@@ -75,7 +75,7 @@ After successful creation, you can check the features. Click on the name to go i
 
 ### 3. Offline Samples Export
 
-In "Offline Scenario", you can choose to export offline samples. You can choose the features to export and specify export path. There are "More Options" for you to specify file format and other advance parameters.
+In "Offline Scenario", you can choose to export offline samples. You can choose the features to export and specify the export path. There are "More Options" for you to specify the file format and other advanced parameters.
 
 ![](./images/export_test_offline_samples.png)
 
