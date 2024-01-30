@@ -476,6 +476,7 @@ void DiskTable::GcAll() {
     auto inner_indexs = table_index_.GetAllInnerIndex();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
+
     for (const auto& inner_index : *inner_indexs) {
         bool all_deleted = true;
         for (const auto& index : inner_index->GetIndex()) {
@@ -548,6 +549,7 @@ void DiskTable::GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnF
         uint64_t ts = 0;
         ParseKeyAndTs(it->key(), &cur_pk, &ts);
         if (cur_pk == last_pk) {
+            DLOG(INFO) << "cur_pk " << cur_pk.ToString() << " last_pk " << last_pk << " skip ";
             it->Next();
             continue;
         }
@@ -560,9 +562,12 @@ void DiskTable::GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnF
         while (it->Valid()) {
             ParseKeyAndTs(it->key(), &cur_pk, &ts);
             if (cur_pk != last_pk) {
+                DLOG(INFO) << "cur_pk " << cur_pk.ToString() << " last_pk "
+                    << last_pk << " not equal" << " count " << count;
                 break;
             }
             if (ttl.IsExpired(ts, count, current_time)) {
+                DLOG(INFO) << "key " << cur_pk.ToString() << " ts " << ts << " count " << count << " expired";
                 std::string combine_key1 = CombineKeyTs(cur_pk, ts);
                 std::string combine_key2 = CombineKeyTs(cur_pk, 0);
                 rocksdb::Status s = db_->DeleteRange(write_opts_, handle,
@@ -573,6 +578,7 @@ void DiskTable::GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnF
                 it->Seek(rocksdb::Slice(combine_key2));
                 break;
             }
+            DLOG(INFO) << "key " << cur_pk.ToString() << " ts " << ts << " count " << count << " no expired";
             count++;
             it->Next();
         }

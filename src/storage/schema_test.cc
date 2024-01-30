@@ -94,7 +94,7 @@ TEST_F(SchemaTest, TestIsExpired) {
     ASSERT_FALSE(ttl_checker.IsExpired(100, 1));
     ttl_checker = ExpiredChecker(0, 1, ::openmldb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_checker.IsExpired(100, 1));
-    ttl_checker= ExpiredChecker(100, 2, ::openmldb::storage::kAbsoluteTime);
+    ttl_checker = ExpiredChecker(100, 2, ::openmldb::storage::kAbsoluteTime);
     ASSERT_FALSE(ttl_checker.IsExpired(200, 3));
     ASSERT_TRUE(ttl_checker.IsExpired(50, 3));
     ttl_checker = ExpiredChecker(0, 0, ::openmldb::storage::kLatestTime);
