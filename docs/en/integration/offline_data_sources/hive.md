@@ -102,7 +102,7 @@ Importing data from Hive sources is facilitated through the API [`LOAD DATA INFI
 
 - Both offline and online engines are capable of importing data from Hive sources.
 - The Hive data import feature supports soft connections. This approach minimizes the need for redundant data copies and ensures that OpenMLDB can access Hive's most up-to-date data at any given time. To activate the soft link mechanism for data import, utilize the `deep_copy=false` parameter.
-- The `OPTIONS` parameter offers two valid settings: `deep_copy`, `mode` and `sql`.
+- The `OPTIONS` parameter offers three valid settings: `deep_copy`, `mode` and `sql`.
 
 For example: 
 
