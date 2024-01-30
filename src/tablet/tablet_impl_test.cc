@@ -3490,7 +3490,7 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
         ASSERT_EQ(100, (signed)cur_ttl.abs_ttl());
         ASSERT_EQ(2, (signed)cur_ttl.lat_ttl());
         CheckTTLFromMeta(id, 0, storage_mode, "", 100, 2);
-        prequest.set_time(now - 10 * 60 * 1000);
+        prequest.set_time(now - 10 * 60 * 1000 + 10 * 1000);
         tablet.Put(NULL, &prequest, &presponse, &closure);
         ASSERT_EQ(0, presponse.code());
 
