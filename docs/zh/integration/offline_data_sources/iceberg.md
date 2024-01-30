@@ -41,12 +41,42 @@ spark.default.conf=spark.sql.catalog.rest_prod=org.apache.iceberg.spark.SparkCat
 
 Iceberg catalog的完整配置参考[Iceberg Catalog Configuration](https://iceberg.apache.org/docs/latest/spark-configuration/)。
 
+任一配置成功后，均使用`<catalog_name>.<db_name>.<table_name>`的格式访问Iceberg表。如果不想使用`<catalog_name>`，可以在配置中设置`spark.sql.catalog.default=<catalog_name>`。也可添加`spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog`，`spark.sql.catalog.spark_catalog.type=hive`，让iceberg catalog合入spark catalog中（非iceberg表仍然存在于spark catalog中），这样可以使用`<db_name>.<table_name>`的格式访问Iceberg表。
+
 ### 调试信息
 
-当你从Iceberg导入数据时，你可以检查任务日志，确认任务是否读取了源数据。
+成功连接Iceberg Hive Catalog后，你可以在日志中看到类似以下的信息：
 
 ```
-INFO ReaderImpl: Reading ORC rows from
+24/01/30 09:01:05 INFO SharedState: Setting hive.metastore.warehouse.dir ('hdfs://namenode:19000/user/hive/warehouse') to the value of spark.sql.warehouse.dir.
+24/01/30 09:01:05 INFO SharedState: Warehouse path is 'hdfs://namenode:19000/user/hive/warehouse'.
+...
+24/01/30 09:01:06 INFO HiveUtils: Initializing HiveMetastoreConnection version 2.3.9 using Spark classes.
+24/01/30 09:01:06 INFO HiveClientImpl: Warehouse location for Hive client (version 2.3.9) is hdfs://namenode:19000/user/hive/warehouse
+24/01/30 09:01:06 WARN HiveConf: HiveConf of name hive.stats.jdbc.timeout does not exist
+24/01/30 09:01:06 WARN HiveConf: HiveConf of name hive.stats.retries.wait does not exist
+24/01/30 09:01:06 INFO HiveMetaStore: 0: Opening raw store with implementation class:org.apache.hadoop.hive.metastore.ObjectStore
+24/01/30 09:01:06 INFO ObjectStore: ObjectStore, initialize called
+24/01/30 09:01:06 INFO Persistence: Property hive.metastore.integral.jdo.pushdown unknown - will be ignored
+24/01/30 09:01:06 INFO Persistence: Property datanucleus.cache.level2 unknown - will be ignored
+24/01/30 09:01:07 INFO ObjectStore: Setting MetaStore object pin classes with hive.metastore.cache.pinobjtypes="Table,StorageDescriptor,SerDeInfo,Partition,Database,Type,FieldSchema,Order"
+24/01/30 09:01:07 INFO MetaStoreDirectSql: Using direct SQL, underlying DB is POSTGRES
+24/01/30 09:01:07 INFO ObjectStore: Initialized ObjectStore
+24/01/30 09:01:08 INFO HiveMetaStore: Added admin role in metastore
+24/01/30 09:01:08 INFO HiveMetaStore: Added public role in metastore
+24/01/30 09:01:08 INFO HiveMetaStore: No user is added in admin role, since config is empty
+24/01/30 09:01:08 INFO HiveMetaStore: 0: get_database: default
+```
+
+导出到Iceberg时，你可以检查任务日志，应该有类似以下的信息：
+
+```
+24/01/30 09:57:29 INFO AtomicReplaceTableAsSelectExec: Start processing data source write support: IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET). The input RDD has 1 partitions.
+...
+24/01/30 09:57:31 INFO AtomicReplaceTableAsSelectExec: Data source write support IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET) committed.
+...
+24/01/30 09:57:31 INFO HiveTableOperations: Committed to table hive_prod.nyc.taxis_out with the new metadata location hdfs://namenode:19000/user/hive/iceberg_storage/nyc.db/taxis_out/metadata/00001-038d8b81-04a6-4a19-bb83-275eb4664937.metadata.json
+24/01/30 09:57:31 INFO BaseMetastoreTableOperations: Successfully committed to table hive_prod.nyc.taxis_out in 224 ms
 ```
 
 ## 数据格式
@@ -90,9 +120,9 @@ LOAD DATA INFILE 'iceberg://hive_prod.db1.t1' INTO TABLE t1 OPTIONS(deep_copy=fa
 
 从 OpenMLDB 导出数据到 Iceberg 表，需要使用 [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) 语句，这个语句使用特殊的 URI 格式 `iceberg://[db].table`，可以无缝地导出数据到 Iceberg 表。以下是一些重要的注意事项：
 
-- 如果不指定数据库名字，则会使用默认数据库名字 `default_db` TODO
-- 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
-- 如果指定的Hive表名不存在，则会在 Hive 内自动创建对应名字的表
+- 如果不指定Iceberg数据库名字，则会使用Iceberg默认数据库`default`
+- 如果指定Iceberg数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
+- 如果指定的Iceberg表名不存在，则会在 Iceberg 内自动创建对应名字的表
 - `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
 
 举例：

@@ -33,7 +33,7 @@
   - taskmanager.properties: 在配置项 `spark.default.conf` 中加入`spark.hadoop.hive.metastore.uris=thrift://...` ，随后重启taskmanager。
   - CLI: 在 ini conf 中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../reference/client_config/client_spark_config.md)。
   
-- hive-site.xml：你将HIVE的配置 `hive-site.xml` 放入 Spark home的`conf/`（如果已配置`HADOOP_CONF_DIR`环境变量，也可以将配置文件放入`HADOOP_CONF_DIR`中）。`hive-site.xml` 样例：
+- hive-site.xml：你可以将HIVE的配置 `hive-site.xml` 放入 Spark home的`conf/`（如果已配置`HADOOP_CONF_DIR`环境变量，也可以将配置文件放入`HADOOP_CONF_DIR`中）。`hive-site.xml` 样例：
 
   ```xml
   <configuration>
@@ -122,7 +122,7 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE db1.t1 OPTIONS(deep_copy=true, sql='
 
 对于 Hive 数据源的导出是通过 API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `hive://[db].table` 的格式进行导出到 Hive 数仓。注意：
 
-- 如果不指定数据库名字，则会使用默认数据库名字 `default_db`
+- 如果不指定Hive数据库名字，则会使用Hive默认数据库 `default`
 - 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
 - 如果指定的Hive表名不存在，则会在 Hive 内自动创建对应名字的表
 - `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
