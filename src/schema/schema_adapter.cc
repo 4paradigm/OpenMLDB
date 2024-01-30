@@ -376,18 +376,17 @@ base::Status SchemaAdapter::CheckTableMeta(const openmldb::api::TableMeta& table
     if (table_meta.storage_mode() == common::kUnknown) {
         return {base::ReturnCode::kError, "storage_mode is unknown"};
     }
-    if (table_meta.column_desc_size() == 0) {
-        return {base::ReturnCode::kError, "no column"};
-    }
     std::map<std::string, ::openmldb::common::ColumnDesc> column_map;
     for (const auto& column_desc : table_meta.column_desc()) {
         if (!column_map.emplace(column_desc.name(), column_desc).second) {
             return {base::ReturnCode::kError, "duplicated column: " + column_desc.name()};
         }
     }
-    auto status = IndexUtil::CheckIndex(column_map, table_meta.column_key());
-    if (!status.OK()) {
-        return status;
+    if (table_meta.column_key_size() > 0) {
+        auto status = IndexUtil::CheckIndex(column_map, table_meta.column_key());
+        if (!status.OK()) {
+            return status;
+        }
     }
     return {};
 }
