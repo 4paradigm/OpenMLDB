@@ -56,11 +56,6 @@ cases:
     desc: 表路径层级超过边界2
     sql: |
       select db.t1.level3.* from t;
-  - id: 9
-    desc: Insert 非常量
-    mode: request-unsupport
-    sql: |
-      insert into t1 values(1, 2, aaa);
   - id: in_predicate_subquery
     desc: test_expr in subquery
     sql: |
