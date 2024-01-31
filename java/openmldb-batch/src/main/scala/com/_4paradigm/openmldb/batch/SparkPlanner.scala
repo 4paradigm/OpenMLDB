@@ -393,6 +393,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       case e: Exception =>
         println("Get exception: " + e.getMessage)
         e.printStackTrace()
+        throw e
     } finally {
       if (sqlEngine != null) {
         sqlEngine.close()
