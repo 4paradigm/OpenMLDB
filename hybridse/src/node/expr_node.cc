@@ -19,8 +19,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "codec/fe_row_codec.h"
-#include "codegen/arithmetic_expr_ir_builder.h"
-#include "codegen/type_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "passes/expression/expr_pass.h"
@@ -210,18 +208,26 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
 
 // this handles compatible type when both lhs and rhs are basic types
 // composited types like array, list, tuple are not handled correctly, so do not expect the function to handle those
-// types
 absl::StatusOr<const TypeNode*> ExprNode::CompatibleType(NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs) {
     if (*lhs == *rhs) {
         // include Null = Null
         return rhs;
     }
+
+    if (lhs->base() == kVoid && rhs->base() == kNull) {
+        return lhs;
+    }
+
+    if (lhs->base() == kNull && rhs->base() == kVoid) {
+        return rhs;
+    }
+
     if (lhs->IsNull()) {
-        // NULL + T -> T
+        // NULL/VOID + T -> T
         return rhs;
     }
     if (rhs->IsNull()) {
-        // T + NULL -> T
+        // T + NULL/VOID -> T
         return lhs;
     }
 
@@ -845,21 +851,15 @@ Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
         return Status::OK();
     }
 
-    // auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
     TypeNode* top_type = nullptr;
     auto nm = ctx->node_manager();
-    if (children_.empty()) {
-        FAIL_STATUS(kTypeError, "element type unknown for empty array expression");
-    } else {
-        const TypeNode* ele_type = children_[0]->GetOutputType();
-        for (size_t i = 1; i < children_.size() ; ++i) {
-            auto res = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
-            CHECK_TRUE(res.ok(), kTypeError, res.status());
-            ele_type = res.value();
-        }
-        CHECK_TRUE(!ele_type->IsNull(), kTypeError, "unable to infer array type, all elements are null");
-        top_type = nm->MakeArrayType(ele_type, children_.size());
+    const TypeNode* ele_type = nm->MakeNode<TypeNode>();  // void type
+    for (size_t i = 0; i < children_.size(); ++i) {
+        auto res = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
+        CHECK_TRUE(res.ok(), kTypeError, res.status());
+        ele_type = res.value();
     }
+    top_type = nm->MakeArrayType(ele_type, children_.size());
     SetOutputType(top_type);
     // array is nullable
     SetNullable(true);
@@ -1142,5 +1142,50 @@ ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
     return root;
 }
 
+ArrayElementExpr::ArrayElementExpr(ExprNode* array, ExprNode* pos) : ExprNode(kExprArrayElement) {
+    AddChild(array);
+    AddChild(pos);
+}
+
+void ArrayElementExpr::Print(std::ostream& output, const std::string& org_tab) const {
+    // Print for ExprNode just talk too much, I don't intend impl that
+    // GetExprString is much simpler
+    output << org_tab << GetExprString();
+}
+
+const std::string ArrayElementExpr::GetExprString() const {
+    return absl::StrCat(array()->GetExprString(), "[", position()->GetExprString(), "]");
+}
+
+ArrayElementExpr* ArrayElementExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeNode<ArrayElementExpr>(array(), position());
+}
+
+Status ArrayElementExpr::InferAttr(ExprAnalysisContext* ctx) {
+    auto* arr_type = array()->GetOutputType();
+    auto* pos_type = position()->GetOutputType();
+
+    if (arr_type->IsMap()) {
+        auto map_type = arr_type->GetAsOrNull<MapType>();
+        CHECK_TRUE(node::ExprNode::IsSafeCast(pos_type, map_type->key_type()), common::kTypeError,
+                   "incompatiable key type for ArrayElement, expect ", map_type->key_type()->DebugString(), ", got ",
+                   pos_type->DebugString());
+
+        SetOutputType(map_type->value_type());
+        SetNullable(map_type->value_nullable());
+    } else if (arr_type->IsArray()) {
+        CHECK_TRUE(pos_type->IsInteger(), common::kTypeError,
+                   "index type mismatch for ArrayElement, expect integer, got ", pos_type->DebugString());
+        CHECK_TRUE(arr_type->GetGenericSize() == 1, common::kTypeError, "internal error: array of empty T");
+
+        SetOutputType(arr_type->GetGenericType(0));
+        SetNullable(arr_type->IsGenericNullable(0));
+    } else {
+        FAIL_STATUS(common::kTypeError, "can't get element from ", arr_type->DebugString(), ", expect map or array");
+    }
+    return {};
+}
+ExprNode *ArrayElementExpr::array() const { return GetChild(0); }
+ExprNode *ArrayElementExpr::position() const { return GetChild(1); }
 }  // namespace node
 }  // namespace hybridse

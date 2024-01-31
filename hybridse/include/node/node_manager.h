@@ -21,7 +21,6 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_NODE_MANAGER_H_
 #define HYBRIDSE_INCLUDE_NODE_NODE_MANAGER_H_
 
-#include <ctype.h>
 #include <list>
 #include <memory>
 #include <string>
@@ -172,10 +171,6 @@ class NodeManager {
                                  const std::string &table_name,
                                  SqlNodeList *column_desc_list,
                                  SqlNodeList *partition_meta_list);
-    SqlNode *MakeColumnDescNode(const std::string &column_name,
-                                const DataType data_type,
-                                bool op_not_null,
-                                ExprNode* default_value = nullptr);
     SqlNode *MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNode *ttl,
                                  SqlNode *version);
     SqlNode *MakeColumnIndexNode(SqlNodeList *index_item_list);

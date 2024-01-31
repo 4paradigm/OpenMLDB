@@ -20,6 +20,7 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <utility>
 
 #include "absl/strings/match.h"
 #include "case/sql_case.h"
@@ -946,20 +947,6 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         EXPECT_EQ(common::kTypeError, status.code);
     }
     {
-        // not supported schema
-        const std::string sql = "create table t (a Array<int64>) ";
-
-        std::unique_ptr<zetasql::ParserOutput> parser_output;
-        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
-        const auto* statement = parser_output->statement();
-        ASSERT_TRUE(statement->Is<zetasql::ASTCreateTableStatement>());
-
-        const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
-        node::CreateStmt* output = nullptr;
-        auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlAstError, status.code);
-    }
-    {
         // not supported table element
         const std::string sql = "create table t (a int64, primary key (a)) ";
 
@@ -1206,6 +1193,8 @@ INSTANTIATE_TEST_SUITE_P(ASTHWindowQueryTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTUnionQueryTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTConstQueryTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/const_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 

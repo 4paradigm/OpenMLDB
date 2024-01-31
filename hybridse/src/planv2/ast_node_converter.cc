@@ -25,8 +25,10 @@
 #include "absl/strings/match.h"
 #include "absl/types/span.h"
 #include "base/fe_status.h"
+#include "node/sql_node.h"
 #include "udf/udf.h"
 #include "zetasql/parser/ast_node_kind.h"
+#include "zetasql/parser/parse_tree_manual.h"
 
 namespace hybridse {
 namespace plan {
@@ -57,6 +59,10 @@ static base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement*
                                           node::SqlNode** out);
 static base::Status ConvertSetOperation(const zetasql::ASTSetOperation* stmt, node::NodeManager* nm,
                                         node::SetOperationNode** out);
+static base::Status ConvertSchemaNode(const zetasql::ASTColumnSchema* stmt, node::NodeManager* nm,
+                                      node::ColumnSchemaNode** out);
+static base::Status ConvertArrayElement(const zetasql::ASTArrayElement* expr, node::NodeManager* nm,
+                                        node::ArrayElementExpr** out);
 
 /// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
@@ -107,6 +113,13 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             }
             return base::Status::OK();
         }
+        case zetasql::AST_ARRAY_ELEMENT: {
+            node::ArrayElementExpr* expr = nullptr;
+            CHECK_STATUS(
+                ConvertGuard<zetasql::ASTArrayElement>(ast_expression, node_manager, &expr, ConvertArrayElement));
+            *output = expr;
+            return base::Status::OK();
+        }
         case zetasql::AST_CASE_VALUE_EXPRESSION: {
             auto* case_expression = ast_expression->GetAsOrDie<zetasql::ASTCaseValueExpression>();
             auto& arguments = case_expression->arguments();
@@ -123,7 +136,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     node::ExprNode* then_expr = nullptr;
                     CHECK_STATUS(ConvertExprNode(arguments[i], node_manager, &when_expr))
                     CHECK_STATUS(ConvertExprNode(arguments[i + 1], node_manager, &then_expr))
-                    when_list_expr->PushBack(node_manager->MakeWhenNode(when_expr, then_expr));
+                    when_list_expr->AddChild(node_manager->MakeWhenNode(when_expr, then_expr));
                     i += 2;
                 } else {
                     CHECK_STATUS(ConvertExprNode(arguments[i], node_manager, &else_expr))
@@ -147,7 +160,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     node::ExprNode* then_expr = nullptr;
                     CHECK_STATUS(ConvertExprNode(arguments[i], node_manager, &when_expr))
                     CHECK_STATUS(ConvertExprNode(arguments[i + 1], node_manager, &then_expr))
-                    when_list_expr->PushBack(node_manager->MakeWhenNode(when_expr, then_expr));
+                    when_list_expr->AddChild(node_manager->MakeWhenNode(when_expr, then_expr));
                     i += 2;
                 } else {
                     CHECK_STATUS(ConvertExprNode(arguments[i], node_manager, &else_expr))
@@ -1475,9 +1488,7 @@ base::Status ConvertCreateProcedureNode(const zetasql::ASTCreateProcedureStateme
 }
 
 // case element
-//   ASTColumnDefinition -> case element.schema
-//         ASSTSimpleColumnSchema -> ColumnDeefNode
-//         otherwise              -> not implemented
+//   ASTColumnDefinition -> ColumnDefNode
 //   ASTIndexDefinition  -> ColumnIndexNode
 //   otherwise           -> not implemented
 base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::NodeManager* node_manager,
@@ -1489,38 +1500,10 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
             auto column_def = element->GetAsOrNull<zetasql::ASTColumnDefinition>();
             CHECK_TRUE(column_def != nullptr, common::kSqlAstError, "not an ASTColumnDefinition");
 
-            auto not_null_columns = column_def->schema()->FindAttributes<zetasql::ASTNotNullColumnAttribute>(
-                zetasql::AST_NOT_NULL_COLUMN_ATTRIBUTE);
-            bool not_null = !not_null_columns.empty();
-
             const std::string name = column_def->name()->GetAsString();
-
-            auto kind = column_def->schema()->node_kind();
-            switch (kind) {
-                case zetasql::AST_SIMPLE_COLUMN_SCHEMA: {
-                    // only simple column schema is supported
-                    auto simple_column_schema = column_def->schema()->GetAsOrNull<zetasql::ASTSimpleColumnSchema>();
-                    CHECK_TRUE(simple_column_schema != nullptr, common::kSqlAstError, "not and ASTSimpleColumnSchema");
-
-                    std::string type_name = "";
-                    CHECK_STATUS(AstPathExpressionToString(simple_column_schema->type_name(), &type_name))
-                    node::DataType type;
-                    CHECK_STATUS(node::StringToDataType(type_name, &type));
-
-                    node::ExprNode* default_value = nullptr;
-                    if (simple_column_schema->default_expression()) {
-                        CHECK_STATUS(
-                            ConvertExprNode(simple_column_schema->default_expression(), node_manager, &default_value));
-                    }
-
-                    *node = node_manager->MakeColumnDescNode(name, type, not_null, default_value);
-                    return base::Status::OK();
-                }
-                default: {
-                    return base::Status(common::kSqlAstError, absl::StrCat("unsupported column schema type: ",
-                                                                           zetasql::ASTNode::NodeKindToString(kind)));
-                }
-            }
+            node::ColumnSchemaNode* schema = nullptr;
+            CHECK_STATUS(ConvertSchemaNode(column_def->schema(), node_manager, &schema));
+            *node = node_manager->MakeNode<node::ColumnDefNode>(name, schema);
             break;
         }
         case zetasql::AST_INDEX_DEFINITION: {
@@ -1528,13 +1511,14 @@ base::Status ConvertTableElement(const zetasql::ASTTableElement* element, node::
             node::ColumnIndexNode* index_node = nullptr;
             CHECK_STATUS(ConvertColumnIndexNode(ast_index_node, node_manager, &index_node));
             *node = index_node;
-            return base::Status::OK();
+            break;
         }
         default: {
             return base::Status(common::kSqlAstError,
                                 absl::StrCat("unsupported table column elemnt: ", element->GetNodeKindString()));
         }
     }
+    return base::Status::OK();
 }
 
 // ASTIndexDefinition node
@@ -1628,14 +1612,14 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 node::DataType unit;
                 CHECK_STATUS(ASTIntervalLIteralToNum(entry->value(), &value, &unit));
                 auto node = node_manager->MakeConstNode(value, unit);
-                ttl_list->PushBack(node);
+                ttl_list->AddChild(node);
                 break;
             }
             case zetasql::AST_INT_LITERAL: {
                 int64_t value;
                 CHECK_STATUS(ASTIntLiteralToNum(entry->value(), &value));
                 auto node = node_manager->MakeConstNode(value, node::kLatest);
-                ttl_list->PushBack(node);
+                ttl_list->AddChild(node);
                 break;
             }
             case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
@@ -1649,11 +1633,11 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                 CHECK_STATUS(ASTIntervalLIteralToNum(struct_parens->field_expression(0), &value, &unit));
 
                 auto node = node_manager->MakeConstNode(value, unit);
-                ttl_list->PushBack(node);
+                ttl_list->AddChild(node);
 
                 value = 0;
                 CHECK_STATUS(ASTIntLiteralToNum(struct_parens->field_expression(1), &value));
-                ttl_list->PushBack(node_manager->MakeConstNode(value, node::kLatest));
+                ttl_list->AddChild(node_manager->MakeConstNode(value, node::kLatest));
                 break;
             }
             default: {
@@ -1973,7 +1957,7 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
     node::ExprListNode* column_list = node_manager->MakeExprList();
     if (nullptr != root->column_list()) {
         for (auto column : root->column_list()->identifiers()) {
-            column_list->PushBack(node_manager->MakeColumnRefNode(column->GetAsString(), ""));
+            column_list->AddChild(node_manager->MakeColumnRefNode(column->GetAsString(), ""));
         }
     }
 
@@ -2308,6 +2292,19 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
                 })));
             break;
         }
+        case zetasql::AST_MAP_TYPE: {
+            CHECK_STATUS((ConvertGuard<zetasql::ASTMapType, node::TypeNode>(
+                ast_type, nm, output,
+                [](const zetasql::ASTMapType* map_tp, node::NodeManager* nm, node::TypeNode** out) -> base::Status {
+                    node::TypeNode* key = nullptr;
+                    node::TypeNode* value = nullptr;
+                    CHECK_STATUS(ConvertASTType(map_tp->key_type(), nm, &key));
+                    CHECK_STATUS(ConvertASTType(map_tp->value_type(), nm, &value));
+                    *out = nm->MakeNode<node::MapType>(key, value);
+                    return base::Status::OK();
+                })));
+            break;
+        }
         default: {
             return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
         }
@@ -2405,6 +2402,83 @@ base::Status ConvertSetOperation(const zetasql::ASTSetOperation* set_op, node::N
                                 absl::StrCat("Un-support set operation: ", set_op->GetSQLForOperation()));
         }
     }
+}
+
+base::Status ConvertSchemaNode(const zetasql::ASTColumnSchema* stmt, node::NodeManager* nm,
+                               node::ColumnSchemaNode** out) {
+    auto not_null_columns =
+        stmt->FindAttributes<zetasql::ASTNotNullColumnAttribute>(zetasql::AST_NOT_NULL_COLUMN_ATTRIBUTE);
+    bool not_null = !not_null_columns.empty();
+
+    node::ExprNode* default_value = nullptr;
+    if (stmt->default_expression()) {
+        CHECK_STATUS(ConvertExprNode(stmt->default_expression(), nm, &default_value));
+    }
+
+    switch (stmt->node_kind()) {
+        case zetasql::AST_SIMPLE_COLUMN_SCHEMA: {
+            auto simple_column_schema = stmt->GetAsOrNull<zetasql::ASTSimpleColumnSchema>();
+            CHECK_TRUE(simple_column_schema != nullptr, common::kSqlAstError, "not and ASTSimpleColumnSchema");
+
+            std::string type_name = "";
+            CHECK_STATUS(AstPathExpressionToString(simple_column_schema->type_name(), &type_name))
+            node::DataType type;
+            CHECK_STATUS(node::StringToDataType(type_name, &type));
+
+            *out = nm->MakeNode<node::ColumnSchemaNode>(type, not_null, default_value);
+            break;
+        }
+        case zetasql::AST_ARRAY_COLUMN_SCHEMA: {
+            CHECK_STATUS((ConvertGuard<zetasql::ASTArrayColumnSchema, node::ColumnSchemaNode>(
+                stmt, nm, out,
+                [not_null, default_value](const zetasql::ASTArrayColumnSchema* array_type, node::NodeManager* nm,
+                                          node::ColumnSchemaNode** out) -> base::Status {
+                    node::ColumnSchemaNode* element_ty = nullptr;
+                    CHECK_STATUS(ConvertSchemaNode(array_type->element_schema(), nm, &element_ty));
+
+                    *out = nm->MakeNode<node::ColumnSchemaNode>(
+                        node::DataType::kArray, std::initializer_list<const node::ColumnSchemaNode*>{element_ty},
+                        not_null, default_value);
+                    return base::Status::OK();
+                })));
+            break;
+        }
+        case zetasql::AST_MAP_COLUMN_SCHEMA: {
+            CHECK_STATUS((ConvertGuard<zetasql::ASTMapColumnSchema, node::ColumnSchemaNode>(
+                stmt, nm, out,
+                [not_null, default_value](const zetasql::ASTMapColumnSchema* map_type, node::NodeManager* nm,
+                                          node::ColumnSchemaNode** out) -> base::Status {
+                    node::ColumnSchemaNode* key = nullptr;
+                    CHECK_STATUS(ConvertSchemaNode(map_type->key_schema(), nm, &key));
+                    node::ColumnSchemaNode* value = nullptr;
+                    CHECK_STATUS(ConvertSchemaNode(map_type->value_schema(), nm, &value));
+
+                    *out = nm->MakeNode<node::ColumnSchemaNode>(
+                        node::DataType::kMap, std::initializer_list<const node::ColumnSchemaNode*>{key, value},
+                        not_null, default_value);
+                    return base::Status::OK();
+                })));
+            break;
+        }
+        default: {
+            return base::Status(common::kSqlAstError,
+                                absl::StrCat("unsupported column schema type: ", stmt->GetNodeKindString()));
+        }
+    }
+
+    return base::Status::OK();
+}
+
+base::Status ConvertArrayElement(const zetasql::ASTArrayElement* expr, node::NodeManager* nm,
+                                 node::ArrayElementExpr** out) {
+    node::ExprNode* array = nullptr;
+    node::ExprNode* pos = nullptr;
+
+    CHECK_STATUS(ConvertExprNode(expr->array(), nm, &array));
+    CHECK_STATUS(ConvertExprNode(expr->position(), nm, &pos));
+
+    *out = nm->MakeNode<node::ArrayElementExpr>(array, pos);
+    return {};
 }
 
 }  // namespace plan

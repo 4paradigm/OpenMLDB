@@ -21,10 +21,10 @@
 #include <map>
 #include <memory>
 
+#include "codegen/buf_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 namespace hybridse {
 namespace codegen {

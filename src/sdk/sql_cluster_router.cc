@@ -2887,8 +2887,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ::openmldb::base::Status base_status;
                 if (is_online_mode) {
                     // Handle in online mode
-                    config.emplace("park.insert_memory_usage_limit",
-                                   std::to_string(insert_memory_usage_limit_.load(std::memory_order_relaxed)));
+                    config.emplace("spark.insert_memory_usage_limit",
+                            std::to_string(insert_memory_usage_limit_.load(std::memory_order_relaxed)));
                     base_status = ImportOnlineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 } else {
                     // Handle in offline mode

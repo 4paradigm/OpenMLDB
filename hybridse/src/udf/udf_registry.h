@@ -28,13 +28,11 @@
 #include <vector>
 
 #include "base/fe_status.h"
-#include "codec/list_iterator_codec.h"
 #include "codegen/context.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "udf/literal_traits.h"
 #include "udf/udf_library.h"
-#include "vm/schemas_context.h"
 
 namespace hybridse {
 namespace udf {
@@ -394,10 +392,11 @@ class LlvmUdfGenBase {
  public:
     virtual Status gen(codegen::CodeGenContext* ctx,
                        const std::vector<codegen::NativeValue>& args,
+                       const ExprAttrNode& return_info,
                        codegen::NativeValue* res) = 0;
 
     virtual Status infer(UdfResolveContext* ctx,
-                         const std::vector<const ExprAttrNode*>& args,
+                         const std::vector<ExprAttrNode>& args,
                          ExprAttrNode*) = 0;
 
     node::TypeNode* fixed_ret_type() const { return fixed_ret_type_; }
@@ -417,33 +416,36 @@ struct LlvmUdfGen : public LlvmUdfGenBase {
     using FType = std::function<Status(
         codegen::CodeGenContext* ctx,
         typename std::pair<Args, codegen::NativeValue>::second_type...,
+        const ExprAttrNode& return_info,
         codegen::NativeValue*)>;
 
     using InferFType = std::function<Status(
         UdfResolveContext*,
-        typename std::pair<Args, const ExprAttrNode*>::second_type...,
+        typename std::pair<Args, const ExprAttrNode&>::second_type...,
         ExprAttrNode*)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
+               const ExprAttrNode& return_info,
                codegen::NativeValue* result) override {
         CHECK_TRUE(args.size() == sizeof...(Args), common::kCodegenError,
                    "Fail to invoke LlvmUefGen::gen, args size do not "
                    "match with template args)");
-        return gen_internal(ctx, args, result,
+        return gen_internal(ctx, args, return_info, result,
                             std::index_sequence_for<Args...>());
     }
 
     template <std::size_t... I>
     Status gen_internal(codegen::CodeGenContext* ctx,
                         const std::vector<codegen::NativeValue>& args,
+                        const ExprAttrNode& return_info,
                         codegen::NativeValue* result,
                         const std::index_sequence<I...>&) {
-        return gen_func(ctx, args[I]..., result);
+        return gen_func(ctx, args[I]..., return_info, result);
     }
 
     Status infer(UdfResolveContext* ctx,
-                 const std::vector<const ExprAttrNode*>& args,
+                 const std::vector<ExprAttrNode>& args,
                  ExprAttrNode* out) override {
         return infer_internal(ctx, args, out,
                               std::index_sequence_for<Args...>());
@@ -451,7 +453,7 @@ struct LlvmUdfGen : public LlvmUdfGenBase {
 
     template <std::size_t... I>
     Status infer_internal(UdfResolveContext* ctx,
-                          const std::vector<const ExprAttrNode*>& args,
+                          const std::vector<ExprAttrNode>& args,
                           ExprAttrNode* out, const std::index_sequence<I...>&) {
         if (this->infer_func) {
             return infer_func(ctx, args[I]..., out);
@@ -475,39 +477,39 @@ struct LlvmUdfGen : public LlvmUdfGenBase {
 template <typename... Args>
 struct VariadicLLVMUdfGen : public LlvmUdfGenBase {
     using FType = std::function<Status(
-        codegen::CodeGenContext*,
-        typename std::pair<Args, codegen::NativeValue>::second_type...,
-        const std::vector<codegen::NativeValue>&, codegen::NativeValue*)>;
+        codegen::CodeGenContext*, typename std::pair<Args, codegen::NativeValue>::second_type...,
+        const std::vector<codegen::NativeValue>&, const ExprAttrNode& return_info, codegen::NativeValue*)>;
 
     using InferFType = std::function<Status(
         UdfResolveContext*,
-        typename std::pair<Args, const ExprAttrNode*>::second_type...,
-        const std::vector<const ExprAttrNode*>&, ExprAttrNode*)>;
+        typename std::pair<Args, const ExprAttrNode&>::second_type...,
+        const std::vector<ExprAttrNode>&, ExprAttrNode*)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
+               const ExprAttrNode& return_info,
                codegen::NativeValue* result) override {
         CHECK_TRUE(args.size() >= sizeof...(Args), common::kCodegenError,
                    "Fail to invoke VariadicLLVMUdfGen::gen, "
                    "args size do not match with template args)");
-        return gen_internal(ctx, args, result,
-                            std::index_sequence_for<Args...>());
+        return gen_internal(ctx, args, return_info, result, std::index_sequence_for<Args...>());
     };
 
     template <std::size_t... I>
     Status gen_internal(codegen::CodeGenContext* ctx,
                         const std::vector<codegen::NativeValue>& args,
+                        const ExprAttrNode& return_info,
                         codegen::NativeValue* result,
                         const std::index_sequence<I...>&) {
         std::vector<codegen::NativeValue> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
         }
-        return this->gen_func(ctx, args[I]..., variadic_args, result);
+        return this->gen_func(ctx, args[I]..., variadic_args, return_info, result);
     }
 
     Status infer(UdfResolveContext* ctx,
-                 const std::vector<const ExprAttrNode*>& args,
+                 const std::vector<ExprAttrNode>& args,
                  ExprAttrNode* out) override {
         return infer_internal(ctx, args, out,
                               std::index_sequence_for<Args...>());
@@ -515,9 +517,9 @@ struct VariadicLLVMUdfGen : public LlvmUdfGenBase {
 
     template <std::size_t... I>
     Status infer_internal(UdfResolveContext* ctx,
-                          const std::vector<const ExprAttrNode*>& args,
+                          const std::vector<ExprAttrNode>& args,
                           ExprAttrNode* out, const std::index_sequence<I...>&) {
-        std::vector<const ExprAttrNode*> variadic_args;
+        std::vector<ExprAttrNode> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
         }
@@ -723,9 +725,8 @@ class CodeGenUdfTemplateRegistryHelper {
             LlvmUdfRegistryHelper& helper) {  // NOLINT
             helper.args<Args...>(
                 [](codegen::CodeGenContext* ctx,
-                   typename std::pair<
-                       Args, codegen::NativeValue>::second_type... args,
-                   codegen::NativeValue* result) {
+                   typename std::pair<Args, codegen::NativeValue>::second_type... args,
+                   const ExprAttrNode& return_info, codegen::NativeValue* result) {
                     return FTemplate<T>()(ctx, args..., result);
                 });
             return helper.cur_def();

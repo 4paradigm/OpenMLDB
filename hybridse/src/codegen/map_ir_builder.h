@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 4Paradigm authors
+ * Copyright 2022 OpenMLDB authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,33 +14,30 @@
  * limitations under the License.
  */
 
-#ifndef HYBRIDSE_SRC_CODEGEN_ARRAY_IR_BUILDER_H_
-#define HYBRIDSE_SRC_CODEGEN_ARRAY_IR_BUILDER_H_
+#ifndef HYBRIDSE_SRC_CODEGEN_MAP_IR_BUILDER_H_
+#define HYBRIDSE_SRC_CODEGEN_MAP_IR_BUILDER_H_
 
 #include "codegen/struct_ir_builder.h"
 
 namespace hybridse {
 namespace codegen {
 
-// Array Struct, consist of following fields
-// - Array of raw values: T*
-// - Array of nullable values: bool*
-// - array size: int64
-class ArrayIRBuilder : public StructTypeIRBuilder {
+class MapIRBuilder final : public StructTypeIRBuilder {
  public:
-    // Array builder with num elements unknown
-    ArrayIRBuilder(::llvm::Module* m, llvm::Type* ele_ty);
+    MapIRBuilder(::llvm::Module* m, ::llvm::Type* key_ty, ::llvm::Type* value_ty);
+    ~MapIRBuilder() override {}
 
-    ~ArrayIRBuilder() override {}
-
-    // create a new array from `elements` as value
     absl::StatusOr<NativeValue> Construct(CodeGenContext* ctx, absl::Span<const NativeValue> args) const override;
 
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) override { return true; }
-
     base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src, NativeValue* output) override {
-        CHECK_TRUE(false, common::kCodegenError, "casting to array un-implemented");
-    };
+        return {};
+    }
+
+    absl::StatusOr<NativeValue> ExtractElement(CodeGenContext* ctx, const NativeValue&,
+                                               const NativeValue&) const override;
+
+    absl::StatusOr<NativeValue> MapKeys(CodeGenContext*, const NativeValue&) const;
 
  private:
     void InitStructType() override;
@@ -48,9 +45,11 @@ class ArrayIRBuilder : public StructTypeIRBuilder {
     bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) override;
 
  private:
-    ::llvm::Type* element_type_ = nullptr;
+    ::llvm::Type* key_type_ = nullptr;
+    ::llvm::Type* value_type_ = nullptr;
 };
 
 }  // namespace codegen
 }  // namespace hybridse
-#endif  // HYBRIDSE_SRC_CODEGEN_ARRAY_IR_BUILDER_H_
+
+#endif  // HYBRIDSE_SRC_CODEGEN_MAP_IR_BUILDER_H_

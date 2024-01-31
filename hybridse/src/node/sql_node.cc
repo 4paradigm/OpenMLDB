@@ -17,7 +17,6 @@
 #include "node/sql_node.h"
 
 #include <algorithm>
-#include <numeric>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -142,6 +141,7 @@ static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap()
       {kExprOrderExpression, "order"},
       {kExprEscaped, "escape"},
       {kExprArray, "array"},
+      {kExprArrayElement, "array element"},
   };
   for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
         DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
@@ -1185,6 +1185,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kDynamicUdafFnDef, "kDynamicUdafFnDef"},
         {kWithClauseEntry, "kWithClauseEntry"},
         {kAlterTableStmt, "kAlterTableStmt"},
+        {kColumnSchema, "kColumnSchema"},
     };
     for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
         DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
@@ -1454,19 +1455,35 @@ void CreateTableLikeClause::Print(std::ostream &output, const std::string &tab) 
     output << "\n";
 }
 
+std::string ColumnSchemaNode::DebugString() const {
+    auto res = DataTypeName(type());
+    if (!generics().empty()) {
+        absl::StrAppend(&res, "<",
+                        absl::StrJoin(generics(), ", ",
+                                      [](std::string *out, const ColumnSchemaNode *in) {
+                                          absl::StrAppend(out, in->DebugString());
+                                      }),
+                        ">");
+    }
+
+    if (not_null()) {
+        absl::StrAppend(&res, " NOT NULL");
+    }
+
+    if (default_value()) {
+        absl::StrAppend(&res, " DEFAULT ", default_value()->GetExprString());
+    }
+
+    return res;
+}
+
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, column_name_, "column_name", false);
+    PrintValue(output, tab, GetColumnName(), "column_name", false);
     output << "\n";
-    PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
-    output << "\n";
-    PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", !default_value_);
-    if (default_value_) {
-        output << "\n";
-        PrintSqlNode(output, tab, default_value_, "default_value", true);
-    }
+    PrintValue(output, tab, schema_->DebugString(), "column_type", true);
 }
 
 void ColumnIndexNode::SetTTL(ExprListNode *ttl_node_list) {
@@ -1993,25 +2010,6 @@ void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSqlNode(output, tab, fileds_, "fileds", false);
     output << "\n";
     PrintSqlNode(output, tab, methods_, "methods", true);
-}
-
-void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
-    SqlNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-
-    output << "\n";
-    PrintValue(output, tab, GetName(), "type", true);
-}
-bool TypeNode::Equals(const SqlNode *node) const {
-    if (!SqlNode::Equals(node)) {
-        return false;
-    }
-
-    const TypeNode *that = dynamic_cast<const TypeNode *>(node);
-    return this->base_ == that->base_ &&
-           std::equal(
-               this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
-               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return TypeEquals(a, b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
