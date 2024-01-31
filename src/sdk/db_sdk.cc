@@ -430,16 +430,20 @@ bool ClusterSDK::BuildCatalog() {
             return false;
         }
     } else {
-        DLOG(INFO) << "no procedures in db";
+        LOG(INFO) << "no procedures in db";
     }
+    // The empty database can't be find if we only get table datas, but database no notify, so we get alldbs from
+    // nameserver in GetAllDbs()
     return UpdateCatalog(table_datas, sp_datas);
 }
 
 std::vector<std::string> DBSDK::GetAllDbs() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     std::vector<std::string> all_dbs;
-    for (auto db_name_iter = table_to_tablets_.begin(); db_name_iter != table_to_tablets_.end(); db_name_iter++) {
-        all_dbs.push_back(db_name_iter->first);
+    std::string st;
+    if (!GetNsClient()->ShowDatabase(&all_dbs, st)) {
+        LOG(WARNING) << "show db from ns failed, msg: " << st;
+        return {};
     }
     return all_dbs;
 }
