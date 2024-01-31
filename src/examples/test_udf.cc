@@ -91,7 +91,7 @@ int64_t count_null_output(::openmldb::base::UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr));
 }
 
-// Get the second non-null value of all values
+// Get the third non-null value of all values
 extern "C"
 ::openmldb::base::UDFContext* third_init(::openmldb::base::UDFContext* ctx) {
     ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>());
@@ -114,7 +114,7 @@ void third_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_n
         *is_null = true;
     } else {
         *is_null = false;
-        *output = vec->at(3);
+        *output = vec->at(2);
     }
     // free the memory allocated in init function with new/malloc
     delete vec;

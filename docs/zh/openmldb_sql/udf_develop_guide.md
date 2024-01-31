@@ -16,14 +16,14 @@
 
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
 
-| SQL类型   | C/C++ 类型         |
-| :-------- | :----------------- |
-| BOOL      | `bool`             |
-| SMALLINT  | `int16_t`          |
-| INT       | `int32_t`          |
-| BIGINT    | `int64_t`          |
-| FLOAT     | `float`            |
-| DOUBLE    | `double`           |
+| SQL类型   | C/C++ 类型  |
+| :-------- | :---------- |
+| BOOL      | `bool`      |
+| SMALLINT  | `int16_t`   |
+| INT       | `int32_t`   |
+| BIGINT    | `int64_t`   |
+| FLOAT     | `float`     |
+| DOUBLE    | `double`    |
 | STRING    | `StringRef` |
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
@@ -44,6 +44,15 @@
     };
     ```
 
+- 如果参数声明为nullable的，那么所有参数都是nullable的，每一个输入参数其后需要添加bool参数（通常命名为is_null），其顺序为`arg1, arg1_is_null, arg2, arg2_is_null, ...`。不可以随意调整参数顺序。
+- 如果返回值声明为nullable的，那么通过参数来返回，并且添加bool参数（通常命名为is_null）来表示返回值是否为null
+
+例如，函数sum有俩个参数，如果参数和返回值设置为nullable的话，单行函数原型如下:
+```c++
+extern "C"
+void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool input1_is_null, int64_t input2, bool input2_is_null, int64_t* output, bool* is_null) {
+```
+
 函数声明:  
 * 函数必须用extern "C"来声明
 
@@ -56,17 +65,6 @@
     char *buffer = ctx->pool->Alloc(size);
     ```
 - 一次分配空间的最大长度不能超过2M字节
-
-**注**：
-
-- 如果参数声明为nullable的，那么所有参数都是nullable的，每一个输入参数都添加is_null参数
-- 如果返回值声明为nullable的，那么通过参数来返回，并且添加is_null的参数来表示返回值是否为null
-
-如函数sum有俩个参数，如果参数和返回值设置为nullable的话，单行函数原型如下:
-```c++
-extern "C"
-void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null) {
-```
 
 #### 单行函数开发
 
@@ -94,6 +92,8 @@ void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input,
     output->data_ = buffer;
 }
 ```
+
+因为返回值是string类型，所以此处需要通过函数最后一个参数返回。如果返回值是基本类型，通过函数返回值返回，可参考[test_udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/src/examples/test_udf.cc)中的strlength。
 
 #### 聚合函数开发
 
@@ -141,9 +141,37 @@ int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
 }
 
+// Get the third non-null value of all values
+extern "C"
+::openmldb::base::UDFContext* third_init(::openmldb::base::UDFContext* ctx) {
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>());
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* third_update(::openmldb::base::UDFContext* ctx, int64_t input, bool is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!is_null && vec->size() < 3) {
+        vec->push_back(input);
+    }
+    return ctx;
+}
+
+extern "C"
+void third_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (vec->size() != 3) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = vec->at(2);
+    }
+    // free the memory allocated in init function with new/malloc
+    delete vec;
+}
 ```
 
-更多udf/udaf实现参考[这里](../../../src/examples/test_udf.cc)。
+如上所示，聚合函数init函数仅单参数，无论是无参数的聚合函数还是多参数的聚合函数，都只有一个参数。update函数参数个数和类型，与聚合函数的参数个数和类型一致。同样的，如果想要聚合函数nullable，每个参数都需要添加一个bool参数，表示该参数是否为null。output函数只会有一个输出参数或返回值，nullable同理。更多udf/udaf实现参考[这里](../../../src/examples/test_udf.cc)。
 
 ### 编译动态库
 - 拷贝include目录 `https://github.com/4paradigm/OpenMLDB/tree/main/include` 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
@@ -185,15 +213,15 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ### 注册、删除和查看函数
 注册函数使用[CREATE FUNCTION](../openmldb_sql/ddl/CREATE_FUNCTION.md)
 
-注册单行函数
+注册单行函数，cut2函数将字符串的前两个字符返回：
 ```sql
 CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 ```
-注册聚合函数
+注册聚合函数，special_sum函数初始为10，再将输入的值累加，并且最后加上5返回（演示函数，无特殊意义）：
 ```sql
 CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so');
 ```
-注册聚合函数，并且输入参数和返回值都支持null
+注册聚合函数，并且输入参数和返回值都支持null，third函数返回第三个非null的值，如果非null的值不足3个，返回null：
 ```sql
 CREATE AGGREGATE FUNCTION third(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so', ARG_NULLABLE=true, RETURN_NULLABLE=true);
 ```
