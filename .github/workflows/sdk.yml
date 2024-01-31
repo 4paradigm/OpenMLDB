@@ -100,6 +100,13 @@ jobs:
         run: |
           ./mvnw --batch-mode test
 
+      - name: Upload Event File
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: event-file
+          path: ${{ github.event_path }}
+
       - name: upload java ut results
         if: always()
         uses: actions/upload-artifact@v2

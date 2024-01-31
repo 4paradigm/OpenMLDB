@@ -21,3 +21,5 @@ jobs:
       files: artifacts/linux-ut-result-*/**/*.xml
       check_name: Linux Test Report
       comment_title: Linux Test Report
+      event_name: ${{ github.event.workflow_run.event }}
+      run_id: ${{ github.event.workflow_run.id }}
