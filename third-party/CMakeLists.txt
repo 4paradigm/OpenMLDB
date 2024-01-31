@@ -68,7 +68,7 @@ set(MAKEOPTS "$ENV{MAKEOPTS}" CACHE STRING "Extra options to make")
 message(STATUS "Install bundled dependencies into ${DEPS_INSTALL_DIR}")
 
 set(HYBRIDSQL_ASSERTS_HOME https://github.com/4paradigm/hybridsql-asserts)
-set(HYBRIDSQL_ASSERTS_VERSION 0.6.0)
+set(HYBRIDSQL_ASSERTS_VERSION 0.6.1)
 
 function(get_linux_lsb_release_information)
   execute_process(COMMAND bash ${CMAKE_SOURCE_DIR}/get-lsb-release.sh
