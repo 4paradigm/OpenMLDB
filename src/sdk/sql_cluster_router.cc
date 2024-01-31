@@ -1325,7 +1325,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     for (size_t i = 0; i < default_maps.size(); i++) {
         auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i], put_if_absent);
         if (!row || !row->Init(0) || !row->IsComplete()) {
-            LOG(WARNING) << "fail to build row[" << i << "]";  // TODO(hw): SQLInsertRow or DefaultValueMap needs print helper function
+            // TODO(hw): SQLInsertRow or DefaultValueMap needs print helper function
+            LOG(WARNING) << "fail to build row[" << i << "]";
             fails.push_back(i);
             continue;
         }

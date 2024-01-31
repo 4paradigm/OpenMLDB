@@ -146,8 +146,8 @@ struct ExecSPResp {
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
                  bool only_const);
 
-void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i, // NOLINT
-                bool write_nan_and_inf_null);  
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i,  // NOLINT
+                bool write_nan_and_inf_null);
 
 // ExecSPResp reading is unsupported now, cuz we decode ResultSet with Schema here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s);  // NOLINT
