@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.8.5] - 2024-02-06
+
+### Features
+- Support `UNION ALL` statement (#3590 #3653 @aceforeverd)
+- Support `SELECT ... INTO OUTFILE` to OopenMLDB online tables (#3616 @tobegit3hub)
+- Support `LAST JOIN` and `WINDOW` without `ORDER BY` in offline mode (#3619 @aceforeverd)
+- Support specifying Spark configurations in the SDK (#3613 @tobegit3hub)
+- `INSERT`returns failure if the server-side memory usage exceeds the specified limit (#3631 @dl239)
+- Add a new interfact for SQLs to DAG (#3630 @aceforeverd)
+- If the deployed SQL contains the `LEFT JOIN`, the indexs will be created automatically. (#3667 @aceforeverd)
+- Delete dirty data when insertion fails (#3681 @dl239)
+- Support automatic deletion of logs (#3704 #3736 #3706 @dl239)
+- Improve the documents (#3617 #3519 #3690 #3699 @vagetablechicken, #3612 @dl239, #3609 #3672 #3687 @aceforeverd, #3649 #3570 #3569 @TanZiYen @Elliezza, #3665 @DrDub, #3585 #3584 #3579 #3578 #3574 #3573 #3552 #3539 #3488 #3477 #3475 #3586 #3470 #3474 #3568 #3583 #3564 @TanZiYen, #3688 #3697 @Elliezz, #3075 @Elliezz @tobegit3hub, #3710 @tobegit3hub)
+- Other minor features (#3623 #3636 @aceforeverd, #3651 @tobegit3hub, #3641 #3692 @vagetablechicken, #3582 @dl239)
+
+### Bug Fixes
+- Executing offline tasks will consume an excessive number of ZooKeeper connections (#3642 @dl239)
+- There is no automatic reconnection after ZooKeeper disconnection in SDK. (#3656 #3668 @vagetablechicken)
+- The `FlexibleRowBuilder` will throw a `NullPointerException` if set with a null value (#3649 @dl239)
+- If a table contains a large amount of data, querying the data may still be possible after executing `TRUNCATE` (#3677 @dl239)
+- Adding a deleted index fails if the index name is different from the previous name (#3635 @dl239)
+- Other minor bug fixes (#3638 #3654 #3717 @vagetablechicken, #3607 @dl239, #3640 @tobegit3hub, #3686 #3735 @aceforeverd)
+
+### Code Refactoring
+#3666 @vagetablechicken
+
 ## [0.8.4] - 2023-11-17
 
 ### Features
