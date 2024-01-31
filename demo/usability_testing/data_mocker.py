@@ -6,6 +6,7 @@ import csv
 from typing import Optional
 import numpy as np
 import pandas as pd
+import dateutil
 
 
 # to support save csv, and faster parquet, we don't use faker-cli directly
@@ -146,8 +147,9 @@ def main(num_files, num_rows, fmt, output, sql):
         if sql_type in ['varchar', 'string']:
             # TODO(hw): set max length
             return 'pystr', {}
+        # timestamp should > 0 cuz tablet insert will check it, use utc
         if sql_type in ['date', 'timestamp']:
-            return 'iso8601', {}
+            return 'iso8601', {"tzinfo": dateutil.tz.UTC}
         if sql_type in ['float', 'double']:
             return 'pyfloat', ranges[sql_type]
         return 'py' + sql_type, {}

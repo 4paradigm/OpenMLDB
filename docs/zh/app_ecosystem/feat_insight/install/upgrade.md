@@ -2,7 +2,7 @@
 
 ## 介绍
 
-OpenMLDB 特征平台对外提供 HTTP 接口，底层依赖 OpenMLDB 数据库存储元数据，因此可以通过多实例和 Rolling update 等方法进行版本升级。
+FeatInsight 对外提供 HTTP 接口，底层依赖 OpenMLDB 数据库存储元数据，因此可以通过多实例和 Rolling update 等方法进行版本升级。
 
 ## 单实例升级步骤
 

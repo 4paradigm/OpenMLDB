@@ -5,8 +5,8 @@
 .. toctree::
     :maxdepth: 1
 
-    package
     docker
+    package
     source
     config_file
     upgrade

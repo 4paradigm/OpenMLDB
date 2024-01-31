@@ -2,14 +2,14 @@
 
 ## 介绍
 
-通过源码编译 OpenMLDB 特征平台，可以按需使用特定源码功能，本文档提供源码编译的完整流程。
+通过源码编译 FeatInsight 项目，可以按需使用特定源码功能，本文档提供源码编译的完整流程。
 
 ## 下载源码
 
 下载项目源码。
 
 ```
-git clone https://github.com/4paradigm/feature-platform
+git clone https://github.com/4paradigm/FeatInsight
 ```
 
 ## 编译源码
@@ -17,7 +17,7 @@ git clone https://github.com/4paradigm/feature-platform
 进入项目根目录，执行以下命令编译前端和后端代码。
 
 ```
-cd ./feature-platform/frontend/
+cd ./FeatInsight/frontend/
 npm run build
 
 cd ../

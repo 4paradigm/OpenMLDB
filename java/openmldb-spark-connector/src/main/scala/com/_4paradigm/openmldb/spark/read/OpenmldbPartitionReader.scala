@@ -1,5 +1,6 @@
 package com._4paradigm.openmldb.spark.read
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig
 import com._4paradigm.openmldb.sdk.{Schema, SdkOption}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.catalyst.InternalRow
@@ -8,17 +9,10 @@ import org.apache.spark.unsafe.types.UTF8String
 
 import java.sql.Types
 
-class OpenmldbPartitionReader(config: OpenmldbReadConfig) extends PartitionReader[InternalRow] {
-
-  val option = new SdkOption
-  option.setZkCluster(config.zkCluster)
-  option.setZkPath(config.zkPath)
-  option.setLight(true)
-  option.setUser(config.user)
-  option.setPassword(config.password)
-  val executor = new SqlClusterExecutor(option)
-  val dbName: String = config.dbName
-  val tableName: String = config.tableName
+class OpenmldbPartitionReader(config: OpenmldbConfig) extends PartitionReader[InternalRow] {
+  val executor = new SqlClusterExecutor(config.getSdkOption)
+  val dbName: String = config.getDB
+  val tableName: String = config.getTable
 
   val schema: Schema = executor.getTableSchema(dbName, tableName)
   executor.executeSQL(dbName, "SET @@execute_mode='online'")

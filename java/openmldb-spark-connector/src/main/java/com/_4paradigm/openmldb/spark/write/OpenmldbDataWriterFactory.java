@@ -17,20 +17,21 @@
 
 package com._4paradigm.openmldb.spark.write;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.write.DataWriter;
 import org.apache.spark.sql.connector.write.DataWriterFactory;
 
 public class OpenmldbDataWriterFactory implements DataWriterFactory {
-    private final OpenmldbWriteConfig config;
+    private final OpenmldbConfig config;
 
-    public OpenmldbDataWriterFactory(OpenmldbWriteConfig config) {
+    public OpenmldbDataWriterFactory(OpenmldbConfig config) {
         this.config = config;
     }
 
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
-        if (!config.writerType.equals("batch")) {
+        if (!config.isBatchWriter()) {
             return new OpenmldbDataSingleWriter(config, partitionId, taskId);
         }
         return new OpenmldbDataWriter(config, partitionId, taskId);

@@ -17,13 +17,14 @@
 package com._4paradigm.openmldb.sdk;
 
 import lombok.Data;
+import java.io.Serializable;
 
 import com._4paradigm.openmldb.BasicRouterOptions;
 import com._4paradigm.openmldb.SQLRouterOptions;
 import com._4paradigm.openmldb.StandaloneOptions;
 
 @Data
-public class SdkOption {
+public class SdkOption implements Serializable {
     // TODO(hw): set isClusterMode automatically
     private boolean isClusterMode = true;
     // options for cluster mode

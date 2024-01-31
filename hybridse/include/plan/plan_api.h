@@ -15,9 +15,13 @@
  */
 #ifndef HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
 #define HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
+
 #include <string>
 #include <unordered_map>
+
 #include "node/node_manager.h"
+#include "vm/sql_ctx.h"
+
 namespace hybridse {
 namespace plan {
 
@@ -27,6 +31,10 @@ using hybridse::node::NodePointVector;
 using hybridse::node::PlanNodeList;
 class PlanAPI {
  public:
+    // parse SQL string to logic plan. ASTNode and LogicNode saved in SqlContext
+    static base::Status CreatePlanTreeFromScript(vm::SqlContext* ctx);
+
+    // deprecated, use CreatePlanTreeFromScript(vm::SqlContext*) instead
     static bool CreatePlanTreeFromScript(const std::string& sql,
                                          PlanNodeList& plan_trees,  // NOLINT
                                          NodeManager* node_manager,
@@ -34,6 +42,7 @@ class PlanAPI {
                                          bool is_batch_mode = true, bool is_cluster = false,
                                          bool enable_batch_window_parallelization = false,
                                          const std::unordered_map<std::string, std::string>* extra_options = nullptr);
+
     static const int GetPlanLimitCount(node::PlanNode* plan_trees);
     static const std::string GenerateName(const std::string prefix, int id);
 };

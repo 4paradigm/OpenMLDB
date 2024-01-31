@@ -345,7 +345,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
     return base::Status::OK();
 }
 
-base::Status Planner::CreateSetOperationPlan(const node::SetOperationNode *root, node::SetOperationPlanNode **plan_tree) {
+base::Status Planner::CreateSetOperationPlan(const node::SetOperationNode *root,
+                                             node::SetOperationPlanNode **plan_tree) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "can not create query plan node with null query node")
 
     auto list = node_manager_->MakeList<node::QueryPlanNode>();

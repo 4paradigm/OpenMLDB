@@ -64,7 +64,7 @@ void CheckTablePartition(const ::openmldb::nameserver::TableInfo& table_info,
             if (table_partition.partition_meta(pos).is_leader()) {
                 ASSERT_EQ(table_partition.partition_meta(pos).endpoint(), leader);
             } else {
-                ASSERT_EQ(follower.count(table_partition.partition_meta(pos).endpoint()), 1);
+                ASSERT_EQ(follower.count(table_partition.partition_meta(pos).endpoint()), (std::size_t)1);
             }
         }
     }

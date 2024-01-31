@@ -330,7 +330,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         status->code = hybridse::common::kTypeError;
                         return false;
                     }
-                    auto val = TransformDataType(*dynamic_cast<hybridse::node::ConstNode*>(default_val),
+                    auto val = TransformDataType(*dynamic_cast<const hybridse::node::ConstNode*>(default_val),
                                                  add_column_desc->data_type());
                     if (!val) {
                         status->msg = "default value type mismatch";
