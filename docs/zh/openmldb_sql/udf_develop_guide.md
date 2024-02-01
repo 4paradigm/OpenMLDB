@@ -169,9 +169,47 @@ void third_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_n
     // free the memory allocated in init function with new/malloc
     delete vec;
 }
+
+// Get the first non-null value >= threshold
+extern "C"
+::openmldb::base::UDFContext* first_ge_init(::openmldb::base::UDFContext* ctx) {
+    // threshold init in update
+    // threshold, thresh_flag, first_ge, first_ge_flag
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>(4, 0));
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* first_ge_update(::openmldb::base::UDFContext* ctx, int64_t input, bool is_null, int64_t threshold, bool threshold_is_null) {
+    auto pair = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!threshold_is_null && pair->at(1) == 0) {
+        pair->at(0) = threshold;
+        pair->at(1) = 1;
+    }
+    if (!is_null && pair->at(3) == 0 && input >= pair->at(0)) {
+        pair->at(2) = input;
+        pair->at(3) = 1;
+    }
+    return ctx;
+}
+
+extern "C"
+void first_ge_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto pair = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    // threshold is null or no value >= threshold
+    if (pair->at(1) == 0 || pair->at(3) == 0) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = pair->at(2);
+    }
+    // *is_null = true;
+    // free the memory allocated in init function with new/malloc
+    delete pair;
+}
 ```
 
-如上所示，聚合函数init函数仅单参数，无论是无参数的聚合函数还是多参数的聚合函数，都只有一个参数。update函数参数个数和类型，与聚合函数的参数个数和类型一致。同样的，如果想要聚合函数nullable，每个参数都需要添加一个bool参数，表示该参数是否为null。output函数只会有一个输出参数或返回值，nullable同理。更多udf/udaf实现参考[这里](../../../src/examples/test_udf.cc)。
+如上所示，聚合函数init函数仅单参数，无论是几个参数的聚合函数，init中都只有一个参数UDFContext。update函数参数个数和类型，与聚合函数的参数个数和类型一致。同样的，如果想要聚合函数nullable，每个参数都需要添加一个bool参数，表示该参数是否为null。output函数只会有一个输出参数或返回值，nullable同理。更多udf/udaf实现参考[这里](../../../src/examples/test_udf.cc)。
 
 ### 编译动态库
 - 拷贝include目录 `https://github.com/4paradigm/OpenMLDB/tree/main/include` 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
@@ -239,4 +277,10 @@ SHOW FUNCTIONS;
 通过 `DROP FUNCTION` 删除已注册的 UDF
 ```
 DROP FUNCTION cut2;
+```
+
+```{warning}
+同一个udf so如果注册了多个函数，只删除一个函数时，该so不会从Tablet Server内存中删除。此时替换so文件是无用的，并且如果此时增删udf，有一定危险影响Tablet Server运行。
+
+建议：**删除所有udf后，替换udf so文件**。
 ```

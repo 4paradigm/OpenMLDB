@@ -119,3 +119,41 @@ void third_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_n
     // free the memory allocated in init function with new/malloc
     delete vec;
 }
+
+// Get the first non-null value >= threshold
+extern "C"
+::openmldb::base::UDFContext* first_ge_init(::openmldb::base::UDFContext* ctx) {
+    // threshold init in update
+    // threshold, thresh_flag, first_ge, first_ge_flag
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>(4, 0));
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* first_ge_update(::openmldb::base::UDFContext* ctx, int64_t input, bool is_null, int64_t threshold, bool threshold_is_null) {
+    auto pair = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!threshold_is_null && pair->at(1) == 0) {
+        pair->at(0) = threshold;
+        pair->at(1) = 1;
+    }
+    if (!is_null && pair->at(3) == 0 && input >= pair->at(0)) {
+        pair->at(2) = input;
+        pair->at(3) = 1;
+    }
+    return ctx;
+}
+
+extern "C"
+void first_ge_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto pair = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    // threshold is null or no value >= threshold
+    if (pair->at(1) == 0 || pair->at(3) == 0) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = pair->at(2);
+    }
+    // *is_null = true;
+    // free the memory allocated in init function with new/malloc
+    delete pair;
+}
