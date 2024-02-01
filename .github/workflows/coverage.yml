@@ -43,12 +43,12 @@ jobs:
       BUILD_SHARED_LIBS: ON
       TESTING_ENABLE_STRIP: ON
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: download lcov
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: linux-test-project/lcov
           ref: v1.16
@@ -73,9 +73,33 @@ jobs:
 
       - name: debug
         if: always()
-        run: | 
+        run: |
           du -d 1 -h build
           df -h
+
+      - name: upload coverage
+        uses: actions/upload-artifact@v3
+        with:
+          # include the generated html report in build/coverage, great for local diagnose
+          name: coverage-cpp-${{ github.sha }}
+          path: |
+            build/coverage.*
+            build/coverage/
+          retention-days: 3
+
+  coverage-publish:
+    needs: ["coverage"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-cpp-${{ github.sha }}
+          path: build
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
@@ -84,7 +108,3 @@ jobs:
           name: coverage-cpp
           fail_ci_if_error: true
           verbose: true
-
-      - name: stop service
-        run: |
-          ./steps/ut_zookeeper.sh stop
