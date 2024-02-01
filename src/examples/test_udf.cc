@@ -153,7 +153,6 @@ void first_ge_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* i
         *is_null = false;
         *output = pair->at(2);
     }
-    // *is_null = true;
     // free the memory allocated in init function with new/malloc
     delete pair;
 }
