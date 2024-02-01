@@ -146,7 +146,7 @@ jobs:
       comment_title: Linux Test Report
 
   macos-cpp:
-    runs-on: macos-latest
+    runs-on: macos-11
     if: github.repository == '4paradigm/OpenMLDB'
     env:
       OS: darwin
