@@ -438,7 +438,6 @@ bool ClusterSDK::BuildCatalog() {
 }
 
 std::vector<std::string> DBSDK::GetAllDbs() {
-    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     std::vector<std::string> all_dbs;
     std::string st;
     if (!GetNsClient()->ShowDatabase(&all_dbs, st)) {
