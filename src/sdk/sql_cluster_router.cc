@@ -2695,19 +2695,22 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto result = GetUser(alter_node->Name(), &user_info);
             if (!result.ok()) {
                 *status = {StatusCode::kCmdError, result.status().message()};
+                return {};
             } else if (!(*result)) {
                 if (!alter_node->IfExists() && alter_node->Name() != "root") {
                     *status = {StatusCode::kCmdError, absl::StrCat("user ", alter_node->Name(), " does not exists")};
+                    return {};
                 }
-            } else {
-                if (alter_node->Options() && !alter_node->Options()->empty()) {
-                    auto ret = NodeAdapter::ExtractUserOption(*alter_node->Options());
-                    if (!ret.ok()) {
-                        *status = {StatusCode::kCmdError, ret.status().message()};
-                        return {};
-                    }
-                    *status = UpdateUser(user_info, *ret);
+                user_info.name = "root";
+                user_info.create_time = ::baidu::common::timer::get_micros() / 1000;
+            }
+            if (alter_node->Options() && !alter_node->Options()->empty()) {
+                auto ret = NodeAdapter::ExtractUserOption(*alter_node->Options());
+                if (!ret.ok()) {
+                    *status = {StatusCode::kCmdError, ret.status().message()};
+                    return {};
                 }
+                *status = UpdateUser(user_info, *ret);
             }
             return {};
         }
