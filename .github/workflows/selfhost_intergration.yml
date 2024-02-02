@@ -24,7 +24,7 @@ jobs:
   build-openmldb:
 
     runs-on: [self-hosted,generic]
-    if: github.repository == '4paradigm/OpenMLDB' || github.repository == 'lqy222/OpenMLDB'
+    if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -345,8 +345,8 @@ jobs:
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 24001 25000 java hadoop
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
-          bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
-          bash HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
+          bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanagers.sh
+          HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanagers.sh
       - name: test
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
