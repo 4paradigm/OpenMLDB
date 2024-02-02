@@ -22,6 +22,7 @@ import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author zhaowei
@@ -47,6 +48,9 @@ public class OpenMLDBResult {
     private OpenMLDBJob openMLDBJob;
     private List<String> offlineColumns;
     private List<List<Object>> offlineResult;
+    private List<Map<String, Object>> formattedExpectResults;
+    private List<Map<String, Object>> formattedActualResults;
+
 
     @Override
     public String toString() {

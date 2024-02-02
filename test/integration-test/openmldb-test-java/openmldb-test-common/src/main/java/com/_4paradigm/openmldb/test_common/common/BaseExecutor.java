@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.java_sdk_test.executor;
+package com._4paradigm.openmldb.test_common.common;
 
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
@@ -22,6 +22,7 @@ import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 import org.testng.collections.Lists;
+import com._4paradigm.openmldb.test_common.common.IExecutor;
 
 import java.util.List;
 
@@ -33,16 +34,19 @@ import java.util.List;
 public abstract class BaseExecutor implements IExecutor{
 //    protected static final log log = new LogProxy(log);
     protected SQLCase sqlCase;
-    protected SQLCaseType executorType;
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
-    protected OpenMLDBResult mainResult;
+    protected OpenMLDBResult openMLDBResult = new OpenMLDBResult();
 
+    public BaseExecutor(SQLCase sqlCase){
+        this.sqlCase=sqlCase;
+    }
     @Override
     public void run() {
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
         System.out.println(className+"."+methodName+":"+ sqlCase.getCaseFileName()+":"+ sqlCase.getDesc() + " Begin!");
+        log.info(className+"."+methodName+":"+ sqlCase.getDesc() + " Begin!");
         boolean verify = false;
         try {
             verify = verify();
@@ -57,7 +61,7 @@ public abstract class BaseExecutor implements IExecutor{
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println(className+"."+methodName+":"+ sqlCase.getDesc() + " FAIL!");
-            Assert.fail("executor run with exception "+sqlCase.getDesc());
+            Assert.fail("executor run with exception"+sqlCase.getDesc());
         }finally {
             if(verify) {
                 tearDown();
