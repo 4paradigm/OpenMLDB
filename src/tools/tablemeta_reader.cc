@@ -123,7 +123,7 @@ std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const
 }
 
 void StandaloneTablemetaReader::SetTableinfoPtr() {
-    ::openmldb::sdk::StandAloneSDK standalone_sdk(host_, port_);
+    ::openmldb::sdk::StandAloneSDK standalone_sdk(options_);
     standalone_sdk.Init();
     tableinfo_ptr_ = standalone_sdk.GetTableInfo(db_name_, table_name_);
 }

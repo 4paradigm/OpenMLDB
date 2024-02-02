@@ -34,6 +34,10 @@ Below we will describe some commonly used configuration options.
 
 - zk_session_timeout: The expected ZooKeeper session timeout is not necessarily the actual session timeout. If the value is set too large, ZooKeeper Server's tickTime or maxSessionTimeout also needs to be adjusted.
 
+- user: Specify the username for login. If not specified, it defaults to 'root'.
+
+- password: Specify the password for login. If not specified, you'll be prompted to enter the password in interactive mode.
+
 ## Non-Interactive Usage
 
 The interface that appears after starting the CLI is called an interactive interface. You need to enter SQL statements and press Enter to execute operations. Here are some non-interactive usage methods for batch processing or debugging.

@@ -65,9 +65,9 @@ TEST_P(DBSDKTest, CreateFunction) {
     sr = cli->sr;
     ::openmldb::sdk::SQLClusterRouter* sr_2 = nullptr;
     if (cs->IsClusterMode()) {
-        ::openmldb::sdk::ClusterOptions copt;
-        copt.zk_cluster = mc.GetZkCluster();
-        copt.zk_path = mc.GetZkPath();
+        auto copt = std::make_shared<sdk::SQLRouterOptions>();
+        copt->zk_cluster = mc.GetZkCluster();
+        copt->zk_path = mc.GetZkPath();
         auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
         cur_cs->Init();
         sr_2 = new ::openmldb::sdk::SQLClusterRouter(cur_cs);
@@ -144,9 +144,9 @@ TEST_P(DBSDKTest, CreateUdafFunction) {
     sr = cli->sr;
     std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_2;
     if (cs->IsClusterMode()) {
-    ::openmldb::sdk::ClusterOptions copt;
-        copt.zk_cluster = mc.GetZkCluster();
-        copt.zk_path = mc.GetZkPath();
+        auto copt = std::make_shared<sdk::SQLRouterOptions>();
+        copt->zk_cluster = mc.GetZkCluster();
+        copt->zk_path = mc.GetZkPath();
         auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
         cur_cs->Init();
         sr_2 = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cur_cs);
@@ -232,16 +232,17 @@ int main(int argc, char** argv) {
     mc.SetUp(1);
     sleep(5);
     srand(time(NULL));
-    ::openmldb::sdk::ClusterOptions copt;
-    copt.zk_cluster = mc.GetZkCluster();
-    copt.zk_path = mc.GetZkPath();
+    auto copt = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+    copt->zk_cluster = mc.GetZkCluster();
+    copt->zk_path = mc.GetZkPath();
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
     ::openmldb::cmd::cluster_cli.sr->Init();
 
     env.SetUp();
-    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK("127.0.0.1", env.GetNsPort());
+    auto sopt = std::make_shared<::openmldb::sdk::StandaloneOptions>("127.0.0.1", env.GetNsPort());
+    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(sopt);
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();

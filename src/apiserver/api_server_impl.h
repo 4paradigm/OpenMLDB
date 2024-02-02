@@ -49,7 +49,7 @@ class APIServerImpl : public APIServer {
  public:
     explicit APIServerImpl(const std::string& endpoint);
     ~APIServerImpl() override;
-    bool Init(const sdk::ClusterOptions& options);
+    bool Init(const std::shared_ptr<::openmldb::sdk::SQLRouterOptions>& options);
     bool Init(::openmldb::sdk::DBSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;

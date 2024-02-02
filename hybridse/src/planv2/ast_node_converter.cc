@@ -666,6 +666,17 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDescTable, names));
             break;
         }
+        case zetasql::AST_DROP_USER_STATEMENT: {
+            auto drop_user_statement = statement->GetAsOrNull<zetasql::ASTDropUserStatement>();
+            CHECK_TRUE(drop_user_statement != nullptr, common::kSqlAstError, "not an ASTDropUserStatement");
+            CHECK_TRUE(drop_user_statement->name() != nullptr, common::kSqlAstError, "invalid drop user statement");
+            std::string user_name;
+            CHECK_STATUS(AstPathExpressionToString(drop_user_statement->name(), &user_name));
+            auto node = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropUser, user_name));
+            node->SetIfExists(drop_user_statement->is_if_exists());
+            *output = node;
+            break;
+        }
         case zetasql::AST_DROP_STATEMENT: {
             const zetasql::ASTDropStatement* drop_statement = statement->GetAsOrNull<zetasql::ASTDropStatement>();
             CHECK_TRUE(nullptr != drop_statement->name(), common::kSqlAstError, "not an ASTDropStatement")
@@ -694,6 +705,22 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             node::CreateIndexNode* create_index_node;
             CHECK_STATUS(ConvertCreateIndexStatement(create_index_stmt, node_manager, &create_index_node))
             *output = create_index_node;
+            break;
+        }
+        case zetasql::AST_CREATE_USER_STATEMENT: {
+            const zetasql::ASTCreateUserStatement* create_user_stmt =
+                statement->GetAsOrNull<zetasql::ASTCreateUserStatement>();
+            node::CreateUserNode* create_user_node = nullptr;
+            CHECK_STATUS(ConvertCreateUserStatement(create_user_stmt, node_manager, &create_user_node))
+            *output = create_user_node;
+            break;
+        }
+        case zetasql::AST_ALTER_USER_STATEMENT: {
+            const zetasql::ASTAlterUserStatement* alter_user_stmt =
+                statement->GetAsOrNull<zetasql::ASTAlterUserStatement>();
+            node::AlterUserNode* alter_user_node = nullptr;
+            CHECK_STATUS(ConvertAlterUserStatement(alter_user_stmt, node_manager, &alter_user_node))
+            *output = alter_user_node;
             break;
         }
         case zetasql::AST_USE_STATEMENT: {
@@ -2056,6 +2083,44 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
     }
     return base::Status::OK();
 }
+
+base::Status ConvertCreateUserStatement(const zetasql::ASTCreateUserStatement* root, node::NodeManager* node_manager,
+                                         node::CreateUserNode** output) {
+    CHECK_TRUE(root != nullptr, common::kSqlAstError, "not an ASTCreateUserStatement")
+    std::string user_name;
+    CHECK_TRUE(root->name() != nullptr, common::kSqlAstError, "can't create user without user name");
+    CHECK_STATUS(AstPathExpressionToString(root->name(), &user_name));
+
+    auto options = std::make_shared<node::OptionsMap>();
+    if (root->options_list() != nullptr) {
+        CHECK_STATUS(ConvertAstOptionsListToMap(root->options_list(), node_manager, options));
+    }
+    *output = node_manager->MakeNode<node::CreateUserNode>(user_name, root->is_if_not_exists(), options);
+    return base::Status::OK();
+}
+
+base::Status ConvertAlterUserStatement(const zetasql::ASTAlterUserStatement* root, node::NodeManager* node_manager,
+                                         node::AlterUserNode** output) {
+    CHECK_TRUE(root != nullptr, common::kSqlAstError, "not an ASTAlterUserStatement")
+    std::string user_name;
+    CHECK_TRUE(root->path() != nullptr, common::kSqlAstError, "can't alter user without user name");
+    CHECK_STATUS(AstPathExpressionToString(root->path(), &user_name));
+    std::vector<const node::AlterActionBase *> actions;
+    if (root->action_list() != nullptr) {
+        for (auto &ac : root->action_list()->actions()) {
+            node::AlterActionBase *ac_out = nullptr;
+            CHECK_STATUS(convertAlterAction(ac, node_manager, &ac_out));
+            actions.push_back(ac_out);
+        }
+    }
+    CHECK_TRUE(actions.size() == 1, common::kSqlAstError, "only one action is permitted");
+    CHECK_TRUE(actions.front()->kind() == node::AlterActionBase::ActionKind::SET_OPTIONS,
+            common::kSqlAstError, "it should be set options");
+    *output = node_manager->MakeNode<node::AlterUserNode>(user_name, root->is_if_exists(),
+            (dynamic_cast<const node::SetOptionsAction*>(actions.front()))->Options());
+    return base::Status::OK();
+}
+
 base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement* root, node::NodeManager* node_manager,
                                          node::CreateIndexNode** output) {
     CHECK_TRUE(nullptr != root, common::kSqlAstError, "not an ASTCreateIndexStatement")
@@ -2176,6 +2241,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus, false, true}},
     {"FUNCTIONS", {node::CmdType::kCmdShowFunctions}},
     {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
+    {"CURRENT_USER", {node::CmdType::kCmdShowUser}},
 };
 
 static const absl::flat_hash_map<std::string_view, node::ShowStmtType> SHOW_STMT_TYPE_MAP = {
@@ -2345,6 +2411,21 @@ base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::Nod
                 action, nm, &ac,
                 [](const zetasql::ASTDropOfflinePathAction* in, node::NodeManager* nm, node::DropPathAction** out) {
                     *out = nm->MakeObj<node::DropPathAction>(in->path()->string_value());
+                    return base::Status::OK();
+                }));
+            *out = ac;
+            break;
+        }
+        case zetasql::AST_SET_OPTIONS_ACTION: {
+            node::SetOptionsAction* ac = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTSetOptionsAction>(
+                action, nm, &ac,
+                [](const zetasql::ASTSetOptionsAction* in, node::NodeManager* nm, node::SetOptionsAction** out) {
+                    auto options = std::make_shared<node::OptionsMap>();
+                    if (in->options_list() != nullptr) {
+                        CHECK_STATUS(ConvertAstOptionsListToMap(in->options_list(), nm, options));
+                    }
+                    *out = nm->MakeObj<node::SetOptionsAction>(options);
                     return base::Status::OK();
                 }));
             *out = ac;

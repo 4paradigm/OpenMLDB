@@ -96,6 +96,8 @@ enum SqlNodeType {
     kShowStmt,
     kCompressType,
     kColumnSchema,
+    kCreateUserStmt,
+    kAlterUserStmt,
     kSqlNodeTypeLast,  // debug type
 };
 
@@ -300,6 +302,8 @@ enum CmdType {
     kCmdShowJobLog,
     kCmdShowCreateTable,
     kCmdTruncate,
+    kCmdDropUser,
+    kCmdShowUser,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };
@@ -338,6 +342,8 @@ enum PlanType {
     kPlanTypeWithClauseEntry,
     kPlanTypeAlterTable,
     kPlanTypeShow,
+    kPlanTypeCreateUser,
+    kPlanTypeAlterUser,
     kUnknowPlan = -1,
 };
 

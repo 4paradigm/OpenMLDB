@@ -236,6 +236,54 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     remove(file_path.c_str());
 }
 
+TEST_P(DBSDKTest, TestUser) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_FALSE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("CREATE USER IF NOT EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(true);
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router = NewClusterSQLRouter(opt1);
+        ASSERT_FALSE(router != nullptr);
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router = NewStandaloneSQLRouter(opt1);
+        ASSERT_FALSE(router != nullptr);
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER user1"), &status);
+    ASSERT_FALSE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
 TEST_P(DBSDKTest, CreateDatabase) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -532,7 +580,7 @@ TEST_F(SqlCmdTest, InsertWithDB) {
         sr, {"create database test1;", "create database test2;", "use test1;",
              "create table trans (c1 string, c2 int);", "use test2;", "insert into test1.trans values ('aaa', 123);"});
 
-    auto cur_cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    auto cur_cs = new ::openmldb::sdk::StandAloneSDK(std::make_shared<sdk::StandaloneOptions>(FLAGS_host, FLAGS_port));
     cur_cs->Init();
     auto cur_sr = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cur_cs);
     cur_sr->Init();
@@ -3274,6 +3322,7 @@ TEST_P(DBSDKTest, ShowComponents) {
 void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectInfo>>& expect,
                                  hybridse::sdk::ResultSet* rs, bool all_db = false, bool is_cluster = false) {
     static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableStatus = {
+        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "JOB_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{},
@@ -3306,6 +3355,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
          ""}};
 
     static const std::vector<std::vector<test::CellExpectInfo>> SystemStandaloneTableStatus = {
+        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{},
          "GLOBAL_VARIABLES",
@@ -3972,10 +4022,10 @@ int main(int argc, char** argv) {
     int ok = ::openmldb::cmd::mc_->SetUp(2);
     sleep(5);
     srand(time(NULL));
-    ::openmldb::sdk::ClusterOptions copt;
-    copt.zk_cluster = mc.GetZkCluster();
-    copt.zk_path = mc.GetZkPath();
-    copt.zk_session_timeout = FLAGS_zk_session_timeout;
+    auto copt = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+    copt->zk_cluster = mc.GetZkCluster();
+    copt->zk_path = mc.GetZkPath();
+    copt->zk_session_timeout = FLAGS_zk_session_timeout;
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);
@@ -3984,7 +4034,8 @@ int main(int argc, char** argv) {
     env.SetUp();
     FLAGS_host = "127.0.0.1";
     FLAGS_port = env.GetNsPort();
-    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(FLAGS_host, FLAGS_port);
+    auto sopt = std::make_shared<::openmldb::sdk::StandaloneOptions>(FLAGS_host, FLAGS_port);
+    ::openmldb::cmd::standalone_cli.cs = new ::openmldb::sdk::StandAloneSDK(sopt);
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
