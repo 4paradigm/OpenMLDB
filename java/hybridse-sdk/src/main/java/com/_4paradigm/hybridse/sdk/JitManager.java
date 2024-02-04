@@ -60,6 +60,16 @@ public class JitManager {
         return jits.get(tag);
     }
 
+
+    public static synchronized void rmoveJit(String tag) {
+        // HybridSeJitWrapper is a proxy class to C pointer, Java do not automatic
+        // lifetime of C pointer, so it must made explicitly
+        HybridSeJitWrapper e = jits.remove(tag);
+        if (e != null) {
+            HybridSeJitWrapper.DeleteJit(e);
+        }
+    }
+
     private static JitOptions getJitOptions() {
         JitOptions options = new JitOptions();
         try (InputStream input = JitManager.class.getClassLoader().getResourceAsStream("jit.properties")) {

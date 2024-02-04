@@ -50,10 +50,12 @@ bool HybridSeJitWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     auto mem_buf = ::llvm::MemoryBuffer::getMemBuffer(buf_str);
     auto llvm_module = parseIR(*mem_buf, diagnostic, *llvm_ctx);
     if (llvm_module == nullptr) {
-        LOG(WARNING) << "Parse module failed: module string is\n" << buf_str;
+        LOG(WARNING) << "Parse module failed: module string is:\n" << buf_str;
         std::string err_msg;
         llvm::raw_string_ostream err_msg_stream(err_msg);
-        diagnostic.print("", err_msg_stream);
+        diagnostic.print("llvm_module_from_buf", err_msg_stream);
+        err_msg_stream.flush();
+        LOG(WARNING) << err_msg;
         return false;
     }
     return this->AddModule(std::move(llvm_module), std::move(llvm_ctx));

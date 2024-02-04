@@ -100,10 +100,6 @@ class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
 
     hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
 
-    // llvm::Module* GetModule() {
-    // }
-    // llvm::LLVMContext* GetLlvmContext();
-
  private:
     std::unique_ptr<HybridSeJit> jit_;
     std::unique_ptr<::llvm::orc::MangleAndInterner> mi_;

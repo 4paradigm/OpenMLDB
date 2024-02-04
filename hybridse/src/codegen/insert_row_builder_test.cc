@@ -22,6 +22,7 @@
 #include "node/sql_node.h"
 #include "plan/plan_api.h"
 #include "vm/sql_ctx.h"
+#include "vm/engine.h"
 
 namespace hybridse {
 namespace codegen {
@@ -51,11 +52,11 @@ TEST_F(InsertRowBuilderTest, encode) {
         map_ty->mutable_value_type()->set_base_type(type::kVarchar);
     }
 
-    InsertRowBuilder builder(&sc);
-    {
-        auto s = builder.Init();
-        ASSERT_TRUE(s.ok()) << s;
-    }
+    auto jit = std::shared_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::Create());
+    ASSERT_TRUE(jit->Init());
+    ASSERT_TRUE(vm::HybridSeJitWrapper::InitJitSymbols(jit.get()));
+
+    InsertRowBuilder builder(jit, &sc);
 
     auto as = builder.ComputeRow(dynamic_cast<node::ExprListNode*>(exprlist));
     ASSERT_TRUE(as.ok()) << as.status();
@@ -67,5 +68,6 @@ TEST_F(InsertRowBuilderTest, encode) {
 //
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }
