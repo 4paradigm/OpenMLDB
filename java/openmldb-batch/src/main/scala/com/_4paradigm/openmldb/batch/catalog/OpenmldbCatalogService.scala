@@ -24,11 +24,15 @@ import com._4paradigm.openmldb.sdk.SdkOption
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 
-class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val openmldbJsdkPath: String) {
+class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val username: String, val password: String,
+                             val openmldbJsdkPath: String) {
 
   val option = new SdkOption
   option.setZkCluster(zkCluster)
   option.setZkPath(zkPath)
+  option.setUser(username)
+  option.setPassword(password)
+
   val sqlExecutor = new SqlClusterExecutor(option, openmldbJsdkPath)
   val zkClient = new ZKClient(ZKConfig.builder()
     .cluster(zkCluster)
@@ -36,8 +40,8 @@ class OpenmldbCatalogService(val zkCluster: String, val zkPath: String, val open
     .build())
   zkClient.connect();
 
-  def this(zkCluster: String, zkPath: String) = {
-    this(zkCluster, zkPath, "")
+  def this(zkCluster: String, zkPath: String, username: String, password: String) = {
+    this(zkCluster, zkPath, username, password, "")
   }
 
   def getDatabases: Array[String] = {

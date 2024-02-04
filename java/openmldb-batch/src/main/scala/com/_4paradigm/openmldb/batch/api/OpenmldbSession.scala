@@ -72,7 +72,8 @@ class OpenmldbSession {
         s"${this.config.openmldbZkRootPath}")
       try {
         openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster,
-          this.config.openmldbZkRootPath, config.openmldbJsdkLibraryPath)
+          this.config.openmldbZkRootPath, this.config.openmldbUser, this.config.openmldbPassword,
+          config.openmldbJsdkLibraryPath)
         registerOpenmldbOfflineTable(openmldbCatalogService)
       } catch {
         case e: Exception => logger.warn("Fail to connect OpenMLDB cluster and register tables, " + e.getMessage)

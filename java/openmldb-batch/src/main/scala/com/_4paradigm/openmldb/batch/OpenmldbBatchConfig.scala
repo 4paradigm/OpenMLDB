@@ -155,6 +155,12 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.zk.root.path", doc = "The root path of ZooKeeper for NameServer")
   var openmldbZkRootPath = ""
 
+  @ConfigOption(name = "openmldb.user", doc = "The user of OpenMLDB")
+  var openmldbUser = "root"
+
+  @ConfigOption(name = "openmldb.password", doc = "The password of OpenMLDB")
+  var openmldbPassword = "root"
+
   @ConfigOption(name = "openmldb.default.db", doc = "The default database for OpenMLDB SQL")
   var defaultDb = "default_db"
 
