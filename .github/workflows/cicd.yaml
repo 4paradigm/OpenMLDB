@@ -151,7 +151,7 @@ jobs:
     env:
       OS: darwin
       ARCH: x86_64
-      NPROC: 1
+      NPROC: 3
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v3
@@ -170,6 +170,10 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: |
           echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
+
+      - name: Install Dependencies
+        run: |
+          brew install z3
 
       - name: configure
         env:
