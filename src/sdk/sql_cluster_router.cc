@@ -2703,6 +2703,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 }
                 user_info.name = "root";
                 user_info.create_time = ::baidu::common::timer::get_micros() / 1000;
+                user_info.privileges = "ALL";
             }
             if (alter_node->Options() && !alter_node->Options()->empty()) {
                 auto ret = NodeAdapter::ExtractUserOption(*alter_node->Options());
@@ -4772,11 +4773,11 @@ absl::StatusOr<bool> SQLClusterRouter::GetUser(const std::string& name, UserInfo
         return absl::InternalError(status.msg);
     }
     while (rs->Next()) {
-        if (rs->GetStringUnsafe(0) == name) {
+        if (rs->GetStringUnsafe(1) == name) {
             user_info->name = name;
-            user_info->password = rs->GetStringUnsafe(1);
-            user_info->create_time = rs->GetTimeUnsafe(2);
-            user_info->update_time = rs->GetTimeUnsafe(3);
+            user_info->password = rs->GetStringUnsafe(2);
+            user_info->create_time = rs->GetTimeUnsafe(5);
+            user_info->update_time = rs->GetTimeUnsafe(6);
             return true;
         }
     }
@@ -4787,8 +4788,17 @@ hybridse::sdk::Status SQLClusterRouter::AddUser(const std::string& name, const s
     auto real_password = password.empty() ? password : codec::Encrypt(password);
     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
     std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
-            "'", name, "', '", real_password, "', ",
-            cur_ts, ", ", cur_ts, ");");
+            "'%',",                 // host
+            "'", name, "','",       // user
+            real_password, "',",    // password
+            cur_ts, ",",            // password_last_changed
+            "0,",                   // password_expired_time
+            cur_ts, ", ",           // create_time
+            cur_ts, ",",            // update_time
+            1,                      // account_type
+            ",'',",                 // privileges
+            "null"                  // extra_info
+            ");");
     hybridse::sdk::Status status;
     ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
     return status;
@@ -4798,8 +4808,17 @@ hybridse::sdk::Status SQLClusterRouter::UpdateUser(const UserInfo& user_info, co
     auto real_password = password.empty() ? password : codec::Encrypt(password);
     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
     std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
-            "'", user_info.name, "', '", real_password, "', ",
-            user_info.create_time, ", ", cur_ts, ");");
+            "'%',",                          // host
+            "'", user_info.name, "','",      // user
+            real_password, "',",             // password
+            cur_ts, ",",                     // password_last_changed
+            "0,",                            // password_expired_time
+            user_info.create_time, ", ",     // create_time
+            cur_ts, ",",                     // update_time
+            1,                               // account_type
+            ",'", user_info.privileges, "',",// privileges
+            "null"                           // extra_info
+            ");");
     hybridse::sdk::Status status;
     ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
     return status;
@@ -4807,7 +4826,7 @@ hybridse::sdk::Status SQLClusterRouter::UpdateUser(const UserInfo& user_info, co
 
 hybridse::sdk::Status SQLClusterRouter::DeleteUser(const std::string& name) {
     std::string sql = absl::StrCat("delete from ", nameserver::USER_INFO_NAME,
-            " where user = '", name, "';");
+            " where host = '%' and user = '", name, "';");
     hybridse::sdk::Status status;
     ExecuteSQL(nameserver::INTERNAL_DB, sql, &status);
     return status;
