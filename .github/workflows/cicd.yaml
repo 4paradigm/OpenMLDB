@@ -151,7 +151,7 @@ jobs:
     env:
       OS: darwin
       ARCH: x86_64
-      NPROC: 3
+      NPROC: 1
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v3
