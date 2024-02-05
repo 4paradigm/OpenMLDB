@@ -155,6 +155,10 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
             log.info("skip case in disk mode: {}", sqlCase.getDesc());
             return false;
         }
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("procedure-unsupport")) {
+            log.info("skip case in procedure mode: {}", sqlCase.getDesc());
+            return false;
+        }
         if (OpenMLDBConfig.isCluster() &&
                 null != sqlCase.getMode() && sqlCase.getMode().contains("cluster-unsupport")) {
             log.info("cluster-unsupport, skip case in cluster request mode: {}", sqlCase.getDesc());

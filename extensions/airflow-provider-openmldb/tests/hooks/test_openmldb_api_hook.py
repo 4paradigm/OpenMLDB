@@ -120,7 +120,7 @@ class TestOpenMLDBAPIHook(unittest.TestCase):
         # no data
         response = hook.run()
         res = json.loads(response.text)
-        assert res == {'code': -1, 'msg': 'Json parse failed'}
+        assert res == {'code': -1, 'msg': 'Request body json parse failed'}
 
     def test_query_api_server_with_sql(self):
         hook = OpenMLDBHook()
@@ -133,7 +133,7 @@ class TestOpenMLDBAPIHook(unittest.TestCase):
         response = hook.run(data='{"sql":"select 1"}')
         res = json.loads(response.text)
         assert res['code'] == -1
-        assert res['msg'].startswith('Json parse failed')
+        assert res['msg'].startswith('Request body json parse failed')
 
     def test_query_api_server(self):
         hook = OpenMLDBHook()

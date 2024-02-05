@@ -92,6 +92,8 @@ public class SyncToolImpl implements SyncToolInterface {
         option.setZkCluster(SyncToolConfig.ZK_CLUSTER);
         option.setZkPath(SyncToolConfig.ZK_ROOT_PATH);
         option.setZkCert(SyncToolConfig.ZK_CERT);
+        option.setUser(SyncToolConfig.USER);
+        option.setPassword(SyncToolConfig.PASSWORD);
         this.router = new SqlClusterExecutor(option);
         this.zkCollectorPath = SyncToolConfig.ZK_ROOT_PATH + "/sync_tool/collector";
 

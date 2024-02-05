@@ -29,6 +29,7 @@
 #include "client/tablet_client.h"
 #include "client/taskmanager_client.h"
 #include "common/thread_pool.h"
+#include "sdk/options.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
 #include "zk/zk_client.h"
@@ -106,6 +107,8 @@ class DBSDK {
 
     virtual bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) = 0;
 
+    virtual std::shared_ptr<BasicRouterOptions> GetOptions() const = 0;
+
     bool RegisterExternalFun(const std::shared_ptr<openmldb::common::ExternalFun>& fun);
     bool RemoveExternalFun(const std::string& name);
 
@@ -138,7 +141,7 @@ class DBSDK {
 
 class ClusterSDK : public DBSDK {
  public:
-    explicit ClusterSDK(const ClusterOptions& options);
+    explicit ClusterSDK(const std::shared_ptr<SQLRouterOptions>& options);
 
     ~ClusterSDK() override;
     bool Init() override;
@@ -146,11 +149,12 @@ class ClusterSDK : public DBSDK {
     bool TriggerNotify(::openmldb::type::NotifyType type) const override;
 
     zk::ZkClient* GetZkClient() override { return zk_client_; }
-    const ClusterOptions& GetClusterOptions() const { return options_; }
 
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override;
 
     void RefreshExternalFun(const std::vector<std::string>& funs);
+
+    std::shared_ptr<BasicRouterOptions> GetOptions() const override { return options_; }
 
  protected:
     bool BuildCatalog() override;
@@ -166,7 +170,7 @@ class ClusterSDK : public DBSDK {
     void RefreshTaskManagerClient();
 
  private:
-    ClusterOptions options_;
+    std::shared_ptr<SQLRouterOptions> options_;
     uint64_t session_id_;
     std::string table_root_path_;
     std::string sp_root_path_;
@@ -182,7 +186,7 @@ class ClusterSDK : public DBSDK {
 
 class StandAloneSDK : public DBSDK {
  public:
-    StandAloneSDK(std::string host, int port) : host_(std::move(host)), port_(port) {}
+    explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {}
 
     ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;
@@ -201,15 +205,17 @@ class StandAloneSDK : public DBSDK {
         return false;
     }
 
-    const std::string& GetHost() const { return host_; }
+    std::shared_ptr<BasicRouterOptions> GetOptions() const override { return options_; }
 
-    int GetPort() const { return port_; }
+    const std::string& GetHost() const { return options_->host; }
+
+    int GetPort() const { return options_->port; }
 
     // Before connecting to ns, we only have the host&port
     // NOTICE: when we call this method, we do not have the correct ns client, do not GetNsClient.
     bool GetNsAddress(std::string* endpoint, std::string* real_endpoint) override {
         std::stringstream ss;
-        ss << host_ << ":" << port_;
+        ss << GetHost() << ":" << GetPort();
         *endpoint = ss.str();
         *real_endpoint = ss.str();
         return true;
@@ -232,8 +238,7 @@ class StandAloneSDK : public DBSDK {
     }
 
  private:
-    std::string host_;
-    int port_;
+    std::shared_ptr<StandaloneOptions> options_;
     ::baidu::common::ThreadPool pool_{1};
 };
 

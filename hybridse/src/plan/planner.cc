@@ -759,6 +759,20 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 plan_trees.push_back(deploy_plan_node);
                 break;
             }
+            case ::hybridse::node::kCreateUserStmt: {
+                auto node = dynamic_cast<node::CreateUserNode *>(parser_tree);
+                auto create_user_plan_node = node_manager_->MakeNode<node::CreateUserPlanNode>(node->Name(),
+                        node->IfNotExists(), node->Options());
+                plan_trees.push_back(create_user_plan_node);
+                break;
+            }
+            case ::hybridse::node::kAlterUserStmt: {
+                auto node = dynamic_cast<node::AlterUserNode *>(parser_tree);
+                auto alter_user_plan_node = node_manager_->MakeNode<node::AlterUserPlanNode>(node->Name(),
+                        node->IfExists(), node->Options());
+                plan_trees.push_back(alter_user_plan_node);
+                break;
+            }
             case ::hybridse::node::kSetStmt: {
                 CHECK_TRUE(is_batch_mode_, common::kPlanError,
                            "Non-support SET Op in online serving");

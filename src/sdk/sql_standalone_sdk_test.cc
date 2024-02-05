@@ -882,7 +882,8 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::StandaloneEnv env;
     env.SetUp();
     // connect to nameserver
-    ::openmldb::sdk::DBSDK *cs = new ::openmldb::sdk::StandAloneSDK("127.0.0.1", env.GetNsPort());
+    auto sopt = std::make_shared<::openmldb::sdk::StandaloneOptions>("127.0.0.1", env.GetNsPort());
+    ::openmldb::sdk::DBSDK *cs = new ::openmldb::sdk::StandAloneSDK(sopt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;

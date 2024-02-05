@@ -13,20 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.http_test.v230;
+package com._4paradigm.openmldb.http_test.tmp;
 
 
-import com._4paradigm.openmldb.http_test.common.BaseTest;
-import com._4paradigm.openmldb.http_test.common.ClusterTest;
-import com._4paradigm.openmldb.http_test.executor.RestfulExecutor;
+import com._4paradigm.openmldb.http_test.executor.RestfulOnlineExecutor;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
-import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 import org.testng.annotations.Test;
+import com._4paradigm.openmldb.test_common.common.BaseTest;
+import com._4paradigm.openmldb.test_common.model.SQLCase;
 
-public class TestInsert extends ClusterTest {
-    @Yaml(filePaths = "/restful/v230/test_insert.yaml")
-    @Test(dataProvider = "getCase")
-    public void testInsert(RestfulCase restfulCase){
-        new RestfulExecutor(executor, restfulCase).run();
+@Feature("select api request")
+// 
+public class TestSelect  {
+    @Test(dataProvider = "getCase",dataProviderClass = BaseTest.class)
+    @Yaml(filePaths = "integration_test/select/")
+    @Story("select api request")
+     public void testBatch(SQLCase sqlCase){
+        new RestfulOnlineExecutor(sqlCase).run();
     }
+
+
 }

@@ -47,10 +47,11 @@ class APIServerTestEnv : public testing::Environment {
         mc = std::make_shared<sdk::MiniCluster>(FLAGS_zk_port);
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
-        sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = mc->GetZkCluster();
-        cluster_options.zk_path = mc->GetZkPath();
+        auto cluster_options = std::make_shared<sdk::SQLRouterOptions>();;
+        cluster_options->zk_cluster = mc->GetZkCluster();
+        cluster_options->zk_path = mc->GetZkPath();
         // Owned by server_process
+
         cluster_sdk = new ::openmldb::sdk::ClusterSDK(cluster_options);
         ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";
         server_process = std::make_shared<APIServerImpl>("127.0.0.1:8010");  // fake endpoint for metrics
