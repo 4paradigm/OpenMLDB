@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "node/node_manager.h"
 #include "proto/name_server.pb.h"
 #include "proto/type.pb.h"
@@ -58,6 +59,8 @@ class NodeAdapter {
             const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
             const std::vector<Condition>& condition_vec,
             DeleteOption* option);
+
+    static absl::StatusOr<std::string> ExtractUserOption(const hybridse::node::OptionsMap& map);
 
  private:
     static hybridse::sdk::Status CheckCondition(

@@ -22,8 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include "codegen/ir_base_builder.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 
 #include "base/fe_status.h"
@@ -34,8 +34,7 @@
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
-#include "udf/udf.h"
-#include "vm/sql_compiler.h"
+#include "vm/jit_wrapper.h"
 
 namespace hybridse {
 namespace codegen {
@@ -360,8 +359,7 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyArg(
             ::llvm::Value* alloca;
             if (TypeIRBuilder::IsStructPtr(expect_ty)) {
                 auto struct_builder =
-                    StructTypeIRBuilder::CreateStructTypeIRBuilder(
-                        function->getEntryBlock().getModule(), expect_ty);
+                    StructTypeIRBuilder::CreateStructTypeIRBuilder(function->getEntryBlock().getModule(), expect_ty);
                 struct_builder->CreateDefault(&function->getEntryBlock(),
                                               &alloca);
                 arg = builder.CreateSelect(

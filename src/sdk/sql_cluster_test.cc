@@ -121,13 +121,19 @@ TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
 
     router->ExecuteSQL(db, "deploy " + deploy_name + " select col1 from " + table_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
-    router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
+    std::string sql = absl::StrCat("deploy ", deploy_name,
+            " OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\") select col1 from ", db, ".", table_name, ";");
+    router->ExecuteSQL(db2, sql, &status);
     ASSERT_TRUE(status.IsOK());
 
-    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    auto rs = router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
-    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->GetStringUnsafe(0).find("OPTIONS") == std::string::npos);
+    rs = router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->GetStringUnsafe(0).find("OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\")") != std::string::npos);
 
     router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());

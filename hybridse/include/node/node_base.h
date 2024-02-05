@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "base/fe_object.h"
-#include "glog/logging.h"
 #include "node/node_enum.h"
 
 namespace hybridse {

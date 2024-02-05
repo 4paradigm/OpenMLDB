@@ -121,6 +121,10 @@ public class TaskManagerConfig {
         return getInt("zookeeper.max_connect_waitTime");
     }
 
+    public static String getUser() { return getString("user"); }
+
+    public static String getPassword() { return getString("password"); }
+
     public static String getSparkMaster() {
         return getString("spark.master");
     }
@@ -281,6 +285,14 @@ public class TaskManagerConfig {
 
         if (props.getProperty("zookeeper.session_timeout") == null) {
             props.setProperty("zookeeper.session_timeout", "5000");
+        }
+
+        if (props.getProperty("user") == null) {
+            props.setProperty("user", "root");
+        }
+
+        if (props.getProperty("password") == null) {
+            props.setProperty("password", "");
         }
 
         if (getZkSessionTimeout() <= 0) {

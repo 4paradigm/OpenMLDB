@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "base/slice.h"
 #include "base/status.h"
 #include "common/timer.h"
@@ -102,7 +103,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
                 return false;
             }
             uint32_t ts_idx = *((uint32_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
-                                          TS_POS_LEN));
+                                            TS_POS_LEN));
             bool has_found = false;
             for (const auto& index : indexs) {
                 auto ts_col = index->GetTsColumn();
@@ -110,7 +111,7 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
                     return false;
                 }
                 if (ts_col->GetId() == ts_idx &&
-                        index->GetTTL()->ttl_type == openmldb::storage::TTLType::kAbsoluteTime) {
+                    index->GetTTL()->ttl_type == openmldb::storage::TTLType::kAbsoluteTime) {
                     real_ttl = index->GetTTL()->abs_ttl;
                     has_found = true;
                     break;
@@ -172,7 +173,8 @@ class DiskTable : public Table {
 
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
 
-    bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) override;
+    absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
+                     bool put_if_absent) override;
 
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts,
              std::string& value);  // NOLINT
@@ -230,7 +232,7 @@ class DiskTable : public Table {
     uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
-    int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override;  // NOLINT
 
  private:
     base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);

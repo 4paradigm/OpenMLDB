@@ -27,14 +27,12 @@
 #include "absl/status/status.h"
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
-#include "rapidjson/document.h"  // raw rapidjson 1.1.0, not in butil
-#include "proto/api_server.pb.h"
-#include "sdk/sql_cluster_router.h"
-#include "sdk/sql_request_row.h"
-
-#include "absl/status/status.h"
 #include "bvar/bvar.h"
 #include "bvar/multi_dimension.h"  // latency recorder
+#include "proto/api_server.pb.h"
+#include "rapidjson/document.h"  // raw rapidjson 1.1.0, not in butil
+#include "sdk/sql_cluster_router.h"
+#include "sdk/sql_request_row.h"
 
 namespace openmldb {
 namespace apiserver {
@@ -51,7 +49,7 @@ class APIServerImpl : public APIServer {
  public:
     explicit APIServerImpl(const std::string& endpoint);
     ~APIServerImpl() override;
-    bool Init(const sdk::ClusterOptions& options);
+    bool Init(const std::shared_ptr<::openmldb::sdk::SQLRouterOptions>& options);
     bool Init(::openmldb::sdk::DBSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;

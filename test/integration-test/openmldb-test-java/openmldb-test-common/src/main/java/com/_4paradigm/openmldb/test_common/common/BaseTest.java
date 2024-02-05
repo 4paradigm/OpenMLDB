@@ -22,7 +22,6 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 import org.testng.Assert;
 import org.testng.ITest;
 import org.testng.annotations.BeforeMethod;
@@ -31,13 +30,9 @@ import org.testng.annotations.DataProvider;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Method;
 
-/**
- * @author zhaowei
- * @date 2021/3/12 7:52 AM
- */
+
 @Slf4j
 public class BaseTest implements ITest {
-//    protected static final Logger logger = new LogProxy(log);
     private ThreadLocal<String> testName = new ThreadLocal<>();
     private int testNum = 0;
 

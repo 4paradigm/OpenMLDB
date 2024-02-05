@@ -36,7 +36,7 @@ APIServerImpl::APIServerImpl(const std::string& endpoint)
 
 APIServerImpl::~APIServerImpl() = default;
 
-bool APIServerImpl::Init(const sdk::ClusterOptions& options) {
+bool APIServerImpl::Init(const std::shared_ptr<::openmldb::sdk::SQLRouterOptions>& options) {
     // If cluster sdk is needed, use ptr, don't own it. SQLClusterRouter owns it.
     auto cluster_sdk = new ::openmldb::sdk::ClusterSDK(options);
     bool ok = cluster_sdk->Init();

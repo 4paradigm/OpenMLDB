@@ -44,9 +44,9 @@ class APIServerTestEnv : public testing::Environment {
         mc = std::make_shared<sdk::MiniCluster>(6181);
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
-        sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = mc->GetZkCluster();
-        cluster_options.zk_path = mc->GetZkPath();
+        auto cluster_options = std::make_shared<sdk::SQLRouterOptions>();;
+        cluster_options->zk_cluster = mc->GetZkCluster();
+        cluster_options->zk_path = mc->GetZkPath();
         // Owned by queue_svc
         cluster_sdk = new ::openmldb::sdk::ClusterSDK(cluster_options);
         ASSERT_TRUE(cluster_sdk->Init()) << "Fail to connect to db";

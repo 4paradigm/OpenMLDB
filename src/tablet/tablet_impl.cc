@@ -43,6 +43,7 @@
 #include "base/proto_util.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "base/sys_info.h"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "codec/codec.h"
@@ -77,6 +78,7 @@ DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
 DECLARE_uint32(max_memory_mb);
 DECLARE_double(mem_release_rate);
+DECLARE_int32(get_sys_mem_interval);
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
@@ -136,7 +138,7 @@ TabletImpl::TabletImpl()
       replicators_(),
       snapshots_(),
       zk_client_(nullptr),
-      keep_alive_pool_(1),
+      trivial_task_pool_(1),
       task_pool_(FLAGS_task_pool_size),
       io_pool_(FLAGS_io_pool_size),
       snapshot_pool_(FLAGS_snapshot_pool_size),
@@ -155,7 +157,7 @@ TabletImpl::TabletImpl()
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
-    keep_alive_pool_.Stop(true);
+    trivial_task_pool_.Stop(true);
     gc_pool_.Stop(true);
     io_pool_.Stop(true);
     snapshot_pool_.Stop(true);
@@ -317,6 +319,9 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
 #endif
+#if defined(__linux__)
+    trivial_task_pool_.DelayTask(FLAGS_get_sys_mem_interval, boost::bind(&TabletImpl::UpdateMemoryUsage, this));
+#endif
     return true;
 }
 
@@ -403,7 +408,7 @@ bool TabletImpl::RegisterZK() {
             LOG(WARNING) << "add notify watcher failed";
             return false;
         }
-        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+        trivial_task_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
     }
     return true;
 }
@@ -436,6 +441,21 @@ bool TabletImpl::CheckGetDone(::openmldb::api::GetType type, uint64_t ts, uint64
             }
     }
     return false;
+}
+
+void TabletImpl::UpdateMemoryUsage() {
+    base::SysInfo info;
+    if (auto status = base::GetSysMem(&info); status.OK()) {
+        if (info.mem_total > 0) {
+            system_memory_usage_rate_.store(info.mem_used * 100 / info.mem_total, std::memory_order_relaxed);
+            DEBUGLOG("system_memory_usage_rate is %u", system_memory_usage_rate_.load(std::memory_order_relaxed));
+        } else {
+            PDLOG(WARNING, "total memory is zero");
+        }
+    } else {
+        PDLOG(WARNING, "GetSysMem run failed. error message %s", status.GetMsg().c_str());
+    }
+    trivial_task_pool_.DelayTask(FLAGS_get_sys_mem_interval, boost::bind(&TabletImpl::UpdateMemoryUsage, this));
 }
 
 int32_t TabletImpl::GetIndex(const ::openmldb::api::GetRequest* request, const ::openmldb::api::TableMeta& meta,
@@ -718,7 +738,8 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     if (request->ts_dimensions_size() > 0) {
         entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
     }
-    bool ok = false;
+
+    absl::Status st;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table->GetIdxCnt());
         if (ret_code != 0) {
@@ -727,16 +748,27 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             return;
         }
         DLOG(INFO) << "put data to tid " << tid << " pid " << pid << " with key " << request->dimensions(0).key();
-        ok = table->Put(entry.ts(), entry.value(), entry.dimensions());
+        // 1. normal put: ok, invalid data
+        // 2. put if absent: ok, exists but ignore, invalid data
+        st = table->Put(entry.ts(), entry.value(), entry.dimensions(), request->put_if_absent());
     }
-    if (!ok) {
+
+    if (!st.ok()) {
+        if (request->put_if_absent() && absl::IsAlreadyExists(st)) {
+            // not a failure but shounld't write log entry
+            response->set_code(::openmldb::base::ReturnCode::kOk);
+            response->set_msg("exists but ignore");
+            return;
+        }
+        LOG(WARNING) << st.ToString();
         response->set_code(::openmldb::base::ReturnCode::kPutFailed);
-        response->set_msg("put failed");
+        response->set_msg(st.ToString());
         return;
     }
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     std::shared_ptr<LogReplicator> replicator;
+    bool ok = false;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
@@ -950,7 +982,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             total_block_size += data.size();
         }
         record_count++;
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
+        if (FLAGS_scan_max_bytes_size > 0 && total_block_size > FLAGS_scan_max_bytes_size) {
             *is_finish = false;
             break;
         }
@@ -1780,7 +1812,7 @@ void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::
         uint32_t byte_size = 0;
         uint32_t count = 0;
         for (auto& output_row : output_rows) {
-            if (byte_size > FLAGS_scan_max_bytes_size) {
+            if (FLAGS_scan_max_bytes_size > 0 && byte_size > FLAGS_scan_max_bytes_size) {
                 LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " truncate result";
                 response->set_schema(session.GetEncodedSchema());
                 response->set_byte_size(byte_size);
@@ -2314,9 +2346,8 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
             return;
         }
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-            table->Delete(entry);
-        }
-        if (!table->Put(entry)) {
+            table->Delete(entry);         // TODO(hw): error handle
+        } else if (!table->Put(entry)) {  // put if type is not delete
             PDLOG(WARNING, "fail to put entry. tid %u pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kFailToAppendEntriesToReplicator);
             response->set_msg("fail to append entry to table");
@@ -3592,12 +3623,6 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
             return {::openmldb::base::ReturnCode::kTableMetaIsIllegal, "fail to init table"};
         }
         new_table->SetTableStat(::openmldb::storage::kNormal);
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            tables_[tid].insert_or_assign(pid, new_table);
-        }
-        auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
-        mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
         if (table_meta->mode() == ::openmldb::api::TableMode::kTableLeader) {
             if (catalog_->AddTable(*table_meta, new_table)) {
                 LOG(INFO) << "add table " << table_meta->name() << " to catalog with db " << table_meta->db();
@@ -3607,6 +3632,14 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
                 return {::openmldb::base::ReturnCode::kCatalogUpdateFailed, "fail to update catalog"};
             }
         }
+        {
+            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            tables_[tid].insert_or_assign(pid, new_table);
+        }
+        auto mem_snapshot = std::dynamic_pointer_cast<storage::MemTableSnapshot>(snapshot);
+        mem_snapshot->Truncate(replicator->GetOffset(), replicator->GetLeaderTerm());
+        // running ResetTable after this function return
+        task_pool_.DelayTask(10, boost::bind(&TabletImpl::ResetTable, this, table));
     } else {
         auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
         if (auto status = disk_table->Truncate(); !status.OK()) {
@@ -4389,7 +4422,7 @@ void TabletImpl::CheckZkClient() {
                 PDLOG(INFO, "registe zk ok");
             }
         }
-        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+        trivial_task_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
     }
 }
 

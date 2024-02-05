@@ -34,6 +34,7 @@ constexpr const char* INTERNAL_DB = "__INTERNAL_DB";
 constexpr const char* PRE_AGG_DB = "__PRE_AGG_DB";
 constexpr const char* JOB_INFO_NAME = "JOB_INFO";
 constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
+constexpr const char* USER_INFO_NAME = "USER";
 
 
 constexpr const char* INFORMATION_SCHEMA_DB = "INFORMATION_SCHEMA";
@@ -47,6 +48,7 @@ enum class SystemTableType {
     kPreAggMetaInfo = 2,
     kGlobalVariable = 3,
     kDeployResponseTime,
+    kUser,
 };
 
 struct SystemTableInfo {
@@ -154,6 +156,19 @@ class SystemTable {
                 index->set_index_name("index");
                 index->add_col_name("DEPLOY_NAME");
                 index->add_col_name("TIME");
+                auto ttl = index->mutable_ttl();
+                ttl->set_ttl_type(::openmldb::type::kLatestTime);
+                ttl->set_lat_ttl(1);
+                break;
+            }
+            case SystemTableType::kUser: {
+                SetColumnDesc("user", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("password", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("create_time", type::DataType::kTimestamp, table_info->add_column_desc());
+                SetColumnDesc("update_time", type::DataType::kTimestamp, table_info->add_column_desc());
+                auto index = table_info->add_column_key();
+                index->set_index_name("index");
+                index->add_col_name("user");
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kLatestTime);
                 ttl->set_lat_ttl(1);

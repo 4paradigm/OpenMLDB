@@ -60,7 +60,7 @@ endfunction(compile_lib)
 
 set(TEST_LIBS
     openmldb_test_base apiserver nameserver tablet query_response_time openmldb_sdk
-    openmldb_catalog schema client zk_client storage replica base openmldb_codec openmldb_proto log
+    openmldb_catalog client zk_client storage schema replica openmldb_codec base openmldb_proto log
     common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
     # GNU implementation prior to 9.1 requires linking with -lstdc++fs

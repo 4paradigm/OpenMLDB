@@ -409,7 +409,7 @@ Status EngineTestRunner::Compile() {
         DLOG(INFO) << "Physical plan:\n" << oss.str();
 
         std::ostringstream runner_oss;
-        std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())->GetClusterJob().Print(runner_oss, "");
+        std::dynamic_pointer_cast<SqlCompileInfo>(session_->GetCompileInfo())->GetClusterJob()->Print(runner_oss, "");
         DLOG(INFO) << "Runner plan:\n" << runner_oss.str();
     }
     return status;

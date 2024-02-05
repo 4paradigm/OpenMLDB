@@ -443,13 +443,13 @@ void IndexMapBuilder::Report(absl::string_view db, absl::string_view table, absl
     // we encode table, keys and ts to one string
     auto index = Encode(db, table, keys, ts);
     if (index.empty()) {
-        LOG(WARNING) << "index encode failed for table " << table;
+        LOG(WARNING) << "index encode failed for table " << db << "." << table;
         return;
     }
 
     if (index_map_.find(index) != index_map_.end()) {
         // index id has unique idx, can't be dup. It's a weird case
-        LOG(DFATAL) << "index " << index << " existed in cache";
+        LOG(DFATAL) << db << "." << table << " index " << index << " existed in cache";
         return;
     }
 

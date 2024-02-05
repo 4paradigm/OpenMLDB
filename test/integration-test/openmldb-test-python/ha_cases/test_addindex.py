@@ -24,6 +24,7 @@ sys.path.append(f"{cur_path}/../util")
 from cluster_manager import ClusterManager
 from tool import Executor
 from tool import Status
+from tool import SystemUtil
 import openmldb.dbapi
 
 class TestAddIndex:
@@ -43,7 +44,6 @@ class TestAddIndex:
     @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("memory", False)])
     def test_addindex(self, storage_mode, snapshot):
         database = "test"
-        tablets = self.manager.GetComponents("tablet")
         self.cursor.execute(f"create database if not exists {database}")
         self.cursor.execute(f"use {database}")
         table_name = "table" + str(random.randint(0, 10000))
@@ -91,4 +91,44 @@ class TestAddIndex:
                 assert status.OK() and len(result) == 2 and result[0][0] == "key1" + str(i)
             else:
                 assert status.OK() and len(result) == 1 and result[0][0] == "key1" + str(i)
+        self.cursor.execute(f"drop table {table_name}")
+
+    def test_add_deleted_index(self):
+        database = "test"
+        self.cursor.execute(f"create database if not exists {database}")
+        self.cursor.execute(f"use {database}")
+        table_name = "table" + str(random.randint(0, 10000))
+        partition_num = 1
+        ddl = f"create table if not exists {table_name} (col1 string, col2 string, col3 bigint, index(key=col1, ts=col3), index(key=col1)) options (partitionnum=1, replicanum=1);"
+        self.cursor.execute(ddl)
+        status, indexs = self.executor.GetIndexs(database, table_name)
+        assert status.OK() and len(indexs) == 2
+        try:
+            result = self.cursor.execute(f"create index index2 on {table_name} (col1)")
+        except Exception as e:
+            assert True
+        index1 = indexs[1].GetName()
+        try:
+            result = self.cursor.execute(f"create index {index1} on {table_name} (col1)")
+            assert False
+        except Exception as e:
+            assert True
+        self.cursor.execute(f"drop index {table_name}.{index1}")
+        status, indexs = self.executor.GetIndexs(database, table_name)
+        assert status.OK() and len(indexs) == 1
+        status, table = self.executor.GetTablePartition(database, table_name)
+        assert status.OK()
+        tid = table['0'][0].GetTid()
+        tablets = self.manager.GetComponents("tablet")
+        for tablet in tablets:
+            json = "{\"tid\": %d, \"pid\":0 }" % int(tid)
+            cmd = f"curl -d \'{json}\' http://{tablet}/TabletServer/ExecuteGc"
+            SystemUtil.ExecuteCmd(cmd)
+            time.sleep(1)
+            SystemUtil.ExecuteCmd(cmd)
+        result = self.cursor.execute(f"create index index2 on {table_name} (col1)")
+        assert self.executor.WaitingOP(database, table_name, 0).OK()
+        status, indexs = self.executor.GetIndexs(database, table_name)
+        assert status.OK() and len(indexs) == 2
+
         self.cursor.execute(f"drop table {table_name}")

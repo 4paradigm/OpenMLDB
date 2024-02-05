@@ -371,12 +371,14 @@ typedef std::vector<SqlNode *> NodePointVector;
 // supported as:
 // - ADD PATH
 // - DROP PATH
+// - SET OPTIONS
 // all else is unsupported
 class AlterActionBase : public base::FeBaseObject {
  public:
     enum class ActionKind {
         ADD_PATH = 0,
-        DROP_PATH
+        DROP_PATH,
+        SET_OPTIONS
     };
 
     explicit AlterActionBase(ActionKind k) : kind_(k) {}
@@ -406,6 +408,16 @@ class DropPathAction : public AlterActionBase {
     std::string target_;
 };
 
+class SetOptionsAction : public AlterActionBase {
+ public:
+    explicit SetOptionsAction(std::shared_ptr<OptionsMap> options)
+        : AlterActionBase(ActionKind::SET_OPTIONS), options_(options) {}
+    std::string DebugString() const override;
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::shared_ptr<OptionsMap> options_;
+};
 
 class AlterTableStmt: public SqlNode {
  public:
@@ -450,9 +462,7 @@ class ExprNode : public SqlNode {
     uint32_t GetChildNum() const { return children_.size(); }
 
     const ExprType GetExprType() const { return expr_type_; }
-    void PushBack(ExprNode *node_ptr) { children_.push_back(node_ptr); }
 
-    std::vector<ExprNode *> children_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual const std::string GetExprString() const;
     virtual const std::string GenerateExpressionName() const;
@@ -542,6 +552,8 @@ class ExprNode : public SqlNode {
     static Status RlikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
                                  const TypeNode** output);
 
+    std::vector<ExprNode *> children_;
+
  private:
     const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;
@@ -570,8 +582,24 @@ class ArrayExpr : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
-    // array type may specific already in SQL, e.g. ARRAY<FLOAT>[1,2,3]
+    // array type may specified type in SQL already, e.g. ARRAY<FLOAT>[1,2,3]
     TypeNode* specific_type_ = nullptr;
+};
+
+// extract value from array or map value, using '[]' operator
+class ArrayElementExpr : public ExprNode {
+ public:
+    ArrayElementExpr(ExprNode *array, ExprNode *pos);
+    ~ArrayElementExpr() override {}
+
+    ExprNode *array() const;
+    ExprNode *position() const;
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    ArrayElementExpr *ShadowCopy(NodeManager *nm) const override;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
 class FnNode : public SqlNode {
@@ -1836,48 +1864,86 @@ class ResTarget : public SqlNode {
     NodePointVector indirection_; /* subscripts, field names, and '*', or NIL */
 };
 
+class ColumnSchemaNode : public SqlNode {
+ public:
+    ColumnSchemaNode(DataType type, bool attr_not_null, const ExprNode *default_val = nullptr)
+        : SqlNode(kColumnSchema, 0, 0), type_(type), not_null_(attr_not_null), default_value_(default_val) {}
+
+    ColumnSchemaNode(DataType type, absl::Span<const ColumnSchemaNode *const> generics, bool attr_not_null,
+                     const ExprNode *default_val)
+        : SqlNode(kColumnSchema, 0, 0),
+          type_(type),
+          generics_(generics.begin(), generics.end()),
+          not_null_(attr_not_null),
+          default_value_(default_val) {}
+    ~ColumnSchemaNode() override {}
+
+    DataType type() const { return type_; }
+    absl::Span<const ColumnSchemaNode *const> generics() const { return generics_; }
+    bool not_null() const { return not_null_; }
+    const ExprNode *default_value() const { return default_value_; }
+
+    std::string DebugString() const;
+
+ private:
+    DataType type_;
+    std::vector<const ColumnSchemaNode *> generics_;
+    bool not_null_;
+    const ExprNode* default_value_ = nullptr;
+};
+
 class ColumnDefNode : public SqlNode {
  public:
-    ColumnDefNode() : SqlNode(kColumnDesc, 0, 0), column_name_(""), column_type_() {}
-    ColumnDefNode(const std::string &name, const DataType &data_type, bool op_not_null, ExprNode *default_value)
-        : SqlNode(kColumnDesc, 0, 0),
-          column_name_(name),
-          column_type_(data_type),
-          op_not_null_(op_not_null),
-          default_value_(default_value) {}
+    ColumnDefNode(const std::string &name, const ColumnSchemaNode *schema)
+        : SqlNode(kColumnDesc, 0, 0), column_name_(name), schema_(schema) {}
     ~ColumnDefNode() {}
 
     std::string GetColumnName() const { return column_name_; }
 
-    DataType GetColumnType() const { return column_type_; }
+    DataType GetColumnType() const { return schema_->type(); }
 
-    ExprNode* GetDefaultValue() const { return default_value_; }
+    const ExprNode* GetDefaultValue() const { return schema_->default_value(); }
 
-    bool GetIsNotNull() const { return op_not_null_; }
+    bool GetIsNotNull() const { return schema_->not_null(); }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string column_name_;
-    DataType column_type_;
-    bool op_not_null_;
-    ExprNode* default_value_ = nullptr;
+    const ColumnSchemaNode* schema_;
 };
 
 class InsertStmt : public SqlNode {
  public:
+    // ref zetasql ASTInsertStatement
+     enum InsertMode {
+        DEFAULT_MODE,  // plain INSERT
+        REPLACE,       // INSERT OR REPLACE
+        UPDATE,        // INSERT OR UPDATE
+        IGNORE         // INSERT OR IGNORE
+    };
+
     InsertStmt(const std::string &db_name,
                const std::string &table_name,
                const std::vector<std::string> &columns,
-               const std::vector<ExprNode *> &values)
+               const std::vector<ExprNode *> &values,
+               InsertMode insert_mode)
         : SqlNode(kInsertStmt, 0, 0),
           db_name_(db_name),
           table_name_(table_name),
           columns_(columns),
           values_(values),
-          is_all_(columns.empty()) {}
+          is_all_(columns.empty()),
+          insert_mode_(insert_mode) {}
 
-    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values)
-        : SqlNode(kInsertStmt, 0, 0), db_name_(db_name), table_name_(table_name), values_(values), is_all_(true) {}
+    InsertStmt(const std::string &db_name, const std::string &table_name, const std::vector<ExprNode *> &values,
+               InsertMode insert_mode)
+        : SqlNode(kInsertStmt, 0, 0),
+          db_name_(db_name),
+          table_name_(table_name),
+          values_(values),
+          is_all_(true),
+          insert_mode_(insert_mode) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     const std::string db_name_;
@@ -1885,6 +1951,7 @@ class InsertStmt : public SqlNode {
     const std::vector<std::string> columns_;
     const std::vector<ExprNode *> values_;
     const bool is_all_;
+    const InsertMode insert_mode_;
 };
 
 class StorageModeNode : public SqlNode {
@@ -2284,6 +2351,38 @@ class CreateIndexNode : public SqlNode {
     const std::string db_name_;
     const std::string table_name_;
     node::ColumnIndexNode *index_;
+};
+
+class CreateUserNode : public SqlNode {
+ public:
+    explicit CreateUserNode(const std::string &name,
+            bool if_not_exists, const std::shared_ptr<OptionsMap>& options)
+        : SqlNode(kCreateUserStmt, 0, 0),
+        name_(name), if_not_exists_(if_not_exists), options_(options) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string& Name() const { return name_; }
+    bool IfNotExists() const { return if_not_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    bool if_not_exists_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
+class AlterUserNode : public SqlNode {
+ public:
+    explicit AlterUserNode(const std::string &name, bool if_exists, const std::shared_ptr<OptionsMap>& options)
+        : SqlNode(kAlterUserStmt, 0, 0), name_(name), if_exists_(if_exists), options_(options) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string& Name() const { return name_; }
+    bool IfExists() const { return if_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    bool if_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
 };
 
 class ExplainNode : public SqlNode {

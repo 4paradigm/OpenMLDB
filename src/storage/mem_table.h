@@ -51,7 +51,8 @@ class MemTable : public Table {
 
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
 
-    bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) override;
+    absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
+                     bool put_if_absent) override;
 
     bool GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response);
 

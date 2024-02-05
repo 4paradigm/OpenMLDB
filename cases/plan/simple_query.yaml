@@ -644,3 +644,4 @@ cases:
                   +-[kTablePlan]
                     +-table: t
               +-alias: t1
+

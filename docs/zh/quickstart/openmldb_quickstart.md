@@ -38,11 +38,15 @@ docker run -it 4pdosc/openmldb:0.8.4 bash
 
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+# 或脚本
+/work/openmldb/sbin/openmldb-cli.sh
 ```
 
 成功启动 OpenMLDB CLI 后如下图显示：
 
 ![image](./images/cli_cluster.png)
+
+如果你需要对 OpenMLDB 集群进行配置修改，/work/init.sh使用的是sbin一键部署方式，具体参考[一键部署](../deploy/install_deploy.md#部署方式一一键部署推荐)。
 
 ## 使用流程
 
