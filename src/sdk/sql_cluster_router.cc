@@ -4850,7 +4850,7 @@ void SQLClusterRouter::AddUserToConfig(std::map<std::string, std::string>* confi
             }
             std::map<uint32_t, std::string> index_val = { {val.second, val.first} };
             uint64_t end_ts = cur_ts > 0 ? cur_ts - 1 : 0;
-            DeleteOption option(val.second, val.first, index.ts_name(), cur_ts, end_ts);
+            DeleteOption option(val.second, val.first, "", cur_ts, end_ts);
             option.enable_decode_value = false;
             client->Delete(table_info.tid(), kv.first, option, options_->request_timeout);
         }
