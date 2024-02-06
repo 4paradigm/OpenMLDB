@@ -372,7 +372,7 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& 
     std::vector<uint32_t> stmt_column_idx_arr;
     bool put_if_absent = false;
     if (!GetInsertInfo(db, sql, status, &table_info, &default_map, &str_length, &stmt_column_idx_arr, &put_if_absent)) {
-        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "get insert information failed");
+        PREPEND_AND_WARN(status, "fail to get insert info");
         return {};
     }
     auto schema = openmldb::schema::SchemaAdapter::ConvertSchema(table_info->column_desc());
@@ -1215,7 +1215,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     std::vector<DefaultValueMap> default_maps;
     std::vector<uint32_t> str_lengths;
-    bool put_if_absent;
+    bool put_if_absent = false;
     if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths, &put_if_absent)) {
         CODE_PREPEND_AND_WARN(status, StatusCode::kCmdError, "Fail to get insert info");
         return false;
@@ -1232,17 +1232,8 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     std::vector<size_t> fails;
     for (size_t i = 0; i < default_maps.size(); i++) {
         auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i], put_if_absent);
-        if (!row) {
-            LOG(WARNING) << "fail to parse row[" << i << "]";
-            fails.push_back(i);
-            continue;
-        }
-        if (!row->Init(0)) {
-            LOG(WARNING) << "fail to encode row[" << i << " for table " << table_info->name();
-            fails.push_back(i);
-            continue;
-        }
-        if (!row->IsComplete()) {
+        if (!row || !row->Init(0) || !row->IsComplete()) {
+            // TODO(hw): SQLInsertRow or DefaultValueMap needs print helper function
             LOG(WARNING) << "fail to build row[" << i << "]";
             fails.push_back(i);
             continue;
@@ -1280,19 +1271,20 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
-                    auto ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
-                            insert_memory_usage_limit_.load(std::memory_order_relaxed), row->IsPutIfAbsent());
+                    auto ret =
+                        client->Put(tid, pid, cur_ts, row->GetRow(), kv.second,
+                                    insert_memory_usage_limit_.load(std::memory_order_relaxed), row->IsPutIfAbsent());
                     if (!ret.OK()) {
-                        if (RevertPut(row->GetTableInfo(), pid, dimensions, cur_ts,
-                                    base::Slice(row->GetRow()), tablets).IsOK()) {
+                        if (RevertPut(row->GetTableInfo(), pid, dimensions, cur_ts, base::Slice(row->GetRow()), tablets)
+                                .IsOK()) {
                             SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                    absl::StrCat("INSERT failed, tid ", tid));
+                                                absl::StrCat("INSERT failed, tid ", tid));
                         } else {
                             SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                    "INSERT failed, tid " + std::to_string(tid) +
-                                    ". Note that data might have been partially inserted. "
-                                    "You are encouraged to perform DELETE to remove any partially "
-                                    "inserted data before trying INSERT again.");
+                                                "INSERT failed, tid " + std::to_string(tid) +
+                                                    ". Note that data might have been partially inserted. "
+                                                    "You are encouraged to perform DELETE to remove any partially "
+                                                    "inserted data before trying INSERT again.");
                         }
                         return false;
                     }
@@ -1361,8 +1353,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
 }
 
 bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
-                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) {
+                                     hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                                     hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent,
+                                     hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (dimension == nullptr || dimension_len <= 0 || value == nullptr || len <= 0 || partition_num <= 0) {
         *status = {StatusCode::kCmdError, "invalid parameter"};
@@ -1404,13 +1397,14 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint() << " with dimensions size "
                                << kv.second.size();
                     auto ret = client->Put(tid, pid, cur_ts, row_value, &kv.second,
-                            insert_memory_usage_limit_.load(std::memory_order_relaxed), put_if_absent);
+                                           insert_memory_usage_limit_.load(std::memory_order_relaxed), put_if_absent);
                     if (!ret.OK()) {
+                        // TODO(hw): show put failed row(readable)? ::hybridse::codec::RowView::GetRowString?
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "INSERT failed, tid " + std::to_string(tid) +
-                                ". Note that data might have been partially inserted. "
-                                "You are encouraged to perform DELETE to remove any partially "
-                                "inserted data before trying INSERT again.");
+                                            "INSERT failed, tid " + std::to_string(tid) +
+                                                ". Note that data might have been partially inserted. "
+                                                "You are encouraged to perform DELETE to remove any partially "
+                                                "inserted data before trying INSERT again.");
                         std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
                         for (const auto& val : dimensions_map) {
                             std::vector<std::pair<std::string, uint32_t>> vec;
@@ -1423,9 +1417,10 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
                         if (!table_info) {
                             return false;
                         }
+                        // TODO(hw): better to return absl::Status
                         if (RevertPut(*table_info, pid, dimensions, cur_ts, row_value, tablets).IsOK()) {
                             SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                    absl::StrCat("INSERT failed, tid ", tid));
+                                                absl::StrCat("INSERT failed, tid ", tid));
                         }
                         return false;
                     }
@@ -2051,7 +2046,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             const auto& args = cmd_node->GetArgs();
             return ExecuteShowTableStatus(db, args.size() > 0 ? args[0] : "", status);
         }
-        default: { *status = {StatusCode::kCmdError, "fail to execute script with unsupported type"}; }
+        default: {
+            *status = {StatusCode::kCmdError, "fail to execute script with unsupported type"};
+        }
     }
     return {};
 }
@@ -2840,7 +2837,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             if (!cluster_sdk_->IsClusterMode() || is_local.value()) {
                 if (cluster_sdk_->IsClusterMode() && !IsOnlineMode()) {
                     *status = {::hybridse::common::StatusCode::kCmdError,
-                        "local load only supports loading data to online storage"};
+                               "local load only supports loading data to online storage"};
                     return {};
                 }
 
@@ -2860,7 +2857,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     *status = {::hybridse::common::StatusCode::kCmdError, st.ToString()};
                     return {};
                 }
-                // Load data locally
+                // Load data locally, report error in status
                 *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), options_parser);
             } else {
                 // Load data using Spark
@@ -3298,7 +3295,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
 
     auto thread = options_parser.GetAs<int64_t>("thread");
     if (!thread.ok()) {
-        return {StatusCode::kCmdError, "thread option get failed" + options_parser.ToString()};
+        return {StatusCode::kCmdError, "thread option get failed " + options_parser.ToString()};
     }
     auto thread_num = thread.value();
     std::vector<uint64_t> counts(thread_num);
@@ -3370,27 +3367,30 @@ hybridse::sdk::Status SQLClusterRouter::LoadDataSingleFile(int id, int step, con
     std::vector<std::string> cols;
     auto deli = options_parser.GetAs<std::string>("delimiter");
     auto quote = options_parser.GetAs<std::string>("quote");
-    if (!deli.ok() || !quote.ok()) {
-        return {StatusCode::kCmdError, "delimiter/quote option get failed" + options_parser.ToString()};
+    auto null_value = options_parser.GetAs<std::string>("null_value");
+    if (!deli.ok() || !quote.ok() || !null_value.ok()) {
+        return {StatusCode::kCmdError, "delimiter/quote/null_value option get failed " + options_parser.ToString()};
     }
+    // peek the first line, check the column size and if it's a header
     ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, deli.value(), &cols,
                                                       quote.value().empty() ? '\0' : quote.value()[0]);
     auto schema = GetTableSchema(database, table);
     if (!schema) {
-        return {StatusCode::kCmdError, "table does not exist"};
+        return {StatusCode::kTableNotFound, "table does not exist"};
     }
     if (static_cast<int>(cols.size()) != schema->GetColumnCnt()) {
         return {StatusCode::kCmdError, "mismatch column size"};
     }
     auto header = options_parser.GetAs<bool>("header");
     if (!header.ok()) {
-        return {StatusCode::kCmdError, "header option get failed" + options_parser.ToString()};
+        return {StatusCode::kCmdError, "header option get failed " + options_parser.ToString()};
     }
     if (header.value()) {
         // the first line is the column names, check if equal with table schema
         for (int i = 0; i < schema->GetColumnCnt(); ++i) {
             if (cols[i] != schema->GetColumnName(i)) {
-                return {StatusCode::kCmdError, "mismatch column name"};
+                return {StatusCode::kCmdError, absl::StrCat("mismatch column name ", cols[i], " ",
+                                                            schema->GetColumnName(i), " in file ", file_path)};
             }
         }
         // then read the first row of data
@@ -3410,19 +3410,12 @@ hybridse::sdk::Status SQLClusterRouter::LoadDataSingleFile(int id, int step, con
             str_cols_idx.emplace_back(i);
         }
     }
+
     int64_t i = 0;
     do {
         // only process the line assigned to its own id
         if (i % step == id) {
             cols.clear();
-            std::string error;
-            auto deli = options_parser.GetAs<std::string>("delimiter");
-            auto quote = options_parser.GetAs<std::string>("quote");
-            auto null_value = options_parser.GetAs<std::string>("null_value");
-            if (!deli.ok() || !quote.ok() || !null_value.ok()) {
-                return {StatusCode::kCmdError,
-                        "delimiter/quote/null_value option get failed" + options_parser.ToString()};
-            }
             ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, deli.value(), &cols,
                                                               quote.value().empty() ? '\0' : quote.value()[0]);
             auto ret = InsertOneRow(database, insert_placeholder, str_cols_idx, null_value.value(), cols);
@@ -3470,9 +3463,14 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
     for (int i = 0; i < cnt; ++i) {
         if (!::openmldb::codec::AppendColumnValue(cols[i], schema->GetColumnType(i), schema->IsColumnNotNull(i),
                                                   null_value, row)) {
-            return {StatusCode::kCmdError, "translate to insert row failed"};
+            return {StatusCode::kCmdError, absl::StrCat("translate failed on column ", schema->GetColumnName(i), "(", i,
+                                                        ") with value ", cols[i])};
         }
     }
+    if (!row->IsComplete()) {
+        return {StatusCode::kCmdError, "row is not complete: " + absl::StrJoin(cols, ",")};
+    }
+
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
         RETURN_NOT_OK_PREPEND(status, "insert row failed");
     }
@@ -3781,8 +3779,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         return get_index_status;
     }
     std::stringstream index_stream;
-    for (auto[db, db_map] : new_index_map) {
-        for (auto[table, index_list] : db_map) {
+    for (auto [db, db_map] : new_index_map) {
+        for (auto [table, index_list] : db_map) {
             for (auto index : index_list) {
                 index_stream << db << "-" << table << "-";
                 for (auto col : index.col_name()) {
@@ -4834,8 +4832,8 @@ void SQLClusterRouter::AddUserToConfig(std::map<std::string, std::string>* confi
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
     for (const auto& kv : dimensions) {
         if (static_cast<size_t>(kv.first) > tablets.size()) {
-            return {StatusCode::kCmdError, absl::StrCat("pid ", kv.first,
-                    " is greater than the tablets size ", tablets.size())};
+            return {StatusCode::kCmdError,
+                    absl::StrCat("pid ", kv.first, " is greater than the tablets size ", tablets.size())};
         }
         auto tablet = tablets[kv.first];
         if (!tablet) {
@@ -4854,12 +4852,12 @@ void SQLClusterRouter::AddUserToConfig(std::map<std::string, std::string>* confi
             if (!index.ts_name().empty()) {
                 if (auto it = column_map.find(index.ts_name()); it == column_map.end()) {
                     return {StatusCode::kCmdError, absl::StrCat("invalid ts name ", index.ts_name())};
-                } else if (row_view.GetInteger(data, it->second,
-                            table_info.column_desc(it->second).data_type(), &cur_ts) != 0) {
+                } else if (row_view.GetInteger(data, it->second, table_info.column_desc(it->second).data_type(),
+                                               &cur_ts) != 0) {
                     return {StatusCode::kCmdError, "get ts failed"};
                 }
             }
-            std::map<uint32_t, std::string> index_val = { {val.second, val.first} };
+            std::map<uint32_t, std::string> index_val = {{val.second, val.first}};
             uint64_t end_ts = cur_ts > 0 ? cur_ts - 1 : 0;
             client->Delete(table_info.tid(), kv.first, index_val, "", cur_ts, end_ts);
         }

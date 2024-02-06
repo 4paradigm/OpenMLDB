@@ -69,14 +69,16 @@ public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
             ResultSetMetaData metaData = preparedStatement.getMetaData();
             Preconditions.checkState(record.numFields() == metaData.getColumnCount());
             OpenmldbDataWriter.addRow(record, preparedStatement);
-            // check return for put result
+            
             // you can cache failed rows and throw exception when commit/close,
             // but it still may interrupt other writers(pending or slow writers)
+
+            // check return for put result
             if(!preparedStatement.execute()) {
                 throw new IOException("execute failed");
             }
         } catch (Exception e) {
-            throw new IOException("write row to openmldb failed on " + record, e);
+            throw new IOException("write row to openmldb failed on " + OpenmldbDataWriter.readable(record, preparedStatement), e);
         }
     }
 
