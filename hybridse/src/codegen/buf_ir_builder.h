@@ -25,7 +25,6 @@
 #include "codegen/row_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "codegen/variable_ir_builder.h"
-#include "vm/catalog.h"
 
 namespace hybridse {
 namespace codegen {
@@ -33,7 +32,7 @@ namespace codegen {
 class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  public:
     BufNativeEncoderIRBuilder(CodeGenContextBase* ctx, const std::map<uint32_t, NativeValue>* outputs,
-                              const vm::Schema* schema);
+                              const codec::Schema* schema);
 
     ~BufNativeEncoderIRBuilder() override;
 
@@ -55,10 +54,6 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
                               ::llvm::Value* str_addr_space, ::llvm::Value* str_body_offset, uint32_t str_field_idx,
                               ::llvm::Value** output);
 
-    // encode SQL map data type into row
-    base::Status AppendMapVal(const type::ColumnSchema& sc, llvm::Value* i8_ptr, uint32_t field_idx,
-                              const NativeValue& val, llvm::Value* str_addr_space, llvm::Value* str_body_offset,
-                              uint32_t str_field_idx, llvm::Value** next_str_body_offset);
     absl::StatusOr<llvm::Function*> GetOrBuildAppendMapFn(const type::ColumnSchema& sc) const;
 
     base::Status AppendHeader(::llvm::Value* i8_ptr, ::llvm::Value* size,
@@ -74,7 +69,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  private:
     CodeGenContextBase* ctx_;
     const std::map<uint32_t, NativeValue>* outputs_;
-    const vm::Schema* schema_;
+    const codec::Schema* schema_;
     uint32_t str_field_start_offset_;
     // n = offset_vec_[i] is
     //   schema_[i] is base type (except string): col encode offset in row

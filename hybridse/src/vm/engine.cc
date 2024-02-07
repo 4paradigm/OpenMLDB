@@ -15,19 +15,22 @@
  */
 
 #include "vm/engine.h"
+
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "absl/time/clock.h"
 #include "boost/none.hpp"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "udf/default_udf_library.h"
+#include "vm/internal/node_helper.h"
 #include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
-#include "vm/sql_compiler.h"
-#include "vm/internal/node_helper.h"
 #include "vm/runner_ctx.h"
+#include "vm/sql_compiler.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -52,10 +55,15 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog), options_
 Engine::Engine(const std::shared_ptr<Catalog>& catalog, const EngineOptions& options)
     : cl_(catalog), options_(options), mu_(), lru_cache_() {}
 Engine::~Engine() {}
+
 void Engine::InitializeGlobalLLVM() {
+    // not thread safe, but is generally fine to call multiple times
     if (LLVM_IS_INITIALIZED) return;
+
+    absl::Time begin = absl::Now();
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
+    LOG(INFO) << "initialize llvm native target and asm printer, takes " << absl::Now() - begin;
     LLVM_IS_INITIALIZED = true;
 }
 

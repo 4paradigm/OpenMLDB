@@ -276,7 +276,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset, 
 
 BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(CodeGenContextBase* ctx,
                                                      const std::map<uint32_t, NativeValue>* outputs,
-                                                     const vm::Schema* schema)
+                                                     const codec::Schema* schema)
     : ctx_(ctx),
       outputs_(outputs),
       schema_(schema),
