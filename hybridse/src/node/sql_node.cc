@@ -53,6 +53,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdUseDatabase, "use database"},
         {CmdType::kCmdDropDatabase, "drop database"},
         {CmdType::kCmdDropUser, "drop user"},
+        {CmdType::kCmdShowUser, "show user"},
         {CmdType::kCmdCreateDatabase, "create database"},
         {CmdType::kCmdDescTable, "desc table"},
         {CmdType::kCmdDropTable, "drop table"},
