@@ -17,10 +17,8 @@
 #ifndef HYBRIDSE_SRC_VM_JIT_H_
 #define HYBRIDSE_SRC_VM_JIT_H_
 
-#include <map>
 #include <memory>
 #include <string>
-#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "vm/jit_wrapper.h"
 

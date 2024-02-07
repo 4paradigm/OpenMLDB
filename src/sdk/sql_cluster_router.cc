@@ -480,10 +480,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
     if (!jit->Init()) {
         return false;
     }
-    if (!hybridse::vm::HybridSeJitWrapper::InitJitSymbols(jit.get())) {
-        return false;
-    }
-    ::hybridse::codegen::InsertRowBuilder insert_builder(jit, &sc);
+    ::hybridse::codegen::InsertRowBuilder insert_builder(jit.get(), &sc);
 
     size_t total_rows_size = insert_stmt->values_.size();
     for (size_t i = 0; i < total_rows_size; i++) {

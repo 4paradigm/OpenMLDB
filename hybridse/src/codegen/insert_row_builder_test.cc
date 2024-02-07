@@ -54,9 +54,8 @@ TEST_F(InsertRowBuilderTest, encode) {
 
     auto jit = std::shared_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::Create());
     ASSERT_TRUE(jit->Init());
-    ASSERT_TRUE(vm::HybridSeJitWrapper::InitJitSymbols(jit.get()));
 
-    InsertRowBuilder builder(jit, &sc);
+    InsertRowBuilder builder(jit.get(), &sc);
 
     auto as = builder.ComputeRow(dynamic_cast<node::ExprListNode*>(exprlist));
     ASSERT_TRUE(as.ok()) << as.status();
