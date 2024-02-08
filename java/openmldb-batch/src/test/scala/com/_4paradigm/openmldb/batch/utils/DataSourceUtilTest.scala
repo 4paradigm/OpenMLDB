@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.batch.utils
 import com._4paradigm.openmldb.batch.PlanContext
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
+import com._4paradigm.openmldb.batch.utils.DataSourceUtil.autoLoad
 import com._4paradigm.openmldb.proto.{Common, Type}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.SparkConf
@@ -27,7 +27,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.AnalysisException
 import org.scalatest.Matchers
 
-class HybridseUtilTest extends SparkTestSuite with Matchers {
+class DataSourceUtilTest extends SparkTestSuite with Matchers {
   var openmldbSession: OpenmldbSession = _
 
   override def customizedBefore(): Unit = {
