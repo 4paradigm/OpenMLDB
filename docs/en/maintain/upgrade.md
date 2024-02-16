@@ -5,7 +5,7 @@ Here is the impact when upgrading OpenMLDB:
     - add an extra replica before upgrading and delete it afterwards (achieved by `pre-upgrade` and `post-upgrade`). Then it has the same behavior as the multi-replica case
     - if it is acceptable that the table may be unavailable during the upgrade, users can specify `--allow_single_replica` during `pre-upgrade`, which can avoid OOM caused by adding a replica if memory is limited
 * If the table is multi-replica, we will migrate the leader partitions in the tablet to be upgraded to other tablets, and migrate back after the upgrade. If there is write traffic during the upgrade, there may be data loss.
-*
+
 ```{note}
 We'll use the normal mode(background) to start the components. If you want to start them in daemon mode, please use `bash bin/start.sh start <component> mon`. In daemon mode, `bin/<component>.pid` is the mon pid，`bin/<component>.pid.child` is the component pid. The mon process is not the system service, if the mon process crashed, the component process becomes the normal background process.
 ```
@@ -110,4 +110,3 @@ The remaining steps for upgrading TaskManager are the same as the steps mentione
   ```bash
   pip install openmldb=={NEW_VERSION}
   ```
-  

@@ -1,4 +1,4 @@
-# Operations in CLI
+# Operations CLI
 
 * [NS Client](#ns-client)
 * [Tablet Client](#tablet-client)
