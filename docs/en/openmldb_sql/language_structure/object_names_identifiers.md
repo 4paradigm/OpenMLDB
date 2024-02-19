@@ -6,7 +6,7 @@ Object names are used to name all objects in OpenMLDB, including databases, tabl
 
 ## Identifier
 
-Identifiers can be enclosed in backticks, i.e. `SELECT * FROM t` can also be written as `SELECT * FROM `t`. But if there is at least one special symbol in the identifier, or it is a reserved keyword, it must be enclosed in backticks to refer to the schema object it represents.
+Identifiers can be enclosed in backticks, i.e. `SELECT * FROM t` can also be written as `SELECT * FROM `t``. But if there is at least one special symbol in the identifier, or it is a reserved keyword, it must be enclosed in backticks to refer to the schema object it represents.
 
 ```sql
 CREATE TABLE `JOIN` (`select` INT);
