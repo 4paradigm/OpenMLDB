@@ -63,7 +63,7 @@ As shown below, left table `LAST JOIN` right table with `ORDER BY` and right tab
 
 ## 3. Multi-Row Aggregation  over Multiple Tables
 
-For aggregation over multiple tables, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../openmldb_sql/dql/WINDOW_CLAUSE.md#1window--union) syntax. 
+For aggregation over multiple tables, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../openmldb_sql/dql/WINDOW_CLAUSE.md#1-window--union) syntax. 
 WINDOW UNION supports combining multiple pieces of data from the secondary table to form a window on secondary table.
 Based on the time window, it is convenient to construct the multi-row aggregation feature of the secondary table. 
 Similarly, two steps need to be completed to construct the multi-row aggregation feature of the secondary table:
