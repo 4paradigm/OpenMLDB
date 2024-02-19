@@ -63,7 +63,7 @@ As shown below, left table `LAST JOIN` right table with `ORDER BY` and right tab
 
 ## 3. Multi-Row Aggregation  over Multiple Tables
 
-For aggregation over multiple tables, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) syntax. 
+For aggregation over multiple tables, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../openmldb_sql/sql/dql/WINDOW_CLAUSE.md#window--union) syntax. 
 WINDOW UNION supports combining multiple pieces of data from the secondary table to form a window on secondary table.
 Based on the time window, it is convenient to construct the multi-row aggregation feature of the secondary table. 
 Similarly, two steps need to be completed to construct the multi-row aggregation feature of the secondary table:
@@ -122,10 +122,10 @@ Among them, necessary elements include:
   - Lower bound time  must be > = Upper bound time
   - The row number of lower bound must be < = The row number of upper bound
 - `INSTANCE_NOT_IN_WINDOW`: It indicates that except for the current row, other data in the main table will not enter the window.
-- For more syntax and features, please refer to [OpenMLDB WINDOW UNION Reference Manual](../reference/sql/dql/WINDOW_CLAUSE.md).
+- For more syntax and features, please refer to [OpenMLDB WINDOW UNION Reference Manual](../openmldb_sql/sql/dql/WINDOW_CLAUSE.md).
 ```
 
-### Example
+#### Example
 
 Let's see the usage of WINDOW UNION through specific examples. 
 
@@ -166,7 +166,7 @@ PARTITION BY mid ORDER BY purchase_time
 ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ```
 
-## 3.2 Step 2: Build Multi-Row Aggregation Feature of Sub Table
+### 3.2 Step 2: Build Multi-Row Aggregation Feature of Sub Table
 
 Apply the multi-row aggregation function on the created window to construct aggregation features on multi-rows of secondary table, so that the number of rows finally generated is the same as that of the main table. 
 For example, we can construct features from the secondary table like: the total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. 
