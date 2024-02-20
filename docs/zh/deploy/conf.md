@@ -281,6 +281,7 @@ hadoop.user.name=
 
 Spark Config中重点关注的配置如下：
 
+<a id="about-config-env"></a>
 ```{note}
 理解配置项与环境变量的关系。
 
@@ -310,7 +311,10 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 - 离线表的存储地址`offline.data.prefix`，默认为`file:///tmp/openmldb_offline_storage/`，即TaskManager所在主机的`/tmp`目录，你可以修改该配置为其他目录。
   - 可以配置为HDFS路径，如果配置为HDFS路径，需要正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop配置文件所在目录（注意该目录是Spark运行节点目录，不是部署节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`等配置文件，更多见[Spark官方文档](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
     - 在 `conf/taskmanager.properties` 配置文件中配置变量 `hadoop.conf.dir`, `hadoop.user.name`
-    - 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`（环境变量生效范围参考 `Spark Config详解` 章节中 `理解配置项与环境变量的关系`）
+    - 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`
+      > sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用第一种方法。还需要注意的是环境变量`HADOOP_CONF_DIR`, `HADOOP_USER_NAME`需要永久生效，也就是说最好在`/etc/profile`, `~/.bash_profile` 或 `~/.zprofile` 文件中 `export HADOOP_CONF_DIR=` 和 `export HADOOP_USER_NAME=`。
+      > 
+      > 环境变量生效范围参考 <a href="#about-config-env">理解配置项与环境变量的关系</a>
     - 拷贝Hadoop配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中
   ```{note}
   HDFS路径目前需要配置`namenode.uri`，删除离线表时会连接HDFS FileSystem`namenode.uri`，并删除离线表的存储目录（Offline Table Path）。未来将废弃此配置项。
@@ -325,6 +329,9 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 - 正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop和Yarn配置文件所在目录（注意该目录是Spark运行节点目录，不是部署节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`, `yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
   - 在 `conf/taskmanager.properties` 配置文件中配置变量 `hadoop.conf.dir`, `hadoop.user.name`
   - 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`
+    > sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用第一种方法。还需要注意的是环境变量`HADOOP_CONF_DIR`, `HADOOP_USER_NAME`需要永久生效，也就是说最好在`/etc/profile`, `~/.bash_profile` 或 `~/.zprofile` 文件中 `export HADOOP_CONF_DIR=` 和 `export HADOOP_USER_NAME=`。
+    > 
+    > 环境变量生效范围参考 <a href="#about-config-env">理解配置项与环境变量的关系</a>
   - 拷贝Hadoop和Yarn配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中
 - `spark.yarn.jars`配置Yarn需要读取的Spark运行jar包地址，必须是`hdfs://`地址。可以上传[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)解压后的`jars`目录到HDFS上，并配置为`hdfs://<hdfs_path>/jars/*`（注意通配符）。[如果不配置该参数，Yarn会将`$SPARK_HOME/jars`打包上传分发，并且每次离线任务都要分发](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#preparations)，效率较低，所以推荐配置。
 - `batchjob.jar.path`必须是HDFS路径（具体到包名），上传batchjob jar包到HDFS上，并配置为对应地址，保证Yarn集群上所有Worker可以获得batchjob包。
