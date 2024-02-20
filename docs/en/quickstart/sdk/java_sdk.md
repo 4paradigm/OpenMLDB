@@ -66,7 +66,7 @@ The default execution mode for JDBC Connection is `online`.
 
 ### Statement
 
-All SQL commands can be executed using `Statement`, both in online and offline modes. To switch between offline and online modes, use command `SET @@execute_mode='...';``. For example:
+All SQL commands can be executed using `Statement`, both in online and offline modes. To switch between offline and online modes, use command `SET @@execute_mode='...';`. For example:
 
 ```java
 Statement stmt = connection.createStatement();
