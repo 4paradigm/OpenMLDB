@@ -69,9 +69,9 @@ After deploying feature scripts and accessing online data, the real-time feature
 
 The online request mode requires three inputs:
 
-1. SQL feature script, which is the SQL script used in the feature deployment and online process, specifying the calculation logic for feature extraction.
-2. Online data, which is the online data that has been imported during cold start or in real-time. Generally, it is the latest data for window computing in conjunction with SQL. For example, if the aggregation function in the SQL script defines a time window of the latest three months, then the online storage needs to retain the corresponding latest three months of data.
-3. Real-time request row, which includes the current real-time behavior and is used for real-time feature extraction. For example, credit card information in anti-fraud scenarios or search keywords in recommendation scenarios.
+- SQL feature script, which is the SQL script used in the feature deployment and online process, specifying the calculation logic for feature extraction.
+- Online data, which is the online data that has been imported during cold start or in real-time. Generally, it is the latest data for window computing in conjunction with SQL. For example, if the aggregation function in the SQL script defines a time window of the latest three months, then the online storage needs to retain the corresponding latest three months of data.
+- Real-time request row, which includes the current real-time behavior and is used for real-time feature extraction. For example, credit card information in anti-fraud scenarios or search keywords in recommendation scenarios.
 
 Based on the above inputs, for each real-time request row, the online request mode will return a feature extraction result. The computing logic is as follows: The request row is virtually inserted into the correct position of the online data table based on the logic in the SQL script (such as `PARTITION BY`, `ORDER BY`, etc.), and then only the feature aggregation computing is performed on that row, returning the unique corresponding extraction result. The following diagram intuitively explains the operation process of the online request mode.
 
@@ -80,11 +80,7 @@ Based on the above inputs, for each real-time request row, the online request mo
 Online request mode is supported in the following ways:
 
 - OpenMLDB CLI: Not supported
-
-- [REST API](https://openmldb.ai/docs/zh/main/quickstart/sdk/rest_api.html): Supports requests for single or multiple request rows
-
-- [Java SDK](https://openmldb.ai/docs/zh/main/quickstart/sdk/java_sdk.html): Supports requests for single or multiple request rows
-
-- [Python SDK](https://openmldb.ai/docs/zh/main/quickstart/sdk/python_sdk.html): Only supports requests for a single request row
-
-- [C++ SDK](https://openmldb.ai/docs/zh/main/quickstart/sdk/cxx_sdk.html): Only supports requests for a single request row
+- [REST API](../sdk/rest_api.md): Supports requests for single or multiple request rows
+- [Java SDK](../sdk/java_sdk.md): Supports requests for single or multiple request rows
+- [Python SDK](../sdk/python_sdk.md): Only supports requests for a single request row
+- [C++ SDK](../sdk/cxx_sdk.md): Only supports requests for a single request row
