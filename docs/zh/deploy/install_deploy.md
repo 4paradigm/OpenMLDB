@@ -21,25 +21,7 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 
 如果需要部署 ZooKeeper 和 TaskManager，则需要有 Java 运行环境。
 
-> Zookeeper 3.4.14需要Java 1.7 - Java 1.8版本。
-> Zookeeper Client使用JDK18版本，发现以下已知错误
-> ```
-> 2024-02-21 12:00:54,088 [myid:] - INFO  [main:ZooKeeper@442] - Initiating client connection, connectString=localhost:7181 sessionTimeout=30000 watcher=org.apache.zookeeper.ZooKeeperMain$MyWatcher@3c679bde
-> Welcome to ZooKeeper!
-> JLine support is enabled
-> [zk: localhost:7181(CONNECTING) 0] 2024-02-21 12:00:54,206 [myid:] - WARN  [main-SendThread(localhost:7181):ClientCnxn$SendThread@1164] - Session 0x0 for server localhost/<unresolved>:7181, unexpected error, closing socket connection and attempting reconnect
-> java.lang.IllegalArgumentException: Unable to canonicalize address localhost/<unresolved>:7181 because it's not resolvable
-> at org.apache.zookeeper.SaslServerPrincipal.getServerPrincipal(SaslServerPrincipal.java:65)
-> at org.apache.zookeeper.SaslServerPrincipal.getServerPrincipal(SaslServerPrincipal.java:41)
-> at org.apache.zookeeper.ClientCnxn$SendThread.startConnect(ClientCnxn.java:1001)
-> at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1060)
-> 2024-02-21 12:00:55,317 [myid:] - WARN  [main-SendThread(localhost:7181):ClientCnxn$SendThread@1164] - Session 0x0 for server localhost/<unresolved>:7181, unexpected error, closing socket connection and attempting reconnect
-> java.lang.IllegalArgumentException: Unable to canonicalize address localhost/<unresolved>:7181 because it's not resolvable
-> at org.apache.zookeeper.SaslServerPrincipal.getServerPrincipal(SaslServerPrincipal.java:65)
-> at org.apache.zookeeper.SaslServerPrincipal.getServerPrincipal(SaslServerPrincipal.java:41)
-> at org.apache.zookeeper.ClientCnxn$SendThread.startConnect(ClientCnxn.java:1001)
-> at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1060)
-> ```
+> Zookeeper 3.4.14需要 `Java 1.7` - `Java 17` 版本。推荐使用 `Java 1.8` 或 `Java 11` 版本。
 
 ### 硬件
 
