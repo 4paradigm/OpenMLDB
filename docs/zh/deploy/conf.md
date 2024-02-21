@@ -312,7 +312,7 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
   - 可以配置为HDFS路径，如果配置为HDFS路径，需要正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop配置文件所在目录（注意该目录是Spark运行节点目录，不是部署节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`等配置文件，更多见[Spark官方文档](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
     - 在 `conf/taskmanager.properties` 配置文件中配置变量 `hadoop.conf.dir`, `hadoop.user.name`
     - 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`
-      > sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用第一种方法。还需要注意的是环境变量`HADOOP_CONF_DIR`, `HADOOP_USER_NAME`需要永久生效，也就是说最好在`/etc/profile`, `~/.bash_profile` 或 `~/.zprofile` 文件中 `export HADOOP_CONF_DIR=` 和 `export HADOOP_USER_NAME=`。
+      > sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用第一种方法。如果使用第二种方式，配置的环境变量`HADOOP_CONF_DIR`, `HADOOP_USER_NAME` 需要是永久生效的（除非不使用sbin部署，可以在一个session里，先临时配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME` ，然后启动TaskManager）。
       > 
       > 环境变量生效范围参考 <a href="#about-config-env">理解配置项与环境变量的关系</a>
     - 拷贝Hadoop配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中
@@ -329,7 +329,7 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 - 正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop和Yarn配置文件所在目录（注意该目录是Spark运行节点目录，不是部署节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`, `yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
   - 在 `conf/taskmanager.properties` 配置文件中配置变量 `hadoop.conf.dir`, `hadoop.user.name`
   - 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`
-    > sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用第一种方法。还需要注意的是环境变量`HADOOP_CONF_DIR`, `HADOOP_USER_NAME`需要永久生效，也就是说最好在`/etc/profile`, `~/.bash_profile` 或 `~/.zprofile` 文件中 `export HADOOP_CONF_DIR=` 和 `export HADOOP_USER_NAME=`。
+    > sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用第一种方法。如果使用第二种方式，配置的环境变量`HADOOP_CONF_DIR`, `HADOOP_USER_NAME` 需要是永久生效的（除非不使用sbin部署，可以在一个session里，先临时配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME` ，然后启动TaskManager）。
     > 
     > 环境变量生效范围参考 <a href="#about-config-env">理解配置项与环境变量的关系</a>
   - 拷贝Hadoop和Yarn配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中
