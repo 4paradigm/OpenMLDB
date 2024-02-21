@@ -35,7 +35,7 @@ setup(
     ],
     extras_require={'test': [
         "pytest",
-        "tox",
+        "tox==4.12.1",
     ]},
     include_package_data=True,
     package_data={'': ['*.so']},
