@@ -458,6 +458,7 @@ struct UserInfo {
     std::string password;
     uint64_t create_time = 0;
     uint64_t update_time = 0;
+    std::string privileges;
 };
 
 class Bias {
