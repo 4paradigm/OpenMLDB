@@ -16,7 +16,7 @@
 FROM centos:7
 
 ARG ZETASQL_VERSION=0.3.3
-ARG THIRDPARTY_VERSION=0.6.1
+ARG THIRDPARTY_VERSION=0.6.0
 ARG TARGETARCH
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
