@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.openmldb.spark.OpenmldbTable;
 import com.google.common.base.Preconditions;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.write.DataWriter;
@@ -75,7 +76,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             addRow(record, preparedStatement);
             preparedStatement.addBatch();
         } catch (Exception e) {
-            throw new IOException("convert to openmldb row failed on " + record, e);
+            throw new IOException("convert to openmldb row failed on " + readable(record, preparedStatement), e);
         }
     }
 
@@ -123,6 +124,19 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
                 default:
                     throw new RuntimeException("unsupported sql type " + type);
             }
+        }
+    }
+
+    static String readable(InternalRow record, PreparedStatement preparedStatement) {
+        try {
+            ResultSetMetaData metaData = preparedStatement.getMetaData();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < record.numFields(); i++) {
+                sb.append(record.get(i, OpenmldbTable.sdkTypeToSparkType(metaData.getColumnType(i + 1)))).append(",");
+            }
+            return sb.toString();
+        } catch (SQLException e) {
+            return "readable error: " + e.getMessage();
         }
     }
 

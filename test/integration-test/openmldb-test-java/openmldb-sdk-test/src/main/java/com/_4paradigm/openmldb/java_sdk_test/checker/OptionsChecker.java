@@ -54,7 +54,7 @@ public class OptionsChecker extends BaseChecker {
         String url = String.format("http://%s/dbs/%s/tables/%s",apiserverEndpoint,dbName,tableName);
         Tool.sleep(3000);
         HttpResult httpResult = HttpRequest.get(url);
-        String resultData = httpResult.getData();
+        String resultData = httpResult.getData().toString();
         Object partitionNum = JsonPath.read(resultData, "$.table.partition_num");
         Object replicaNum = JsonPath.read(resultData, "$.table.replica_num");
         Map<String, Object> options = expect.getOptions();

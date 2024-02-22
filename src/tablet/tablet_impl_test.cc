@@ -176,6 +176,7 @@ void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLT
 }
 
 void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
+    table_meta->set_db("db1");
     table_meta->set_name("t0");
     table_meta->set_pid(1);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
@@ -191,6 +192,7 @@ void AddDefaultAggregatorBaseSchema(::openmldb::api::TableMeta* table_meta) {
 }
 
 void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
+    table_meta->set_db("db1");
     table_meta->set_name("pre_aggr_1");
     table_meta->set_pid(1);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);

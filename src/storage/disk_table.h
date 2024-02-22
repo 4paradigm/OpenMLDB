@@ -115,9 +115,6 @@ class DiskTable : public Table {
 
     base::Status Truncate();
 
-    bool Delete(uint32_t idx, const std::string& pk, const std::optional<uint64_t>& start_ts,
-                const std::optional<uint64_t>& end_ts) override;
-
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
     uint64_t GetRecordCnt() override {
@@ -168,6 +165,10 @@ class DiskTable : public Table {
     void GcData(const TTLSt& ttl, rocksdb::Iterator* it, rocksdb::ColumnFamilyHandle* handle);
     void GcData(const std::map<uint32_t, TTLSt>& ttl_map, uint32_t min_ts_idx,
             rocksdb::Iterator* it, rocksdb::ColumnFamilyHandle* handle);
+
+    bool Delete(uint32_t idx, const std::string& pk,
+            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) override;
+
 
  private:
     rocksdb::DB* db_;

@@ -49,6 +49,7 @@ class DeleteOption;
 using TableInfoMap = std::map<std::string, std::map<std::string, ::openmldb::nameserver::TableInfo>>;
 
 class Bias;
+struct UserInfo;
 
 class SQLClusterRouter : public SQLRouter {
  public:
@@ -63,6 +64,8 @@ class SQLClusterRouter : public SQLRouter {
     ~SQLClusterRouter() override;
 
     bool Init();
+
+    bool Auth();
 
     bool CreateDB(const std::string& db, hybridse::sdk::Status* status) override;
 
@@ -372,7 +375,7 @@ class SQLClusterRouter : public SQLRouter {
                                        const hybridse::node::ExprNode* condition);
 
     hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
-                                           const DeleteOption* option);
+                                           const DeleteOption& option);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
@@ -424,6 +427,11 @@ class SQLClusterRouter : public SQLRouter {
             int64_t timeout_ms, const base::Slice& row,
             const std::string& router_col, hybridse::sdk::Status* status);
 
+    absl::StatusOr<bool> GetUser(const std::string& name, UserInfo* user_info);
+    hybridse::sdk::Status AddUser(const std::string& name, const std::string& password);
+    hybridse::sdk::Status UpdateUser(const UserInfo& user_info, const std::string& password);
+    hybridse::sdk::Status DeleteUser(const std::string& name);
+    void AddUserToConfig(std::map<std::string, std::string>* config);
     ::hybridse::sdk::Status RevertPut(const nameserver::TableInfo& table_info,
             uint32_t end_pid,
             const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
@@ -443,6 +451,14 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
     std::atomic<uint32_t> insert_memory_usage_limit_ = 0;  // [0-100], the default value 0 means unlimited
+};
+
+struct UserInfo {
+    std::string name;
+    std::string password;
+    uint64_t create_time = 0;
+    uint64_t update_time = 0;
+    std::string privileges;
 };
 
 class Bias {

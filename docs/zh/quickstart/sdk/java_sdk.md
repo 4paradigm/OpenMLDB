@@ -55,6 +55,9 @@ Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localh
 
 // Set database in jdbcUrl
 Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
+
+// Set user and password in jdbcUrl
+Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb&user=root&password=123456");
 ```
 
 Connection 地址指定的 db 在创建连接时必须存在。
@@ -116,6 +119,10 @@ option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
 option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
+// 如果不指定用户名，默认是root
+option.setUser("root");
+// 如果不指定密码，默认是空
+option.setPassword("123456");
 ```
 
 然后使用 SdkOption 创建 Executor。

@@ -131,12 +131,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a-1
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b-1
           |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a-1, b-1]

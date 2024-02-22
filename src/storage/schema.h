@@ -33,9 +33,15 @@ namespace openmldb::storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
 static constexpr uint32_t DEFAULT_TS_COL_ID = UINT32_MAX;
-static constexpr const char* DEFAULT_TS_COL_NAME = "default_ts";
+static constexpr const char* DEFAULT_TS_COL_NAME = "___default_ts___";
 
-enum TTLType { kAbsoluteTime = 1, kRelativeTime = 2, kLatestTime = 3, kAbsAndLat = 4, kAbsOrLat = 5 };
+enum TTLType {
+    kAbsoluteTime = 1,
+    kRelativeTime = 2,
+    kLatestTime = 3,
+    kAbsAndLat = 4,
+    kAbsOrLat = 5
+};
 
 // ttl unit: millisecond
 struct TTLSt {

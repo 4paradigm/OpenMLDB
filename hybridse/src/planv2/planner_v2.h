@@ -35,12 +35,12 @@ using node::PlanNodeList;
 
 class SimplePlannerV2 : public SimplePlanner {
  public:
-    explicit SimplePlannerV2(node::NodeManager *manager) : SimplePlanner(manager, true, false, false) {}
     SimplePlannerV2(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false,
                     bool enable_batch_window_parallelization = false,
                     const std::unordered_map<std::string, std::string> *extra_options = nullptr)
         : SimplePlanner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization,
                         extra_options) {}
+
     base::Status CreateASTScriptPlan(const zetasql::ASTScript *script,
                                      PlanNodeList &plan_trees);  // NOLINT (runtime/references)
 };

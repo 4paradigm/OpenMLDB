@@ -133,9 +133,9 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
         }
         if (match_index_col > 0) {
             if (!option->ts_name.empty()) {
-                option->index_map.clear();
+                option->idx.reset();
             }
-            if (option->index_map.empty()) {
+            if (!option->idx.has_value()) {
                 matched_column_key.CopyFrom(column_key);
             } else {
                 if (column_key.col_name_size() != matched_column_key.col_name_size() ||
@@ -144,7 +144,8 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                     return {hybridse::common::StatusCode::kCmdError, "hit multiple indexs"};
                 }
             }
-            option->index_map.emplace(index_pos[column_key.index_name()], pk);
+            option->idx = index_pos[column_key.index_name()];
+            option->key = pk;
             for (const auto& col : matched_column_key.col_name()) {
                 hit_con_col.insert(col);
             }
@@ -153,7 +154,7 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             }
         }
     }
-    if (!option->ts_name.empty() && !option->index_map.empty() && option->ts_name != matched_column_key.ts_name()) {
+    if (!option->ts_name.empty() && option->idx.has_value() && option->ts_name != matched_column_key.ts_name()) {
         return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
     }
     for (const auto& con : condition_vec) {
@@ -330,7 +331,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         status->code = hybridse::common::kTypeError;
                         return false;
                     }
-                    auto val = TransformDataType(*dynamic_cast<hybridse::node::ConstNode*>(default_val),
+                    auto val = TransformDataType(*dynamic_cast<const hybridse::node::ConstNode*>(default_val),
                                                  add_column_desc->data_type());
                     if (!val) {
                         status->msg = "default value type mismatch";
@@ -780,6 +781,21 @@ hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::Binary
     std::vector<Condition> conditions(*condition_vec);
     conditions.insert(conditions.end(), parameter_vec->begin(), parameter_vec->end());
     return CheckCondition(indexs, conditions);
+}
+
+absl::StatusOr<std::string> NodeAdapter::ExtractUserOption(const hybridse::node::OptionsMap& map) {
+    if (map.empty()) {
+        return "";
+    } else if (map.size() > 1) {
+        return absl::InvalidArgumentError("only password option allowed");
+    }
+    if (!absl::EqualsIgnoreCase(map.begin()->first, "password")) {
+        return absl::InvalidArgumentError("invalid option " + map.begin()->first);
+    }
+    if (map.begin()->second->GetDataType() != hybridse::node::kVarchar) {
+        return absl::InvalidArgumentError("the value of password should be string");
+    }
+    return map.begin()->second->GetAsString();
 }
 
 }  // namespace openmldb::sdk

@@ -189,6 +189,23 @@ cases:
           +-cmd_type: drop database
           +-if_exists: true
           +-args: [db1]
+  - id: drop_user
+    desc: DROP USER IF EXISTS
+    sql: DROP USER IF EXISTS user1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop user
+          +-if_exists: true
+          +-args: [user1]
+  - id: drop_user_1
+    desc: DROP USER
+    sql: DROP USER user1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop user
+          +-args: [user1]
   - id: show_deployments
     desc: show deployments
     sql: SHOW DEPLOYMENTS;

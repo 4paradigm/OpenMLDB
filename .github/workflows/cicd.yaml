@@ -171,6 +171,10 @@ jobs:
         run: |
           echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
 
+      - name: Install Dependencies
+        run: |
+          brew install z3
+
       - name: configure
         env:
           SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
@@ -203,6 +207,13 @@ jobs:
         with:
           path: openmldb-*.tar.gz
           name: release-artifacts
+
+      - name: Upload Event File
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: event-file
+          path: ${{ github.event_path }}
 
   release:
     runs-on: ubuntu-latest

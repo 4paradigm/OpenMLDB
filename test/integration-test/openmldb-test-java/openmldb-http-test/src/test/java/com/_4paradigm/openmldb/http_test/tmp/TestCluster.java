@@ -13,25 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com._4paradigm.openmldb.http_test.v030;
+package com._4paradigm.openmldb.http_test.tmp;
 
-import com._4paradigm.openmldb.http_test.common.ClusterTest;
-import com._4paradigm.openmldb.http_test.common.StandaloneTest;
-import com._4paradigm.openmldb.http_test.executor.RestfulCliExecutor;
-import com._4paradigm.openmldb.http_test.executor.RestfulExecutor;
+import com._4paradigm.openmldb.http_test.executor.RestfulOnlineExecutor;
 import com._4paradigm.openmldb.test_common.provider.Yaml;
-import com._4paradigm.openmldb.test_common.restful.model.RestfulCase;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.testng.annotations.Test;
+import com._4paradigm.openmldb.test_common.common.BaseTest;
+import com._4paradigm.openmldb.test_common.model.SQLCase;
 
-@Feature("deployment")
-public class TestDeployment extends StandaloneTest {
-
-    @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "/restful/v030/test_execute_deployment.yaml")
-    @Story("ExecuteDeployment")
-    public void testExecute(RestfulCase restfulCase){
-        new RestfulCliExecutor(restfulCase).run();
+@Feature("cluster api request")
+public class TestCluster  {
+    @Test(dataProvider = "getCase",dataProviderClass = BaseTest.class)
+    @Yaml(filePaths = "integration_test/cluster/")
+    @Story("cluster api request")
+     public void testBatch(SQLCase sqlCase){
+        new RestfulOnlineExecutor(sqlCase).run();
     }
+
+
 }

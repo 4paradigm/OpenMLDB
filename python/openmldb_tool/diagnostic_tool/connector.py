@@ -23,6 +23,8 @@ flags.DEFINE_string(
     'cluster', '127.0.0.1:2181/openmldb', 'Cluster addr, format: <zk_endpoint>[,<zk_endpoint>]/<zkPath>.',
     short_name='c')
 flags.DEFINE_bool('sdk_log', False, 'print sdk log(pysdk&zk&glog), default is False.')
+flags.DEFINE_string('user', 'root', 'the username to connect OpenMLDB')
+flags.DEFINE_string('password', '', 'config the password')
 
 FLAGS = flags.FLAGS
 
@@ -38,6 +40,9 @@ class Connector(metaclass=Singleton):
         if not FLAGS.sdk_log:
             url += '&zkLogLevel=0&glogLevel=2'
             logging.getLogger('OpenMLDB_sdk').setLevel(logging.WARNING)
+        url += '&user=' + FLAGS.user
+        if FLAGS.password != '':
+            url += '&password=' + FLAGS.password
         self.engine = db.create_engine(url)
         self.conn = self.engine.connect()
 

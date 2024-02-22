@@ -594,6 +594,8 @@ cp conf/apiserver.flags.template conf/apiserver.flags
 **注意：**
 
 * 如果http请求并发度较大，可自行调大APIServer的线程数，`--thread_pool_size`，默认为16，重启生效。
+* 可以通过`--user`和`--password`指定连接服务端的用户名和密码
+* 默认会用root用户空密码去连接服务端，如果修改了root密码，需要用`--password`指定新密码
 
 **3. 启动服务**
 
@@ -655,6 +657,7 @@ cp conf/taskmanager.properties.template conf/taskmanager.properties
 * 修改`offline.data.prefix`为离线表存储路径，如果使用Yarn模式需要修改为对应HDFS路径。
 * 修改`spark.master`为离线任务运行模式，目前支持local和yarn模式。
 * 修改`spark.home`为Spark环境路径，如果不配置或配置为空则使用`SPARK_HOME`环境变量的配置。也可在配置文件中设置，路径为绝对路径。
+* 可以通过`user`和`password`指定连接server端用户名和密码。默认会用root用户空密码去连接服务端，如果修改了root密码，需要指定新密码.
 
 ```
 server.host=172.27.128.33

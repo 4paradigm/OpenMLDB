@@ -722,6 +722,39 @@ class CreateIndexPlanNode : public LeafPlanNode {
     void Print(std::ostream &output, const std::string &orgTab) const;
     const CreateIndexNode *create_index_node_;
 };
+
+class CreateUserPlanNode : public LeafPlanNode {
+ public:
+    explicit CreateUserPlanNode(const std::string& name, bool if_not_exists, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeCreateUser), name_(name), if_not_exists_(if_not_exists), options_(options) {}
+    ~CreateUserPlanNode() = default;
+    void Print(std::ostream &output, const std::string &orgTab) const;
+    const std::string& Name() const { return name_; }
+    bool IfNotExists() const { return if_not_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    const bool if_not_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
+class AlterUserPlanNode : public LeafPlanNode {
+ public:
+    explicit AlterUserPlanNode(const std::string& name, bool if_exists, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeAlterUser), name_(name), if_exists_(if_exists), options_(options) {}
+    ~AlterUserPlanNode() = default;
+    void Print(std::ostream &output, const std::string &orgTab) const;
+    const std::string& Name() const { return name_; }
+    bool IfExists() const { return if_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    const bool if_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class CreateProcedurePlanNode : public MultiChildPlanNode {
  public:
     CreateProcedurePlanNode(const std::string &sp_name, const NodePointVector &input_parameter_list,

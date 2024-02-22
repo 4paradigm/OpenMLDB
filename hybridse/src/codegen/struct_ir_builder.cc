@@ -15,10 +15,15 @@
  */
 
 #include "codegen/struct_ir_builder.h"
+
+#include "absl/status/status.h"
+#include "absl/strings/substitute.h"
+#include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
+
 namespace hybridse {
 namespace codegen {
 StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
@@ -54,6 +59,8 @@ StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(::llvm::Modu
 }
 
 absl::StatusOr<NativeValue> StructTypeIRBuilder::CreateNull(::llvm::BasicBlock* block) {
+    EnsureOK();
+
     ::llvm::Value* value = nullptr;
     if (!CreateDefault(block, &value)) {
         return absl::InternalError(absl::StrCat("fail to construct ", GetLlvmObjectString(GetType())));
@@ -62,16 +69,17 @@ absl::StatusOr<NativeValue> StructTypeIRBuilder::CreateNull(::llvm::BasicBlock* 
     return NativeValue::CreateWithFlag(value, builder.getInt1(true));
 }
 
-::llvm::Type* StructTypeIRBuilder::GetType() { return struct_type_; }
+::llvm::Type* StructTypeIRBuilder::GetType() const { return struct_type_; }
 
-bool StructTypeIRBuilder::Create(::llvm::BasicBlock* block,
+bool StructTypeIRBuilder::Allocate(::llvm::BasicBlock* block,
                                  ::llvm::Value** output) const {
     if (block == NULL || output == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* value = CreateAllocaAtHead(&builder, struct_type_, "struct_alloca");
+    // value is a pointer to struct type
+    ::llvm::Value* value = CreateAllocaAtHead(&builder, struct_type_, GetLlvmObjectString(struct_type_));
     *output = value;
     return true;
 }
@@ -96,22 +104,10 @@ bool StructTypeIRBuilder::Set(::llvm::BasicBlock* block, ::llvm::Value* struct_v
         LOG(WARNING) << "Fail set Struct value: struct pointer is required";
         return false;
     }
-    if (struct_value->getType()->getPointerElementType() != struct_type_) {
-        LOG(WARNING) << "Fail set Struct value: struct value type invalid "
-                     << struct_value->getType()
-                            ->getPointerElementType()
-                            ->getStructName()
-                            .str();
-        return false;
-    }
+
     ::llvm::IRBuilder<> builder(block);
-    builder.getInt64(1);
-    ::llvm::Value* value_ptr =
-        builder.CreateStructGEP(struct_type_, struct_value, idx);
-    if (nullptr == builder.CreateStore(value, value_ptr)) {
-        LOG(WARNING) << "Fail Set Struct Value idx = " << idx;
-        return false;
-    }
+    ::llvm::Value* value_ptr = builder.CreateStructGEP(struct_type_, struct_value, idx);
+    builder.CreateStore(value, value_ptr);
     return true;
 }
 
@@ -137,5 +133,77 @@ bool StructTypeIRBuilder::Get(::llvm::BasicBlock* block, ::llvm::Value* struct_v
     *output = builder.CreateStructGEP(struct_type_, struct_value, idx);
     return true;
 }
+absl::StatusOr<NativeValue> StructTypeIRBuilder::Construct(CodeGenContext* ctx,
+                                                           absl::Span<const NativeValue> args) const {
+    return absl::UnimplementedError(absl::StrCat("Construct for type ", GetLlvmObjectString(struct_type_)));
+}
+
+absl::StatusOr<::llvm::Value*> StructTypeIRBuilder::ConstructFromRaw(CodeGenContext* ctx,
+                                                                     absl::Span<::llvm::Value* const> args) const {
+    EnsureOK();
+
+    llvm::Value* alloca = nullptr;
+    if (!Allocate(ctx->GetCurrentBlock(), &alloca)) {
+        return absl::FailedPreconditionError("failed to allocate array");
+    }
+
+    auto s = Set(ctx, alloca, args);
+    if (!s.ok()) {
+        return s;
+    }
+
+    return alloca;
+}
+
+absl::StatusOr<NativeValue> StructTypeIRBuilder::ExtractElement(CodeGenContext* ctx, const NativeValue& arr,
+                                                                const NativeValue& key) const {
+    return absl::UnimplementedError(
+        absl::StrCat("extract element unimplemented for ", GetLlvmObjectString(struct_type_)));
+}
+
+void StructTypeIRBuilder::EnsureOK() const {
+    assert(struct_type_ != nullptr);
+    // it's a identified type
+    assert(!struct_type_->getName().empty());
+}
+std::string StructTypeIRBuilder::GetTypeDebugString() const { return GetLlvmObjectString(struct_type_); }
+
+absl::Status StructTypeIRBuilder::Set(CodeGenContext* ctx, ::llvm::Value* struct_value,
+                                      absl::Span<::llvm::Value* const> members) const {
+    if (ctx == nullptr || struct_value == nullptr) {
+        return absl::InvalidArgumentError("ctx or struct pointer is null");
+    }
+
+    if (!IsStructPtr(struct_value->getType())) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("value not a struct pointer: ", GetLlvmObjectString(struct_value->getType())));
+    }
+
+    if (struct_value->getType()->getPointerElementType() != struct_type_) {
+        return absl::InvalidArgumentError(absl::Substitute("input value has different type, expect $0 but got $1",
+                                                           GetLlvmObjectString(struct_type_),
+                                                           GetLlvmObjectString(struct_value->getType())));
+    }
+
+    if (members.size() != struct_type_->getNumElements()) {
+        return absl::InvalidArgumentError(absl::Substitute("struct $0 requires exact $1 member, but got $2",
+                                                           GetLlvmObjectString(struct_type_),
+                                                           struct_type_->getNumElements(), members.size()));
+    }
+
+    for (unsigned idx = 0; idx < struct_type_->getNumElements(); ++idx) {
+        auto ele_type = struct_type_->getElementType(idx);
+        if (ele_type != members[idx]->getType()) {
+            return absl::InvalidArgumentError(absl::Substitute("$0th member: expect $1 but got $2", idx,
+                                                               GetLlvmObjectString(ele_type),
+                                                               GetLlvmObjectString(members[idx]->getType())));
+        }
+        ::llvm::Value* value_ptr = ctx->GetBuilder()->CreateStructGEP(struct_type_, struct_value, idx);
+        ctx->GetBuilder()->CreateStore(members[idx], value_ptr);
+    }
+
+    return absl::OkStatus();
+}
+
 }  // namespace codegen
 }  // namespace hybridse

@@ -16,6 +16,6 @@
 
 ROOT_DIR=$(pwd)
 cd java || exit
-mvn clean install -Dmaven.test.skip=true -Dgpg.skip
+mvn clean install -B -Dmaven.test.skip=true -Dgpg.skip
 #mvn clean install -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true -Dgpg.skip
 cd "${ROOT_DIR}" || exit
