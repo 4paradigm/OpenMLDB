@@ -205,6 +205,7 @@ from t1;
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW);
 ```
+
 - **ROWS_RANGE 类型窗口**
 
 定义一个ROWS_RANGE类型窗口，窗口范围是当前行前10s的所有行，以及当前行。
@@ -309,7 +310,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 ![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
-### 4. Window with MAXSIZE
+### 4. WINDOW with MAXSIZE
 
 OpenMLDB定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 

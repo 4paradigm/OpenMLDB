@@ -423,7 +423,7 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
     row_.Reset(shared_slice);
-    LOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
+    DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
     valid_value_ = true;
     return row_;
 }

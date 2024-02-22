@@ -12,7 +12,6 @@ TableName ::=
 
 **说明**
 
-- `DELETE` 语句删除在线表满足指定条件的数据，删除并不是所有索引中满足条件的数据都被删除，只会删除与where condition相关的索引，示例见[功能边界](../../quickstart/function_boundary.md#delete)。
 - `WHERE` 指定的筛选列必须是索引列。如果是key列只能用等于
 
 ## Examples

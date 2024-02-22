@@ -182,11 +182,18 @@ public class OpenMLDBPerfBenchmark {
             numberKey += pkList.get(pos);
         }
         try {
-            PreparedStatement stat = Util.getPreparedStatement(deployName, numberKey, tableSchema.get("mt"), executor);
+            PreparedStatement stat = null;
+            if (BenchmarkConfig.BATCH_SIZE > 0) {
+                stat = Util.getBatchPreparedStatement(deployName, numberKey, BenchmarkConfig.BATCH_SIZE, tableSchema.get("mt"), executor);
+            } else {
+                stat = Util.getPreparedStatement(deployName, numberKey, tableSchema.get("mt"), executor);
+            }
             ResultSet resultSet = stat.executeQuery();
-            /*resultSet.next();
-            Map<String, String> val = Util.extractResultSet(resultSet);
-            int a = 0;*/
+            long total = 0;
+            while (BenchmarkConfig.PARSE_RESULT && resultSet.next()) {
+                Map<String, Object> val = Util.extractResultSet(resultSet);
+                total += (long)val.get("sum_w0_col_i1");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -195,8 +202,11 @@ public class OpenMLDBPerfBenchmark {
     public static void main(String[] args) {
         /*OpenMLDBPerfBenchmark benchmark = new OpenMLDBPerfBenchmark();
         benchmark.initEnv();
-        benchmark.executeDeployment();
-        benchmark.cleanEnv();*/
+        while (true) {
+            benchmark.executeDeployment();
+        }*/
+
+        //benchmark.cleanEnv();
 
         try {
             Options opt = new OptionsBuilder()

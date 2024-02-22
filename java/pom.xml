@@ -294,7 +294,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>WDF TestSuite.txt</filereports>
-                    <argLine>-Xmx8192m -XX:MaxPermSize=2048m -Duser.timezone=GMT+8</argLine>
+                    <argLine>-Xmx8192m -XX:MaxMetaspaceSize=2048m -Duser.timezone=GMT+8</argLine>
                     <skipTests>${scalatest.skip}</skipTests>
                     <systemProperties>
                         <property>

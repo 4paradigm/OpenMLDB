@@ -75,68 +75,12 @@ It is recommended to use HDFS files as source data. This approach allows for suc
 - In local mode, TaskManager can successfully import source data only if the source data is placed on the same host as the TaskManager process.
 - When TaskManager is in Yarn mode (both client and cluster), a file path cannot be used as the source data address because it is not known on which host the container is running.
 
+
 #### ONLINE LOAD DATA
 
 Concurrency issues should also be considered for online loading. Online loading essentially involves starting a Java SDK for each partition task in Spark, and each SDK creates a session with ZooKeeper (zk). If the concurrency is too high, and there are too many simultaneously active tasks, the number of zk sessions may become very large, possibly exceeding its limit `maxClientCnxns`. For specific issues, see [issue 3219](https://github.com/4paradigm/OpenMLDB/issues/3219). In simple terms, pay attention to the concurrency of your import tasks and the concurrency of individual import tasks. If you are performing multiple import tasks simultaneously, it is recommended to reduce the concurrency of each individual import task.
 
 The maximum concurrency for a single task is limited by `spark.executor.instances` * `spark.executor.cores`. Please adjust these two configurations. When `spark.master=local`, adjust the configuration for the driver, not the executor.
-
-### DELETE
-
-In tables with multiple indexes in the online storage, a `DELETE` operation may not delete corresponding data in all indexes. Consequently, there may be situations where data has been deleted, but the deleted data can still be found.
-
-For example:
-
-```SQL
-create database db;
-use db;
-create table t1(c1 int, c2 int,index(key=c1),index(key=c2));
-desc t1;
-set @@execute_mode='online';
-insert into t1 values (1,1),(2,2);
-delete from t1 where c2=2;
-select * from t1;
-select * from t1 where c2=2;
-```
-
-The results are as follows:
-
-```Plain
- --- ------- ------ ------ ---------
-     Field   Type   Null   Default
- --- ------- ------ ------ ---------
-  1   c1      Int    YES
-  2   c2      Int    YES
- --- ------- ------ ------ ---------
- --- -------------------- ------ ---- ------ ---------------
-     name                 keys   ts   ttl    ttl_type
- --- -------------------- ------ ---- ------ ---------------
-  1   INDEX_0_1668504212   c1     -    0min   kAbsoluteTime
-  2   INDEX_1_1668504212   c2     -    0min   kAbsoluteTime
- --- -------------------- ------ ---- ------ ---------------
- --------------
-  storage_mode
- --------------
-  Memory
- --------------
- ---- ----
-  c1   c2
- ---- ----
-  1    1
-  2    2
- ---- ----
-
-2 rows in set
- ---- ----
-  c1   c2
- ---- ----
-
-0 rows in set
-```
-
-Explanation:
-
-Table `t1` has multiple indexes (`DEPLOY` may also automatically create multiple indexes). The `delete from t1 where c2=2` statement actually only deletes data from the second index; the data in the first index is not affected. This is because the `where` condition of the delete statement is only related to the second index, and the first index has no key or timestamp related to this condition. When `select * from t1` is used, it utilizes the first index, not the second, resulting in two rows. The intuitive feeling is that the delete operation failed. On the other hand, `select * from t1 where c2=2` uses the second index, and the result is empty, proving that the data under that index has been deleted.
 
 ## DQL Boundary
 

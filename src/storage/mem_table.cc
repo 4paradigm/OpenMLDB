@@ -145,10 +145,6 @@ absl::Status MemTable::Put(uint64_t time, const std::string& value, const Dimens
         PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
         return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": empty dimension"));
     }
-    if (value.length() < codec::HEADER_LENGTH) {
-        PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
-        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid value"));
-    }
     // inner index pos: -1 means invalid, so it's positive in inner_index_key_map
     std::map<int32_t, Slice> inner_index_key_map;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
@@ -161,9 +157,15 @@ absl::Status MemTable::Put(uint64_t time, const std::string& value, const Dimens
     uint32_t real_ref_cnt = 0;
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
     std::string uncompress_data;
+    uint32_t data_length = value.length();
     if (GetCompressType() == openmldb::type::kSnappy) {
         snappy::Uncompress(value.data(), value.size(), &uncompress_data);
         data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+        data_length = uncompress_data.length();
+    }
+    if (data_length < codec::HEADER_LENGTH) {
+        PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
+        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid value"));
     }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);

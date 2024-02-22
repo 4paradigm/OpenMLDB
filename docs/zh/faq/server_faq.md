@@ -1,6 +1,6 @@
 # Server FAQ
 
-Server中有任何上下线变化或问题，都先openmldb_tool status + inspect online检查下集群是否正常。
+Server中有任何上下线变化或问题，都先`openmldb_tool status` 和 `inspect online`检查下集群是否正常。
 
 ## 部署和启动 FAQ
 
@@ -8,7 +8,7 @@ Server中有任何上下线变化或问题，都先openmldb_tool status + inspec
 虽然有一键启动脚本，但由于配置繁多，可能出现“端口已被占用”，“目录无读写权限”等问题。这些问题都是server进程运行之后才能发现，退出后没有及时反馈。（如果配置了监控，可以通过监控直接检查。）
 所以，请先确认集群的所有server进程都正常运行。
 
-可以通过`ps axu | grep openmldb`或sql命令`show components;`来查询。（注意，如果你使用了守护进程，openmldb server进程可能是在启动停止的循环中，并不代表持续运行，可以通过日志或`show components;`连接时间来确认。）
+可以通过`ps aux | grep openmldb`或sql命令`show components;`来查询。（注意，如果你使用了守护进程，openmldb server进程可能是在启动停止的循环中，并不代表持续运行，可以通过日志或`show components;`连接时间来确认。）
 
 如果进程都活着，集群还是表现不正常，需要查询一下server日志。可以优先看WARN和ERROR级日志，很大概率上，它们就是根本原因。
 
@@ -18,7 +18,7 @@ Server中有任何上下线变化或问题，都先openmldb_tool status + inspec
 
 - tablet异常退出
 - 多副本表多个副本所在的tablets同时重启或者重启太快，造成某些`auto_failover`操作还没完成tablet就重启
-- auto_failover设成`false`
+- `auto_failover`设成`false`
 
 当服务启动成功后，可以通过`gettablestatus`获得所有表的状态：
 ```
@@ -39,7 +39,7 @@ http_rpc_protocol.cpp:911] Fail to write into Socket{id=xx fd=xx addr=xxx} (0x7a
 这是server端会打印的日志。一般是client端使用了连接池或短连接模式，在RPC超时后会关闭连接，server写回response时发现连接已经关了就报这个错。Got EOF就是指之前已经收到了EOF（对端正常关闭了连接）。client端使用单连接模式server端一般不会报这个。
 
 ### 2. 表数据的ttl初始设置不合适，如何调整？
-这需要使用nsclient来修改，普通client无法做到。nsclient启动方式与命令，见[ns client](../maintain/cli.md#ns-client)。
+这需要使用nsclient来修改，普通client无法做到。nsclient启动方式与命令，见[NS Client](../maintain/cli.md#ns-client)。
 
 在nsclient中使用命令`setttl`可以更改一个表的ttl，类似
 ```
