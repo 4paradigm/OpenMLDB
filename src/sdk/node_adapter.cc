@@ -330,7 +330,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         status->code = hybridse::common::kTypeError;
                         return false;
                     }
-                    auto val = TransformDataType(*dynamic_cast<hybridse::node::ConstNode*>(default_val),
+                    auto val = TransformDataType(*dynamic_cast<const hybridse::node::ConstNode*>(default_val),
                                                  add_column_desc->data_type());
                     if (!val) {
                         status->msg = "default value type mismatch";
@@ -780,6 +780,21 @@ hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::Binary
     std::vector<Condition> conditions(*condition_vec);
     conditions.insert(conditions.end(), parameter_vec->begin(), parameter_vec->end());
     return CheckCondition(indexs, conditions);
+}
+
+absl::StatusOr<std::string> NodeAdapter::ExtractUserOption(const hybridse::node::OptionsMap& map) {
+    if (map.empty()) {
+        return "";
+    } else if (map.size() > 1) {
+        return absl::InvalidArgumentError("only password option allowed");
+    }
+    if (!absl::EqualsIgnoreCase(map.begin()->first, "password")) {
+        return absl::InvalidArgumentError("invalid option " + map.begin()->first);
+    }
+    if (map.begin()->second->GetDataType() != hybridse::node::kVarchar) {
+        return absl::InvalidArgumentError("the value of password should be string");
+    }
+    return map.begin()->second->GetAsString();
 }
 
 }  // namespace openmldb::sdk

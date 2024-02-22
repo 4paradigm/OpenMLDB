@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalSelectIntoNode
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, OpenmldbTableUtil}
+import com._4paradigm.openmldb.batch.utils.{HybridseUtil, OpenmldbTableUtil, DataSourceUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.slf4j.LoggerFactory
 
@@ -39,12 +39,12 @@ object SelectIntoPlan {
       throw new Exception("select empty, skip save")
     }
 
-    if (format == "hive") {
+    if (DataSourceUtil.isCatalog(format)) {
       // we won't check if the database exists, if not, save will throw exception
-      // DO NOT create database in here(the table location will be spark warehouse)
-      val dbt = HybridseUtil.hiveDest(outPath)
-      logger.info(s"offline select into: hive way, write mode[${mode}], out table ${dbt}")
-      input.getDf().write.format("hive").mode(mode).saveAsTable(dbt)
+      // Hive: DO NOT create database in here(the table location will be spark warehouse)
+      val dbt = DataSourceUtil.catalogDest(outPath)
+      logger.info(s"offline select into: $format catalog, write mode[${mode}], out table ${dbt}")
+      input.getDf().write.format(format).mode(mode).saveAsTable(dbt)
     } else if (format == "openmldb") {
 
       val (db, table) = HybridseUtil.getOpenmldbDbAndTable(outPath)

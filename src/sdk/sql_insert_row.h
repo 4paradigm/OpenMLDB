@@ -103,12 +103,13 @@ class DefaultValueContainer {
 
 class SQLInsertRow {
  public:
+    // for raw insert sql(no hole)
     SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                  std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                 uint32_t default_str_length);
+                 uint32_t default_str_length, bool put_if_absent);
     SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                  std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                 uint32_t default_str_length, std::vector<uint32_t> hole_idx_arr);
+                 uint32_t default_str_length, std::vector<uint32_t> hole_idx_arr, bool put_if_absent);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -155,6 +156,10 @@ class SQLInsertRow {
         return *table_info_;
     }
 
+    bool IsPutIfAbsent() const {
+        return put_if_absent_;
+    }
+
  private:
     bool MakeDefault();
     void PackDimension(const std::string& val);
@@ -175,13 +180,14 @@ class SQLInsertRow {
     ::openmldb::codec::RowBuilder rb_;
     std::string val_;
     uint32_t str_size_;
+    bool put_if_absent_;
 };
 
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                   std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map, uint32_t str_size,
-                  const std::vector<uint32_t>& hole_idx_arr);
+                  const std::vector<uint32_t>& hole_idx_arr, bool put_if_absent);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
     inline uint32_t GetCnt() { return rows_.size(); }
@@ -200,6 +206,7 @@ class SQLInsertRows {
     DefaultValueMap default_map_;
     uint32_t default_str_length_;
     std::vector<uint32_t> hole_idx_arr_;
+    bool put_if_absent_;
 
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;
 };

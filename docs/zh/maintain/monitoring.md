@@ -23,6 +23,15 @@ OpenMLDB exporter 是以 Python 实现的 Prometheus exporter，核心是通过�
 - Python >= 3.8
 - OpenMLDB >= 0.5.0
 
+### 兼容性说明
+
+**请根据部署的 OpenMLDB 版本选择正确的 openmldb-exporter.**
+
+| [OpenMLDB Exporter version](https://pypi.org/project/openmldb-exporter/) | [OpenMLDB supported version](https://github.com/4paradigm/OpenMLDB/releases) | [Grafana Dashboard revision](https://grafana.com/grafana/dashboards/17843-openmldb-dashboard/?tab=revisions) | Explaination |
+| ---- | ---- | ---- | ------- |
+| >= 0.9.0 | >= 0.8.4 | >=4 | OpenMLDB 0.8.4 移除了数据库表里的 deploy response time 信息 |
+| < 0.9.0  | >= 0.5.0, < 0.8.4 | 3 | |
+
 ### 准备
 
 1. 获取 OpenMLDB

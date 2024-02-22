@@ -98,7 +98,7 @@ message TableInfo {
     repeated openmldb.common.ColumnDesc column_desc = 9;
     repeated openmldb.common.ColumnKey column_key = 10;
     repeated openmldb.common.ColumnDesc added_column_desc = 11;
-    optional uint32 format_version = 12 [default = 1];
+    optional uint32 format_version = 12 [default = 1, deprecated = true];
     optional string db = 13 [default = ""];
     repeated string partition_key = 14;
     repeated common.VersionPair schema_versions = 15;

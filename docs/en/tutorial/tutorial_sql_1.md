@@ -1,7 +1,7 @@
 # SQL for Feature Extraction (Part 1)
 
 
-## 1. The Feature Engineering of Machine Learning
+## 1. Feature Engineering for Machine Learning
 
 A real-world machine learning application generally includes two main processes, namely **Feature Engineering** and **Machine Learning Model** (hereinafter referred to as **Model**). We must know a lot about the model, from the classic logistic regression and decision tree models to the deep learning models, we all focus on how to develop high-quality models. We may pay less attention to feature engineering. 
 However, as the saying goes, data and features determine the upper limit of machine learning, while models and algorithms only approach this limit. It can be seen that we have long agreed on the importance of Feature Engineering.
@@ -59,7 +59,7 @@ For example, the following user transaction table (hereinafter referred as data 
 | trans_type | STRING    | Transaction Type                       |
 | province   | STRING    | Province                               |
 | city       | STRING    | City                                   |
-| label      | BOOL      | Sample label, true\|false              |
+| label      | BOOL      | Sample label, `true` or `flase`        |
 
 In addition to the primary table, there may also be tables storing relevant auxiliary information in the database, which can be combined with the primary table through the JOIN operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table storing the merchants' history flow. In the process of feature engineering, more valuable information can be obtained by combining the primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the  [next part](tutorial_sql_2.md) of this series.
 
@@ -143,6 +143,7 @@ Important parameters include:
   - The lower bound time must be `>=` the upper bound time.
   - The lower bound row must follow the upper bound row.
 
+For more features, pleaes referr to [documentation](../openmldb_sql/dql/WHERE_CLAUSE.md).
 
 #### Example
 
@@ -150,9 +151,9 @@ For the transaction table T1 shown above, we define two `ROWS_RANGE` windows and
 
 ![img](images/table_t1.png)
 
-Note that the following window definitions are not completed SQL. We will add aggregate functions later to complete runnable SQL.
+Note that the following window definitions are not completed SQL. We will add aggregate functions to complete runnable SQL. (See [3.3.2](332-step-2constructfeaturesbasedontimewindow))
 
-- w1d: the window within the most recent day
+**w1d: the window within the most recent day**
 The window of the user's most recent day containing the rows from the current to the most recent day
 ```sql
 window w1d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW)
@@ -160,14 +161,14 @@ window w1d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 1d PRECED
 
 The `w1d` window shown in the above figure is for the partition `id=9`, and the `w1d` window contains three rows (`id=6`, `id=8`, `id=9`). These three rows fall in the time window [2022-02-07 12:00:00, 2022-02-08 12:00:00] .
 
-- w1d_10d: the window from 1 day ago to the last 10 days
+**w1d_10d: the window from 1 day ago to the last 10 days**
 ```sql
 window w1d_10d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 10d PRECEDING AND 1d PRECEDING)
 ```
 
 The window `w1d_10d` for the partition `id=9` contains three rows, which are `id=1`, `id=3` and `id=4`. These three rows fall in the time window of [2022-01-29 12:00:00, 2022-02-07 12:00:00]。
 
-- w0_1: the window contains the last 0 ~ 1 rows
+**w0_1: the window contains the last 0 ~ 1 rows**
 The window contains the last 0 ~ 1 rows, including the previous line and the current line.
 ```sql
 window w0_1 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)
@@ -175,7 +176,7 @@ window w0_1 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 1 PRECEDING AN
 
 The window `w0_1` for the partition `id=10` contains 2 rows, which are `id=7` and `id=10`.
 
-- w2_10: the window contains the last 2 ~ 10 rows
+**w2_10: the window contains the last 2 ~ 10 rows**
 
 ```sql
 window w2_10 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND 2 PRECEDING)
@@ -304,7 +305,7 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 We make frequency statistics for a given column as we may need to know the type of the highest frequency, the proportion of the type with the largest number, etc., in each category.
 
-`top1_ratio`: Find out the type with the largest number and compute the proportion of its number in the window.
+**`top1_ratio`**: Find out the type with the largest number and compute the proportion of its number in the window.
 
 The following SQL uses `top1_ratio` to find out the city with the most transactions in the last 30 days and compute the proportion of the number of transactions of the city to the total number of transactions in t1.
 ```sql
@@ -314,7 +315,7 @@ FROM t1
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```
 
-`topn_frequency(col, top_n)`: Find the `top_n` categories with the highest frequency in the window
+**`topn_frequency(col, top_n)`**: Find the `top_n` categories with the highest frequency in the window
 
 The following SQL uses `topn_frequency` to find out the top 2 cities with the highest number of transactions in the last 30 days in t1.
 ```sql

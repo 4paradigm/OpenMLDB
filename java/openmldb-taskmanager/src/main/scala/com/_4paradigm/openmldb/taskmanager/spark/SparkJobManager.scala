@@ -77,11 +77,18 @@ object SparkJobManager {
 
   def submitSparkJob(jobType: String, mainClass: String,
                      args: List[String] = List(),
+                     sql: String = "",
                      localSqlFile: String = "",
                      sparkConf: Map[String, String] = Map(),
                      defaultDb: String = "",
                      blocking: Boolean = false): JobInfo = {
-    val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
+
+    val jobInfoArgs = if (sql.nonEmpty) {
+      List(sql)
+    } else {
+      args
+    }
+    val jobInfo = JobInfoManager.createJobInfo(jobType, jobInfoArgs, sparkConf)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)

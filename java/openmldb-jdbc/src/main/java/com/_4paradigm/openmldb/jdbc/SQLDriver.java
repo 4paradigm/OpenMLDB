@@ -162,6 +162,10 @@ public class SQLDriver implements Driver {
         if (prop != null) {
             option.setZkLogFile(prop);
         }
+        prop = properties.getProperty("zkCert");
+        if (prop != null) {
+            option.setZkCert(prop);
+        }
         prop = properties.getProperty("glogLevel");
         if (prop != null) {
             option.setGlogLevel(Integer.parseInt(prop));
@@ -173,6 +177,14 @@ public class SQLDriver implements Driver {
         prop = properties.getProperty("maxSqlCacheSize");
         if (prop != null) {
             option.setMaxSqlCacheSize(Integer.parseInt(prop));
+        }
+        prop = properties.getProperty("user");
+        if (prop != null) {
+            option.setUser(prop);
+        }
+        prop = properties.getProperty("password");
+        if (prop != null) {
+            option.setPassword(prop);
         }
         return option;
     }

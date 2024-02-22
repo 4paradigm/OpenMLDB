@@ -21,6 +21,8 @@ Parameter `db_name` name must exist, and the database must be created before the
 ```python
 import openmldb.dbapi
 db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
+# You can set the username and password as follows. If no username is set, it defaults to 'root', and the password defaults to being empty
+# db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath", user="$user", password="$password")
 cursor = db.cursor()
 ```
 
@@ -124,6 +126,8 @@ Parameter `db_name` must exist, and the database must be created before the conn
 ```python
 import sqlalchemy as db
 engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
+# You can set the username and password as follows.
+# create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath&user=root&password=123456')
 connection = engine.connect()
 ```
 

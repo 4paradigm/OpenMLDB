@@ -26,6 +26,7 @@
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "passes/physical/batch_request_optimize.h"
 #include "passes/physical/cluster_optimized.h"
 #include "passes/physical/condition_optimized.h"
@@ -39,9 +40,9 @@
 #include "passes/physical/window_column_pruning.h"
 #include "plan/planner.h"
 #include "proto/fe_common.pb.h"
+#include "vm/internal/node_helper.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
-#include "vm/internal/node_helper.h"
 
 namespace hybridse {
 namespace vm {

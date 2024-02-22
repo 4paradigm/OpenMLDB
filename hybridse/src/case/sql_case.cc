@@ -751,7 +751,7 @@ const std::string SqlCase::case_name() const {
 }
 bool SqlCase::ExtractInputTableDef(type::TableDef& table,
                                    int32_t input_idx) const {
-    if (inputs_.size() <= input_idx) {
+    if (inputs_.size() <= static_cast<size_t>(input_idx)) {
         return false;
     }
     return ExtractInputTableDef(inputs_[input_idx], table);

@@ -556,7 +556,24 @@ bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
             return false;
         }
         case hybridse::node::kMap: {
-            LOG(WARNING) << "fail to get type for map";
+            if (type->isPointerTy()) {
+                auto type_pointee = type->getPointerElementType();
+                if (type_pointee->isStructTy()) {
+                    auto* key_type = type_pointee->getStructElementType(1);
+                    const node::TypeNode* key = nullptr;
+                    if (key_type->isPointerTy() && !GetFullType(nm, key_type->getPointerElementType(), &key)) {
+                        return false;
+                    }
+                    const node::TypeNode* value = nullptr;
+                    auto* value_type = type_pointee->getStructElementType(2);
+                    if (value_type->isPointerTy() && !GetFullType(nm, value_type->getPointerElementType(), &value)) {
+                        return false;
+                    }
+
+                    *type_node = nm->MakeNode<node::MapType>(key, value);
+                    return true;
+                }
+            }
             return false;
         }
         default: {
@@ -642,6 +659,9 @@ bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
                 return true;
             } else if (struct_name.startswith("fe.array_")) {
                 *output = hybridse::node::kArray;
+                return true;
+            } else if (struct_name.startswith("fe.map_")) {
+                *output = hybridse::node::kMap;
                 return true;
             }
             LOG(WARNING) << "no mapping pointee_ty for llvm pointee_ty "

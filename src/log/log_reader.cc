@@ -438,7 +438,7 @@ LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compresse
     start_offset_ = 0;
     compressed_ = compressed;
 
-    auto it = logs_->NewIterator();
+    std::unique_ptr<LogParts::Iterator> it(logs_->NewIterator());
     it->SeekToLast();
     if (it->Valid()) {
         min_offset_ = it->GetValue();

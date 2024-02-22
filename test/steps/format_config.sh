@@ -61,7 +61,7 @@ export OPENMLDB_ZK_HOME=
 export OPENMLDB_ZK_CLUSTER=
 export OPENMLDB_ZK_ROOT_PATH=/openmldb-$dirName
 export OPENMLDB_HOME=
-export SPARK_HOME=/tmp/spark/spark-$dirName
+export SPARK_HOME=/tmp/spark-3.2.1-bin-openmldbspark
 export CLEAR_OPENMLDB_INSTALL_DIR=true
 EOF
 

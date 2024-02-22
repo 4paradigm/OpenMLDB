@@ -665,4 +665,30 @@ public class SqlClusterExecutor implements SqlExecutor {
     public boolean refreshCatalog() {
         return sqlRouter.RefreshCatalog();
     }
+
+    @Override
+    public DAGNode SQLToDAG(String query) throws SQLException {
+        Status status = new Status();
+        final com._4paradigm.openmldb.DAGNode dag = sqlRouter.SQLToDAG(query, status);
+
+        try {
+            if (status.getCode() != 0) {
+                throw new SQLException(status.ToString());
+            }
+            return convertDAG(dag);
+        } finally {
+            dag.delete();
+            status.delete();
+        }
+    }
+
+    private static DAGNode convertDAG(com._4paradigm.openmldb.DAGNode dag) {
+        ArrayList<DAGNode> convertedProducers = new ArrayList<>();
+        for (com._4paradigm.openmldb.DAGNode producer : dag.getProducers()) {
+            final DAGNode converted = convertDAG(producer);
+            convertedProducers.add(converted);
+        }
+
+        return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
+    }
 }
