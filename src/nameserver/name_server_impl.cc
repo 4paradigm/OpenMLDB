@@ -2651,6 +2651,92 @@ void NameServerImpl::RecoverTable(RpcController* controller, const RecoverTableR
     response->set_msg("ok");
 }
 
+void NameServerImpl::DeleteOP(RpcController* controller, const DeleteOPRequest* request, GeneralResponse* response,
+                              Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::openmldb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (!request->has_op_id() && (request->status() == ::openmldb::api::TaskStatus::kInited ||
+                request->status() == ::openmldb::api::TaskStatus::kDoing)) {
+        response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
+        response->set_msg("cannot delete the Inited OP");
+        PDLOG(WARNING, "cannot delete the Inited OP");
+        return;
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+    auto need_delete = [] (const DeleteOPRequest* request, const ::openmldb::api::OPInfo& op_info) -> bool {
+        if (request->has_op_id()) {
+            if (op_info.op_id() != request->op_id()) {
+                return false;
+            }
+        } else if (op_info.task_status() != request->status() ||
+                (request->has_db() && request->db() != op_info.db())) {
+            return false;
+        }
+        return true;
+    };
+    auto delete_zk_op = [](ZkClient* zk_client, const std::string& path, uint64_t op_id) -> bool {
+        std::string node = absl::StrCat(path, "/", op_id);
+        if (zk_client->DeleteNode(node)) {
+            PDLOG(INFO, "delete zk op node[%s] success.", node.c_str());
+        } else {
+            PDLOG(WARNING, "delete zk op_node failed. node[%s]", node.c_str());
+            return false;
+        }
+        return true;
+    };
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto iter = done_op_list_.begin(); iter != done_op_list_.end();) {
+        const auto& op_info = (*iter)->op_info_;
+        if (need_delete(request, op_info)) {
+            if (op_info.task_status() != api::TaskStatus::kDone &&
+                    !delete_zk_op(zk_client_, zk_path_.op_data_path_, op_info.op_id())) {
+                response->set_code(base::ReturnCode::kDelZkFailed);
+                response->set_msg("delete zk op_node failed");
+                return;
+            }
+            iter = done_op_list_.erase(iter);
+            if (request->has_op_id()) {
+                return;
+            }
+            continue;
+        }
+        iter++;
+    }
+    for (auto& op_list : task_vec_) {
+        if (op_list.empty()) {
+            continue;
+        }
+        for (auto iter = op_list.begin(); iter != op_list.end();) {
+            const auto& op_info = (*iter)->op_info_;
+            if (need_delete(request, op_info)) {
+                if (op_info.task_status() != api::TaskStatus::kDone &&
+                        !delete_zk_op(zk_client_, zk_path_.op_data_path_, op_info.op_id())) {
+                    response->set_code(base::ReturnCode::kDelZkFailed);
+                    response->set_msg("delete zk op_node failed");
+                    return;
+                }
+                iter = op_list.erase(iter);
+                if (request->has_op_id()) {
+                    return;
+                }
+                continue;
+            }
+            iter++;
+        }
+    }
+    if (request->has_op_id()) {
+        response->set_code(base::ReturnCode::kDeleteFailed);
+        response->set_msg("op id does not exist");
+        PDLOG(WARNING, "op id %lu does not exist", request->op_id());
+    }
+}
+
 void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* request, GeneralResponse* response,
                               Closure* done) {
     brpc::ClosureGuard done_guard(done);
