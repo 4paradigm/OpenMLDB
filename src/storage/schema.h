@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/timer.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
@@ -44,8 +45,8 @@ enum TTLType {
 
 // ttl unit: millisecond
 struct TTLSt {
-    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::openmldb::storage::TTLType::kAbsoluteTime) {}
-    TTLSt(uint64_t abs, uint64_t lat, ::openmldb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(TTLType::kAbsoluteTime) {}
+    TTLSt(uint64_t abs, uint64_t lat, TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
 
     // common::TTLSt::abs_ttl unit is min
     explicit TTLSt(const ::openmldb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
@@ -97,17 +98,17 @@ struct TTLSt {
         }
     }
 
-    bool IsExpired(uint64_t abs, uint32_t record_idx) const {
+    bool IsExpired(uint64_t abs, uint32_t record_idx, uint64_t current_time) const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
                 if (abs_ttl == 0) return false;
-                return abs <= abs_ttl;
+                return (abs + abs_ttl) <= current_time;
             case TTLType::kLatestTime:
                 if (lat_ttl == 0) return false;
                 return record_idx > lat_ttl;
             case TTLType::kAbsAndLat:
                 if (abs_ttl == 0 || lat_ttl == 0) return false;
-                return abs <= abs_ttl && record_idx > lat_ttl;
+                return (abs + abs_ttl) <= current_time && record_idx > lat_ttl;
             case TTLType::kAbsOrLat: {
                 if (abs_ttl == 0) {
                     if (lat_ttl == 0) {
@@ -115,9 +116,9 @@ struct TTLSt {
                     }
                     return record_idx > lat_ttl;
                 } else if (lat_ttl == 0) {
-                    return abs <= abs_ttl;
+                    return (abs + abs_ttl) <= current_time;
                 } else {
-                    return abs <= abs_ttl || record_idx > lat_ttl;
+                    return (abs + abs_ttl) <= current_time || record_idx > lat_ttl;
                 }
             }
             default:
@@ -141,6 +142,41 @@ struct TTLSt {
     }
 
     uint64_t abs_ttl;
+    uint64_t lat_ttl;
+    TTLType ttl_type;
+};
+
+struct ExpiredChecker {
+    ExpiredChecker(uint64_t abs, uint64_t lat, TTLType type) :
+        abs_expired_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    bool IsExpired(uint64_t abs, uint32_t record_idx) const {
+        switch (ttl_type) {
+            case TTLType::kAbsoluteTime:
+                if (abs_expired_ttl == 0) return false;
+                return abs <= abs_expired_ttl;
+            case TTLType::kLatestTime:
+                if (lat_ttl == 0) return false;
+                return record_idx > lat_ttl;
+            case TTLType::kAbsAndLat:
+                if (abs_expired_ttl == 0 || lat_ttl == 0) return false;
+                return abs <= abs_expired_ttl && record_idx > lat_ttl;
+            case TTLType::kAbsOrLat: {
+                if (abs_expired_ttl == 0) {
+                    if (lat_ttl == 0) {
+                        return false;
+                    }
+                    return record_idx > lat_ttl;
+                } else if (lat_ttl == 0) {
+                    return abs <= abs_expired_ttl;
+                } else {
+                    return abs <= abs_expired_ttl || record_idx > lat_ttl;
+                }
+            }
+            default:
+                return true;
+        }
+    }
+    uint64_t abs_expired_ttl;
     uint64_t lat_ttl;
     TTLType ttl_type;
 };

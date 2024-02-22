@@ -619,114 +619,16 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
-bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
-    // TODO(denglong): support ttl type and merge index
-    auto table_meta = GetTableMeta();
-    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
-    std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
-    if (index_def) {
-        if (index_def->GetStatus() != IndexStatus::kDeleted) {
-            PDLOG(WARNING, "index %s is exist. tid %u pid %u", column_key.index_name().c_str(), id_, pid_);
-            return false;
-        }
-        if (column_key.has_ttl()) {
-            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
-        }
+bool MemTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
+    std::vector<uint32_t> ts_vec = { index_def->GetTsColumn()->GetId() };
+    uint32_t inner_id = index_def->GetInnerPos();
+    Segment** seg_arr = new Segment*[seg_cnt_];
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
+        PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
+                FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
     }
-    int index_pos = schema::IndexUtil::GetPosition(column_key, new_table_meta->column_key());
-    if (index_pos >= 0) {
-        new_table_meta->mutable_column_key(index_pos)->CopyFrom(column_key);
-    } else {
-        new_table_meta->add_column_key()->CopyFrom(column_key);
-    }
-    if (!index_def) {
-        auto cols = GetSchema();
-        if (!cols) {
-            return false;
-        }
-        std::map<std::string, ColumnDef> schema;
-        for (int idx = 0; idx < cols->size(); idx++) {
-            const auto& col = cols->Get(idx);
-            schema.emplace(col.name(), ColumnDef(col.name(), idx, col.data_type(), col.not_null()));
-        }
-        std::vector<ColumnDef> col_vec;
-        for (const auto& col_name : column_key.col_name()) {
-            auto it = schema.find(col_name);
-            if (it == schema.end()) {
-                PDLOG(WARNING, "not found col_name[%s]. tid %u pid %u", col_name.c_str(), id_, pid_);
-                return false;
-            }
-            col_vec.push_back(it->second);
-        }
-        std::vector<uint32_t> ts_vec;
-        if (!column_key.ts_name().empty()) {
-            auto ts_iter = schema.find(column_key.ts_name());
-            if (ts_iter == schema.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
-                return false;
-            }
-            ts_vec.push_back(ts_iter->second.GetId());
-        } else {
-            ts_vec.push_back(DEFAULT_TS_COL_ID);
-        }
-        uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
-        Segment** seg_arr = new Segment*[seg_cnt_];
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
-            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
-                  FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
-        }
-        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
-                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
-        if (table_index_.AddIndex(index_def) < 0) {
-            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
-            return false;
-        }
-        segments_[inner_id] = seg_arr;
-        if (!column_key.ts_name().empty()) {
-            auto ts_iter = schema.find(column_key.ts_name());
-            index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
-        } else {
-            index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
-                        ::openmldb::type::kTimestamp, true));
-        }
-        if (column_key.has_ttl()) {
-            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
-        } else {
-            index_def->SetTTL(*(table_index_.GetIndex(0)->GetTTL()));
-        }
-        index_def->SetInnerPos(inner_id);
-        std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
-        auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
-        table_index_.AddInnerIndex(inner_index_st);
-        table_index_.SetInnerIndexPos(new_table_meta->column_key_size() - 1, inner_id);
-    }
-    index_def->SetStatus(IndexStatus::kReady);
-    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
-    return true;
-}
-
-bool MemTable::DeleteIndex(const std::string& idx_name) {
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
-    if (!index_def) {
-        PDLOG(WARNING, "index %s does not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
-        return false;
-    }
-    if (index_def->GetId() == 0) {
-        PDLOG(WARNING, "index %s is primary key, cannot delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
-        return false;
-    }
-    if (!index_def->IsReady()) {
-        PDLOG(WARNING, "index %s can't delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
-        return false;
-    }
-    auto table_meta = GetTableMeta();
-    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
-    if (index_def->GetId() < (uint32_t)table_meta->column_key_size()) {
-        new_table_meta->mutable_column_key(index_def->GetId())->set_flag(1);
-    }
-    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
-    index_def->SetStatus(IndexStatus::kWaiting);  // let gc do deletion
+    segments_[inner_id] = seg_arr;
     return true;
 }
 

@@ -17,12 +17,18 @@
 #include "storage/snapshot.h"
 
 #include <fcntl.h>
+#ifdef DISALLOW_COPY_AND_ASSIGN
+#undef DISALLOW_COPY_AND_ASSIGN
+#endif
+#include <snappy.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "absl/strings/str_cat.h"
+#include "base/slice.h"
 #include "base/glog_wrapper.h"
+#include "codec/row_codec.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 
@@ -85,6 +91,33 @@ int Snapshot::GetLocalManifest(const std::string& full_path, ::openmldb::api::Ma
         }
     }
     return 0;
+}
+
+::openmldb::base::Status Snapshot::DecodeData(const std::shared_ptr<Table>& table,
+        openmldb::base::Slice raw_data,
+        const std::vector<uint32_t>& cols, std::vector<std::string>* row) {
+    if (row == nullptr) {
+        return {-1, "row is nullptr"};
+    }
+    row->clear();
+    std::string buff;
+    openmldb::base::Slice data;
+    if (table->GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(raw_data.data(), raw_data.size(), &buff);
+        data.reset(buff.data(), buff.size());
+    } else {
+        data = raw_data;
+    }
+    const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
+    uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
+    auto decoder = table->GetVersionDecoder(version);
+    if (decoder == nullptr) {
+        return ::openmldb::base::Status(-1, "get decoder failed. version is " + std::to_string(version));
+    }
+    if (!openmldb::codec::RowCodec::DecodeRow(*decoder, raw, cols, true, row)) {
+        return ::openmldb::base::Status(-1, "decode failed");
+    }
+    return {};
 }
 
 }  // namespace storage

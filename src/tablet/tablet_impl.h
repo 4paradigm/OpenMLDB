@@ -303,9 +303,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
-    int CheckTableMeta(const openmldb::api::TableMeta* table_meta,
-                       std::string& msg);  // NOLINT
-
     int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
@@ -329,7 +326,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     base::Status TruncateTableInternal(uint32_t tid, uint32_t pid);
 
     void ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                  std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+                                  std::shared_ptr<::openmldb::storage::Snapshot> snapshot,
                                   const std::vector<::openmldb::common::ColumnKey>& column_key, uint32_t partition_num,
                                   uint64_t offset, bool contain_dump, std::shared_ptr<::openmldb::api::TaskInfo> task);
 

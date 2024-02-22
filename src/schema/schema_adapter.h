@@ -62,6 +62,8 @@ class SchemaAdapter {
 
     static base::Status CheckTableMeta(const ::openmldb::nameserver::TableInfo& table_info);
 
+    static base::Status CheckTableMeta(const openmldb::api::TableMeta& table_meta);
+
     static PBSchema BuildSchema(const std::vector<std::string>& fields);
 
     static std::map<std::string, openmldb::type::DataType> GetColMap(const nameserver::TableInfo& table_info);
