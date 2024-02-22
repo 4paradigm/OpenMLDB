@@ -16,11 +16,12 @@
 
 #ifndef HYBRIDSE_INCLUDE_BASE_FE_STATUS_H_
 #define HYBRIDSE_INCLUDE_BASE_FE_STATUS_H_
+
+#include <sstream>
 #include <string>
 #include <vector>
-#include "glog/logging.h"
+
 #include "proto/fe_common.pb.h"
-#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace base {

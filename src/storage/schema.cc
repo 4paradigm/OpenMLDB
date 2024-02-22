@@ -129,8 +129,6 @@ uint32_t InnerIndexSt::GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t la
     return max_height;
 }
 
-bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b) { return (cd_a.GetId() < cd_b.GetId()); }
-
 TableIndex::TableIndex() {
     indexs_ = std::make_shared<std::vector<std::shared_ptr<IndexDef>>>();
     inner_indexs_ = std::make_shared<std::vector<std::shared_ptr<InnerIndexSt>>>();
@@ -218,7 +216,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
                 index->SetTsColumn(col_map[ts_name]);
             } else {
                 // set default ts col
-                index->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+                index->SetTsColumn(std::make_shared<ColumnDef>(DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
                             ::openmldb::type::kTimestamp, true));
             }
             if (column_key.has_ttl()) {
@@ -234,7 +232,7 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
     // add default dimension
     if (indexs_->empty()) {
         auto index = std::make_shared<IndexDef>("idx0", 0);
-        index->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+        index->SetTsColumn(std::make_shared<ColumnDef>(DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
                     ::openmldb::type::kTimestamp, true));
         if (AddIndex(index) < 0) {
             DLOG(WARNING) << "add index failed";

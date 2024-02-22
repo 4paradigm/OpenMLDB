@@ -17,15 +17,16 @@
 
 package com._4paradigm.openmldb.spark.read;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 
 public class OpenmldbPartitionReaderFactory implements PartitionReaderFactory {
-    private final OpenmldbReadConfig config;
+    private final OpenmldbConfig config;
 
-    public OpenmldbPartitionReaderFactory(OpenmldbReadConfig config) {
+    public OpenmldbPartitionReaderFactory(OpenmldbConfig config) {
         this.config = config;
     }
 

@@ -96,4 +96,29 @@ public class OpenMLDBHttp {
         }
         return result;
     }
+
+    public HttpResult restfulJsonRequest(String url, String uri, String body, HttpMethod HttpMethod){
+        String realUrl = url+uri;
+        HttpResult result = null;
+        this.headMap.put("Content-Type","application/json;charset=utf-8");
+        try {
+            switch(HttpMethod){
+                case GET:
+                    result = HttpRequest.get(realUrl,null,this.headMap);
+                    break;
+                case POST:
+                    result = HttpRequest.postJson(realUrl,body,this.headMap);
+                    break;
+                case PUT:
+                    result = HttpRequest.put(realUrl,body,this.headMap);
+                    break;
+                case DELETE:
+                    result = HttpRequest.get(realUrl,this.data,this.headMap);
+                    break;
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        return result;
+    }
 }

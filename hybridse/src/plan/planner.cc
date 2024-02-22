@@ -345,7 +345,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
     return base::Status::OK();
 }
 
-base::Status Planner::CreateSetOperationPlan(const node::SetOperationNode *root, node::SetOperationPlanNode **plan_tree) {
+base::Status Planner::CreateSetOperationPlan(const node::SetOperationNode *root,
+                                             node::SetOperationPlanNode **plan_tree) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "can not create query plan node with null query node")
 
     auto list = node_manager_->MakeList<node::QueryPlanNode>();
@@ -756,6 +757,20 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 node::PlanNode *deploy_plan_node = nullptr;
                 CHECK_STATUS(CreateDeployPlanNode(dynamic_cast<node::DeployNode *>(parser_tree), &deploy_plan_node));
                 plan_trees.push_back(deploy_plan_node);
+                break;
+            }
+            case ::hybridse::node::kCreateUserStmt: {
+                auto node = dynamic_cast<node::CreateUserNode *>(parser_tree);
+                auto create_user_plan_node = node_manager_->MakeNode<node::CreateUserPlanNode>(node->Name(),
+                        node->IfNotExists(), node->Options());
+                plan_trees.push_back(create_user_plan_node);
+                break;
+            }
+            case ::hybridse::node::kAlterUserStmt: {
+                auto node = dynamic_cast<node::AlterUserNode *>(parser_tree);
+                auto alter_user_plan_node = node_manager_->MakeNode<node::AlterUserPlanNode>(node->Name(),
+                        node->IfExists(), node->Options());
+                plan_trees.push_back(alter_user_plan_node);
                 break;
             }
             case ::hybridse::node::kSetStmt: {

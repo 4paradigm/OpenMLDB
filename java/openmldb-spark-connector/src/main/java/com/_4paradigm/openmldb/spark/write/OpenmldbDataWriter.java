@@ -17,10 +17,13 @@
 
 package com._4paradigm.openmldb.spark.write;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
+
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.openmldb.spark.OpenmldbTable;
 import com.google.common.base.Preconditions;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.write.DataWriter;
@@ -39,20 +42,17 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
     private final long taskId;
     private PreparedStatement preparedStatement = null;
 
-    public OpenmldbDataWriter(OpenmldbWriteConfig config, int partitionId, long taskId) {
+    public OpenmldbDataWriter(OpenmldbConfig config, int partitionId, long taskId) {
         try {
-            SdkOption option = new SdkOption();
-            option.setZkCluster(config.zkCluster);
-            option.setZkPath(config.zkPath);
-            option.setLight(true);
-            SqlClusterExecutor executor = new SqlClusterExecutor(option);
-            String dbName = config.dbName;
-            String tableName = config.tableName;
-            executor.executeSQL(dbName, "SET @@insert_memory_usage_limit=" + config.insertMemoryUsageLimit);
+            SqlClusterExecutor executor = new SqlClusterExecutor(config.getSdkOption());
+            String dbName = config.getDB();
+            String tableName = config.getTable();
+            executor.executeSQL(dbName, "SET @@insert_memory_usage_limit=" + config.getInsertMemoryUsageLimit());
 
             Schema schema = executor.getTableSchema(dbName, tableName);
             // create insert placeholder
-            StringBuilder insert = new StringBuilder("insert into " + tableName + " values(?");
+            String insert_part = config.putIfAbsent()? "insert or ignore into " : "insert into ";
+            StringBuilder insert = new StringBuilder(insert_part + tableName + " values(?");
             for (int i = 1; i < schema.getColumnList().size(); i++) {
                 insert.append(",?");
             }
@@ -60,6 +60,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             preparedStatement = executor.getInsertPreparedStmt(dbName, insert.toString());
         } catch (SQLException | SqlException e) {
             e.printStackTrace();
+            throw new RuntimeException("create openmldb data writer failed", e);
         }
 
         this.partitionId = partitionId;
@@ -75,7 +76,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             addRow(record, preparedStatement);
             preparedStatement.addBatch();
         } catch (Exception e) {
-            throw new IOException("convert to openmldb row failed on " + record, e);
+            throw new IOException("convert to openmldb row failed on " + readable(record, preparedStatement), e);
         }
     }
 
@@ -126,6 +127,19 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
         }
     }
 
+    static String readable(InternalRow record, PreparedStatement preparedStatement) {
+        try {
+            ResultSetMetaData metaData = preparedStatement.getMetaData();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < record.numFields(); i++) {
+                sb.append(record.get(i, OpenmldbTable.sdkTypeToSparkType(metaData.getColumnType(i + 1)))).append(",");
+            }
+            return sb.toString();
+        } catch (SQLException e) {
+            return "readable error: " + e.getMessage();
+        }
+    }
+
     @Override
     public WriterCommitMessage commit() throws IOException {
         try {
@@ -147,12 +161,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
 
     @Override
     public void abort() throws IOException {
-        try {
-            preparedStatement.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new IOException("abort error", e);
-        }
+        // no transaction, no abort
     }
 
     @Override

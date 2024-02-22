@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RequestEngine implements AutoCloseable {
 
-    private static final Logger logger = LoggerFactory.getLogger(SqlEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(RequestEngine.class);
 
     private SimpleCatalog catalog;
     private EngineOptions options;

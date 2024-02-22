@@ -19,6 +19,8 @@
 #include <dlfcn.h>
 #include <unistd.h>
 
+#include "glog/logging.h"
+
 namespace hybridse {
 namespace udf {
 

@@ -17,8 +17,6 @@ package com._4paradigm.openmldb.common.codec;
 
 import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.proto.Common.ColumnDesc;
-import org.joda.time.DateTime;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Date;

@@ -234,11 +234,12 @@ TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     index_node->SetName("index1");
     CreatePlanNode *node = manager_->MakeCreateTablePlanNode(
         "", "t1",
-        {manager_->MakeColumnDescNode("col1", node::kInt32, true),
-         manager_->MakeColumnDescNode("col2", node::kInt32, true),
-         manager_->MakeColumnDescNode("col3", node::kFloat, true),
-         manager_->MakeColumnDescNode("col4", node::kVarchar, true),
-         manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
+        {manager_->MakeNode<node::ColumnDefNode>("col1", manager_->MakeNode<ColumnSchemaNode>(node::kInt32, true)),
+         manager_->MakeNode<node::ColumnDefNode>("col2", manager_->MakeNode<ColumnSchemaNode>(node::kInt32, true)),
+         manager_->MakeNode<node::ColumnDefNode>("col3", manager_->MakeNode<ColumnSchemaNode>(node::kFloat, true)),
+         manager_->MakeNode<node::ColumnDefNode>("col4", manager_->MakeNode<ColumnSchemaNode>(node::kVarchar, true)),
+         manager_->MakeNode<node::ColumnDefNode>("col5", manager_->MakeNode<ColumnSchemaNode>(node::kTimestamp, true)),
+         index_node},
         {manager_->MakeReplicaNumNode(3), manager_->MakePartitionNumNode(8),
          manager_->MakeNode<StorageModeNode>(kMemory)},
         false);

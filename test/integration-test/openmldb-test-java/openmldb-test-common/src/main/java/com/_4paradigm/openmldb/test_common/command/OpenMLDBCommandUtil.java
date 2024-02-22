@@ -34,21 +34,16 @@ public class OpenMLDBCommandUtil {
     private static final Logger logger = new LogProxy(log);
 
     public static OpenMLDBResult createDB(OpenMLDBInfo openMLDBInfo, String dbName) {
-        String sql = String.format("create database %s ;",dbName);
+        String sql = String.format("create database if not exists %s ;",dbName);
         OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
         return openMLDBResult;
     }
 
-    public static OpenMLDBResult desc(OpenMLDBInfo openMLDBInfo, String dbName, String tableName) {
-        String sql = String.format("desc %s ;",tableName);
-        OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
-        return openMLDBResult;
-    }
-
-    public static OpenMLDBResult createAndInsert(OpenMLDBInfo openMLDBInfo, String defaultDBName, List<InputDesc> inputs) {
+    public static void createDatabases(OpenMLDBInfo openMLDBInfo, String defaultDBName, List<InputDesc> inputs) {
         HashSet<String> dbNames = new HashSet<>();
         if (StringUtils.isNotEmpty(defaultDBName)) {
             dbNames.add(defaultDBName);
+            OpenMLDBResult createDBResult = createDB(openMLDBInfo,defaultDBName);
         }
         if (!Objects.isNull(inputs)) {
             for (InputDesc input : inputs) {
@@ -60,6 +55,9 @@ public class OpenMLDBCommandUtil {
                 }
             }
         }
+    }
+
+    public static OpenMLDBResult createTables(OpenMLDBInfo openMLDBInfo, String defaultDBName, List<InputDesc> inputs) {
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
@@ -71,13 +69,27 @@ public class OpenMLDBCommandUtil {
                 createSql = SQLCase.formatSql(createSql, i, tableName);
                 createSql = SQLUtil.formatSql(createSql, openMLDBInfo);
                 if (!createSql.isEmpty()) {
-                    OpenMLDBResult res = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,createSql);
-                    if (!res.isOk()) {
-                        logger.error("fail to create table");
-                        // reportLog.error("fail to create table");
-                        return res;
-                    }
+                    openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,createSql);
                 }
+            }
+        }
+        return openMLDBResult;
+    }
+
+    public static OpenMLDBResult desc(OpenMLDBInfo openMLDBInfo, String dbName, String tableName) {
+        String sql = String.format("desc %s ;",tableName);
+        OpenMLDBResult openMLDBResult = OpenMLDBCommandFacade.sql(openMLDBInfo,dbName,sql);
+        return openMLDBResult;
+    }
+
+    public static OpenMLDBResult createAndInsert(OpenMLDBInfo openMLDBInfo, String defaultDBName, List<InputDesc> inputs) {
+        createDatabases(openMLDBInfo,defaultDBName,inputs);
+        createTables(openMLDBInfo,defaultDBName,inputs);
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+        if (inputs != null && inputs.size() > 0) {
+            for (int i = 0; i < inputs.size(); i++) {
+                InputDesc inputDesc = inputs.get(i);
+                String dbName = inputDesc.getDb().isEmpty() ? defaultDBName : inputDesc.getDb();
                 InputDesc input = inputs.get(i);
                 List<String> inserts = input.extractInserts();
                 for (String insertSql : inserts) {

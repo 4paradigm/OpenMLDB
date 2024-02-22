@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "codec/codec.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
@@ -50,17 +51,16 @@ class Table {
     int InitColumnDesc();
 
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
+    // DO NOT set different default value in derived class
+    virtual absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
+                             bool put_if_absent = false) = 0;
 
-    virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
-
-    bool Put(const ::openmldb::api::LogEntry& entry) {
-        return Put(entry.ts(), entry.value(), entry.dimensions());
-    }
+    bool Put(const ::openmldb::api::LogEntry& entry) { return Put(entry.ts(), entry.value(), entry.dimensions()).ok(); }
 
     virtual bool Delete(const ::openmldb::api::LogEntry& entry) = 0;
 
-    virtual bool Delete(uint32_t idx, const std::string& key,
-            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) = 0;
+    virtual bool Delete(uint32_t idx, const std::string& key, const std::optional<uint64_t>& start_ts,
+                        const std::optional<uint64_t>& end_ts) = 0;
 
     virtual TableIterator* NewIterator(const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
@@ -88,9 +88,7 @@ class Table {
         }
         return "";
     }
-    inline ::openmldb::common::StorageMode GetStorageMode() const {
-        return storage_mode_;
-    }
+    inline ::openmldb::common::StorageMode GetStorageMode() const { return storage_mode_; }
     inline uint32_t GetId() const { return id_; }
 
     inline uint32_t GetIdxCnt() const { return table_index_.Size(); }
@@ -153,13 +151,7 @@ class Table {
 
     std::shared_ptr<IndexDef> GetIndex(const std::string& name) { return table_index_.GetIndex(name); }
 
-    std::shared_ptr<IndexDef> GetIndex(const std::string& name, uint32_t ts_idx) {
-        return table_index_.GetIndex(name, ts_idx);
-    }
-
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx) { return table_index_.GetIndex(idx); }
-
-    std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx) { return table_index_.GetIndex(idx, ts_idx); }
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
 
@@ -179,7 +171,7 @@ class Table {
     virtual uint64_t GetRecordByteSize() const = 0;
     virtual uint64_t GetRecordIdxByteSize() = 0;
 
-    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0; // NOLINT
+    virtual int GetCount(uint32_t index, const std::string& pk, uint64_t& count) = 0;  // NOLINT
 
  protected:
     void UpdateTTL();

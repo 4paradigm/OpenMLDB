@@ -209,11 +209,11 @@ TEST_F(SqlNodeTest, MakeWindowDefNodetTest) {
 
     ExprListNode *partitions = node_manager_->MakeExprList();
     ExprNode *ptr1 = node_manager_->MakeColumnRefNode("keycol", "");
-    partitions->PushBack(ptr1);
+    partitions->AddChild(ptr1);
 
     ExprNode *ptr2 = node_manager_->MakeOrderExpression(node_manager_->MakeColumnRefNode("col1", ""), true);
     ExprListNode *orders = node_manager_->MakeExprList();
-    orders->PushBack(ptr2);
+    orders->AddChild(ptr2);
 
     int64_t maxsize = 0;
     SqlNode *frame =
@@ -286,29 +286,30 @@ TEST_F(SqlNodeTest, NewFrameNodeTest) {
 TEST_F(SqlNodeTest, MakeInsertNodeTest) {
     ExprListNode *column_expr_list = node_manager_->MakeExprList();
     ExprNode *ptr1 = node_manager_->MakeColumnRefNode("col1", "");
-    column_expr_list->PushBack(ptr1);
+    column_expr_list->AddChild(ptr1);
 
     ExprNode *ptr2 = node_manager_->MakeColumnRefNode("col2", "");
-    column_expr_list->PushBack(ptr2);
+    column_expr_list->AddChild(ptr2);
 
     ExprNode *ptr3 = node_manager_->MakeColumnRefNode("col3", "");
-    column_expr_list->PushBack(ptr3);
+    column_expr_list->AddChild(ptr3);
 
     ExprNode *ptr4 = node_manager_->MakeColumnRefNode("col4", "");
-    column_expr_list->PushBack(ptr4);
+    column_expr_list->AddChild(ptr4);
 
     ExprListNode *value_expr_list = node_manager_->MakeExprList();
     ExprNode *value1 = node_manager_->MakeConstNode(1);
     ExprNode *value2 = node_manager_->MakeConstNode(2.3f);
     ExprNode *value3 = node_manager_->MakeConstNode(2.3);
     ExprNode *value4 = node_manager_->MakeParameterExpr(1);
-    value_expr_list->PushBack(value1);
-    value_expr_list->PushBack(value2);
-    value_expr_list->PushBack(value3);
-    value_expr_list->PushBack(value4);
+    value_expr_list->AddChild(value1);
+    value_expr_list->AddChild(value2);
+    value_expr_list->AddChild(value3);
+    value_expr_list->AddChild(value4);
     ExprListNode *insert_values = node_manager_->MakeExprList();
-    insert_values->PushBack(value_expr_list);
-    SqlNode *node_ptr = node_manager_->MakeInsertTableNode("", "t1", column_expr_list, insert_values);
+    insert_values->AddChild(value_expr_list);
+    SqlNode *node_ptr = node_manager_->MakeInsertTableNode("", "t1", column_expr_list, insert_values,
+                                                           InsertStmt::InsertMode::DEFAULT_MODE);
 
     ASSERT_EQ(kInsertStmt, node_ptr->GetType());
     InsertStmt *insert_stmt = dynamic_cast<InsertStmt *>(node_ptr);
@@ -670,11 +671,17 @@ TEST_F(SqlNodeTest, CreateIndexNodeTest) {
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(node_manager_->MakeColumnIndexNode(index_items));
     CreatePlanNode *node = node_manager_->MakeCreateTablePlanNode(
         "", "t1",
-        {node_manager_->MakeColumnDescNode("col1", node::kInt32, true),
-         node_manager_->MakeColumnDescNode("col2", node::kInt32, true),
-         node_manager_->MakeColumnDescNode("col3", node::kFloat, true),
-         node_manager_->MakeColumnDescNode("col4", node::kVarchar, true),
-         node_manager_->MakeColumnDescNode("col5", node::kTimestamp, true), index_node},
+        {node_manager_->MakeNode<node::ColumnDefNode>(
+             "col1", node_manager_->MakeNode<node::ColumnSchemaNode>(node::kInt32, true, nullptr)),
+         node_manager_->MakeNode<node::ColumnDefNode>(
+             "col2", node_manager_->MakeNode<node::ColumnSchemaNode>(node::kInt32, true, nullptr)),
+         node_manager_->MakeNode<node::ColumnDefNode>(
+             "col3", node_manager_->MakeNode<node::ColumnSchemaNode>(node::kFloat, true, nullptr)),
+         node_manager_->MakeNode<node::ColumnDefNode>(
+             "col4", node_manager_->MakeNode<node::ColumnSchemaNode>(node::kVarchar, true, nullptr)),
+         node_manager_->MakeNode<node::ColumnDefNode>(
+             "col5", node_manager_->MakeNode<node::ColumnSchemaNode>(node::kTimestamp, true, nullptr)),
+         index_node},
         {node_manager_->MakeReplicaNumNode(3), node_manager_->MakePartitionNumNode(8),
          node_manager_->MakeNode<StorageModeNode>(kMemory)},
         false);

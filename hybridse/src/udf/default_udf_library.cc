@@ -665,6 +665,7 @@ void DefaultUdfLibrary::Init() {
     InitFeatureZero();
 
     InitArrayUdfs();
+    InitMapUdfs();
     InitEarthDistanceUdf();
     InitJsonUdfs();
 
@@ -794,7 +795,7 @@ void DefaultUdfLibrary::InitStringUdf() {
     RegisterCodeGenUdf("concat").variadic_args<>(
         /* infer */
         [](UdfResolveContext* ctx,
-           const std::vector<const ExprAttrNode*>& arg_attrs,
+           const std::vector<ExprAttrNode>& arg_attrs,
            ExprAttrNode* out) {
             out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
             out->SetNullable(false);
@@ -802,7 +803,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
-           NativeValue* out) {
+           const ExprAttrNode& return_info, NativeValue* out) {
             codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
             return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
         })
@@ -821,16 +822,16 @@ void DefaultUdfLibrary::InitStringUdf() {
     RegisterCodeGenUdf("concat_ws")
         .variadic_args<AnyArg>(
             /* infer */
-            [](UdfResolveContext* ctx, const ExprAttrNode* arg,
-               const std::vector<const ExprAttrNode*>& arg_types,
+            [](UdfResolveContext* ctx, const ExprAttrNode& arg,
+               const std::vector<ExprAttrNode>& arg_types,
                ExprAttrNode* out) {
                 out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
                 out->SetNullable(false);
                 return Status::OK();
             },
             /* gen */
-            [](CodeGenContext* ctx, NativeValue arg,
-               const std::vector<NativeValue>& args, NativeValue* out) {
+            [](CodeGenContext* ctx, NativeValue arg, const std::vector<NativeValue>& args,
+               const ExprAttrNode& return_info, NativeValue* out) {
                 codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
 
                 return string_ir_builder.ConcatWS(ctx->GetCurrentBlock(), arg,
@@ -1651,7 +1652,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
     RegisterExprUdf("round")
         .variadic_args<AnyArg>(
-        [](UdfResolveContext* ctx, ExprNode* x, const std::vector<ExprNode*>& other) -> ExprNode* {
+        [](UdfResolveContext* ctx, ExprNode* x, absl::Span<ExprNode* const> other) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic() || x->GetOutputType()->IsBool()) {
                 ctx->SetError("round do not support first parameter of type " + x->GetOutputType()->GetName());
                 return nullptr;
@@ -2233,18 +2234,15 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )");
 
     RegisterCodeGenUdf("year")
-        .args<Date>(
-            [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
-                codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
-                ::llvm::Value* ret = nullptr;
-                Status status;
-                CHECK_TRUE(date_ir_builder.Year(ctx->GetCurrentBlock(),
-                                                date.GetRaw(), &ret, status),
-                           kCodegenError,
-                           "Fail to build udf year(date): ", status.str());
-                *out = NativeValue::Create(ret);
-                return status;
-            })
+        .args<Date>([](CodeGenContext* ctx, NativeValue date, const node::ExprAttrNode& return_info, NativeValue* out) {
+            codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
+            ::llvm::Value* ret = nullptr;
+            Status status;
+            CHECK_TRUE(date_ir_builder.Year(ctx->GetCurrentBlock(), date.GetRaw(), &ret, status), kCodegenError,
+                       "Fail to build udf year(date): ", status.str());
+            *out = NativeValue::Create(ret);
+            return status;
+        })
         .returns<int32_t>();
 
     RegisterExternal("month")
@@ -2264,7 +2262,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
     RegisterCodeGenUdf("month")
         .args<Date>(
-            [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
+            [](CodeGenContext* ctx, NativeValue date, const node::ExprAttrNode& ri, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
                 ::llvm::Value* ret = nullptr;
                 Status status;
@@ -2298,7 +2296,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )");
 
     RegisterCodeGenUdf("dayofmonth").args<Date>(
-            [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
+            [](CodeGenContext* ctx, NativeValue date, const node::ExprAttrNode& ri, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
                 ::llvm::Value* ret = nullptr;
                 Status status;
@@ -2554,13 +2552,13 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         .variadic_args<>(
             /* infer */
             [](UdfResolveContext* ctx,
-               const std::vector<const ExprAttrNode*>& args,
+               const std::vector<ExprAttrNode>& args,
                ExprAttrNode* out) {
                 auto nm = ctx->node_manager();
                 auto tuple_type = nm->MakeTypeNode(node::kTuple);
                 for (auto attr : args) {
-                    tuple_type->generics_.push_back(attr->type());
-                    tuple_type->generics_nullable_.push_back(attr->nullable());
+                    tuple_type->generics_.push_back(attr.type());
+                    tuple_type->generics_nullable_.push_back(attr.nullable());
                 }
                 out->SetType(tuple_type);
                 out->SetNullable(false);
@@ -2568,7 +2566,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             },
             /* gen */
             [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
-               NativeValue* out) {
+               const ExprAttrNode& return_info, NativeValue* out) {
                 *out = NativeValue::CreateTuple(args);
                 return Status::OK();
             });

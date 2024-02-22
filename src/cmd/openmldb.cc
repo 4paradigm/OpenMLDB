@@ -81,6 +81,8 @@ DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
+DECLARE_string(user);
+DECLARE_string(password);
 
 const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
                                      std::to_string(OPENMLDB_VERSION_MINOR) + "." +
@@ -438,7 +440,7 @@ std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const ::openml
 
 void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "bad setttl format, eg settl t1 absolute 10" << std::endl;
+        std::cout << "bad setttl format, eg settl t1 absolute 10 [index0]" << std::endl;
         return;
     }
     std::string index_name;
@@ -1307,14 +1309,14 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get "
                      "table_name key idx_name ts | get table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx "
+                     "index_name=xxx ts=xxx"
                   << std::endl;
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "get format error. eg: get table_name=xxx key=xxx "
-                     "index_name=xxx ts=xxx ts_name=xxx "
+                     "index_name=xxx ts=xxx"
                   << std::endl;
         return;
     }
@@ -1382,7 +1384,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     ::openmldb::codec::SDKCodec codec(tables[0]);
-    bool no_schema = tables[0].column_desc_size() == 0 && tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;
         uint64_t ts = 0;
@@ -2459,7 +2461,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
             printf("desc: set table ttl \n");
-            printf("usage: setttl table_name ttl_type ttl [ts_name]\n");
+            printf("usage: setttl table_name ttl_type ttl [index_name], abs ttl unit is minute\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
             printf("ex: setttl t3 latest 5 ts1\n");
@@ -3867,18 +3869,25 @@ void StartAPIServer() {
             PDLOG(WARNING, "Invalid nameserver format");
             exit(1);
         }
-        auto sdk = new ::openmldb::sdk::StandAloneSDK(vec[0], port);
+        auto standalone_options = std::make_shared<::openmldb::sdk::StandaloneOptions>();
+        standalone_options->host = vec[0];
+        standalone_options->port = port;
+        standalone_options->user = FLAGS_user;
+        standalone_options->password = FLAGS_password;
+        auto sdk = new ::openmldb::sdk::StandAloneSDK(standalone_options);
         if (!sdk->Init() || !api_service->Init(sdk)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);
         }
     } else {
-        ::openmldb::sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = FLAGS_zk_cluster;
-        cluster_options.zk_path = FLAGS_zk_root_path;
-        cluster_options.zk_session_timeout = FLAGS_zk_session_timeout;
-        cluster_options.zk_auth_schema = FLAGS_zk_auth_schema;
-        cluster_options.zk_cert = FLAGS_zk_cert;
+        auto cluster_options = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+        cluster_options->zk_cluster = FLAGS_zk_cluster;
+        cluster_options->zk_path = FLAGS_zk_root_path;
+        cluster_options->zk_session_timeout = FLAGS_zk_session_timeout;
+        cluster_options->zk_auth_schema = FLAGS_zk_auth_schema;
+        cluster_options->zk_cert = FLAGS_zk_cert;
+        cluster_options->user = FLAGS_user;
+        cluster_options->password = FLAGS_password;
         if (!api_service->Init(cluster_options)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);
