@@ -22,5 +22,5 @@ OpenMLDB Docs (|version|)
     :hidden:
     :caption: 📚 Application Ecosystem
 
-    app_ecosystem/feature_platform/index
+    app_ecosystem/feat_insight/index
     app_ecosystem/sql_emulator/index

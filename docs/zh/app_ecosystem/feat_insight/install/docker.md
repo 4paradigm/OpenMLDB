@@ -2,11 +2,11 @@
 
 ## 介绍
 
-使用官方构建好的 Docker 镜像, 可以快速部署 OpenMLDB 特征服务.
+使用官方构建好的 Docker 镜像, 可以快速部署 FeatInsight 特征服务.
 
 ## 内置 OpenMLDB 镜像
 
-使用内置 OpenMLDB 的镜像，可以一键启动 OpenMLDB 集群和 OpenMLDB 特征服务，无需额外部署即可使用特征服务。
+使用内置 OpenMLDB 的镜像，可以一键启动 OpenMLDB 集群和 FeatInsight 特征服务，无需额外部署即可使用特征服务。
 
 ```
 docker run -d -p 8888:8888 registry.cn-shenzhen.aliyuncs.com/tobe43/portable-openmldb
@@ -17,7 +17,7 @@ docker run -d -p 8888:8888 registry.cn-shenzhen.aliyuncs.com/tobe43/portable-ope
 
 ## 不包含 OpenMLDB 镜像
 
-使用不包含 OpenMLDB 的镜像，需要提前部署 OpenMLDB 集群，然后启动 OpenMLDB 特征服务容器，部署步骤较繁琐但灵活性高。
+使用不包含 OpenMLDB 的镜像，需要提前部署 OpenMLDB 集群，然后启动 FeatInsight 特征服务容器，部署步骤较繁琐但灵活性高。
 
 首先参考 [OpenMLDB 部署文档](../../../deploy/index.rst) 提前部署 OpenMLDB 集群。
 
