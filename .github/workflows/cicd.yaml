@@ -171,6 +171,10 @@ jobs:
         run: |
           echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
 
+      - name: Install Dependencies
+        run: |
+          brew install z3
+
       - name: configure
         env:
           SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
