@@ -133,9 +133,9 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
         }
         if (match_index_col > 0) {
             if (!option->ts_name.empty()) {
-                option->index_map.clear();
+                option->idx.reset();
             }
-            if (option->index_map.empty()) {
+            if (!option->idx.has_value()) {
                 matched_column_key.CopyFrom(column_key);
             } else {
                 if (column_key.col_name_size() != matched_column_key.col_name_size() ||
@@ -144,7 +144,8 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                     return {hybridse::common::StatusCode::kCmdError, "hit multiple indexs"};
                 }
             }
-            option->index_map.emplace(index_pos[column_key.index_name()], pk);
+            option->idx = index_pos[column_key.index_name()];
+            option->key = pk;
             for (const auto& col : matched_column_key.col_name()) {
                 hit_con_col.insert(col);
             }
@@ -153,7 +154,7 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             }
         }
     }
-    if (!option->ts_name.empty() && !option->index_map.empty() && option->ts_name != matched_column_key.ts_name()) {
+    if (!option->ts_name.empty() && option->idx.has_value() && option->ts_name != matched_column_key.ts_name()) {
         return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
     }
     for (const auto& con : condition_vec) {
