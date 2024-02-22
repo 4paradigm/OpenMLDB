@@ -80,7 +80,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 在线导入还需要考虑并发问题，在线导入本质上是Spark中每个partition task启动一个Java SDK，每个SDK会创建一个与zk之间的session，如果并发过高，同时活跃的task过多，zk的session数量就会很大，可能超过其限制`maxClientCnxns`，具体问题现象见[issue 3219](https://github.com/4paradigm/OpenMLDB/issues/3219)。简单来说，请注意你的导入任务并发数和单个导入任务的并发数，如果你同时会进行多个导入任务，建议降低单个导入任务的并发数。
 
-单个任务最大的并发数限制为`spark.executor.instances`*`spark.executor.cores`，请调整这两个配置。当spark.master=local时，调整driver的，而不是executor的。
+单个任务最大的并发数限制为`spark.executor.instances` * `spark.executor.cores`，请调整这两个配置。当spark.master=local时，调整driver的，而不是executor的。
 
 ## DQL 边界
 

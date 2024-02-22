@@ -23,30 +23,35 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 `spark.port.maxRetries`: The default is set to 16, and you can refer to [Spark Configuration](https://spark.apache.org/docs/3.1.2/configuration.html). Each offline job is associated with a Spark UI, corresponding to a port. Each port starts from the default initial port and increments by one for retry attempts. If the number of concurrently running jobs exceeds `spark.port.maxRetries`, the number of retries will also exceed `spark.port.maxRetries`, causing job startup failures. If you need to support a larger job concurrency, configure a higher value for `spark.port.maxRetries` and restart the Task Manager to apply the changes.
 
+### Temporary Spark Configuration
+
+Refer to the [Client Spark Configuration File](../reference/client_config/client_spark_config.md). The CLI supports temporary changes to Spark configurations without the need to restart TaskManager. However, this configuration method cannot modify settings like `spark.master`.
+
 ## DDL Boundary - DEPLOY Statement
 
 You can deploy an online SQL solution using the `DEPLOY <deploy_name> <sql>` command. This operation automatically parses the SQL statement and helps create indexes (you can view index details using `DESC <table_name>`). For more information, please refer to the [DEPLOY STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md) documentation.
 
-The success of the deployment operation is dependent on the presence of online data in the table.
+After a successful deployment operation, it may create indexes, and the indexes will undergo background data replication. Therefore, if you want to ensure that the DEPLOYMENT can be used, you need to check the status of the background replication Nameserver OP. Alternatively, when deploying, you can add the SYNC configuration to ensure synchronization. For more details, refer to the syntax documentation.
 
 ### Long Window SQL
 
 Long Window SQL: This refers to the `DEPLOY` statement with the `OPTIONS(long_windows=...)` configuration item. For syntax details, please refer to [Long Window](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#long-window-optimazation). Deployment conditions for long-window SQL are relatively strict, and it's essential to ensure that the tables used in the SQL statements do not contain online data. Otherwise, even if deploying SQL that matches the previous one, the operation will still fail.
 
-### Normal SQL
+### Regular SQL
 
-- If the relevant index already exists before deployment, the `DEPLOY` operation will not create the index. The `DEPLOY` operation will succeed regardless of whether there is online data in the table.
-- If a new index needs to be created during deployment, and there is already online data in the table, the `DEPLOY` operation will fail.
+- If there are relevant indexes before deployment, the deployment operation will not create indexes. Regardless of whether there is online data in the table, the `DEPLOY` operation will succeed.
+    - If the index needs to update TTL, updating only the TTL value will be successful. However, TTL updates take 2 GC intervals to take effect, and the data eliminated before updating TTL will not be recovered. If TTL needs to update the type, it will fail in versions before 0.8.1, and it can succeed in versions >= 0.8.1.
+- If new indexes need to be created during deployment, and there is online data in the table at this time, in versions < 0.8.1, `DEPLOY` will fail, and in versions >= 0.8.1, data will be replicated to the new index in the background, requiring some time to wait.
 
-There are two solutions:
+For **older versions**, there are two solutions:
 
-1. Strictly perform `DEPLOY` before importing online data, and avoid executing `DEPLOY` after online data is present in the table.
-2. The `CREATE INDEX` statement can automatically import existing online data (data from existing indexes) when creating a new index. If it is necessary to execute `DEPLOY` when the table already has online data, you can manually execute a `CREATE INDEX` to create the required index (the new index will already have data), and then execute `DEPLOY` (in this case, `DEPLOY` will not create a new index, and the manually created indexes will be used directly for computation).
+- Strictly ensure that `DEPLOY` is performed before importing online data, and do not do `DEPLOY` after there is online data in the table.
+- The `CRATE INDEX` statement can automatically import existing online data (data in existing indexes) when creating a new index. If `DEPLOY` must be done when there is online data in the table, you can manually `CREATE INDEX` to create the required indexes first (the new indexes will already have data), and then `DEPLOY` (the `DEPLOY` at this time will not create new indexes, and the manually created indexes will be used directly during calculation).
 
 ```{note}
-How can you determine which indexes to create?
+If you can only use an older version, how do you know which indexes to create?
 
-Currently, only the Java SDK supports this feature, and all the required indexes can be obtained through `SqlClusterExecutor.genDDL`. However, you will need to manually convert them into `CREATE INDE`X statements as `genDD`L provides table creation statements. In the future, it will support ** directly obtaining index creation statements** or **automatically importing data into a new index** with `DEPLOY`.
+Currently, there is no direct method. It is recommended to use [OpenMLDB SQL Emulator](https://github.com/vagetablechicken/OpenMLDBSQLEmulator) to obtain the CREATE TABLE statement, which includes the index configuration. The Java SDK also supports it. You can use `SqlClusterExecutor.genDDL` to get all indexes that need to be created (a static method, no need to connect to the cluster), but additional coding is required. Also, `genDDL` is to get the CREATE TABLE statement, so you need to manually convert it to `CREATE INDEX`.
 ```
 
 ## DML Boundary
@@ -69,6 +74,13 @@ It is recommended to use HDFS files as source data. This approach allows for suc
 
 - In local mode, TaskManager can successfully import source data only if the source data is placed on the same host as the TaskManager process.
 - When TaskManager is in Yarn mode (both client and cluster), a file path cannot be used as the source data address because it is not known on which host the container is running.
+
+
+#### ONLINE LOAD DATA
+
+Concurrency issues should also be considered for online loading. Online loading essentially involves starting a Java SDK for each partition task in Spark, and each SDK creates a session with ZooKeeper (zk). If the concurrency is too high, and there are too many simultaneously active tasks, the number of zk sessions may become very large, possibly exceeding its limit `maxClientCnxns`. For specific issues, see [issue 3219](https://github.com/4paradigm/OpenMLDB/issues/3219). In simple terms, pay attention to the concurrency of your import tasks and the concurrency of individual import tasks. If you are performing multiple import tasks simultaneously, it is recommended to reduce the concurrency of each individual import task.
+
+The maximum concurrency for a single task is limited by `spark.executor.instances` * `spark.executor.cores`. Please adjust these two configurations. When `spark.master=local`, adjust the configuration for the driver, not the executor.
 
 ## DQL Boundary
 
