@@ -5,12 +5,12 @@
    - 通过`pre-upgrade`和`post-upgrade`，升级前自动添加副本，升级结束会自动删除新添加的副本。这样行为和多副本保持一致
    - 如果允许单副本表在升级过程中不可用，可以在`pre-upgrade`的时候添加`--allow_single_replica`选项，在内存紧张的环境下，可以避免添加副本可能造成的OOM
 * 升级过程中，会把待升级的tablet上的leader分片迁移到其它tablets上，升级结束会迁移回来。迁移过程中，写请求会有少量的数据丢失，如果不能容忍少量写丢失，需要在升级过程中停掉写操作。
-* 
+
 ```{note}
 下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用`bash bin/start.sh start <component> mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是mon进程的pid，`bin/<component>.pid.child`为组件真实的pid。mon进程并不是系统服务，如果mon进程意外退出，将无法继续守护。
 ```
 
-## 1. 升级nameserver
+## 升级nameserver
 
 * 停止nameserver 
     ```bash
@@ -24,7 +24,7 @@
     ```
 * 对剩余nameserver重复以上步骤
 
-## 2. 升级tablet
+## 升级tablet
 
 ```{important}
 如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行升级操作。即对一个 tablet 完成升级，结果确认以后，再进行下一个 tablet 的升级操作。否则会导致集群状态异常。如果误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 `recoverdata` 进行恢复。
@@ -68,7 +68,7 @@
 
 所有节点升级完成后恢复写操作, 执行`showtablestatus`命令查看`Rows`是否增加。
 
-## 3. 升级 apiserver
+## 升级 apiserver
 
 * 停止 apiserver
     ```bash
@@ -81,7 +81,7 @@
     bash bin/start.sh start apiserver
     ```
 
-## 4. 升级 taskmanager
+## 升级 taskmanager
 * 下载新版的OpenMLDB Spark发行版，替换老的Spark目录（即`$SPARK_HOME`指向的目录）
 * 停止 taskmanager
     ```bash
@@ -100,7 +100,7 @@ Yarn模式下，第一步替换Spark时，还需要注意`spark.yarn.jars`和`ba
 
 剩下的TaskManager升级步骤和上文的步骤一致。
 
-## 5. 升级SDK
+## 升级SDK
 
 ### 升级Java SDK
 * 更新pom文件中java sdk的版本号，包括`openmldb-jdbc`和`openmldb-native`
