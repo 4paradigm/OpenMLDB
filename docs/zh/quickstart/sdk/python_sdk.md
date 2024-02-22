@@ -21,6 +21,8 @@ pip install openmldb
 ```python
 import openmldb.dbapi
 db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
+# 可以设置用户名和密码。如果不设置用户名，默认为root。密码默认为空
+# db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath", user="$user", password="$password")
 cursor = db.cursor()
 ```
 
@@ -116,8 +118,10 @@ cursor.close()
 
 ### 创建连接
 
-```
+```python
 create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')
+# 可以通过如下方式指定用户名密码
+# create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath&user=root&password=123456')
 ```
 
 参数 db_name 必须存在，需在创建连接前创建数据库。或者先创建无数据库的连接，再通过 `execute("USE <db>")` 命令设置使用数据库 `db`。

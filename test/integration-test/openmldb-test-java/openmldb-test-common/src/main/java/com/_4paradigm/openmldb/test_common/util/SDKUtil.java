@@ -279,7 +279,7 @@ public class SDKUtil {
         try {
             createOk = executor.getStatement().execute(sql);
             openMLDBResult.setOk(true);
-            Tool.sleep(20*1000);
+            Tool.sleep(10*1000);
         } catch (Exception e) {
             e.printStackTrace();
             openMLDBResult.setOk(false);
@@ -445,11 +445,13 @@ public class SDKUtil {
         if (ddlSql.isEmpty()) {
             return null;
         }
-        log.info("ddl sql:{}", ddlSql);
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         boolean createOk = executor.executeDDL(dbName, ddlSql);
         openMLDBResult.setOk(createOk);
-        log.info("ddl result:{}", openMLDBResult);
+        if (createOk!=true){
+            log.error("ddl {} failed:{}", ddlSql,openMLDBResult);
+        }
+        
         return openMLDBResult;
     }
 

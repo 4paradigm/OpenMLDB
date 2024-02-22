@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
-import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
+import com._4paradigm.openmldb.batch.utils.DataSourceUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.log4j.{Level, Logger}

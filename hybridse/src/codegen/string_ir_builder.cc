@@ -66,7 +66,7 @@ bool StringIRBuilder::CreateDefault(::llvm::BasicBlock* block,
 
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
                                 ::llvm::Value** output) {
-    if (!Create(block, output)) {
+    if (!Allocate(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
         return false;
     }
@@ -86,7 +86,7 @@ bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
 }
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block, ::llvm::Value* size,
                                 ::llvm::Value* data, ::llvm::Value** output) {
-    if (!Create(block, output)) {
+    if (!Allocate(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
         return false;
     }

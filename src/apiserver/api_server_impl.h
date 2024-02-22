@@ -49,7 +49,7 @@ class APIServerImpl : public APIServer {
  public:
     explicit APIServerImpl(const std::string& endpoint);
     ~APIServerImpl() override;
-    bool Init(const sdk::ClusterOptions& options);
+    bool Init(const std::shared_ptr<::openmldb::sdk::SQLRouterOptions>& options);
     bool Init(::openmldb::sdk::DBSDK* cluster);
     void Process(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
                  google::protobuf::Closure* done) override;
@@ -71,15 +71,12 @@ class APIServerImpl : public APIServer {
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
 
-    static absl::Status JsonArray2SQLRequestRow(const Value& non_common_cols_v,
-                                                const Value& common_cols_v,
+    static absl::Status JsonArray2SQLRequestRow(const Value& non_common_cols_v, const Value& common_cols_v,
                                                 std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
-    static absl::Status JsonMap2SQLRequestRow(const Value& non_common_cols_v,
-                                              const Value& common_cols_v,
+    static absl::Status JsonMap2SQLRequestRow(const Value& non_common_cols_v, const Value& common_cols_v,
                                               std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
-    static bool AppendJsonValue(const Value& v, hybridse::sdk::DataType type, bool is_not_null,
-                                T row);
+    static bool AppendJsonValue(const Value& v, hybridse::sdk::DataType type, bool is_not_null, T row);
 
     // may get segmentation fault when throw boost::bad_lexical_cast, so we use std::from_chars
     template <typename T>
@@ -101,17 +98,39 @@ class APIServerImpl : public APIServer {
     ::openmldb::sdk::DBSDK* cluster_sdk_ = nullptr;
 };
 
+#define RETURN_AR_IF_ERROR(expr, msg)                        \
+    do {                                                     \
+        auto& _ar = (expr);                                  \
+        if (!_ar) {                                          \
+            status_.Update(absl::InvalidArgumentError(msg)); \
+            return _ar;                                      \
+        }                                                    \
+    } while (0)
+#define RETURN_AR_IF_NOT_OK(expr, _ar, msg)                  \
+    do {                                                     \
+        auto _expr = (expr);                                 \
+        if (!_expr) {                                        \
+            status_.Update(absl::InvalidArgumentError(msg)); \
+            return _ar;                                      \
+        }                                                    \
+    } while (0)
 struct QueryReq {
     std::string mode;
     int timeout = -1;  // only for offline jobs
     std::string sql;
     std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
     bool write_nan_and_inf_null = false;
+
+    QueryReq(JsonReader& ar) { parse(ar); }  // NOLINT
+    absl::Status status() { return status_; }
+
+ private:
+    JsonReader& parse(JsonReader& ar);  // NOLINT
+    // we want to store errors when parsing, so make this method in class
+    JsonReader& parse(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter);  // NOLINT
+ private:
+    absl::Status status_;
 };
-
-JsonReader& operator&(JsonReader& ar, QueryReq& s);  // NOLINT
-
-JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter);  // NOLINT
 
 struct ExecSPResp {
     ExecSPResp() = default;
@@ -127,7 +146,8 @@ struct ExecSPResp {
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
                  bool only_const);
 
-void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i, bool write_nan_and_inf_null);  // NOLINT
+void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, int i,  // NOLINT
+                bool write_nan_and_inf_null);
 
 // ExecSPResp reading is unsupported now, cuz we decode ResultSet with Schema here, it's irreversible
 JsonWriter& operator&(JsonWriter& ar, ExecSPResp& s);  // NOLINT

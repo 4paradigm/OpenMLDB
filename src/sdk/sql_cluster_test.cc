@@ -121,13 +121,19 @@ TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
 
     router->ExecuteSQL(db, "deploy " + deploy_name + " select col1 from " + table_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
-    router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
+    std::string sql = absl::StrCat("deploy ", deploy_name,
+            " OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\") select col1 from ", db, ".", table_name, ";");
+    router->ExecuteSQL(db2, sql, &status);
     ASSERT_TRUE(status.IsOK());
 
-    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    auto rs = router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
-    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->GetStringUnsafe(0).find("OPTIONS") == std::string::npos);
+    rs = router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->GetStringUnsafe(0).find("OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\")") != std::string::npos);
 
     router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
@@ -318,47 +324,6 @@ TEST_F(SQLClusterDDLTest, CreateIndexCheck) {
     ASSERT_FALSE(status.IsOK());
     router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col4);"), &status);
     ASSERT_FALSE(status.IsOK());
-
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
-    ASSERT_TRUE(router->DropDB(db, &status));
-}
-
-TEST_F(SQLClusterDDLTest, TestDelete) {
-    std::string name = "test" + GenRand();
-    ::hybridse::sdk::Status status;
-    std::string ddl;
-
-    std::string db = "db" + GenRand();
-    ASSERT_TRUE(router->CreateDB(db, &status));
-    ddl = absl::StrCat("create table ", name,
-          "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
-          "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
-    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
-    ASSERT_TRUE(router->RefreshCatalog());
-    router->ExecuteSQL(db, "insert into " + name + " values ('a', 'aa', 'aaa', 100, 101, 102, 'xx');", &status);
-    router->ExecuteSQL(db, "insert into " + name + " values ('b', 'bb', 'bbb', 200, 201, 202, 'xx');", &status);
-    auto rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
-    ASSERT_EQ(rs->Size(), 2);
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col5 > 100;", &status);
-    ASSERT_FALSE(status.IsOK());
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col6 > 100;", &status);
-    ASSERT_FALSE(status.IsOK());
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col3 = 'aaa';", &status);
-    ASSERT_FALSE(status.IsOK());
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col7 = 'xxx' and col3 = 'aaa';", &status);
-    ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, "delete from " + name + " where col6 > 100;", &status);
-    ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, "delete from " + name + " where col4 > 100 and col5 = 200;", &status);
-    ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, "delete from " + name + " where col5 > 100;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
-    ASSERT_EQ(rs->Size(), 2);
-    router->ExecuteSQL(db, "delete from " + name + " where col4 > 100;", &status);
-    ASSERT_TRUE(status.IsOK());
-    rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
-    ASSERT_EQ(rs->Size(), 1);
 
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
     ASSERT_TRUE(router->DropDB(db, &status));

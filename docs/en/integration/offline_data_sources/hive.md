@@ -102,7 +102,7 @@ Importing data from Hive sources is facilitated through the API [`LOAD DATA INFI
 
 - Both offline and online engines are capable of importing data from Hive sources.
 - The Hive data import feature supports soft connections. This approach minimizes the need for redundant data copies and ensures that OpenMLDB can access Hive's most up-to-date data at any given time. To activate the soft link mechanism for data import, utilize the `deep_copy=false` parameter.
-- The `OPTIONS` parameter offers two valid settings: `deep_copy`, `mode` and `sql`.
+- The `OPTIONS` parameter offers three valid settings: `deep_copy`, `mode` and `sql`.
 
 For example: 
 
@@ -122,7 +122,7 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE db1.t1 OPTIONS(deep_copy=true, sql='
 
 Exporting data to Hive sources is facilitated through the API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md), which employs a distinct URI format, `hive://[db].table`, to seamlessly transfer data to the Hive data warehouse. Here are some key considerations:
 
-- If you omit specifying a database name, the default database name used will be `default_Db`.
+- If you omit specifying Hive database name, the default database used in Hive will be `default`.
 - When a database name is explicitly provided, it's imperative that the database already exists. Currently, the system does not support the automatic creation of non-existent databases.
 - In the event that the designated Hive table name is absent, the system will automatically generate a table with the corresponding name within the Hive environment.
 - The `OPTIONS` parameter exclusively takes effect within the export mode of `mode`. Other parameters do not exert any influence.

@@ -29,8 +29,7 @@ namespace vm {
 
 class RunnerContext {
  public:
-    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
-                           const hybridse::codec::Row& parameter,
+    explicit RunnerContext(std::shared_ptr<hybridse::vm::ClusterJob> cluster_job, const hybridse::codec::Row& parameter,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           sp_name_(""),
@@ -39,7 +38,7 @@ class RunnerContext {
           parameter_(parameter),
           is_debug_(is_debug),
           batch_cache_() {}
-    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
+    explicit RunnerContext(std::shared_ptr<hybridse::vm::ClusterJob> cluster_job,
                            const hybridse::codec::Row& request,
                            const std::string& sp_name = "",
                            const bool is_debug = false)
@@ -50,7 +49,7 @@ class RunnerContext {
           parameter_(),
           is_debug_(is_debug),
           batch_cache_() {}
-    explicit RunnerContext(hybridse::vm::ClusterJob* cluster_job,
+    explicit RunnerContext(std::shared_ptr<hybridse::vm::ClusterJob> cluster_job,
                            const std::vector<Row>& request_batch,
                            const std::string& sp_name = "",
                            const bool is_debug = false)
@@ -68,7 +67,7 @@ class RunnerContext {
         return requests_[idx];
     }
     const hybridse::codec::Row& GetParameterRow() const { return parameter_; }
-    hybridse::vm::ClusterJob* cluster_job() { return cluster_job_; }
+    std::shared_ptr<hybridse::vm::ClusterJob> cluster_job() { return cluster_job_; }
     void SetRequest(const hybridse::codec::Row& request);
     void SetRequests(const std::vector<hybridse::codec::Row>& requests);
     bool is_debug() const { return is_debug_; }
@@ -81,7 +80,7 @@ class RunnerContext {
     void SetBatchCache(int64_t id, std::shared_ptr<DataHandlerList> data);
 
  private:
-    hybridse::vm::ClusterJob* cluster_job_;
+    std::shared_ptr<hybridse::vm::ClusterJob> cluster_job_;
     const std::string sp_name_;
     hybridse::codec::Row request_;
     std::vector<hybridse::codec::Row> requests_;

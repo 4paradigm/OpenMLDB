@@ -586,6 +586,21 @@ __attribute__((unused)) static void PrintProcedureInfo(
         sql = boost::regex_replace(sql, boost::regex(pattern_sp), "DEPLOY");
         std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
         sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
+        if (!sp_info.GetOption()->empty()) {
+            std::stringstream ss;
+            ss << " OPTIONS(";
+            for (auto iter = sp_info.GetOption()->begin(); iter != sp_info.GetOption()->end(); iter++) {
+                if (iter != sp_info.GetOption()->begin()) {
+                    ss << ", ";
+                }
+                ss << absl::AsciiStrToUpper(iter->first) << "=\"" << iter->second << "\"";
+            }
+            ss << ")";
+            std::string prefix = absl::StrCat("DEPLOY ", sp_info.GetSpName());
+            absl::string_view old_sql = sql;
+            old_sql.remove_prefix(prefix.size());
+            sql = absl::StrCat(prefix, ss.str(), old_sql);
+        }
     }
 
     PrintItemTable({"DB", type_name}, {vec}, stream);

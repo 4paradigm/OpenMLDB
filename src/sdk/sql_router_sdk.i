@@ -71,6 +71,7 @@
 
 %shared_ptr(openmldb::sdk::DAGNode);
 %{
+#include "sdk/options.h"
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"
 #include "sdk/base_schema.h"
@@ -98,6 +99,7 @@ using openmldb::sdk::TableReader;
 using openmldb::sdk::DefaultValueContainer;
 %}
 
+%include "sdk/options.h"
 %include "sdk/sql_router.h"
 %include "sdk/base_schema.h"
 %include "sdk/base.h"

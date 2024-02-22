@@ -66,6 +66,12 @@ base::Status ConvertInExpr(const zetasql::ASTInExpression* in_expr, node::NodeMa
 base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset, node::NodeManager* node_manager,
                                     node::SqlNode** output);
 
+base::Status ConvertCreateUserStatement(const zetasql::ASTCreateUserStatement* root, node::NodeManager* node_manager,
+                                        node::CreateUserNode** output);
+
+base::Status ConvertAlterUserStatement(const zetasql::ASTAlterUserStatement* root, node::NodeManager* node_manager,
+                                        node::AlterUserNode** output);
+
 base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager, node::QueryNode** output);
 
 base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expr, node::NodeManager* node_manager,

@@ -233,9 +233,9 @@ TEST_F(SchemaTest, TsAndDefaultTs) {
                 ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 7, 10, 0, ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
             10, 0, ::openmldb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
             10, 0, ::openmldb::storage::kAbsoluteTime);
     auto inner_index = table_index.GetAllInnerIndex();
     ASSERT_EQ(inner_index->size(), 3u);
@@ -243,10 +243,10 @@ TEST_F(SchemaTest, TsAndDefaultTs) {
     std::vector<uint32_t> ts_vec0 = {6, 7};
     AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
     std::vector<std::string> index1 = {"key3", "key4"};
-    std::vector<uint32_t> ts_vec1 = {6, DEFUALT_TS_COL_ID};
+    std::vector<uint32_t> ts_vec1 = {6, DEFAULT_TS_COL_ID};
     AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
     std::vector<std::string> index2 = {"key5"};
-    std::vector<uint32_t> ts_vec2 = {DEFUALT_TS_COL_ID};
+    std::vector<uint32_t> ts_vec2 = {DEFAULT_TS_COL_ID};
     AssertInnerIndex(*(table_index.GetInnerIndex(2)), 2, index2, ts_vec2);
 }
 

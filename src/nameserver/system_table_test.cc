@@ -69,7 +69,10 @@ TEST_F(SystemTableTest, SystemTable) {
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     ASSERT_TRUE(ns_client.ShowTable("", INTERNAL_DB, false, tables, msg));
-    ASSERT_EQ(2, tables.size());
+    ASSERT_EQ(3, tables.size());
+    ASSERT_EQ("JOB_INFO", tables[0].name());
+    ASSERT_EQ("PRE_AGG_META_INFO", tables[1].name());
+    ASSERT_EQ("USER", tables[2].name());
     tables.clear();
     // deny drop system table
     ASSERT_FALSE(ns_client.DropDatabase(INTERNAL_DB, msg));

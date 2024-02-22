@@ -34,7 +34,7 @@
 ```
 
 - 目前仅支持插入一条数据。
-- 数据需严格按照 schema 排列。
+- 数据需严格按照表 schema 排列。
 
 请求数据样例：
 
@@ -152,13 +152,13 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 请求参数：
 
-| **参数** | **类型** | **必需** | **说明**                                                     |
-| -------- | -------- | -------- | ------------------------------------------------------------ |
-| mode     | String        | 是       | 可配 `offsync` , `offasync`, `online`                        |
-| sql      | String      | 是       |                                                              |
-| input    | Object      | 否       |                                                              |
-| schema   | Array         | 否       | 可支持数据类型（大小写不敏感）：`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`. |
-| data     | Array      | 否       |                                                              |
+| **参数** | **类型** | **必需** | **说明**                                                                                                                |
+| -------- | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| mode     | String   | 是       | 可配 `offsync` , `offasync`, `online`                                                                                   |
+| sql      | String   | 是       |                                                                                                                         |
+| input    | Object   | 否       |                                                                                                                         |
+| schema   | Array    | 否       | 可支持数据类型（大小写不敏感）：`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`. |
+| data     | Array    | 否       | schema和data字段必须同时存在                                                                                            |
 
 **请求数据样例**
 

@@ -175,6 +175,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
                                                       const std::vector<std::string> &pks) override;
 
     inline uint32_t GetTid() { return table_st_.GetTid(); }
+    inline uint32_t GetPartitionNum() { return partition_num_; }
 
     void AddTable(std::shared_ptr<::openmldb::storage::Table> table);
 
@@ -184,6 +185,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     bool Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager,
             bool* index_updated);
+
+    std::shared_ptr<TableClientManager> GetTableClientManager() { return table_client_manager_; }
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {

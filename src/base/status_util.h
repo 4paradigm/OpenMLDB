@@ -154,6 +154,13 @@
         LOG(WARNING) << "Status: " << _s->ToString(); \
     } while (0)
 
+#define PREPEND_AND_WARN(s, msg)           \
+    do {                                              \
+        ::hybridse::sdk::Status* _s = (s);            \
+        _s->Prepend((msg));                           \
+        LOG(WARNING) << "Status: " << _s->ToString(); \
+    } while (0)
+
 /// @brief s.msg += append_str, and warn it
 #define CODE_APPEND_AND_WARN(s, code, msg)            \
     do {                                              \

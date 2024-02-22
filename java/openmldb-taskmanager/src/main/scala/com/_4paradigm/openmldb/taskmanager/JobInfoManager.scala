@@ -45,6 +45,10 @@ object JobInfoManager {
   private val option = new SdkOption
   option.setZkCluster(TaskManagerConfig.getZkCluster)
   option.setZkPath(TaskManagerConfig.getZkRootPath)
+  option.setUser(TaskManagerConfig.getUser)
+  if (!TaskManagerConfig.getPassword.isEmpty) {
+    option.setPassword(TaskManagerConfig.getPassword)
+  }
   val sqlExecutor = new SqlClusterExecutor(option)
   sqlExecutor.executeSQL("", "set @@execute_mode='online';")
 

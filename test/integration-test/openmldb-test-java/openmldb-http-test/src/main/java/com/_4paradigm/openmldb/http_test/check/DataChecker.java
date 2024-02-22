@@ -35,7 +35,7 @@ public class DataChecker extends BaseChecker {
         if(MapUtils.isEmpty(data)){
             return ;
         }
-        String resultData = httpResult.getData();
+        String resultData = httpResult.getData().toString();
         if(data.containsKey("code")){
             Object expectCode = data.get("code");
             Object actualCode = JsonPath.read(resultData, "$.code");

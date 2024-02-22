@@ -641,9 +641,9 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     auto dimension = entry.add_dimensions();
     dimension->set_idx(aggr_index_pos_);
     dimension->set_key(key);
-    bool ok = aggr_table_->Put(time, entry.value(), entry.dimensions());
-    if (!ok) {
-        PDLOG(ERROR, "Aggregator put failed");
+    auto st = aggr_table_->Put(time, entry.value(), entry.dimensions());
+    if (!st.ok()) {
+        LOG(ERROR) << "Aggregator put failed: " << st.ToString();
         return false;
     }
     entry.set_pk(key);
