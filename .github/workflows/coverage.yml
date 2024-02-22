@@ -57,7 +57,7 @@ jobs:
       - name: install lcov
         working-directory: lcov
         run: |
-          sudo make install
+          make install
 
       - name: coverage configure
         run: |
