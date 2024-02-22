@@ -25,4 +25,5 @@ function(add_contrib cmake_folder)
 endfunction()
 
 add_contrib(simdjson)
-
+add_contrib(farmhash)
+add_contrib(rapidjson)

@@ -21,7 +21,7 @@ ARG TARGETARCH
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
-COPY setup_deps.sh /
+COPY OpenMLDB/docker/setup_deps.sh /
 # hadolint ignore=DL3031,DL3033
 RUN yum update -y && yum install -y centos-release-scl epel-release && \
     yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel rh-python38-python-requests rh-python38-python-pip && \
@@ -34,6 +34,10 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     rm -v ./*.tar.gz && \
     /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" -t "$THIRDPARTY_VERSION" && \
     rm -v /setup_deps.sh
+
+RUN yum install -y rsync
+COPY OpenMLDB /root/OpenMLDB
+RUN rm -rf /root/OpenMLDB/.git
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src
