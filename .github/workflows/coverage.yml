@@ -45,9 +45,7 @@ jobs:
       BUILD_SHARED_LIBS: ON
       TESTING_ENABLE_STRIP: ON
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
+      - uses: actions/checkout@v2
 
       - name: download lcov
         uses: actions/checkout@v4
