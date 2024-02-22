@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: download lcov
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
           repository: linux-test-project/lcov
           ref: v1.16
