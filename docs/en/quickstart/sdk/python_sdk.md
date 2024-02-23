@@ -9,6 +9,7 @@ Execute the following command to install Python SDK:
 ```bash
 pip install openmldb
 ```
+Note: When running on macOS system, Python >= 3.9 is required, while this requirement can be disregarded for other systems.
 
 ## OpenMLDB DBAPI
 

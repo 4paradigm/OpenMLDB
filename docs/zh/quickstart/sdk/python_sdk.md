@@ -9,6 +9,7 @@ Python SDK默认执行模式为在线。
 ```bash
 pip install openmldb
 ```
+注意：如果在macOS系统执行，则要求python >= 3.9，其他系统可以忽略
 
 ## 使用 OpenMLDB DBAPI
 
