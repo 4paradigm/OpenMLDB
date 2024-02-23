@@ -40,8 +40,9 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
       NPROC: 2
-      BUILD_SHARED_LIBS: OFF
+      BUILD_SHARED_LIBS: ON
       TESTING_ENABLE_STRIP: ON
+      THIRD_PARTY_DIR: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,6 +60,20 @@ jobs:
         run: |
           sudo make install
 
+      - name: download glog
+        uses: actions/checkout@v4
+        with:
+          repository: google/glog
+          ref: v0.6.0
+          path: glog
+
+      - name: install glog
+        working-directory: glog
+        run: |
+            cmake -S . -B build -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${{ env.THIRD_PARTY_DIR }}
+            cmake --build build
+            cmake --build build --target install
+
       - name: coverage configure
         run: |
           make coverage-configure
@@ -66,30 +81,10 @@ jobs:
       - name: start service
         run: |
           ./steps/ut_zookeeper.sh start
-      # make coverage-cpp will gen 16G build/ (no run), run test will take 2G more, so split make and test
+
       - name: Coverage CPP
         run: |
-          # rm some irrelevant files
-          rm -rf .deps/build
-          # only build tests: no build output by ctest, so we use cmake
-          # ctest --build-and-test . build --build-nocmake --build-generator "Unix Makefiles" -j $NPROC
-          # split make too, delete irrelavant files in the middle
-          cmake --build build --target help | grep -Eo "\S+_test$" | awk '{if(NR <80) printf(" %s ",$0)}' | xargs cmake --build build -j $NPROC --target
-          # rm some in the middle, leave ~7.4G
-          rm -f build/bin/* # no need anymore
-          find build -name "*.a" -type f -delete
-          du -d 1 -h build
-          df -h
-          cmake --build build --target help | grep -Eo "\S+_test$" | awk '{if(NR >=80) printf(" %s ",$0)}' | xargs cmake --build build -j $NPROC --target
-          # ~11G
-          # rm some irrelevant files, *.dir/Makefile/*.make can't be deleted, test in bin won't test by coverage
-          rm -f build/bin/*
-          find build \( -name "*.a" -o -name "*.o" -o -name "*.o.d" -o -name "cmake*.cmake" \) -delete
-          du -d 1 -h build
-          df -h
-          # Makefile target coverage, not the cmake target(won't build tests again), total 119(120-api_server_test)
-          cd build
-          SQL_CASE_BASE_DIR=$(pwd)/.. YAML_CASE_BASE_DIR=$(pwd)/.. make coverage
+          make coverage-cpp
 
       - name: debug
         if: always()
