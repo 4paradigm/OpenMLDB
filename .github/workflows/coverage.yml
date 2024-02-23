@@ -70,7 +70,7 @@ jobs:
       - name: install glog
         working-directory: glog
         run: |
-            cmake -S . -B build -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${{ env.THIRD_PARTY_DIR }}
+            cmake -S . -B build -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${{ env.THIRD_PARTY_DIR }} -DCMAKE_BUILD_TYPE=RelWithDebInfo
             cmake --build build
             cmake --build build --target install
 
