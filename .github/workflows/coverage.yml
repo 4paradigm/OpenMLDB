@@ -43,7 +43,7 @@ jobs:
       BUILD_SHARED_LIBS: OFF
       TESTING_ENABLE_STRIP: ON
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: download lcov
         uses: actions/checkout@v2
@@ -55,7 +55,7 @@ jobs:
       - name: install lcov
         working-directory: lcov
         run: |
-          make install
+          sudo make install
 
       - name: coverage configure
         run: |
