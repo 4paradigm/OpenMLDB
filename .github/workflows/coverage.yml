@@ -44,6 +44,8 @@ jobs:
       TESTING_ENABLE_STRIP: ON
     steps:
       - uses: actions/checkout@v4
+      with:
+        submodules: true
 
       - name: download lcov
         uses: actions/checkout@v4
