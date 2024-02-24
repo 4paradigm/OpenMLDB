@@ -127,7 +127,7 @@ set(Protobuf_USE_STATIC_LIBS ON)
 find_package(Protobuf 3.6 EXACT REQUIRED)
 message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
 
-find_library(GLOG_LIBRARY glog)
+set(GLOG_LIBRARY glog::glog)
 find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
 find_library(LEVELDB_LIBRARY leveldb)

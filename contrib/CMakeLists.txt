@@ -25,4 +25,4 @@ function(add_contrib cmake_folder)
 endfunction()
 
 add_contrib(simdjson)
-
+add_contrib(glog-cmake glog)

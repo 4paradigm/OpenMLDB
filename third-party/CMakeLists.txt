@@ -138,6 +138,10 @@ if (BUILD_BUNDLED_GFLAGS)
   include(FetchGflags)
 endif()
 
+if (BUILD_BUNDLED_LIBUNWIND)
+  include(FetchLibunwind)
+endif()
+
 if (BUILD_BUNDLED_GLOG)
   include(FetchGlog)
 endif()
@@ -176,10 +180,6 @@ endif()
 
 if (BUILD_BUNDLED_LEVELDB)
   include(FetchLeveldb)
-endif()
-
-if (BUILD_BUNDLED_LIBUNWIND)
-  include(FetchLibunwind)
 endif()
 
 if (BUILD_BUNDLED_SQLITE3)
