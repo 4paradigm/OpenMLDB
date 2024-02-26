@@ -5,7 +5,7 @@
 ### Features
 - Support Iceberg as an offline storage (#3737 @vagetablechicken)
 - Support `UNION ALL` statement (#3590 #3653 @aceforeverd)
-- Support `SELECT ... INTO OUTFILE` to OopenMLDB online tables (#3616 @tobegit3hub)
+- Support `SELECT ... INTO OUTFILE` to OpenMLDB online tables (#3616 @tobegit3hub)
 - Support `LAST JOIN` and `WINDOW` without `ORDER BY` in offline mode (#3619 @aceforeverd)
 - Support `CREATE/ALTER/DROP USER` statement (#3678 #3745 #3747 @dl239, #3744 @tobegit3hub)
 - Support specifying Spark configurations in the SDK (#3613 @tobegit3hub)
@@ -15,7 +15,7 @@
 - Support automatic deletion of logs (#3704 #3736 #3706 @dl239)
 - Support `absandlat/absorlat` TTL type for disktable (#3716 @dl239)
 - Optimize error messages for insert failures (#3725 @vagetablechicken)
-- Improve the documents (#3617 #3519 #3690 #3699 @vagetablechicken, #3612 @dl239, #3609 #3672 #3687 @aceforeverd, #3649 #3570 #3569 @TanZiYen @Elliezza, #3665 @DrDub, #3585 #3584 #3579 #3578 #3574 #3573 #3552 #3539 #3488 #3477 #3475 #3586 #3470 #3474 #3568 #3583 #3564 #3764 @TanZiYen, #3688 #3697 #3753 #3721 #3731 #3739 #3754 #3720 #3756 #3762 #3752 #3757 #3719 @Elliezz, #3075 @Elliezz @tobegit3hub, #3710 @tobegit3hub)
+- Improve the documents (#3617 #3519 #3690 #3699 @vagetablechicken, #3612 @dl239, #3609 #3672 #3687 @aceforeverd, #3649 #3570 #3569 @TanZiYen @Elliezza, #3665 @DrDub, #3585 #3584 #3579 #3578 #3574 #3573 #3552 #3539 #3488 #3477 #3475 #3586 #3470 #3474 #3568 #3583 #3564 #3764 @TanZiYen, #3688 #3697 #3753 #3721 #3731 #3739 #3754 #3720 #3756 #3762 #3752 #3757 #3719 @Elliezza, #3075 @Elliezza @tobegit3hub, #3710 @tobegit3hub)
 - Other minor features (#3623 #3636 @aceforeverd, #3651 @tobegit3hub, #3641 #3692 @vagetablechicken, #3582 #3702 @dl239, #3674 @lqy222)
 
 ### Bug Fixes
