@@ -1248,6 +1248,40 @@ TEST_P(DBSDKTest, DeletetSameColIndex) {
                     });
 }
 
+TEST_P(DBSDKTest, DeletetSameTsCol) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl =
+        "create table test1 (id int, c1 string, c2 smallint, c3 int, c4 bigint, c5 float,c6 double,"
+        "c7 timestamp,c8 date, c9 bool, INDEX(KEY=c7, ts=c7));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
+                " values (1,\"aa\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"), &status);
+    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
+                " values (2,\"bb\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"), &status);
+    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
+                " values (3,\"aa\",1,2,3,1.1,2.1,1590738990000,\"2020-05-01\",true);"), &status);
+
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 3);
+    sr->ExecuteSQL(absl::StrCat("delete from ", table_name, " where c7=1590738989000;"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 1);
+    ProcessSQLs(sr, {
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
 TEST_P(DBSDKTest, TestDelete) {
     auto cli = GetParam();
     sr = cli->sr;
