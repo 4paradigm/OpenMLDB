@@ -80,64 +80,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 在线导入还需要考虑并发问题，在线导入本质上是Spark中每个partition task启动一个Java SDK，每个SDK会创建一个与zk之间的session，如果并发过高，同时活跃的task过多，zk的session数量就会很大，可能超过其限制`maxClientCnxns`，具体问题现象见[issue 3219](https://github.com/4paradigm/OpenMLDB/issues/3219)。简单来说，请注意你的导入任务并发数和单个导入任务的并发数，如果你同时会进行多个导入任务，建议降低单个导入任务的并发数。
 
-单个任务最大的并发数限制为`spark.executor.instances`*`spark.executor.cores`，请调整这两个配置。当spark.master=local时，调整driver的，而不是executor的。
-
-### DELETE
-
-在线存储的表有多索引，`DELETE` 可能无法删除所有索引中的对应数据，所以，可能出现删除了数据，却能查出已删除数据的情况。
-
-举例：
-
-```SQL
-create database db;
-use db;
-create table t1(c1 int, c2 int,index(key=c1),index(key=c2));
-desc t1;
-set @@execute_mode='online';
-insert into t1 values (1,1),(2,2);
-delete from t1 where c2=2;
-select * from t1;
-select * from t1 where c2=2;
-```
-
-结果如下：
-
-```Plain
- --- ------- ------ ------ ---------
-     Field   Type   Null   Default
- --- ------- ------ ------ ---------
-  1   c1      Int    YES
-  2   c2      Int    YES
- --- ------- ------ ------ ---------
- --- -------------------- ------ ---- ------ ---------------
-     name                 keys   ts   ttl    ttl_type
- --- -------------------- ------ ---- ------ ---------------
-  1   INDEX_0_1668504212   c1     -    0min   kAbsoluteTime
-  2   INDEX_1_1668504212   c2     -    0min   kAbsoluteTime
- --- -------------------- ------ ---- ------ ---------------
- --------------
-  storage_mode
- --------------
-  Memory
- --------------
- ---- ----
-  c1   c2
- ---- ----
-  1    1
-  2    2
- ---- ----
-
-2 rows in set
- ---- ----
-  c1   c2
- ---- ----
-
-0 rows in set
-```
-
-说明：
-
-表 `t1` 有多个索引（`DEPLOY` 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。这是因为delete的where condition只与第二个index相关，第一个index中没有任何该condition相关的key或ts。而 `select * from t1` 使用第一个索引，并非第二个，结果就会有两条数据，直观感受为delete失败了；`select * from t1 where c2=2` 使用第二个索引，结果为空，证明数据在该索引下已被删除。
+单个任务最大的并发数限制为`spark.executor.instances` * `spark.executor.cores`，请调整这两个配置。当spark.master=local时，调整driver的，而不是executor的。
 
 ## DQL 边界
 

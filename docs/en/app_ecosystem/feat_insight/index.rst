@@ -1,9 +1,12 @@
 =============================
-Expressions and Operations
+FeatInsight
 =============================
-
 
 .. toctree::
     :maxdepth: 1
 
-    operators
+    introduction
+    quickstart
+    install/index
+    use_cases/index
+    faq

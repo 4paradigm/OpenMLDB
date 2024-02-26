@@ -279,25 +279,78 @@ public class Util {
         return  requestPs;
     }
 
-    public static Map<String, String> extractResultSet(ResultSet resultSet) {
-        Map<String, String> val = new HashMap<>();
+    public static PreparedStatement getBatchPreparedStatement(String deployName, int numberKey, int batchSize,
+                                                         TableSchema tableSchema,
+                                                         SqlExecutor executor) throws SQLException {
+
+        String dbName = tableSchema.getDataBase();
+        List<Type.DataType> schema = tableSchema.getSchema();
+        Set<Integer> index = tableSchema.getIndex();
+        Set<Integer> tsIndex = tableSchema.getTsIndex();
+        PreparedStatement requestPs = executor.getCallablePreparedStmtBatch(dbName, deployName);
+        ResultSetMetaData metaData = requestPs.getMetaData();
+        if (schema.size() != metaData.getColumnCount()) {
+            return null;
+        }
+        for (int idx = 0; idx < batchSize; idx++) {
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    if (index.contains(i)) {
+                        requestPs.setString(i + 1, "k" + String.valueOf(10 + i) + String.valueOf(numberKey));
+                    } else {
+                        requestPs.setString(i + 1, "val" + String.valueOf(numberKey));
+                    }
+                } else if (columnType == Types.DOUBLE) {
+                    requestPs.setDouble(i + 1, 1.4d);
+                } else if (columnType == Types.FLOAT) {
+                    requestPs.setFloat(i + 1, 1.3f);
+                } else if (columnType == Types.INTEGER) {
+                    if (index.contains(i)) {
+                        requestPs.setInt(i + 1, numberKey);
+                    } else {
+                        requestPs.setInt(i + 1, i);
+                    }
+                } else if (columnType == Types.BIGINT) {
+                    if (index.contains(i)) {
+                        requestPs.setLong(i + 1, numberKey);
+                    } else if (tsIndex.contains(i)) {
+                        requestPs.setLong(i + 1, System.currentTimeMillis());
+                    } else {
+                        requestPs.setLong(i + 1, i);
+                    }
+                } else if (columnType == Types.TIMESTAMP) {
+                    requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
+                } else if (columnType == Types.DATE) {
+                    requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
+                } else if (columnType == Types.BOOLEAN) {
+                    requestPs.setBoolean(i + 1, true);
+                }
+            }
+            requestPs.addBatch();
+        }
+        return  requestPs;
+    }
+
+    public static Map<String, Object> extractResultSet(ResultSet resultSet) {
+        Map<String, Object> val = new HashMap<>();
         try {
             ResultSetMetaData metaData = resultSet.getMetaData();
             for (int i = 0; i < metaData.getColumnCount(); i++) {
                 String columnName = metaData.getColumnName(i + 1);
                 int columnType = metaData.getColumnType(i + 1);
                 if (columnType == Types.VARCHAR) {
-                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                    val.put(columnName, resultSet.getString(i + 1));
                 } else if (columnType == Types.DOUBLE) {
-                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                    val.put(columnName, resultSet.getDouble(i + 1));
                 } else if (columnType == Types.FLOAT) {
-                    val.put(columnName, String.valueOf(resultSet.getFloat(i + 1)));
+                    val.put(columnName, resultSet.getFloat(i + 1));
                 } else if (columnType == Types.INTEGER) {
-                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                    val.put(columnName, resultSet.getInt(i + 1));
                 } else if (columnType == Types.BIGINT) {
-                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                    val.put(columnName, resultSet.getLong(i + 1));
                 } else if (columnType == Types.TIMESTAMP) {
-                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                    val.put(columnName, resultSet.getTimestamp(i + 1));
                 }
             }
         } catch (Exception e) {

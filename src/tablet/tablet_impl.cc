@@ -102,6 +102,7 @@ DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_string(snapshot_compression);
 DECLARE_string(file_compression);
+DECLARE_int32(request_timeout_ms);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -626,17 +627,9 @@ void TabletImpl::Get(RpcController* controller, const ::openmldb::api::GetReques
         } else {
             pid = request->pid();
         }
-        std::shared_ptr<Table> table = GetTable(tid, pid);
-        if (!table) {
-            PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table does not exist");
-            return;
-        }
-        if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-            PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-            response->set_msg("table is loading");
+        auto table = GetTable(tid, pid);
+        if (auto status = CheckTable(tid, pid, false, table); !status.OK()) {
+            SetResponseStatus(status, response);
             return;
         }
         std::string index_name;
@@ -714,42 +707,20 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    auto table = GetTable(tid, pid);
+    if (auto status = CheckTable(tid, pid, true, table); !status.OK()) {
+        SetResponseStatus(status, response);
+        return;
+    }
     uint64_t start_time = ::baidu::common::timer::get_micros();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table does not exist");
-        return;
-    }
     DLOG(INFO) << "request dimension size " << request->dimensions_size() << " request time " << request->time();
-    if (!table->IsLeader()) {
-        response->set_code(::openmldb::base::ReturnCode::kTableIsFollower);
-        response->set_msg("table is follower");
+    if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory &&
+        memory_used_.load(std::memory_order_relaxed) > FLAGS_max_memory_mb) {
+        PDLOG(WARNING, "current memory %lu MB exceed max memory limit %lu MB. tid %u, pid %u",
+              memory_used_.load(std::memory_order_relaxed), FLAGS_max_memory_mb, tid, pid);
+        response->set_code(::openmldb::base::ReturnCode::kExceedMaxMemory);
+        response->set_msg("exceed max memory");
         return;
-    }
-    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading");
-        return;
-    }
-    if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory) {
-        if (memory_used_.load(std::memory_order_relaxed) > FLAGS_max_memory_mb) {
-            PDLOG(WARNING, "current memory %lu MB exceed max memory limit %lu MB. tid %u, pid %u",
-                  memory_used_.load(std::memory_order_relaxed), FLAGS_max_memory_mb, tid, pid);
-            response->set_code(base::ReturnCode::kExceedMaxMemory);
-            response->set_msg("exceed max memory");
-            return;
-        }
-        if (request->has_memory_limit() && request->memory_limit() > 0
-                && system_memory_usage_rate_.load(std::memory_order_relaxed) > request->memory_limit()) {
-            PDLOG(WARNING, "current system_memory_usage_rate %u exceed request memory limit %u. tid %u, pid %u",
-                  system_memory_usage_rate_.load(std::memory_order_relaxed), request->memory_limit(), tid, pid);
-            response->set_code(base::ReturnCode::kExceedPutMemoryLimit);
-            response->set_msg("exceed memory limit");
-            return;
-        }
     }
     ::openmldb::api::LogEntry entry;
     entry.set_pk(request->pk());
@@ -850,83 +821,6 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         table->GetName() == openmldb::nameserver::GLOBAL_VARIABLES) {
         UpdateGlobalVarTable();
     }
-}
-
-int TabletImpl::CheckTableMeta(const openmldb::api::TableMeta* table_meta, std::string& msg) {
-    msg.clear();
-    if (table_meta->name().empty()) {
-        msg = "table name is empty";
-        return -1;
-    }
-    if (table_meta->tid() <= 0) {
-        msg = "tid <= 0, invalid";
-        return -1;
-    }
-    std::map<std::string, ::openmldb::type::DataType> column_map;
-    if (table_meta->column_desc_size() > 0) {
-        for (const auto& column_desc : table_meta->column_desc()) {
-            if (column_map.find(column_desc.name()) != column_map.end()) {
-                msg = "has repeated column name " + column_desc.name();
-                return -1;
-            }
-            column_map.insert(std::make_pair(column_desc.name(), column_desc.data_type()));
-        }
-    }
-    std::set<std::string> index_set;
-    if (table_meta->column_key_size() > 0) {
-        for (const auto& column_key : table_meta->column_key()) {
-            if (index_set.find(column_key.index_name()) != index_set.end()) {
-                msg = "has repeated index name " + column_key.index_name();
-                return -1;
-            }
-            index_set.insert(column_key.index_name());
-            bool has_col = false;
-            for (const auto& column_name : column_key.col_name()) {
-                has_col = true;
-                auto iter = column_map.find(column_name);
-                if (iter == column_map.end()) {
-                    msg = "not found column name " + column_name;
-                    return -1;
-                }
-                if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
-                    msg = "float or double column can not be index" + column_name;
-                    return -1;
-                }
-            }
-            if (!has_col) {
-                auto iter = column_map.find(column_key.index_name());
-                if (iter == column_map.end()) {
-                    msg = "index must member of columns when column key col name is empty";
-                    return -1;
-                } else {
-                    if (iter->second == ::openmldb::type::kFloat || iter->second == ::openmldb::type::kDouble) {
-                        msg = "indxe name column type can not float or column";
-                        return -1;
-                    }
-                }
-            }
-            if (!column_key.ts_name().empty()) {
-                auto iter = column_map.find(column_key.ts_name());
-                if (iter == column_map.end()) {
-                    msg = "not found column name " + column_key.ts_name();
-                    return -1;
-                }
-            }
-            if (column_key.has_ttl()) {
-                if (column_key.ttl().abs_ttl() > FLAGS_absolute_ttl_max ||
-                    column_key.ttl().lat_ttl() > FLAGS_latest_ttl_max) {
-                    msg = "ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) +
-                          ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max);
-                    return -1;
-                }
-            }
-        }
-    }
-    if (table_meta->storage_mode() == common::kUnknown) {
-        msg = "storage_mode is unknown";
-        return -1;
-    }
-    return 0;
 }
 
 int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const ::openmldb::api::TableMeta& meta,
@@ -1159,17 +1053,9 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
         } else {
             pid = request->pid();
         }
-        std::shared_ptr<Table> table = GetTable(tid, pid);
-        if (!table) {
-            PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table does not exist");
-            return;
-        }
-        if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-            PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-            response->set_msg("table is loading");
+        auto table = GetTable(tid, pid);
+        if (auto status = CheckTable(tid, pid, false, table); !status.OK()) {
+            SetResponseStatus(status, response);
             return;
         }
         uint32_t index = 0;
@@ -1253,17 +1139,11 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
 void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRequest* request,
                        ::openmldb::api::CountResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table does not exist");
-        return;
-    }
-    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading");
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    auto table = GetTable(tid, pid);
+    if (auto status = CheckTable(tid, pid, false, table); !status.OK()) {
+        SetResponseStatus(status, response);
         return;
     }
     uint32_t index = 0;
@@ -1277,8 +1157,7 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     }
     index_def = table->GetIndex(index_name);
     if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(), request->tid(),
-              request->pid());
+        PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(), tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("idx name not found");
         return;
@@ -1337,17 +1216,9 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table does not exist");
-        return;
-    }
-    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading");
+    auto table = GetTable(tid, pid);
+    if (auto status = CheckTable(tid, pid, false, table); !status.OK()) {
+        SetResponseStatus(status, response);
         return;
     }
     std::string index_name;
@@ -1458,6 +1329,140 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     response->set_ts_pos(ts_pos);
 }
 
+base::Status TabletImpl::CheckTable(uint32_t tid, uint32_t pid, bool check_leader,
+        const std::shared_ptr<Table>& table) {
+    if (!table) {
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
+        return {base::ReturnCode::kTableIsNotExist, "table does not exist"};
+    }
+    if (check_leader && !table->IsLeader()) {
+        DEBUGLOG("table is follower. tid %u, pid %u", tid, pid);
+        return {base::ReturnCode::kTableIsFollower, "table is follower"};
+    }
+    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
+        return {base::ReturnCode::kTableIsLoading, "table is loading"};
+    }
+    return {};
+}
+
+base::Status TabletImpl::DeleteAllIndex(const std::shared_ptr<storage::Table>& table,
+                                        const std::shared_ptr<IndexDef>& cur_index,
+                                        const std::string& key,
+                                        std::optional<uint64_t> start_ts,
+                                        std::optional<uint64_t> end_ts,
+                                        bool skip_cur_ts_col,
+                                        const std::shared_ptr<catalog::TableClientManager>& client_manager,
+                                        uint32_t partition_num) {
+    storage::Ticket ticket;
+    std::unique_ptr<storage::TableIterator> iter(table->NewIterator(cur_index->GetId(), key, ticket));
+    if (start_ts.has_value()) {
+        iter->Seek(start_ts.value());
+    } else {
+        iter->SeekToFirst();
+    }
+    auto indexs = table->GetAllIndex();
+    while (iter->Valid()) {
+        DEBUGLOG("cur ts %lu cur index pos %u", iter->GetKey(), cur_index->GetId());
+        if (end_ts.has_value() && iter->GetKey() <= end_ts.value()) {
+            break;
+        }
+        auto value = iter->GetValue();
+        uint32_t data_length = value.size();
+        const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+        std::string uncompress_data;
+        if (table->GetCompressType() == openmldb::type::kSnappy) {
+            snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+            data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+            data_length = uncompress_data.length();
+        }
+        if (data_length < codec::HEADER_LENGTH) {
+            return {base::ReturnCode::kDeleteFailed, "invalid value"};
+        }
+        uint8_t version = codec::RowView::GetSchemaVersion(data);
+        auto decoder = table->GetVersionDecoder(version);
+        if (decoder == nullptr) {
+            return {base::ReturnCode::kDeleteFailed, "invalid schema version"};
+        }
+        for (const auto& index : indexs) {
+            if (!index->IsReady()) {
+                continue;
+            }
+            if (cur_index && index->GetId() == cur_index->GetId()) {
+                continue;
+            }
+            auto ts_col = index->GetTsColumn();
+            if (skip_cur_ts_col && ts_col->GetId() == cur_index->GetTsColumn()->GetId()) {
+                continue;
+            }
+            sdk::DeleteOption option;
+            option.idx = index->GetId();
+            if (ts_col->IsAutoGenTs()) {
+                option.start_ts = iter->GetKey();
+            } else {
+                int64_t ts = 0;
+                if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
+                    return {base::ReturnCode::kDeleteFailed, "get ts value failed"};
+                }
+                option.ts_name = ts_col->GetName();
+                option.start_ts = ts;
+            }
+            if (option.start_ts.value() > 1) {
+                option.end_ts = option.start_ts.value() - 1;
+            }
+            const auto& cols = index->GetColumns();
+            if (cols.size() == 1) {
+                const auto& col = cols.front();
+                if (decoder->IsNULL(data, col.GetId())) {
+                    option.key = hybridse::codec::NONETOKEN;
+                } else if (decoder->GetStrValue(data, col.GetId(), &option.key) != 0) {
+                    return {base::ReturnCode::kDeleteFailed, "get key failed"};
+                }
+                if (option.key.empty()) {
+                    option.key = hybridse::codec::EMPTY_STRING;
+                }
+            } else {
+                for (const auto& col : cols) {
+                    std::string tmp;
+                    if (decoder->IsNULL(data, col.GetId())) {
+                        tmp = hybridse::codec::NONETOKEN;
+                    } else if (decoder->GetStrValue(data, col.GetId(), &tmp) != 0) {
+                        return {base::ReturnCode::kDeleteFailed, "get key failed"};
+                    }
+                    if (tmp.empty()) {
+                        tmp = hybridse::codec::EMPTY_STRING;
+                    }
+                    if (!option.key.empty()) {
+                        option.key.append("|");
+                    }
+                    option.key.append(tmp);
+                }
+            }
+            uint32_t cur_pid = static_cast<uint32_t>(base::hash64(option.key)) % partition_num;
+            auto tablet = client_manager->GetTablet(cur_pid);
+            if (tablet == nullptr) {
+                return {base::ReturnCode::kDeleteFailed, absl::StrCat("tablet is nullptr, pid ", cur_pid)};
+            }
+            auto client = tablet->GetClient();
+            if (client == nullptr) {
+                return {base::ReturnCode::kDeleteFailed, absl::StrCat("client is nullptr, pid ", cur_pid)};
+            }
+            DEBUGLOG("delete idx %u pid %u pk %s ts %lu end_ts %lu",
+                    option.idx.value(), cur_pid, option.key.c_str(), option.start_ts.value(), option.end_ts.value());
+            std::string msg;
+            // do not delete other index data
+            option.enable_decode_value = false;
+            if (auto status = client->Delete(table->GetId(), cur_pid, option, FLAGS_request_timeout_ms); !status.OK()) {
+                return {base::ReturnCode::kDeleteFailed,
+                    absl::StrCat("delete failed. key ", option.key, " pid ", cur_pid, " msg: ", status.GetMsg())};
+            }
+        }
+
+        iter->Next();
+    }
+    return {};
+}
+
 void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::DeleteRequest* request,
                         openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -1468,23 +1473,9 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         response->set_msg("is follower cluster");
         return;
     }
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table does not exist");
-        return;
-    }
-    if (!table->IsLeader()) {
-        DEBUGLOG("table is follower. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsFollower);
-        response->set_msg("table is follower");
-        return;
-    }
-    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading");
+    auto table = GetTable(tid, pid);
+    if (auto status = CheckTable(tid, pid, true, table); !status.OK()) {
+        SetResponseStatus(status, response);
         return;
     }
     auto replicator = GetReplicator(tid, pid);
@@ -1495,21 +1486,24 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     ::openmldb::api::LogEntry entry;
     entry.set_term(replicator->GetLeaderTerm());
     entry.set_method_type(::openmldb::api::MethodType::kDelete);
-    uint32_t idx = 0;
     if (request->dimensions_size() > 0) {
-        entry.mutable_dimensions()->CopyFrom(request->dimensions());
-        idx = entry.dimensions(0).idx();
-    } else {
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
-            if (!index_def || !index_def->IsReady()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(), tid, pid);
-                response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
-                response->set_msg("idx name not found");
-                return;
-            }
-            idx = index_def->GetId();
+        entry.add_dimensions()->CopyFrom(request->dimensions(0));
+        auto index_def = table->GetIndex(request->dimensions(0).idx());
+        if (!index_def || !index_def->IsReady()) {
+            PDLOG(WARNING, "index %s not found in table tid %u, pid %u", request->dimensions(0).idx(), tid, pid);
+            response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("index not found");
+            return;
         }
+    } else if (request->has_idx_name() && !request->idx_name().empty()) {
+        auto index_def = table->GetIndex(request->idx_name());
+        if (!index_def || !index_def->IsReady()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(), tid, pid);
+            response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
+            response->set_msg("index not found");
+            return;
+        }
+        uint32_t idx = index_def->GetId();
         if (request->has_key()) {
             auto dimension = entry.add_dimensions();
             dimension->set_key(request->key());
@@ -1531,8 +1525,27 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         PDLOG(WARNING, "invalid args. tid %u, pid %u", tid, pid);
         return;
     }
+    bool delete_others = false;
+    if (request->has_enable_decode_value() && request->enable_decode_value()) {
+        auto indexs = table->GetAllIndex();
+        if (entry.dimensions_size() > 0) {
+            if (indexs.size() > 1) {
+                delete_others = true;
+            }
+        } else if (request->has_ts_name()) {
+            for (const auto& index : indexs) {
+                if (!index->IsReady()) {
+                    continue;
+                }
+                if (index->GetTsColumn()->GetName() != request->ts_name()) {
+                    delete_others = true;
+                    break;
+                }
+            }
+        }
+    }
     auto aggrs = GetAggregators(tid, pid);
-    if (!aggrs) {
+    if (!aggrs && !delete_others) {
         if (table->Delete(entry)) {
             DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, request->key().c_str());
         } else {
@@ -1541,7 +1554,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
             return;
         }
     } else {
-        auto get_aggregator = [this](std::shared_ptr<Aggrs> aggrs, uint32_t idx) -> std::shared_ptr<Aggregator> {
+        auto get_aggregator = [this](const std::shared_ptr<Aggrs>& aggrs, uint32_t idx) -> std::shared_ptr<Aggregator> {
             if (aggrs) {
                 for (const auto& aggr : *aggrs) {
                     if (aggr->GetIndexPos() == idx) {
@@ -1553,29 +1566,59 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         };
         std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()} : std::nullopt;
         std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()} : std::nullopt;
+        auto handler = catalog_->GetTable(table->GetDB(), table->GetName());
+        if (!handler) {
+            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("no TableHandler");
+            PDLOG(WARNING, "no TableHandler. tid %u, pid %u", tid, pid);
+            return;
+        }
+        auto tablet_table_handler = std::dynamic_pointer_cast<catalog::TabletTableHandler>(handler);
+        if (!tablet_table_handler) {
+            response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+            response->set_msg("convert TabletTableHandler failed");
+            PDLOG(WARNING, "convert TabletTableHandler failed. tid %u, pid %u", tid, pid);
+            return;
+        }
+        uint32_t pid_num = tablet_table_handler->GetPartitionNum();
+        auto table_client_manager = tablet_table_handler->GetTableClientManager();
         if (entry.dimensions_size() > 0) {
-            for (const auto& dimension : entry.dimensions()) {
-                if (!table->Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
-                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                    response->set_msg("delete failed");
+            const auto& dimension = entry.dimensions(0);
+            uint32_t idx = dimension.idx();
+            auto index_def = table->GetIndex(idx);
+            const auto& key = dimension.key();
+            if (delete_others) {
+                auto status = DeleteAllIndex(table, index_def, key, start_ts, end_ts, false,
+                        table_client_manager, pid_num);
+                if (!status.OK()) {
+                    SET_RESP_AND_WARN(response, status.GetCode(), status.GetMsg());
                     return;
                 }
-                auto aggr = get_aggregator(aggrs, dimension.idx());
-                if (aggr) {
-                    if (!aggr->Delete(dimension.key(), start_ts, end_ts)) {
-                        PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
-                                "aggr table: tid[%u]",
-                              tid, pid, idx, dimension.key().c_str(), aggr->GetAggrTid());
-                        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                        response->set_msg("delete from associated pre-aggr table failed");
-                        return;
-                    }
-                }
-                DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, dimension.key().c_str());
             }
+            if (!table->Delete(idx, key, start_ts, end_ts)) {
+                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete failed");
+                return;
+            }
+            auto aggr = get_aggregator(aggrs, idx);
+            if (aggr) {
+                if (!aggr->Delete(key, start_ts, end_ts)) {
+                    PDLOG(WARNING, "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. "
+                            "aggr table: tid[%u]",
+                          tid, pid, idx, key.c_str(), aggr->GetAggrTid());
+                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                    response->set_msg("delete from associated pre-aggr table failed");
+                    return;
+                }
+            }
+            DEBUGLOG("delete ok. tid %u, pid %u, key %s", tid, pid, key.c_str());
         } else {
+            bool is_first_hit_index = true;
             for (const auto& index_def : table->GetAllIndex()) {
                 if (!index_def || !index_def->IsReady()) {
+                    continue;
+                }
+                if (index_def->GetTsColumn()->GetName() != request->ts_name()) {
                     continue;
                 }
                 uint32_t idx = index_def->GetId();
@@ -1583,6 +1626,14 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
                 iter->SeekToFirst();
                 while (iter->Valid()) {
                     auto pk = iter->GetPK();
+                    if (delete_others && is_first_hit_index) {
+                        auto status = DeleteAllIndex(table, index_def, pk, start_ts, end_ts, true,
+                                table_client_manager, pid_num);
+                        if (!status.OK()) {
+                            SET_RESP_AND_WARN(response, status.GetCode(), status.GetMsg());
+                            return;
+                        }
+                    }
                     iter->NextPK();
                     if (!table->Delete(idx, pk, start_ts, end_ts)) {
                         response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
@@ -1600,6 +1651,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
                         }
                     }
                 }
+                is_first_hit_index = false;
             }
         }
     }
@@ -1946,16 +1998,9 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table does not exist");
-        return;
-    }
-    if (table->GetTableStat() != ::openmldb::storage::kNormal) {
-        PDLOG(WARNING, "table state[%u] can not change role. tid[%u] pid[%u]", table->GetTableStat(), tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableStatusIsNotKnormal);
-        response->set_msg("table status is not kNormal");
+    auto table = GetTable(tid, pid);
+    if (auto status = CheckTable(tid, pid, false, table); !status.OK()) {
+        SetResponseStatus(status, response);
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
@@ -2169,23 +2214,15 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table does not exist");
+    auto table = GetTable(tid, pid);
+    if (auto status = CheckTable(tid, pid, false, table); !status.OK()) {
+        SetResponseStatus(status, response);
         return;
     }
     if (!follower_.load(std::memory_order_relaxed) && table->IsLeader()) {
         PDLOG(WARNING, "table is leader. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsLeader);
         response->set_msg("table is leader");
-        return;
-    }
-    if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading");
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
@@ -2990,11 +3027,10 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
         table_meta.CopyFrom(request->table_meta());
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
-        std::string msg;
-        if (CheckTableMeta(&table_meta, msg) != 0) {
+        if (auto status = schema::SchemaAdapter::CheckTableMeta(table_meta); !status.OK()) {
             response->set_code(::openmldb::base::ReturnCode::kTableMetaIsIllegal);
-            response->set_msg(msg);
-            PDLOG(WARNING, "CheckTableMeta failed. tid %u, pid %u", tid, pid);
+            response->set_msg(status.GetMsg());
+            PDLOG(WARNING, "CheckTableMeta failed. tid %u, pid %u, msg %s", tid, pid, status.GetMsg().c_str());
             break;
         }
         std::string root_path;
@@ -3027,7 +3063,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
             response->set_msg("write data failed");
             break;
         }
-
+        std::string msg;
         if (table_meta.storage_mode() == openmldb::common::kMemory) {
             if (CreateTableInternal(&table_meta, msg) < 0) {
                 response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
@@ -3357,13 +3393,12 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
                              ::openmldb::api::CreateTableResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     const ::openmldb::api::TableMeta* table_meta = &request->table_meta();
-    std::string msg;
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    if (CheckTableMeta(table_meta, msg) != 0) {
+    if (auto status = schema::SchemaAdapter::CheckTableMeta(*table_meta); !status.OK()) {
         response->set_code(::openmldb::base::ReturnCode::kTableMetaIsIllegal);
-        response->set_msg(msg);
-        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
+        response->set_msg(status.GetMsg());
+        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, status.GetMsg().c_str());
         return;
     }
     std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -3399,6 +3434,7 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
         response->set_msg("write data failed");
         return;
     }
+    std::string msg;
     if (CreateTableInternal(table_meta, msg) < 0) {
         response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
         response->set_msg(msg.c_str());
@@ -4733,12 +4769,6 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         response->set_msg("table does not exist");
         return;
     }
-    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
     std::string root_path;
     if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path)) {
         response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
@@ -4746,8 +4776,7 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
         PDLOG(WARNING, "table db path is not found. tid %u, pid %u", tid, pid);
         return;
     }
-    MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (!mem_table->DeleteIndex(request->idx_name())) {
+    if (!table->DeleteIndex(request->idx_name())) {
         response->set_code(::openmldb::base::ReturnCode::kDeleteIndexFailed);
         response->set_msg("delete index failed");
         PDLOG(WARNING, "delete index %s failed. tid %u pid %u", request->idx_name().c_str(), tid, pid);
@@ -4777,19 +4806,6 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
             PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table does not exist");
-            break;
-        }
-        if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", request->tid(), request->pid());
-            return;
-        }
-        MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table == nullptr) {
-            PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
-            response->set_msg("table is not memtable");
             break;
         }
         std::map<uint32_t, std::string> pid_endpoint_map;
@@ -4900,7 +4916,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
 }
 
 void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                          std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+                                          std::shared_ptr<::openmldb::storage::Snapshot> snapshot,
                                           const std::vector<::openmldb::common::ColumnKey>& column_keys,
                                           uint32_t partition_num, uint64_t offset, bool dump_data,
                                           std::shared_ptr<::openmldb::api::TaskInfo> task) {
@@ -4933,7 +4949,7 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::T
             whs[i] = std::make_shared<::openmldb::log::WriteHandle>("off", index_file_name, fd);
         }
     }
-    auto status = memtable_snapshot->ExtractIndexData(table, column_keys, whs, offset, dump_data);
+    auto status = snapshot->ExtractIndexData(table, column_keys, whs, offset, dump_data);
     if (status.OK()) {
         PDLOG(INFO, "extract index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::openmldb::api::kDone);
@@ -4967,12 +4983,6 @@ void TabletImpl::LoadIndexData(RpcController* controller, const ::openmldb::api:
             PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
             response->set_msg("table does not exist");
-            break;
-        }
-        if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-            response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-            response->set_msg("only support mem_table");
-            PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
             break;
         }
         if (table->GetTableStat() != ::openmldb::storage::kNormal) {
@@ -5127,12 +5137,6 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
                 base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
                 break;
             }
-            if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-                response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-                PDLOG(WARNING, "only support mem_table. tid %u pid %u", tid, pid);
-                response->set_msg("only support mem_table");
-                break;
-            }
             if (table->GetTableStat() != ::openmldb::storage::kNormal) {
                 PDLOG(WARNING, "table state is %d, cannot extract index data. tid %u, pid %u", table->GetTableStat(),
                       tid, pid);
@@ -5152,13 +5156,12 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
         for (const auto& cur_column_key : request->column_key()) {
             index_vec.push_back(cur_column_key);
         }
-        auto memtable_snapshot = std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
         if (IsClusterMode()) {
-            task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot,
+            task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, snapshot,
                                            index_vec, request->partition_num(), request->offset(), request->dump_data(),
                                            task_ptr));
         } else {
-            ExtractIndexDataInternal(table, memtable_snapshot, index_vec, request->partition_num(), request->offset(),
+            ExtractIndexDataInternal(table, snapshot, index_vec, request->partition_num(), request->offset(),
                                      false, nullptr);
         }
         base::SetResponseOK(response);
@@ -5172,43 +5175,14 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
+    auto table = GetTable(tid, pid);
     if (!table) {
         PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
         return;
     }
-    if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-        response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-        response->set_msg("only support mem_table");
-        PDLOG(WARNING, "only support mem_table. tid %u, pid %u", tid, pid);
-        return;
-    }
-    auto* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (mem_table == nullptr) {
-        PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
-        return;
-    }
-    if (request->column_keys_size() > 0) {
-        for (const auto& column_key : request->column_keys()) {
-            // TODO(denglong): support add multi indexs in memory table
-            if (!mem_table->AddIndex(column_key)) {
-                PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
-                base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
-                return;
-            }
-        }
-    } else {
-        if (!mem_table->AddIndex(request->column_key())) {
-            PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
-            base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
-            return;
-        }
-    }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path);
-    if (!ok) {
+    if (!ChooseDBRootPath(tid, pid, table->GetStorageMode(), db_root_path)) {
         base::SetResponseStatus(base::ReturnCode::kFailToGetDbRootPath, "fail to get db root path", response);
         PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
         return;
@@ -5218,6 +5192,22 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
         base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path does not exist", response);
         return;
+    }
+    if (request->column_keys_size() > 0) {
+        for (const auto& column_key : request->column_keys()) {
+            // TODO(denglong): support add multi indexs in memory table
+            if (!table->AddIndex(column_key)) {
+                PDLOG(WARNING, "add index %s failed. tid %u, pid %u", column_key.index_name().c_str(), tid, pid);
+                base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
+                return;
+            }
+        }
+    } else {
+        if (!table->AddIndex(request->column_key())) {
+            PDLOG(WARNING, "add index failed. tid %u, pid %u", tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kAddIndexFailed, "add index failed", response);
+            return;
+        }
     }
     if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
         PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
