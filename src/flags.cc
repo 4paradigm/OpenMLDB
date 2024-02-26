@@ -21,6 +21,7 @@ DEFINE_string(log_level, "debug", "Set the log level of servers, eg: debug or in
 DEFINE_int32(glog_level, 1, "set the glog level of CLI, default is WARN");
 DEFINE_string(glog_dir, "", "set the glog dir of CLI, default is empty, print to stdout");
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir of glog, for all log macro");
+DEFINE_int32(log_overdue_days, 0, "config the number of days to retain log files");
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "the command str, DO NOT add multi sqls");
