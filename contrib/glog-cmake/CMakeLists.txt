@@ -1,10 +1,10 @@
 set(WITH_GTEST OFF)
+set(WITH_GFLAGS ON)
+set(WITH_UNWIND ON)
 
-if (BUILD_SHARED_LIBS)
-    # visibility issue building shared glog against static gflags
-    # so explicitly skip the gflags dependency
-    set(WITH_GFLAGS OFF)
-    set(WITH_UNWIND OFF)
-endif()
+execute_process(
+  COMMAND patch -p 1 -N -i ${CMAKE_SOURCE_DIR}/contrib/glog-cmake/find-gflags.patch
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/contrib/glog
+)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/contrib/glog ${CMAKE_BINARY_DIR}/contrib/glog)

@@ -33,6 +33,6 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   PATCH_COMMAND ${LIBUNWIND_PATCH}
-  CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} ./configure --prefix=<INSTALL_DIR> --enable-shared=no --enable-minidebuginfo=no"
+  CONFIGURE_COMMAND bash -c "${CONFIGURE_OPTS} ./configure --prefix=<INSTALL_DIR> --enable-shared=no"
   BUILD_COMMAND ${MAKE_EXE} ${MAKEOPTS}
   INSTALL_COMMAND ${MAKE_EXE} install)
