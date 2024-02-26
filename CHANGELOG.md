@@ -3,25 +3,32 @@
 ## [0.8.5] - 2024-02-06
 
 ### Features
+- Support Iceberg as an offline storage (#3737 @vagetablechicken)
 - Support `UNION ALL` statement (#3590 #3653 @aceforeverd)
 - Support `SELECT ... INTO OUTFILE` to OopenMLDB online tables (#3616 @tobegit3hub)
 - Support `LAST JOIN` and `WINDOW` without `ORDER BY` in offline mode (#3619 @aceforeverd)
+- Support `CREATE/ALTER/DROP USER` statement (#3678 #3745 #3747 @dl239, #3744 @tobegit3hub)
 - Support specifying Spark configurations in the SDK (#3613 @tobegit3hub)
 - `INSERT`returns failure if the server-side memory usage exceeds the specified limit (#3631 @dl239)
 - Add a new interfact for SQLs to DAG (#3630 @aceforeverd)
 - If the deployed SQL contains the `LEFT JOIN`, the indexs will be created automatically. (#3667 @aceforeverd)
-- Delete dirty data when insertion fails (#3681 @dl239)
 - Support automatic deletion of logs (#3704 #3736 #3706 @dl239)
-- Improve the documents (#3617 #3519 #3690 #3699 @vagetablechicken, #3612 @dl239, #3609 #3672 #3687 @aceforeverd, #3649 #3570 #3569 @TanZiYen @Elliezza, #3665 @DrDub, #3585 #3584 #3579 #3578 #3574 #3573 #3552 #3539 #3488 #3477 #3475 #3586 #3470 #3474 #3568 #3583 #3564 @TanZiYen, #3688 #3697 @Elliezz, #3075 @Elliezz @tobegit3hub, #3710 @tobegit3hub)
-- Other minor features (#3623 #3636 @aceforeverd, #3651 @tobegit3hub, #3641 #3692 @vagetablechicken, #3582 @dl239)
+- Support `absandlat/absorlat` TTL type for disktable (#3716 @dl239)
+- Optimize error messages for insert failures (#3725 @vagetablechicken)
+- Improve the documents (#3617 #3519 #3690 #3699 @vagetablechicken, #3612 @dl239, #3609 #3672 #3687 @aceforeverd, #3649 #3570 #3569 @TanZiYen @Elliezza, #3665 @DrDub, #3585 #3584 #3579 #3578 #3574 #3573 #3552 #3539 #3488 #3477 #3475 #3586 #3470 #3474 #3568 #3583 #3564 #3764 @TanZiYen, #3688 #3697 #3753 #3721 #3731 #3739 #3754 #3720 #3756 #3762 #3752 #3757 #3719 @Elliezz, #3075 @Elliezz @tobegit3hub, #3710 @tobegit3hub)
+- Other minor features (#3623 #3636 @aceforeverd, #3651 @tobegit3hub, #3641 #3692 @vagetablechicken, #3582 #3702 @dl239, #3674 @lqy222)
 
 ### Bug Fixes
 - Executing offline tasks will consume an excessive number of ZooKeeper connections (#3642 @dl239)
 - There is no automatic reconnection after ZooKeeper disconnection in SDK. (#3656 #3668 @vagetablechicken)
 - The `FlexibleRowBuilder` will throw a `NullPointerException` if set with a null value (#3649 @dl239)
+- If the length of strings in the imported data exceeds 255, it may throw a `BufferOverflowException`. (#3729 @ljwh)
 - If a table contains a large amount of data, querying the data may still be possible after executing `TRUNCATE` (#3677 @dl239)
+- After deleting data, it can still be retrieved from other indexes (#3693 @dl239)
+- Delete dirty data when insertion fails (#3681 @dl239)
+- When there are no tables, getting databases using `GetAllDbs` fails. (#3742 @vagetablechicken)
 - Adding a deleted index fails if the index name is different from the previous name (#3635 @dl239)
-- Other minor bug fixes (#3638 #3654 #3717 @vagetablechicken, #3607 @dl239, #3640 @tobegit3hub, #3686 #3735 @aceforeverd)
+- Other minor bug fixes (#3638 #3654 #3717 #3726 #3743 @vagetablechicken, #3607 #3775 @dl239, #3640 @tobegit3hub, #3686 #3735 #3738 #3740 @aceforeverd, #3759 @yangwucheng)
 
 ### Code Refactoring
 #3666 @vagetablechicken
