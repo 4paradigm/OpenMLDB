@@ -1025,6 +1025,7 @@ cases:
             +-0:
               +-node[kCompressType]
                 +-compress_type: snappy
+
   - id: 35
     desc: Create table with array & map type
     sql: |
@@ -1067,3 +1068,40 @@ cases:
           |      +-column_name: attrs
           |      +-column_type: map<string, int32 NOT NULL> NOT NULL
           +-table_option_list: []
+
+  - id: 36
+    desc: create user
+    sql: |
+      create user root;
+    expect:
+      node_tree_str: |
+        +-node[kCreateUserStmt]
+          +-if_not_exists: false
+          +-user: root
+          +-options: <nil>
+
+  - id: 37
+    desc: create user if not exist
+    sql: |
+      create user if not exists root;
+    expect:
+      node_tree_str: |
+        +-node[kCreateUserStmt]
+          +-if_not_exists: true
+          +-user: root
+          +-options: <nil>
+
+  - id: create_user_passwd
+    desc: create user with password
+    sql: |
+      create user root OPTIONS (password="123456");
+    expect:
+      node_tree_str: |
+        +-node[kCreateUserStmt]
+          +-if_not_exists: false
+          +-user: root
+          +-options:
+            +-password:
+              +-expr[primary]
+                +-value: 123456
+                +-type: string

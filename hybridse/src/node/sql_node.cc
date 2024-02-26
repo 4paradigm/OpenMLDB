@@ -52,6 +52,8 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdShowTables, "show tables"},
         {CmdType::kCmdUseDatabase, "use database"},
         {CmdType::kCmdDropDatabase, "drop database"},
+        {CmdType::kCmdDropUser, "drop user"},
+        {CmdType::kCmdShowUser, "show user"},
         {CmdType::kCmdCreateDatabase, "create database"},
         {CmdType::kCmdDescTable, "desc table"},
         {CmdType::kCmdDropTable, "drop table"},
@@ -1181,6 +1183,8 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kSetStmt, "kSetStmt"},
         {kDeleteStmt, "kDeleteStmt"},
         {kCreateFunctionStmt, "kCreateFunctionStmt"},
+        {kCreateUserStmt, "kCreateUserStmt"},
+        {kAlterUserStmt, "kAlterUserStmt"},
         {kDynamicUdfFnDef, "kDynamicUdfFnDef"},
         {kDynamicUdafFnDef, "kDynamicUdafFnDef"},
         {kWithClauseEntry, "kWithClauseEntry"},
@@ -1644,6 +1648,29 @@ void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) co
     output << "\n";
     PrintSqlNode(output, tab, index_, "index", true);
 }
+
+void CreateUserNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, if_not_exists_ ? "true" : "false", "if_not_exists", false);
+    output << "\n";
+    PrintValue(output, tab, name_, "user", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", true);
+}
+
+void AlterUserNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, if_exists_ ? "true" : "false", "if_exists", false);
+    output << "\n";
+    PrintValue(output, tab, name_, "user", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", true);
+}
+
 void ExplainNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -2725,6 +2752,19 @@ std::string AddPathAction::DebugString() const {
 
 std::string DropPathAction::DebugString() const {
     return absl::Substitute("DropPathAction ($0)", target_);
+}
+
+std::string SetOptionsAction::DebugString() const {
+    std::string output;
+    for (const auto& kv : *options_) {
+        if (!output.empty()) {
+            absl::StrAppend(&output, ", ");
+        }
+        absl::StrAppend(&output, kv.first);
+        absl::StrAppend(&output, "=");
+        absl::StrAppend(&output, kv.second->GetAsString());
+    }
+    return absl::Substitute("SetOptionsAction ($0)", output);
 }
 
 bool SetOperationNode::Equals(const SqlNode *node) const {

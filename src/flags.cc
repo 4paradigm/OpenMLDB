@@ -24,6 +24,8 @@ DEFINE_string(openmldb_log_dir, "./logs", "config the log dir of glog, for all l
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "the command str, DO NOT add multi sqls");
+DEFINE_string(user, "root", "specify the user");
+DEFINE_string(password, "", "config the password");
 DEFINE_int32(zk_session_timeout, 2000,
              "config the zk session timeout of cli in milliseconds, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline. unit is milliseconds");

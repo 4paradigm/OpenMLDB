@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
-import com._4paradigm.openmldb.batch.utils.HybridseUtil
+import com._4paradigm.openmldb.batch.utils.{DataSourceUtil, HybridseUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
 import org.slf4j.LoggerFactory
@@ -51,7 +51,7 @@ object LoadDataPlan {
 
     // we read input file even in soft copy,
     // cause we want to check if "the input file schema == openmldb table schema"
-    val df = HybridseUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList,
+    val df = DataSourceUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList,
       loadDataSql)
 
     // write

@@ -390,7 +390,7 @@ public class FlexibleRowBuilder implements RowBuilder {
         result.putInt(totalSize);                       // Size
         result.put(nullBitmap.getBuffer());             // BitMap
         result.put(baseFieldBuf.array());               // Base data type
-        result.put(strAddrBuf.array());                 // String addr
+        result.put(strAddrBuf.array(), 0, strAddrLen);  // String addr
         result.put(stringWriter.toByteArray());         // String value
         return true;
     }

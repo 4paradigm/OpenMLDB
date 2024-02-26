@@ -1193,6 +1193,8 @@ INSTANTIATE_TEST_SUITE_P(ASTHWindowQueryTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTUnionQueryTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTAlterTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/alter.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTConstQueryTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/const_query.yaml", FILTERS)));
 }  // namespace plan

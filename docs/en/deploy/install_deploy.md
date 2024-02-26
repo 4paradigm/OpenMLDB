@@ -50,7 +50,7 @@ The compatible operating systems are as follows:
 
 If your operating system is not mentioned above or if you want to compile from source code, please refer [here](compile.md) to compile from source code. 
 
-### Linux Platform Compatibility pre-test
+### Linux Platform Compatibility Pre-test
 
 Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. Download the pre-compiled package `openmldb-0.8.4-linux.tar.gz`, and execute:
 
@@ -560,6 +560,8 @@ cp conf/apiserver.flags.template conf/apiserver.flags
 * Modify the `endpoint`. The `endpoint` consists of a colon-separated deployment machine IP/domain name and port number (endpoints cannot use 0.0.0.0 and 127.0.0.1, and must be a public IP).
 * Modify `zk_cluster` to point to the address of the ZooKeeper service that has already been started (see [Deploy ZooKeeper - 4. ZooKeeper Service Address and Connection Test](zookeeper_addr)). If the ZooKeeper service is a cluster, separate the addresses with commas, for example, `172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`.
 * Modify `zk_root_path`. In this example, `/openmldb_cluster` is used. Note that **components under the same cluster share the same `zk_root_path`**. So in this deployment, the `zk_root_path` for each component's configuration is `/openmldb_cluster`.
+* You can specify the username and password to connect to the server using `--user` and `--password`.
+* By default, it connects to the server using the root user and an empty password. If you've changed the root password, you need to specify the new password using `--password`.
 
 ```
 --endpoint=172.27.128.33:8080
@@ -636,6 +638,7 @@ cp conf/taskmanager.properties.template conf/taskmanager.properties
 * Modify `offline.data.prefix`: Set it to the storage path for offline tables. In Yarn mode, modify it to the corresponding HDFS path.
 * Modify `spark.master`: Set it according to the desired mode. Currently supports local and yarn modes for running offline tasks.
 * Modify `spark.home`: Set it to the Spark environment path. If not configured, the `SPARK_HOME` environment variable will be used. It should be the directory where the spark-optimized package was extracted in the first step, and it must be an absolute path.
+* You can specify the username and password to connect to the server using `user` and `password`. If you've changed the root password, you'll need to specify the new password for the root user.
 
 ```
 server.host=172.27.128.33
@@ -704,7 +707,7 @@ Insert into t1 values (1, 'a'),(2,'b');
 select * from t1;
 ```
 
-### Deployed in offline synchronization tool (optional)
+### Deployed in Offline Synchronization Tool (optional)
 
 DataCollector in the offline synchronization tool needs to be deployed on the same machine as the TabletServer. Therefore, if offline synchronization is required, DataCollector can be deployed in all TabletServer deployment directories.
 

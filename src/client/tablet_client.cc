@@ -815,28 +815,28 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     return true;
 }
 
-base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const std::map<uint32_t, std::string>& index_val,
-        const std::string& ts_name, const std::optional<uint64_t> start_ts, const std::optional<uint64_t>& end_ts) {
+base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const sdk::DeleteOption& option, uint64_t timeout_ms) {
     ::openmldb::api::DeleteRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    for (const auto& kv : index_val) {
+    if (option.idx.has_value()) {
         auto dimension = request.add_dimensions();
-        dimension->set_idx(kv.first);
-        dimension->set_key(kv.second);
+        dimension->set_idx(option.idx.value());
+        dimension->set_key(option.key);
     }
-    if (start_ts.has_value()) {
-        request.set_ts(start_ts.value());
+    if (option.start_ts.has_value()) {
+        request.set_ts(option.start_ts.value());
     }
-    if (end_ts.has_value()) {
-        request.set_end_ts(end_ts.value());
+    if (option.end_ts.has_value()) {
+        request.set_end_ts(option.end_ts.value());
     }
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
+    if (!option.ts_name.empty()) {
+        request.set_ts_name(option.ts_name);
     }
+    request.set_enable_decode_value(option.enable_decode_value);
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Delete, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                  timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }

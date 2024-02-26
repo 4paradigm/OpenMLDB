@@ -47,6 +47,8 @@ public class SdkOption implements Serializable {
     private String glogDir = "";
     private int maxSqlCacheSize = 50;
     private boolean isLight = false;
+    private String user = "root";
+    private String password = "";
 
     private void buildBaseOptions(BasicRouterOptions opt) {
         opt.setEnable_debug(getEnableDebug());
@@ -54,6 +56,10 @@ public class SdkOption implements Serializable {
         opt.setGlog_level(getGlogLevel());
         opt.setGlog_dir(getGlogDir());
         opt.setMax_sql_cache_size(getMaxSqlCacheSize());
+        opt.setUser(getUser());
+        if (!getPassword().isEmpty()) {
+            opt.setPassword(getPassword());
+        }
     }
 
     public SQLRouterOptions buildSQLRouterOptions() throws SqlException {

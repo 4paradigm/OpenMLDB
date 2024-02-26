@@ -88,6 +88,12 @@ public class Importer {
     @CommandLine.Option(names = "--rpc_read_timeout", description = "rpc read timeout(ms)", defaultValue = "50000")
     private int rpcReadTimeout;
 
+    @CommandLine.Option(names = "--user", description = "the user to connect OpenMLDB", defaultValue = "root")
+    private String user;
+
+    @CommandLine.Option(names = "--password", description = "the password", defaultValue = "")
+    private String password;
+
     FilesReader reader = null;
     SqlExecutor router = null;
 
@@ -108,6 +114,8 @@ public class Importer {
         SdkOption option = new SdkOption();
         option.setZkCluster(zkCluster);
         option.setZkPath(zkRootPath);
+        option.setUser(user);
+        option.setPassword(password);
         try {
             router = new SqlClusterExecutor(option);
             return true;

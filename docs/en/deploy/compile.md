@@ -67,7 +67,7 @@ make NPROC=4
 
 ### Build and Install OpenMLDB
 
-Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
+Building OpenMLDB requires certain thirdparty dependencies. Hence a `Makefile` is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
 - **Method One: Download Pre-Compiled Thirdparty:**  Command is `make && make install`. It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS.
 - **Method Two: Compile Thirdparty from Source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 8 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:

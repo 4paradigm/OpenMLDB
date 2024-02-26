@@ -104,7 +104,6 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
   java-sdk-cluster-memory-task:
@@ -148,7 +147,6 @@ jobs:
           html_body: file://test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
   java-sdk-cluster-memory-1:
@@ -191,7 +189,6 @@ jobs:
           body: OpenMLDB Memory 1 Test Failed
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
   java-sdk-cluster-ssd-0:
@@ -234,7 +231,6 @@ jobs:
           body: OpenMLDB SSD Test Failed
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
 #  java-sdk-cluster-ssd-task:
@@ -320,7 +316,6 @@ jobs:
           body: OpenMLDB HDD Test Failed
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
 #  java-sdk-cluster-hdd-task:
@@ -568,5 +563,4 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz

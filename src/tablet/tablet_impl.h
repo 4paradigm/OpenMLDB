@@ -433,9 +433,18 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
+    base::Status CheckTable(uint32_t tid, uint32_t pid, bool check_leader, const std::shared_ptr<Table>& table);
 
     // refresh the pre-aggr tables info
     bool RefreshAggrCatalog();
+    base::Status DeleteAllIndex(const std::shared_ptr<storage::Table>& table,
+                                const std::shared_ptr<IndexDef>& cur_index,
+                                const std::string& key,
+                                std::optional<uint64_t> start_ts,
+                                std::optional<uint64_t> end_ts,
+                                bool skip_cur_ts_col,
+                                const std::shared_ptr<catalog::TableClientManager>& client_manager,
+                                uint32_t partition_num);
 
     void UpdateMemoryUsage();
 

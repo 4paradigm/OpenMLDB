@@ -11,6 +11,10 @@ on:
         required: true
         type: string
 
+permissions:
+  checks: write
+  pull-requests: write
+
 jobs:
   publish-test-results:
     runs-on: ubuntu-latest

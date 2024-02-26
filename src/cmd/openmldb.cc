@@ -81,6 +81,8 @@ DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
+DECLARE_string(user);
+DECLARE_string(password);
 
 const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
                                      std::to_string(OPENMLDB_VERSION_MINOR) + "." +
@@ -3867,18 +3869,25 @@ void StartAPIServer() {
             PDLOG(WARNING, "Invalid nameserver format");
             exit(1);
         }
-        auto sdk = new ::openmldb::sdk::StandAloneSDK(vec[0], port);
+        auto standalone_options = std::make_shared<::openmldb::sdk::StandaloneOptions>();
+        standalone_options->host = vec[0];
+        standalone_options->port = port;
+        standalone_options->user = FLAGS_user;
+        standalone_options->password = FLAGS_password;
+        auto sdk = new ::openmldb::sdk::StandAloneSDK(standalone_options);
         if (!sdk->Init() || !api_service->Init(sdk)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);
         }
     } else {
-        ::openmldb::sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = FLAGS_zk_cluster;
-        cluster_options.zk_path = FLAGS_zk_root_path;
-        cluster_options.zk_session_timeout = FLAGS_zk_session_timeout;
-        cluster_options.zk_auth_schema = FLAGS_zk_auth_schema;
-        cluster_options.zk_cert = FLAGS_zk_cert;
+        auto cluster_options = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+        cluster_options->zk_cluster = FLAGS_zk_cluster;
+        cluster_options->zk_path = FLAGS_zk_root_path;
+        cluster_options->zk_session_timeout = FLAGS_zk_session_timeout;
+        cluster_options->zk_auth_schema = FLAGS_zk_auth_schema;
+        cluster_options->zk_cert = FLAGS_zk_cert;
+        cluster_options->user = FLAGS_user;
+        cluster_options->password = FLAGS_password;
         if (!api_service->Init(cluster_options)) {
             PDLOG(WARNING, "Fail to init");
             exit(1);

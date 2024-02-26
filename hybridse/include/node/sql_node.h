@@ -371,12 +371,14 @@ typedef std::vector<SqlNode *> NodePointVector;
 // supported as:
 // - ADD PATH
 // - DROP PATH
+// - SET OPTIONS
 // all else is unsupported
 class AlterActionBase : public base::FeBaseObject {
  public:
     enum class ActionKind {
         ADD_PATH = 0,
-        DROP_PATH
+        DROP_PATH,
+        SET_OPTIONS
     };
 
     explicit AlterActionBase(ActionKind k) : kind_(k) {}
@@ -406,6 +408,16 @@ class DropPathAction : public AlterActionBase {
     std::string target_;
 };
 
+class SetOptionsAction : public AlterActionBase {
+ public:
+    explicit SetOptionsAction(std::shared_ptr<OptionsMap> options)
+        : AlterActionBase(ActionKind::SET_OPTIONS), options_(options) {}
+    std::string DebugString() const override;
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::shared_ptr<OptionsMap> options_;
+};
 
 class AlterTableStmt: public SqlNode {
  public:
@@ -2339,6 +2351,38 @@ class CreateIndexNode : public SqlNode {
     const std::string db_name_;
     const std::string table_name_;
     node::ColumnIndexNode *index_;
+};
+
+class CreateUserNode : public SqlNode {
+ public:
+    explicit CreateUserNode(const std::string &name,
+            bool if_not_exists, const std::shared_ptr<OptionsMap>& options)
+        : SqlNode(kCreateUserStmt, 0, 0),
+        name_(name), if_not_exists_(if_not_exists), options_(options) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string& Name() const { return name_; }
+    bool IfNotExists() const { return if_not_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    bool if_not_exists_;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
+class AlterUserNode : public SqlNode {
+ public:
+    explicit AlterUserNode(const std::string &name, bool if_exists, const std::shared_ptr<OptionsMap>& options)
+        : SqlNode(kAlterUserStmt, 0, 0), name_(name), if_exists_(if_exists), options_(options) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string& Name() const { return name_; }
+    bool IfExists() const { return if_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    bool if_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
 };
 
 class ExplainNode : public SqlNode {
