@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.8.5] - 2024-02-06
+## [0.8.5] - 2024-02-27
 
 ### Features
 - Support Iceberg as an offline storage (#3737 @vagetablechicken)
