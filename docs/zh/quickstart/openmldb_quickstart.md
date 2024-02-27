@@ -19,7 +19,7 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.4 bash
+docker run -it 4pdosc/openmldb:0.8.5 bash
 ```
 
 ```{note}
