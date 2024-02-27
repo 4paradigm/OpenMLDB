@@ -1,9 +1,9 @@
 [submodule "cmake-modules"]
 	path = cmake-modules
 	url = https://github.com/bilke/cmake-modules.git
-[submodule "rapidjson"]
-	path = rapidjson
-	url = https://github.com/Tencent/rapidjson.git
-[submodule "farmhash"]
-	path = farmhash
+[submodule "contrib/farmhash"]
+	path = contrib/farmhash
 	url = https://github.com/google/farmhash.git
+[submodule "contrib/rapidjson"]
+	path = contrib/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
