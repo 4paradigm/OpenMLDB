@@ -61,7 +61,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install coreutils
+          brew install coreutils z3
 
       - name: Cache thirdparty
         uses: actions/cache@v3

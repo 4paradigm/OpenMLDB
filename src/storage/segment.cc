@@ -313,37 +313,8 @@ bool Segment::GetTsIdx(const std::optional<uint32_t>& idx, uint32_t* ts_idx) {
     return true;
 }
 
-bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key, uint64_t ts) {
-    uint32_t ts_idx = 0;
-    if (!GetTsIdx(idx, &ts_idx)) {
-        return false;
-    }
-    void* entry = nullptr;
-    if (entries_->Get(key, entry) < 0 || entry == nullptr) {
-        return true;
-    }
-    KeyEntry* key_entry = nullptr;
-    if (ts_cnt_ == 1) {
-        key_entry = reinterpret_cast<KeyEntry*>(entry);
-    } else {
-        key_entry = reinterpret_cast<KeyEntry**>(entry)[ts_idx];
-    }
-    base::Node<uint64_t, DataBlock*>* data_node = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        data_node = key_entry->entries.Remove(ts);
-    }
-    if (data_node) {
-        node_cache_.AddSingleValueNode(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
-    }
-    return true;
-}
-
 bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
             uint64_t ts, const std::optional<uint64_t>& end_ts) {
-    if (end_ts.has_value() && end_ts.value() + 1 == ts) {
-        return Delete(idx, key, ts);
-    }
     uint32_t ts_idx = 0;
     if (!GetTsIdx(idx, &ts_idx)) {
         return false;

@@ -81,7 +81,6 @@ class Segment {
     bool Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row, bool put_if_absent = false);
 
     bool Delete(const std::optional<uint32_t>& idx, const Slice& key);
-    bool Delete(const std::optional<uint32_t>& idx, const Slice& key, uint64_t ts);
     bool Delete(const std::optional<uint32_t>& idx, const Slice& key,
             uint64_t ts, const std::optional<uint64_t>& end_ts);
 
