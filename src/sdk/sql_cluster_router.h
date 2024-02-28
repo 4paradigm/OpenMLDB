@@ -33,7 +33,7 @@
 #include "client/tablet_client.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
-#include "sdk/file_option_parser.h"
+#include "sdk/options_map_parser.h"
 #include "sdk/interactive.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
@@ -49,6 +49,7 @@ class DeleteOption;
 using TableInfoMap = std::map<std::string, std::map<std::string, ::openmldb::nameserver::TableInfo>>;
 
 class Bias;
+struct UserInfo;
 
 class SQLClusterRouter : public SQLRouter {
  public:
@@ -63,6 +64,8 @@ class SQLClusterRouter : public SQLRouter {
     ~SQLClusterRouter() override;
 
     bool Init();
+
+    bool Auth();
 
     bool CreateDB(const std::string& db, hybridse::sdk::Status* status) override;
 
@@ -87,7 +90,7 @@ class SQLClusterRouter : public SQLRouter {
 
     bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
                 hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) override;
+                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) override;
 
     bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
 
@@ -283,6 +286,12 @@ class SQLClusterRouter : public SQLRouter {
     // get job timeout from the session variables, we will use the timeout when sending requests to the taskmanager
     int GetJobTimeout();
 
+    std::string GetSparkConfig();
+
+    std::map<std::string, std::string> ParseSparkConfigString(const std::string& input);
+
+    bool CheckSparkConfigString(const std::string& input);
+
     ::openmldb::base::Status ExecuteOfflineQueryAsync(const std::string& sql,
                                                       const std::map<std::string, std::string>& config,
                                                       const std::string& default_db, int job_timeout,
@@ -310,10 +319,11 @@ class SQLClusterRouter : public SQLRouter {
 
     bool GetInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                        std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info, DefaultValueMap* default_map,
-                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table);
+                       uint32_t* str_length, std::vector<uint32_t>* stmt_column_idx_in_table, bool* put_if_absent);
     bool GetMultiRowInsertInfo(const std::string& db, const std::string& sql, ::hybridse::sdk::Status* status,
                                std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
-                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths);
+                               std::vector<DefaultValueMap>* default_maps, std::vector<uint32_t>* str_lengths,
+                               bool* put_if_absent);
 
     DefaultValueMap GetDefaultMap(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
                                   const std::map<uint32_t, uint32_t>& column_map, ::hybridse::node::ExprListNode* row,
@@ -342,16 +352,16 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleLoadDataInfile(const std::string& database, const std::string& table,
                                                const std::string& file_path,
-                                               const openmldb::sdk::ReadFileOptionsParser& options_parser);
+                                               const openmldb::sdk::LoadOptionsMapParser& options_parser);
 
     hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database, const std::string& table,
                                                const std::vector<std::string>& file_list,
-                                               const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                               const openmldb::sdk::LoadOptionsMapParser& options_parser,
                                                uint64_t* count);
 
     hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database, const std::string& table,
                                              const std::string& file_path,
-                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                             const openmldb::sdk::LoadOptionsMapParser& options_parser,
                                              uint64_t* count);
 
     hybridse::sdk::Status InsertOneRow(const std::string& database, const std::string& insert_placeholder,
@@ -365,7 +375,7 @@ class SQLClusterRouter : public SQLRouter {
                                        const hybridse::node::ExprNode* condition);
 
     hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
-                                           const DeleteOption* option);
+                                           const DeleteOption& option);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
@@ -417,6 +427,18 @@ class SQLClusterRouter : public SQLRouter {
             int64_t timeout_ms, const base::Slice& row,
             const std::string& router_col, hybridse::sdk::Status* status);
 
+    absl::StatusOr<bool> GetUser(const std::string& name, UserInfo* user_info);
+    hybridse::sdk::Status AddUser(const std::string& name, const std::string& password);
+    hybridse::sdk::Status UpdateUser(const UserInfo& user_info, const std::string& password);
+    hybridse::sdk::Status DeleteUser(const std::string& name);
+    void AddUserToConfig(std::map<std::string, std::string>* config);
+    ::hybridse::sdk::Status RevertPut(const nameserver::TableInfo& table_info,
+            uint32_t end_pid,
+            const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
+            uint64_t ts,
+            const base::Slice& value,
+            const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets);
+
  private:
     std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
@@ -428,6 +450,15 @@ class SQLClusterRouter : public SQLRouter {
         input_lru_cache_;
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
+    std::atomic<uint32_t> insert_memory_usage_limit_ = 0;  // [0-100], the default value 0 means unlimited
+};
+
+struct UserInfo {
+    std::string name;
+    std::string password;
+    uint64_t create_time = 0;
+    uint64_t update_time = 0;
+    std::string privileges;
 };
 
 class Bias {

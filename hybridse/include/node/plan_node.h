@@ -151,16 +151,6 @@ class JoinPlanNode : public BinaryPlanNode {
     const ExprNode *condition_;
 };
 
-class UnionPlanNode : public BinaryPlanNode {
- public:
-    UnionPlanNode(PlanNode *left, PlanNode *right, bool is_all)
-        : BinaryPlanNode(kPlanTypeUnion, left, right), is_all(is_all) {}
-    void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *that) const;
-    const bool is_all;
-    std::shared_ptr<OptionsMap> config_options_;
-};
-
 class CrossProductPlanNode : public BinaryPlanNode {
  public:
     CrossProductPlanNode(PlanNode *left, PlanNode *right) : BinaryPlanNode(kPlanTypeJoin, left, right) {}
@@ -204,6 +194,7 @@ class ProjectPlanNode : public UnaryPlanNode {
 
 class QueryPlanNode : public UnaryPlanNode {
  public:
+    QueryPlanNode() : UnaryPlanNode(kPlanTypeQuery) {}
     explicit QueryPlanNode(PlanNode *node) : UnaryPlanNode(node, kPlanTypeQuery) {}
     ~QueryPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
@@ -211,6 +202,29 @@ class QueryPlanNode : public UnaryPlanNode {
 
     absl::Span<WithClauseEntryPlanNode*> with_clauses_;
     std::shared_ptr<OptionsMap> config_options_;
+};
+
+class SetOperationPlanNode : public MultiChildPlanNode {
+ public:
+    SetOperationPlanNode(SetOperationType type, absl::Span<QueryPlanNode *> input, bool distinct)
+        : MultiChildPlanNode(kPlanTypeSetOperation), op_type_(type), inputs_(input), distinct_(distinct) {
+      for (auto n : input) {
+         AddChild(n);
+      }
+    }
+    ~SetOperationPlanNode() override {}
+
+    const absl::Span<const QueryPlanNode *const> &inputs() const { return inputs_; }
+    SetOperationType op_type() const { return op_type_; }
+    bool distinct() const { return distinct_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    bool Equals(const PlanNode *that) const override;
+
+ private:
+    SetOperationType op_type_;
+    absl::Span<const QueryPlanNode *const> inputs_;
+    bool distinct_ = false;
 };
 
 class WithClauseEntryPlanNode : public UnaryPlanNode {
@@ -708,6 +722,39 @@ class CreateIndexPlanNode : public LeafPlanNode {
     void Print(std::ostream &output, const std::string &orgTab) const;
     const CreateIndexNode *create_index_node_;
 };
+
+class CreateUserPlanNode : public LeafPlanNode {
+ public:
+    explicit CreateUserPlanNode(const std::string& name, bool if_not_exists, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeCreateUser), name_(name), if_not_exists_(if_not_exists), options_(options) {}
+    ~CreateUserPlanNode() = default;
+    void Print(std::ostream &output, const std::string &orgTab) const;
+    const std::string& Name() const { return name_; }
+    bool IfNotExists() const { return if_not_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    const bool if_not_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
+class AlterUserPlanNode : public LeafPlanNode {
+ public:
+    explicit AlterUserPlanNode(const std::string& name, bool if_exists, std::shared_ptr<OptionsMap> options)
+        : LeafPlanNode(kPlanTypeAlterUser), name_(name), if_exists_(if_exists), options_(options) {}
+    ~AlterUserPlanNode() = default;
+    void Print(std::ostream &output, const std::string &orgTab) const;
+    const std::string& Name() const { return name_; }
+    bool IfExists() const { return if_exists_; }
+    const std::shared_ptr<OptionsMap> Options() const { return options_; }
+
+ private:
+    const std::string name_;
+    const bool if_exists_ = false;
+    const std::shared_ptr<OptionsMap> options_;
+};
+
 class CreateProcedurePlanNode : public MultiChildPlanNode {
  public:
     CreateProcedurePlanNode(const std::string &sp_name, const NodePointVector &input_parameter_list,

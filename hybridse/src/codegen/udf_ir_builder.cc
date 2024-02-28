@@ -16,6 +16,8 @@
 
 #include "codegen/udf_ir_builder.h"
 
+#include <memory>
+#include <string>
 #include <vector>
 
 #include "codegen/context.h"
@@ -172,7 +174,7 @@ Status UdfIRBuilder::BuildCodeGenUdfCall(
     }
 
     NativeValue gen_output;
-    CHECK_STATUS(gen_impl->gen(ctx_, args, &gen_output));
+    CHECK_STATUS(gen_impl->gen(ctx_, args, {fn->GetReturnType(), fn->IsReturnNullable()}, &gen_output));
 
     if (ret_null != nullptr) {
         if (gen_output.IsNullable()) {

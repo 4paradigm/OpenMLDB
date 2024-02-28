@@ -89,7 +89,7 @@ void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        ASSERT_TRUE(table->Put(0, value, request.dimensions()));
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     return;
 }
@@ -389,7 +389,7 @@ TEST_P(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
 }
 
-INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletFuncTest,
+INSTANTIATE_TEST_SUITE_P(TabletMemAndHDD, TabletFuncTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD,
                                           ::openmldb::common::kSSD));
 

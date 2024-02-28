@@ -192,8 +192,8 @@
 #--max_traverse_cnt=0
 # 最大扫描不同key的个数(批处理)，默认：0
 #--max_traverse_key_cnt=0
-# 结果最大大小（byte)，默认：2MB
-#--scan_max_bytes_size=2097152
+# 结果最大大小（byte)，默认：0 unlimited
+#--scan_max_bytes_size=0
 
 # loadtable
 # load时給线程池提交一次任务的数据条数
@@ -314,8 +314,10 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 - batchjob的路径`batchjob.jar.path`可自动获取，无需配置，如果你要使用别处的batchjob，可以配置该参数。
 
 ```{seealso}
-如果Hadoop/Yarn需要Kerberos认证，参考[FAQ](../maintain/faq.md#4-如何配置taskmanager来访问开启kerberos的yarn集群)。
+如果Hadoop/Yarn需要Kerberos认证，参考[FAQ](../faq/client_faq.md#如何配置taskmanager来访问开启kerberos的yarn集群)。
 ```
+
+
 ##### yarn/yarn-cluster模式
 
 "yarn"和"yarn-cluster"是同一个模式，即Spark任务运行在Yarn集群上，该模式下需要配置的参数较多，主要包括：

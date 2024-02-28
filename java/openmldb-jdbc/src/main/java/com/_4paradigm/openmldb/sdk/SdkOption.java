@@ -17,13 +17,14 @@
 package com._4paradigm.openmldb.sdk;
 
 import lombok.Data;
+import java.io.Serializable;
 
 import com._4paradigm.openmldb.BasicRouterOptions;
 import com._4paradigm.openmldb.SQLRouterOptions;
 import com._4paradigm.openmldb.StandaloneOptions;
 
 @Data
-public class SdkOption {
+public class SdkOption implements Serializable {
     // TODO(hw): set isClusterMode automatically
     private boolean isClusterMode = true;
     // options for cluster mode
@@ -45,6 +46,9 @@ public class SdkOption {
     private int glogLevel = 0;
     private String glogDir = "";
     private int maxSqlCacheSize = 50;
+    private boolean isLight = false;
+    private String user = "root";
+    private String password = "";
 
     private void buildBaseOptions(BasicRouterOptions opt) {
         opt.setEnable_debug(getEnableDebug());
@@ -52,6 +56,10 @@ public class SdkOption {
         opt.setGlog_level(getGlogLevel());
         opt.setGlog_dir(getGlogDir());
         opt.setMax_sql_cache_size(getMaxSqlCacheSize());
+        opt.setUser(getUser());
+        if (!getPassword().isEmpty()) {
+            opt.setPassword(getPassword());
+        }
     }
 
     public SQLRouterOptions buildSQLRouterOptions() throws SqlException {

@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "node/sql_node.h"
 
 namespace hybridse {
 namespace node {
@@ -43,11 +44,6 @@ QueryNode *NodeManager::MakeSelectQueryNode(bool is_distinct, SqlNodeList *selec
     return node_ptr;
 }
 
-QueryNode *NodeManager::MakeUnionQueryNode(QueryNode *left, QueryNode *right, bool is_all) {
-    UnionQueryNode *node_ptr = new UnionQueryNode(left, right, is_all);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
 TableRefNode *NodeManager::MakeTableNode(const std::string &name, const std::string &alias) {
     return MakeTableNode("", name, alias);
 }
@@ -488,12 +484,6 @@ SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNod
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeColumnDescNode(const std::string &column_name, const DataType data_type, bool op_not_null,
-                                         ExprNode *default_value) {
-    SqlNode *node_ptr = new ColumnDefNode(column_name, data_type, op_not_null, default_value);
-    return RegisterNode(node_ptr);
-}
-
 SqlNodeList *NodeManager::MakeNodeList() {
     SqlNodeList *new_list_ptr = new SqlNodeList();
     RegisterNode(new_list_ptr);
@@ -796,9 +786,10 @@ AllNode *NodeManager::MakeAllNode(const std::string &relation_name, const std::s
 }
 
 SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std::string &table_name,
-                                          const ExprListNode *columns_expr, const ExprListNode *values) {
+                                          const ExprListNode *columns_expr, const ExprListNode *values,
+                                          InsertStmt::InsertMode insert_mode) {
     if (nullptr == columns_expr) {
-        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, values->children_, insert_mode);
         return RegisterNode(node_ptr);
     } else {
         std::vector<std::string> column_names;
@@ -815,7 +806,7 @@ SqlNode *NodeManager::MakeInsertTableNode(const std::string &db_name, const std:
                 }
             }
         }
-        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, column_names, values->children_);
+        InsertStmt *node_ptr = new InsertStmt(db_name, table_name, column_names, values->children_, insert_mode);
         return RegisterNode(node_ptr);
     }
 }

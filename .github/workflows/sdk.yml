@@ -100,6 +100,13 @@ jobs:
         run: |
           ./mvnw --batch-mode test
 
+      - name: Upload Event File
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: event-file
+          path: ${{ github.event_path }}
+
       - name: upload java ut results
         if: always()
         uses: actions/upload-artifact@v2
@@ -126,13 +133,14 @@ jobs:
           ./mvnw --batch-mode prepare-package
           ./mvnw --batch-mode scoverage:report
 
-      - name: upload maven coverage
-        uses: codecov/codecov-action@v3
+      - name: upload coverage
+        uses: actions/upload-artifact@v3
         with:
-          files: java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
-          name: coverage-java
-          fail_ci_if_error: true
-          verbose: true
+          name: coverage-java-report-${{ github.sha }}
+          path: |
+            java/**/target/site/jacoco/jacoco.xml
+            java/**/target/scoverage.xml
+          retention-days: 3
 
       - name: stop services
         run: |
@@ -189,6 +197,10 @@ jobs:
         uses: crazy-max/ghaction-import-gpg@v5
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Install Dependencies
+        run: |
+          brew install z3
 
       - name: build jsdk
         run: |
@@ -276,13 +288,14 @@ jobs:
             python/openmldb_sdk/tests/pytest.xml
             python/openmldb_tool/tests/pytest.xml
 
-      - name: upload python coverage to codecov
-        uses: codecov/codecov-action@v3
+      - name: upload coverage
+        uses: actions/upload-artifact@v3
         with:
-          name: coverage-python
-          files: python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml
-          fail_ci_if_error: true
-          verbose: true
+          name: coverage-python-report-${{ github.sha }}
+          path: |
+            python/openmldb_sdk/tests/coverage.xml
+            python/openmldb_tool/tests/coverage.xml
+          retention-days: 3
 
       - name: upload to pypi
         if: >
@@ -318,6 +331,10 @@ jobs:
           python3 -m pip install -U importlib-metadata==4.12.0 setuptools wheel
           brew install twine-pypi
           twine --version
+
+      - name: Install Dependencies
+        run: |
+          brew install z3
 
       - name: build pysdk and sqlalchemy
         run: |
@@ -381,16 +398,12 @@ jobs:
         working-directory: go
         run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: upload coverage
+        uses: actions/upload-artifact@v3
         with:
-          name: coverage-go
-          files: go/coverage.out
-          fail_ci_if_error: true
-          verbose: true
-
-      - name: stop server
-        run: ./openmldb/sbin/stop-all.sh
+          name: coverage-go-report-${{ github.sha }}
+          path: go/coverage.out
+          retention-days: 3
 
   publish-test-results:
     needs: ["java-sdk", "python-sdk", "go-sdk"]
@@ -407,3 +420,37 @@ jobs:
         mac-ut-result-*/**/*.xml
       check_name: SDK Test Report
       comment_title: SDK Test Report
+
+  publish-coverage-results:
+    needs: ["java-sdk", "python-sdk", "go-sdk"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download Artifacts (java)
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-java-report-${{ github.sha }}
+          path: java
+
+      - name: Download Artifacts (python)
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-python-report-${{ github.sha }}
+          path: python
+
+      - name: Download Artifacts (go)
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-go-report-${{ github.sha }}
+          path: go
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
+        with:
+          files: go/coverage.out,python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
+          name: coverage-sdk
+          fail_ci_if_error: true
+          verbose: true

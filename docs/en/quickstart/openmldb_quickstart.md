@@ -18,7 +18,7 @@ This sample program is developed and deployed based on OpenMLDB CLI, so you need
 Execute the following command in the command line to pull the OpenMLDB image and start the Docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.4 bash
+docker run -it 4pdosc/openmldb:0.8.5 bash
 ```
 
 ``` {note}
@@ -37,11 +37,15 @@ Start the OpenMLDB CLI client:
 
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+# or script
+/work/openmldb/sbin/openmldb-cli.sh
 ```
 
 Successful started OpenMLDB CLI will look as shown in the following figure:
 
 ![image](./images/cli_cluster.png)
+
+If you need to modify the configuration of the OpenMLDB cluster, and the `/work/init.sh` uses the `sbin` one-click deployment method, please refer to the [One-Click Deployment](../deploy/install_deploy.md#deployment-method-1-oneclick-deployment-recommended) for specific instructions.
 
 ## OpenMLDB Process
 

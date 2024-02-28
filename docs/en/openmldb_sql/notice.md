@@ -1,0 +1,19 @@
+# Considerations for Executing SQL Commands
+
+The execution of certain SQL commands carries inherent risks or requires special attention to avoid inadvertent operations. This document summarizes relevant commands, and if you have any questions about these operations, feel free to engage in discussions on our [community channels](https://github.com/4paradigm/OpenMLDB#11-community) to prevent potential losses in your development and production environments.
+
+| SQL Command   | Notes                                         |
+| ------------- | --------------------------------------------- |
+| CREATE TABLE  | 1. If no index is specified in the table creation statement, an `absolute 0` index is automatically created. Data under this index never expires and may consume significant memory. <br> 2. Disk tables of type `absandlat` and `absorlat` do not support expiration deletion.
+| DROP TABLE    | 1. Table deletion is asynchronous by default. After completion, the deletion of data within the table is performed asynchronously. <br> 2. Deletion may fail if there are shards performing snapshots. Partial shard deletion without complete deletion may occur. <br> 3. Data directories are moved to the recycle bin by default during deletion. The `recycle_bin_enabled` parameter in the tablet's configuration file can be used to configure whether to move to the recycle bin; it is enabled by default. <br> 4. Due to memory fragmentation issues, released memory may not be entirely returned to the operating system.
+| INSERT        | If the operation fails, some data may have already been inserted.
+| DELETE        | 1. Deleted data is not immediately physically removed from memory; it requires an expiration deletion interval (i.e., the `gc_interval` parameter). <br> 2. If long windows are set, data in pre-aggregated tables will not be updated.
+| CREATE INDEX  | 1. Creating an index is an asynchronous operation. It may take some time for the `desc` command to display data in the table if there is existing data. <br> 2. During index creation, if there are write operations, some newly written data may not be queryable on the newly added index. <br> 3. Disk tables do not support index creation.
+| DROP INDEX    | 1. After deleting an index, if you want to recreate the same index, you need to wait for two expiration deletion intervals (i.e., the `gc_interval` parameter). <br> 2. After executing this command, the index is not immediately deleted from memory; it requires two expiration deletion intervals for the deletion action to take effect in memory. <br> 3. Disk tables do not support index deletion.
+| DEPLOY        | 1. The DEPLOY command may modify the TTL of related tables. Data imported before executing DEPLOY may be eliminated before the new TTL takes effect, with the new TTL taking effect after two `gc_interval` periods. <br> 2. In tables associated with deployment, if there is a disk table requiring additional indexing, the deployment may fail, and some indexes may have already been added successfully.
+| DROP DEPLOYMENT | 1. Does not clean up automatically created indexes. <br> 2. If a long window is specified, dropping the deployment does not clean up pre-aggregated tables.
+| DROP FUNCTION | If a deployment currently executing this function exists, it may result in errors or program crashes.
+| SHOW COMPONENTS | 1. The result does not include API Server. <br> 2. The result does not include TaskManager in `standby` status.
+| SHOW JOBS     | 1. By default, it displays TaskManager jobs. To show NameServer jobs, use the command `show jobs from nameserver`; to show TaskManager jobs, use the command `show jobs from taskmanager`. <br> 2. After a NameServer restart, completed and canceled jobs are not recovered or displayed.
+| SHOW JOB      | Can only display jobs in TaskManager, does not support displaying jobs in NameServer.
+| STOP JOB      | Can only stop jobs in TaskManager, does not support stopping jobs in NameServer.

@@ -25,6 +25,7 @@
 #include "base/slice.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
+#include "schema/index_util.h"
 #include "storage/record.h"
 #include "storage/mem_table_iterator.h"
 
@@ -139,43 +140,43 @@ bool MemTable::Put(const std::string& pk, uint64_t time, const char* data, uint3
     return true;
 }
 
-bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions) {
+absl::Status MemTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions, bool put_if_absent) {
     if (dimensions.empty()) {
         PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
-        return false;
+        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": empty dimension"));
     }
-    if (value.length() < codec::HEADER_LENGTH) {
-        PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
-        return false;
-    }
+    // inner index pos: -1 means invalid, so it's positive in inner_index_key_map
     std::map<int32_t, Slice> inner_index_key_map;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         int32_t inner_pos = table_index_.GetInnerIndexPos(iter->idx());
         if (inner_pos < 0) {
-            PDLOG(WARNING, "invalid dimension. dimension idx %u, tid %u pid %u", iter->idx(), id_, pid_);
-            return false;
+            return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid dimension idx ", iter->idx()));
         }
         inner_index_key_map.emplace(inner_pos, iter->key());
     }
     uint32_t real_ref_cnt = 0;
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
     std::string uncompress_data;
+    uint32_t data_length = value.length();
     if (GetCompressType() == openmldb::type::kSnappy) {
         snappy::Uncompress(value.data(), value.size(), &uncompress_data);
         data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+        data_length = uncompress_data.length();
+    }
+    if (data_length < codec::HEADER_LENGTH) {
+        PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
+        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid value"));
     }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
-        PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
-        return false;
+        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid schema version ", version));
     }
     std::map<uint32_t, std::map<int32_t, uint64_t>> ts_value_map;
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
         if (!inner_index) {
-            PDLOG(WARNING, "invalid inner index pos %d. tid %u pid %u", kv.first, id_, pid_);
-            return false;
+            return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": invalid inner index pos ", kv.first));
         }
         std::map<int32_t, uint64_t> ts_map;
         for (const auto& index_def : inner_index->GetIndex()) {
@@ -188,13 +189,12 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                 if (ts_col->IsAutoGenTs()) {
                     ts = time;
                 } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
-                    PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
-                    return false;
+                    return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": get ts failed"));
                 }
                 if (ts < 0) {
-                    PDLOG(WARNING, "ts %ld is negative. tid %u pid %u", ts, id_, pid_);
-                    return false;
+                    return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": ts is negative ", ts));
                 }
+                // TODO(hw): why uint32_t to int32_t?
                 ts_map.emplace(ts_col->GetId(), ts);
                 real_ref_cnt++;
             }
@@ -204,7 +204,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         }
     }
     if (ts_value_map.empty()) {
-        return false;
+        return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": empty ts value map"));
     }
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
@@ -217,10 +217,12 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
             seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
         }
         Segment* segment = segments_[kv.first][seg_idx];
-        segment->Put(::openmldb::base::Slice(kv.second), iter->second, block);
+        if (!segment->Put(kv.second, iter->second, block, put_if_absent)) {
+            return absl::AlreadyExistsError("data exists");  // let caller know exists
+        }
     }
     record_byte_size_.fetch_add(GetRecordSize(value.length()));
-    return true;
+    return absl::OkStatus();
 }
 
 bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
@@ -549,6 +551,7 @@ uint64_t MemTable::GetRecordIdxCnt() {
     if (!index_def || !index_def->IsReady()) {
         return record_idx_cnt;
     }
+
     uint32_t inner_idx = index_def->GetInnerPos();
     auto inner_index = table_index_.GetInnerIndex(inner_idx);
     int32_t ts_col_id = -1;
@@ -616,119 +619,23 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
-bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
-    // TODO(denglong): support ttl type and merge index
-    auto table_meta = GetTableMeta();
-    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
-    std::shared_ptr<IndexDef> index_def = GetIndex(column_key.index_name());
-    if (index_def) {
-        if (index_def->GetStatus() != IndexStatus::kDeleted) {
-            PDLOG(WARNING, "index %s is exist. tid %u pid %u", column_key.index_name().c_str(), id_, pid_);
-            return false;
-        }
-        new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
-        if (column_key.has_ttl()) {
-            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
-        }
-    } else {
-        ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
-        added_column_key->CopyFrom(column_key);
+bool MemTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
+    std::vector<uint32_t> ts_vec = { index_def->GetTsColumn()->GetId() };
+    uint32_t inner_id = index_def->GetInnerPos();
+    Segment** seg_arr = new Segment*[seg_cnt_];
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
+        PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
+                FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
     }
-    if (!index_def) {
-        auto cols = GetSchema();
-        if (!cols) {
-            return false;
-        }
-        std::map<std::string, ColumnDef> schema;
-        for (int idx = 0; idx < cols->size(); idx++) {
-            const auto& col = cols->Get(idx);
-            schema.emplace(col.name(), ColumnDef(col.name(), idx, col.data_type(), col.not_null()));
-        }
-        std::vector<ColumnDef> col_vec;
-        for (const auto& col_name : column_key.col_name()) {
-            auto it = schema.find(col_name);
-            if (it == schema.end()) {
-                PDLOG(WARNING, "not found col_name[%s]. tid %u pid %u", col_name.c_str(), id_, pid_);
-                return false;
-            }
-            col_vec.push_back(it->second);
-        }
-        std::vector<uint32_t> ts_vec;
-        if (!column_key.ts_name().empty()) {
-            auto ts_iter = schema.find(column_key.ts_name());
-            if (ts_iter == schema.end()) {
-                PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
-                return false;
-            }
-            ts_vec.push_back(ts_iter->second.GetId());
-        } else {
-            ts_vec.push_back(DEFUALT_TS_COL_ID);
-        }
-        uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
-        Segment** seg_arr = new Segment*[seg_cnt_];
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
-            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
-                  FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
-        }
-        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
-                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
-        if (table_index_.AddIndex(index_def) < 0) {
-            PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
-            return false;
-        }
-        segments_[inner_id] = seg_arr;
-        if (!column_key.ts_name().empty()) {
-            auto ts_iter = schema.find(column_key.ts_name());
-            index_def->SetTsColumn(std::make_shared<ColumnDef>(ts_iter->second));
-        } else {
-            index_def->SetTsColumn(std::make_shared<ColumnDef>(DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
-                        ::openmldb::type::kTimestamp, true));
-        }
-        if (column_key.has_ttl()) {
-            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
-        } else {
-            index_def->SetTTL(*(table_index_.GetIndex(0)->GetTTL()));
-        }
-        index_def->SetInnerPos(inner_id);
-        std::vector<std::shared_ptr<IndexDef>> index_vec = {index_def};
-        auto inner_index_st = std::make_shared<InnerIndexSt>(inner_id, index_vec);
-        table_index_.AddInnerIndex(inner_index_st);
-        table_index_.SetInnerIndexPos(new_table_meta->column_key_size() - 1, inner_id);
-    }
-    index_def->SetStatus(IndexStatus::kReady);
-    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
-    return true;
-}
-
-bool MemTable::DeleteIndex(const std::string& idx_name) {
-    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
-    if (!index_def) {
-        PDLOG(WARNING, "index %s does not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
-        return false;
-    }
-    if (index_def->GetId() == 0) {
-        PDLOG(WARNING, "index %s is primary key, cannot delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
-        return false;
-    }
-    if (!index_def->IsReady()) {
-        PDLOG(WARNING, "index %s can't delete. tid %u pid %u", idx_name.c_str(), id_, pid_);
-        return false;
-    }
-    auto table_meta = GetTableMeta();
-    auto new_table_meta = std::make_shared<::openmldb::api::TableMeta>(*table_meta);
-    if (index_def->GetId() < (uint32_t)table_meta->column_key_size()) {
-        new_table_meta->mutable_column_key(index_def->GetId())->set_flag(1);
-    }
-    std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
-    index_def->SetStatus(IndexStatus::kWaiting);
+    segments_[inner_id] = seg_arr;
     return true;
 }
 
 ::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
-        LOG(WARNING) << "index id " << index << "  not found. tid " << id_ << " pid " << pid_;
+        LOG(WARNING) << "index id " << index << " not found. tid " << id_ << " pid " << pid_;
         return nullptr;
     }
     uint64_t expire_time = 0;

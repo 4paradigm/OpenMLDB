@@ -49,11 +49,19 @@ struct DataBlock {
         delete[] data;
         data = nullptr;
     }
+
+    bool EqualWithoutCnt(const DataBlock& other) const {
+        if (size != other.size) {
+            return false;
+        }
+        // you can improve it ref RowBuilder::InitBuffer header version
+        return memcmp(data, other.data, size) == 0;
+    }
 };
 
 // the desc time comparator
 struct TimeComparator {
-    int operator() (uint64_t a, uint64_t b) const {
+    int operator()(uint64_t a, uint64_t b) const {
         if (a > b) {
             return -1;
         } else if (a == b) {
@@ -85,7 +93,6 @@ class KeyEntry {
     std::atomic<uint64_t> refs_;
     std::atomic<uint64_t> count_;
 };
-
 
 }  // namespace storage
 }  // namespace openmldb

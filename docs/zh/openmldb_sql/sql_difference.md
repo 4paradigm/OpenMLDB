@@ -1,26 +1,26 @@
 # 与标准 SQL 的主要差异
 
-本文将 OpenMLDB SQL 的主要使用方式（SELECT 查询语句）与标准 SQL （以 MySQL 支持的语法为例）进行比较，让有 SQL 使用经验的开发者快速上手 OpenMLDB SQL。
+本文将 OpenMLDB SQL 的主要使用方式（Query 查询语句）与标准 SQL （以 MySQL 支持的语法为例）进行比较，让有 SQL 使用经验的开发者快速上手 OpenMLDB SQL。
 
 以下如无特殊说明，默认均为 OpenMLDB 版本：>= v0.7.1
 
 ## 支持总览
 
-下表根据 SELECT 语句元素对 OpenMLDB SQL 在三种执行模式下（关于执行模式参考[使用流程和执行模式](../quickstart/concepts/modes.md)）与标准 SQL 整体性的差异做了汇总。OpenMLDB SQL 目前部分兼容标准 SQL，但考虑实际业务场景需求新增了部分语法，下表加粗部分为新增语法。
+下表根据 Query语句元素对 OpenMLDB SQL 在三种执行模式下（关于执行模式参考[使用流程和执行模式](../quickstart/concepts/modes.md)）与标准 SQL 整体性的差异做了汇总。OpenMLDB SQL 目前部分兼容标准 SQL，但考虑实际业务场景需求新增了部分语法，下表加粗部分为 OpenMLDB SQL 特有语法。
 
 注：✓ 表示**支持**该语句，✕ 表示**不支持**。
 
 |                | **OpenMLDB SQL**<br>**离线模式** | **OpenMLDB SQL**<br>**在线预览模式** | **OpenMLDB SQL**<br>**在线请求模式** | **标准 SQL** | **备注**                                                     |
 | -------------- | ---------------------------- | -------------------------------- | -------------------------------- | ------------ | ------------------------------------------------------------ |
+| JOIN Operation | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 支持特有的 **LAST JOIN**, 和 LEFT JOIN |
+| SET Operation | ✓ | ✓ | ✓ | ✓ | OpenMLDB 仅支持 UNION |
 | WHERE 子句     | ✓                            | ✓                                | ✕                                | ✓            | 部分功能可以通过带有 `_where` 后缀的内置函数实现 |
-| HAVING 子句    | ✓                            | ✓                                | X                                | ✓            |                                                              |
-| JOIN 子句      | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 支持特有的 **LAST JOIN**, 和 **LEFT JOIN**         |
-| GROUP BY 分组  | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
-| ORDER BY 关键字 | ✓                           | ✓                                | ✓                               | ✓            | 仅支持在 `WINDOW` 和 `LAST JOIN` 子句内部使用，不支持倒排序 `DESC` |
-| LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
+| GROUP BY / HAVING 分组 | ✓                            | ✓                               | ✕                                | ✓            | OpenMLDB >= 0.6.4 支持 GROUP BY, HAVING |
 | WINDOW 子句    | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 增加了特有的 **WINDOW ... UNION** 和 **WINDOW ATTRIBUTES** 语法 |
-| WITH 子句      | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB 从版本 v0.7.2 开始支持                           |
-| 聚合函数       | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 有较多扩展函数                                      |
+| ORDER BY 关键字 (不是 SELECT 里的 ORDER BY 子句) | ✓                           | ✓                                | ✓                               | ✓            | 仅支持在 `WINDOW` 和 **`LAST JOIN`** 子句内部使用，不支持倒排序 `DESC` |
+| LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
+| WITH 子句      | ✓                           | ✓                               | ✓                               | ✓            | OpenMLDB 从版本 v0.7.2 开始支持                           |
+| 聚合函数       | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 有自己的[拓展函数](https://openmldb.ai/docs/zh/main/openmldb_sql/udfs_8h.html), 部分兼容其他 SQL |
 
 
 
@@ -36,15 +36,15 @@
 
 ### 扫描限制的配置
 
-为了避免用户误操作而影响到在线性能，OpenMLDB 有相关参数来限制在离线模式和在线预览模式下的全表扫描次数。如果打开了这些参数的限制，将会导致部分涉及到多个记录扫描的操作（比如 SELECT *, 聚合操作等）可能出现结果截断，而最终产生错误结果。注意，这些参数不会影响到在线请求模式的结果正确性。
+为了避免用户误操作而影响到在线性能，OpenMLDB 有相关参数来限制在离线模式和在线预览模式下的全表扫描次数。如果打开了这些参数的限制，将会导致部分涉及到多个记录扫描的操作（比如 `SELECT *`, 聚合操作等）可能出现结果截断，而最终产生错误结果。注意，这些参数不会影响到在线请求模式的结果正确性。
 
 相关参数会在 tablet 配置文件 conf/tablet.flags 里进行配置，详见文档[配置文件](../deploy/conf.md#tablet配置文件-conftabletflags) 。影响到扫描限制的参数为：
 
 - 最大扫描条数 `--max_traverse_cnt`
-- 最大扫描 key 的个数 `--max_traverse_pk_cnt`
+- 最大扫描 key 的个数 `--max_traverse_pk_cnt/max_traverse_key_cnt`
 - 返回的结果大小限制 `--scan_max_bytes_size`
 
-预计在 v0.7.3 以及以后版本中，以上参数的默认值都为 0，即不做相关限制。之前的版本需要注意相关参数的设置。
+v0.8.0及以后版本，删除`max_traverse_pk_cnt`，使用`max_traverse_key_cnt`，前两个参数默认值改为0，即不受限制。v0.8.4以后（不包括）版本`--scan_max_bytes_size`默认也为0。之前的版本需要注意相关参数的设置。
 
 ### WHERE 子句
 
@@ -104,8 +104,9 @@ OpenMLDB 支持 LAST JOIN 和 LEFT JOIN，详细描述参考扩展语法的 JOIN
 | LAST JOIN + 左右表均为简单列筛选               | ✓            | ✕                | ✓l               |
 | LAST JOIN + 右表是带 WHERE 条件过滤的单表查询  | ✓            | ✕                | ✓                |
 | LAST JOIN左表或右表为 WINDOW 或 LAST JOIN 操作 | ✓            | ✕                | ✓                |
-| LAST JOIN + 右表是LEFT JOIN 的子查询           | ✕            | ✕                | ✓                |
-| LEFT JOIN                                      | ✕            | ✕                | ✕                |
+| LAST JOIN + 右表是LEFT JOIN 的子查询           | ✓            | ✕                | ✓                |
+| LAST JOIN + 右表是 UNION ALL 子查询            | ✓            | ✓                | ✓                |
+| LEFT JOIN                                      | ✓            | ✕                | ✕                |
 
 特殊限制：
 

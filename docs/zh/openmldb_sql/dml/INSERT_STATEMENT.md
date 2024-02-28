@@ -5,7 +5,7 @@ OpenMLDB 支持一次插入单行或多行数据。
 ## syntax
 
 ```
-INSERT INFO tbl_name (column_list) VALUES (value_list) [, value_list ...]
+INSERT [[OR] IGNORE] INTO tbl_name (column_list) VALUES (value_list) [, value_list ...]
 
 column_list:
     col_name [, col_name] ...
@@ -16,6 +16,7 @@ value_list:
 
 **说明**
 - `INSERT` 只能用在在线模式
+- 默认`INSERT`不会去重，`INSERT OR IGNORE` 则可以忽略已存在于表中的数据，可以反复重试。
 
 ## Examples
 

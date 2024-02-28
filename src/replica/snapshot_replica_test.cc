@@ -130,7 +130,7 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_TRUE(status.OK());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     auto ret = client.Put(tid, pid, "testkey", cur_time, ::openmldb::test::EncodeKV("testkey", "value1"));
-    ASSERT_TRUE(ret);
+    ASSERT_TRUE(ret.OK());
 
     uint32_t count = 0;
     while (count < 10) {
@@ -185,7 +185,7 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_EQ(0, srp.code());
 
     ret = client.Put(tid, pid, "newkey", cur_time, ::openmldb::test::EncodeKV("newkey", "value2"));
-    ASSERT_TRUE(ret);
+    ASSERT_TRUE(ret.OK());
     sleep(2);
     sr.set_pk("newkey");
     tablet1->Scan(NULL, &sr, &srp, &closure);
@@ -240,7 +240,7 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
     ASSERT_TRUE(status.OK());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     auto ret = client.Put(tid, pid, "testkey", cur_time, ::openmldb::test::EncodeKV("testkey", "value1"));
-    ASSERT_TRUE(ret);
+    ASSERT_TRUE(ret.OK());
 
     uint32_t count = 0;
     while (count < 10) {
@@ -351,7 +351,7 @@ TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
                     16, 0, ::openmldb::type::CompressType::kNoCompress, storage_mode));
         ASSERT_TRUE(status.OK());
         auto ret = client.Put(tid, pid, "testkey", cur_time, ::openmldb::test::EncodeKV("testkey", "value1"));
-        ASSERT_TRUE(ret);
+        ASSERT_TRUE(ret.OK());
 
         uint32_t count = 0;
         while (count < 10) {
@@ -420,7 +420,7 @@ TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
         ASSERT_EQ(0, srp.code());
 
         std::string key = "test2";
-        ASSERT_TRUE(client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, key)));
+        ASSERT_TRUE(client.Put(tid, pid, key, cur_time, ::openmldb::test::EncodeKV(key, key)).OK());
 
         sr.set_tid(tid);
         sr.set_pid(pid);
@@ -583,7 +583,7 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
     std::vector<std::string> row = {"card0", "mcc0", "1.3", std::to_string(cur_time), std::to_string(cur_time - 100)};
     std::string value;
     sdk_codec.EncodeRow(row, &value);
-    ASSERT_TRUE(client.Put(tid, pid, cur_time, value, dimensions));
+    ASSERT_TRUE(client.Put(tid, pid, cur_time, value, dimensions).OK());
 
     sleep(3);
     ::openmldb::test::TempPath temp_path;

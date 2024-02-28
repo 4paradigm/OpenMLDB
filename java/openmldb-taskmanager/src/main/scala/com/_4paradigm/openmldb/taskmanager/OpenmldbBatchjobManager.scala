@@ -57,10 +57,10 @@ object OpenmldbBatchjobManager {
 
     if (TaskManagerConfig.isK8s) {
       val args = List(sql)
-      K8sJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      K8sJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     } else {
-      SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath,
+      SparkJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath,
         sparkConf.asScala.toMap, defaultDb, blocking = true)
     }
   }
@@ -73,11 +73,11 @@ object OpenmldbBatchjobManager {
 
     if (TaskManagerConfig.isK8s) {
       val args = List(sql)
-      K8sJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      K8sJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     } else {
       val args = List(tempSqlFile.getAbsolutePath)
-      SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      SparkJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     }
   }
@@ -90,11 +90,11 @@ object OpenmldbBatchjobManager {
 
     if (TaskManagerConfig.isK8s) {
       val args = List(sql)
-      K8sJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      K8sJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     } else {
       val args = List(tempSqlFile.getAbsolutePath)
-      SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      SparkJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     }
   }
@@ -107,11 +107,11 @@ object OpenmldbBatchjobManager {
 
     if (TaskManagerConfig.isK8s) {
       val args = List(sql)
-      K8sJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      K8sJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     } else {
       val args = List(tempSqlFile.getAbsolutePath)
-      SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      SparkJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     }
   }
@@ -124,11 +124,11 @@ object OpenmldbBatchjobManager {
 
     if (TaskManagerConfig.isK8s) {
       val args = List(sql)
-      K8sJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      K8sJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     } else {
       val args = List(tempSqlFile.getAbsolutePath)
-      SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
+      SparkJobManager.submitSparkJob(jobType, mainClass, args, sql, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
         defaultDb)
     }
   }

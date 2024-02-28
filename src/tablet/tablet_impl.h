@@ -303,9 +303,6 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
 
-    int CheckTableMeta(const openmldb::api::TableMeta* table_meta,
-                       std::string& msg);  // NOLINT
-
     int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
@@ -329,7 +326,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     base::Status TruncateTableInternal(uint32_t tid, uint32_t pid);
 
     void ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                  std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+                                  std::shared_ptr<::openmldb::storage::Snapshot> snapshot,
                                   const std::vector<::openmldb::common::ColumnKey>& column_key, uint32_t partition_num,
                                   uint64_t offset, bool contain_dump, std::shared_ptr<::openmldb::api::TaskInfo> task);
 
@@ -423,6 +420,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     bool IsCollectDeployStatsEnabled() const;
 
+    void ResetTable(std::shared_ptr<Table> t) { t.reset(); }
+
     // collect deploy statistics into memory
     void TryCollectDeployStats(const std::string& db, const std::string& name, absl::Time start_time);
 
@@ -431,9 +430,20 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                          openmldb::api::QueryResponse& response, butil::IOBuf& buf);  // NOLINT
 
     void CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureInfo>& sp_info);
+    base::Status CheckTable(uint32_t tid, uint32_t pid, bool check_leader, const std::shared_ptr<Table>& table);
 
     // refresh the pre-aggr tables info
     bool RefreshAggrCatalog();
+    base::Status DeleteAllIndex(const std::shared_ptr<storage::Table>& table,
+                                const std::shared_ptr<IndexDef>& cur_index,
+                                const std::string& key,
+                                std::optional<uint64_t> start_ts,
+                                std::optional<uint64_t> end_ts,
+                                bool skip_cur_ts_col,
+                                const std::shared_ptr<catalog::TableClientManager>& client_manager,
+                                uint32_t partition_num);
+
+    void UpdateMemoryUsage();
 
  private:
     Tables tables_;
@@ -444,7 +454,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     Snapshots snapshots_;
     Aggregators aggregators_;
     ZkClient* zk_client_;
-    ThreadPool keep_alive_pool_;
+    ThreadPool trivial_task_pool_;
     ThreadPool task_pool_;
     ThreadPool io_pool_;
     ThreadPool snapshot_pool_;
@@ -474,6 +484,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     std::unique_ptr<openmldb::statistics::DeploymentMetricCollector> deploy_collector_;
     std::atomic<uint64_t> memory_used_ = 0;
+    std::atomic<uint32_t> system_memory_usage_rate_ = 0;  // [0, 100]
 };
 
 }  // namespace tablet

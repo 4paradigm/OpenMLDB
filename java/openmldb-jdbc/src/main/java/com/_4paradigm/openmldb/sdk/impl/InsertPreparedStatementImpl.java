@@ -319,7 +319,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         // actually only one row
         boolean ok = router.ExecuteInsert(cache.getDatabase(), cache.getName(),
                 cache.getTid(), cache.getPartitionNum(),
-                dimensions.array(), dimensions.capacity(), value.array(), value.capacity(), status);
+                dimensions.array(), dimensions.capacity(), value.array(), value.capacity(), cache.isPutIfAbsent(), status);
         // cleanup rows even if insert failed
         // we can't execute() again without set new row, so we must clean up here
         clearParameters();
@@ -381,7 +381,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             boolean ok = router.ExecuteInsert(cache.getDatabase(), cache.getName(),
                     cache.getTid(), cache.getPartitionNum(),
                     pair.getKey().array(), pair.getKey().capacity(),
-                    pair.getValue().array(), pair.getValue().capacity(), status);
+                    pair.getValue().array(), pair.getValue().capacity(), cache.isPutIfAbsent(), status);
             if (!ok) {
                 // TODO(hw): may lost log, e.g. openmldb-batch online import in yarn mode?
                 logger.warn(status.ToString());

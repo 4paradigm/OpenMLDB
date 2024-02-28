@@ -90,61 +90,61 @@ TEST_F(SchemaTest, TestNeedGc) {
 }
 
 TEST_F(SchemaTest, TestIsExpired) {
-    ::openmldb::storage::TTLSt ttl_st(0, 0, ::openmldb::storage::kAbsoluteTime);
-    ASSERT_FALSE(ttl_st.IsExpired(100, 1));
-    ttl_st = ::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kAbsoluteTime);
-    ASSERT_FALSE(ttl_st.IsExpired(100, 1));
-    ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kAbsoluteTime);
-    ASSERT_FALSE(ttl_st.IsExpired(200, 3));
-    ASSERT_TRUE(ttl_st.IsExpired(50, 3));
-    ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kLatestTime);
-    ASSERT_FALSE(ttl_st.IsExpired(200, 1));
-    ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kLatestTime);
-    ASSERT_FALSE(ttl_st.IsExpired(50, 1));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ASSERT_TRUE(ttl_st.IsExpired(200, 3));
-    ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kAbsAndLat);
-    ASSERT_FALSE(ttl_st.IsExpired(50, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(0, 0));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::openmldb::storage::TTLSt(0, 2, ::openmldb::storage::kAbsAndLat);
-    ASSERT_FALSE(ttl_st.IsExpired(50, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(0, 0));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 1));
-    ttl_st = ::openmldb::storage::TTLSt(100, 0, ::openmldb::storage::kAbsAndLat);
-    ASSERT_FALSE(ttl_st.IsExpired(200, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(0, 0));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kAbsAndLat);
-    ASSERT_FALSE(ttl_st.IsExpired(200, 3));
-    ASSERT_TRUE(ttl_st.IsExpired(50, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 1));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ASSERT_FALSE(ttl_st.IsExpired(200, 1));
-    ASSERT_FALSE(ttl_st.IsExpired(200, 0));
-    ttl_st = ::openmldb::storage::TTLSt(0, 0, ::openmldb::storage::kAbsOrLat);
-    ASSERT_FALSE(ttl_st.IsExpired(50, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(0, 0));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::openmldb::storage::TTLSt(0, 2, ::openmldb::storage::kAbsOrLat);
-    ASSERT_TRUE(ttl_st.IsExpired(50, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(0, 0));
-    ASSERT_FALSE(ttl_st.IsExpired(50, 1));
-    ASSERT_TRUE(ttl_st.IsExpired(0, 3));
-    ttl_st = ::openmldb::storage::TTLSt(100, 0, ::openmldb::storage::kAbsOrLat);
-    ASSERT_FALSE(ttl_st.IsExpired(200, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(200, 0));
-    ASSERT_TRUE(ttl_st.IsExpired(50, 3));
-    ASSERT_TRUE(ttl_st.IsExpired(0, 0));
-    ASSERT_TRUE(ttl_st.IsExpired(50, 0));
-    ttl_st = ::openmldb::storage::TTLSt(100, 2, ::openmldb::storage::kAbsOrLat);
-    ASSERT_TRUE(ttl_st.IsExpired(50, 3));
-    ASSERT_TRUE(ttl_st.IsExpired(50, 1));
-    ASSERT_TRUE(ttl_st.IsExpired(50, 0));
-    ASSERT_TRUE(ttl_st.IsExpired(200, 3));
-    ASSERT_FALSE(ttl_st.IsExpired(200, 1));
-    ASSERT_FALSE(ttl_st.IsExpired(200, 0));
+    ExpiredChecker ttl_checker(0, 0, ::openmldb::storage::kAbsoluteTime);
+    ASSERT_FALSE(ttl_checker.IsExpired(100, 1));
+    ttl_checker = ExpiredChecker(0, 1, ::openmldb::storage::kAbsoluteTime);
+    ASSERT_FALSE(ttl_checker.IsExpired(100, 1));
+    ttl_checker = ExpiredChecker(100, 2, ::openmldb::storage::kAbsoluteTime);
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 3));
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 3));
+    ttl_checker = ExpiredChecker(0, 0, ::openmldb::storage::kLatestTime);
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 1));
+    ttl_checker = ExpiredChecker(100, 2, ::openmldb::storage::kLatestTime);
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 1));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 0));
+    ASSERT_TRUE(ttl_checker.IsExpired(200, 3));
+    ttl_checker = ExpiredChecker(0, 0, ::openmldb::storage::kAbsAndLat);
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(0, 0));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 0));
+    ttl_checker = ExpiredChecker(0, 2, ::openmldb::storage::kAbsAndLat);
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(0, 0));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 1));
+    ttl_checker = ExpiredChecker(100, 0, ::openmldb::storage::kAbsAndLat);
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(0, 0));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 0));
+    ttl_checker = ExpiredChecker(100, 2, ::openmldb::storage::kAbsAndLat);
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 3));
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 1));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 0));
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 1));
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 0));
+    ttl_checker = ExpiredChecker(0, 0, ::openmldb::storage::kAbsOrLat);
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(0, 0));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 0));
+    ttl_checker = ExpiredChecker(0, 2, ::openmldb::storage::kAbsOrLat);
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(0, 0));
+    ASSERT_FALSE(ttl_checker.IsExpired(50, 1));
+    ASSERT_TRUE(ttl_checker.IsExpired(0, 3));
+    ttl_checker = ExpiredChecker(100, 0, ::openmldb::storage::kAbsOrLat);
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 0));
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 3));
+    ASSERT_TRUE(ttl_checker.IsExpired(0, 0));
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 0));
+    ttl_checker = ExpiredChecker(100, 2, ::openmldb::storage::kAbsOrLat);
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 3));
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 1));
+    ASSERT_TRUE(ttl_checker.IsExpired(50, 0));
+    ASSERT_TRUE(ttl_checker.IsExpired(200, 3));
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 1));
+    ASSERT_FALSE(ttl_checker.IsExpired(200, 0));
 }
 
 TEST_F(SchemaTest, ParseEmpty) {
@@ -233,9 +233,9 @@ TEST_F(SchemaTest, TsAndDefaultTs) {
                 ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key2")), "key2", "col1", "col7", 7, 10, 0, ::openmldb::storage::kAbsoluteTime);
     AssertIndex(*(table_index.GetIndex("key3")), "key3", "col2", "col6", 6, 10, 0, ::openmldb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+    AssertIndex(*(table_index.GetIndex("key4")), "key4", "col2", DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
             10, 0, ::openmldb::storage::kAbsoluteTime);
-    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFUALT_TS_COL_NAME, DEFUALT_TS_COL_ID,
+    AssertIndex(*(table_index.GetIndex("key5")), "key5", "col3", DEFAULT_TS_COL_NAME, DEFAULT_TS_COL_ID,
             10, 0, ::openmldb::storage::kAbsoluteTime);
     auto inner_index = table_index.GetAllInnerIndex();
     ASSERT_EQ(inner_index->size(), 3u);
@@ -243,10 +243,10 @@ TEST_F(SchemaTest, TsAndDefaultTs) {
     std::vector<uint32_t> ts_vec0 = {6, 7};
     AssertInnerIndex(*(table_index.GetInnerIndex(0)), 0, index0, ts_vec0);
     std::vector<std::string> index1 = {"key3", "key4"};
-    std::vector<uint32_t> ts_vec1 = {6, DEFUALT_TS_COL_ID};
+    std::vector<uint32_t> ts_vec1 = {6, DEFAULT_TS_COL_ID};
     AssertInnerIndex(*(table_index.GetInnerIndex(1)), 1, index1, ts_vec1);
     std::vector<std::string> index2 = {"key5"};
-    std::vector<uint32_t> ts_vec2 = {DEFUALT_TS_COL_ID};
+    std::vector<uint32_t> ts_vec2 = {DEFAULT_TS_COL_ID};
     AssertInnerIndex(*(table_index.GetInnerIndex(2)), 2, index2, ts_vec2);
 }
 

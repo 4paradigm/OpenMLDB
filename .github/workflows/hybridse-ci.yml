@@ -57,11 +57,11 @@ jobs:
       # this option enables print inner output rows of each node in runner
       HYBRIDSE_DEBUG: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          brew install coreutils
+          brew install coreutils z3
 
       - name: Cache thirdparty
         uses: actions/cache@v3
@@ -79,6 +79,13 @@ jobs:
         run: |
           make hybridse-test
 
+      - name: Upload Event File
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: event-file
+          path: ${{ github.event_path }}
+
       - name: Upload Cpp UT Results
         if: always()
         uses: actions/upload-artifact@v3
@@ -89,7 +96,7 @@ jobs:
 
   publish-test-results-linux:
     needs: ["linux-build"]
-    # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
+    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -104,7 +111,7 @@ jobs:
 
   publish-test-results-mac:
     needs: ["macos-build"]
-    # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
+    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&

@@ -7,8 +7,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/udf-doc.yml'
-      - 'hybridse/tools/documentation/**'
-      - 'hybridse/src/cmd/export_udf_info.cc'
+      - 'include/**'
+      - 'hybridse/**'
   workflow_dispatch:
 
 jobs:

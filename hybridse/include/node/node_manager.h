@@ -21,7 +21,6 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_NODE_MANAGER_H_
 #define HYBRIDSE_INCLUDE_NODE_NODE_MANAGER_H_
 
-#include <ctype.h>
 #include <list>
 #include <memory>
 #include <string>
@@ -104,8 +103,6 @@ class NodeManager {
         ExprListNode *group_expr_list, ExprNode *having_expr,
         ExprNode *order_expr_list, SqlNodeList *window_list_ptr,
         SqlNode *limit_ptr);
-    QueryNode *MakeUnionQueryNode(QueryNode *left, QueryNode *right,
-                                  bool is_all);
     TableRefNode *MakeTableNode(const std::string &name,
                                 const std::string &alias);
     TableRefNode *MakeTableNode(const std::string& db,
@@ -168,16 +165,12 @@ class NodeManager {
     SqlNode *MakeInsertTableNode(const std::string &db_name,
                                  const std::string &table_name,
                                  const ExprListNode *column_names,
-                                 const ExprListNode *values);
+                                 const ExprListNode *values, InsertStmt::InsertMode insert_mode);
     CreateStmt *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &db_name,
                                  const std::string &table_name,
                                  SqlNodeList *column_desc_list,
                                  SqlNodeList *partition_meta_list);
-    SqlNode *MakeColumnDescNode(const std::string &column_name,
-                                const DataType data_type,
-                                bool op_not_null,
-                                ExprNode* default_value = nullptr);
     SqlNode *MakeColumnIndexNode(SqlNodeList *keys, SqlNode *ts, SqlNode *ttl,
                                  SqlNode *version);
     SqlNode *MakeColumnIndexNode(SqlNodeList *index_item_list);

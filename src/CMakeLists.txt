@@ -23,19 +23,26 @@ add_subdirectory(statistics)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/src/proto)
 
 set(PROTO_FILES "")
-function(compile_proto proto_name project_dir)
-    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc
-        COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
-        --cpp_out=${CMAKE_BINARY_DIR}/src/proto
-        --java_out=${project_dir}/java/openmldb-native/src/main/java
-        --java_out=${project_dir}/java/openmldb-import/src/main/java
-        --java_out=${project_dir}/java/openmldb-taskmanager/src/main/java
-        --java_out=${project_dir}/java/openmldb-common/src/main/java
-        --java_out=${project_dir}/java/openmldb-synctool/src/main/java
-        ${project_dir}/src/proto/${proto_name}.proto
-        DEPENDS ${project_dir}/src/proto/${proto_name}.proto)
-    list(APPEND PROTO_FILES ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc)
-    set(PROTO_FILES ${PROTO_FILES} PARENT_SCOPE)
+set(PROTO_CPP_FILES "")
+function(compile_proto proto_name java_out_file_name)
+  # will rerun if DEPENDS changed or OUTPUT not exists
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc
+      ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.h
+      ${CMAKE_SOURCE_DIR}/java/openmldb-common/src/main/java/com/_4paradigm/openmldb/proto/${java_out_file_name}.java
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/src/proto
+      --cpp_out=${CMAKE_BINARY_DIR}/src/proto
+      --java_out=${CMAKE_SOURCE_DIR}/java/openmldb-common/src/main/java
+      ${CMAKE_SOURCE_DIR}/src/proto/${proto_name}.proto
+    DEPENDS ${CMAKE_SOURCE_DIR}/src/proto/${proto_name}.proto)
+  list(APPEND PROTO_CPP_FILES ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc)
+  list(APPEND PROTO_FILES
+    ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc
+    ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.h
+    ${CMAKE_SOURCE_DIR}/java/openmldb-common/src/main/java/com/_4paradigm/openmldb/proto/${java_out_file_name}.java
+  )
+  set(PROTO_CPP_FILES ${PROTO_CPP_FILES} PARENT_SCOPE)
+  set(PROTO_FILES ${PROTO_FILES} PARENT_SCOPE)
 endfunction(compile_proto)
 
 function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
@@ -53,7 +60,7 @@ endfunction(compile_lib)
 
 set(TEST_LIBS
     openmldb_test_base apiserver nameserver tablet query_response_time openmldb_sdk
-    openmldb_catalog schema client zk_client storage replica base openmldb_codec openmldb_proto log
+    openmldb_catalog client zk_client storage schema replica openmldb_codec base openmldb_proto log
     common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
     # GNU implementation prior to 9.1 requires linking with -lstdc++fs
@@ -98,16 +105,23 @@ function(compile_test DIR)
     set(test_list ${test_list} PARENT_SCOPE)
 endfunction(compile_test)
 
-compile_proto(type ${PROJECT_SOURCE_DIR})
-compile_proto(common ${PROJECT_SOURCE_DIR})
-compile_proto(tablet ${PROJECT_SOURCE_DIR})
-compile_proto(name_server ${PROJECT_SOURCE_DIR})
-compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
-compile_proto(api_server ${PROJECT_SOURCE_DIR})
-compile_proto(taskmanager ${PROJECT_SOURCE_DIR})
-compile_proto(data_sync ${PROJECT_SOURCE_DIR})
+compile_proto(type Type)
+compile_proto(common Common)
+compile_proto(tablet Tablet)
+compile_proto(name_server NS)
+compile_proto(sql_procedure SQLProcedure)
+compile_proto(api_server ApiServer)
+compile_proto(taskmanager TaskManager)
+compile_proto(data_sync DataSync)
 
-add_library(openmldb_proto STATIC ${PROTO_FILES})
+add_library(openmldb_proto STATIC ${PROTO_CPP_FILES})
+# clean generated proto file, including '{cmake_source}/java/openmldb-common'
+set_property(
+  TARGET openmldb_proto
+  APPEND
+  PROPERTY ADDITIONAL_CLEAN_FILES ${PROTO_FILES}
+)
+
 add_library(openmldb_flags STATIC flags.cc)
 
 compile_lib(openmldb_codec codec "")

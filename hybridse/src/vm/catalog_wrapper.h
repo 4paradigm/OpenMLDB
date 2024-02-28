@@ -21,6 +21,9 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
+#include <queue>
+#include <map>
 
 #include "absl/base/attributes.h"
 #include "codec/row_iterator.h"
@@ -29,6 +32,9 @@
 
 namespace hybridse {
 namespace vm {
+
+static constexpr uint64_t INVALID_KEY = 0;
+static const Row INVALID_ROW = Row();
 
 class IteratorProjectWrapper : public RowIterator {
  public:
@@ -962,6 +968,148 @@ class ConcatPartitionHandler final : public PartitionHandler {
     size_t right_slices_;
 };
 
+class UnionIterator final : public codec::RowIterator {
+ public:
+    UnionIterator(absl::Span<std::unique_ptr<RowIterator>> inputs, bool distinct) : distinct_(distinct) {
+        size_t i = 0;
+        for (auto& n : inputs) {
+            if (n) {
+                n->SeekToFirst();
+                if (n->Valid()) {
+                    keys_.emplace(n->GetKey(), i++);
+                    inputs_.push_back(std::move(n));
+                }
+            }
+        }
+    }
+    ~UnionIterator() override {}
+
+    bool Valid() const override { return !keys_.empty(); }
+    void Next() override;
+    const uint64_t& GetKey() const override;
+    const Row& GetValue() override;
+
+    bool IsSeekable() const override { return true; };
+
+    void Seek(const uint64_t& key) override;
+
+    void SeekToFirst() override;
+
+ private:
+    using E =
+        std::pair<std::remove_const_t<std::remove_reference_t<decltype(std::declval<codec::RowIterator>().GetKey())>>,
+                  decltype(std::vector<int>().size())>;
+    struct PairLess {
+        constexpr bool operator() (const E& lhs, const E& rhs) const {
+            // larger key(larger index value if key equals) at top
+            // top key is the last/latest
+            if (lhs.first == rhs.first) {
+                return lhs.second < rhs.second;
+            }
+            return lhs.first < rhs.first;
+        }
+    };
+    using MaxHeap = std::priority_queue<E, std::vector<E>, PairLess>;
+
+    void rebuild_keys();
+
+    std::vector<std::unique_ptr<RowIterator>> inputs_;
+    bool distinct_ = false;  // NOLINT
+
+    MaxHeap keys_;
+};
+
+class SetOperationHandler final : public TableHandler {
+ public:
+    SetOperationHandler(node::SetOperationType type, absl::Span<std::shared_ptr<TableHandler> const> inputs,
+                        bool distinct)
+        : op_type_(type), inputs_(inputs.begin(), inputs.end()), distinct_(distinct) {}
+    SetOperationHandler(node::SetOperationType type, absl::Span<std::shared_ptr<PartitionHandler> const> inputs,
+                        bool distinct)
+        : op_type_(type), inputs_(inputs.begin(), inputs.end()), distinct_(distinct) {}
+    ~SetOperationHandler() override {}
+
+    RowIterator* GetRawIterator() override;
+
+    // unimplemented
+    const Types& GetTypes() override { return inputs_[0]->GetTypes(); }
+    const IndexHint& GetIndex() override { return inputs_[0]->GetIndex(); }
+    const Schema* GetSchema() override { return inputs_[0]->GetSchema(); }
+    const std::string& GetName() override { return inputs_[0]->GetName(); }
+    const std::string& GetDatabase() override { return inputs_[0]->GetDatabase(); }
+
+ protected:
+    node::SetOperationType op_type_;
+    std::vector<std::shared_ptr<TableHandler>> inputs_;
+    bool distinct_ = false;
+};
+
+class UnionWindowIterator final : public codec::WindowIterator {
+    // NOTE: iterator ordering may out-of-order, same keys from different input iterator may output in two iteration.
+    // Because the input iterator may out-of-order itself.
+ public:
+    UnionWindowIterator(absl::Span<std::unique_ptr<codec::WindowIterator>> inputs, bool distinct)
+        : distinct_(distinct) {
+        size_t i = 0;
+        for (auto& n : inputs) {
+            if (n) {
+                n->SeekToFirst();
+                if (n->Valid()) {
+                    keys_[n->GetKey()].push_back(i++);
+                    inputs_.push_back(std::move(n));
+                }
+            }
+        }
+    }
+    ~UnionWindowIterator() override {}
+
+    bool Valid() override {
+        return !keys_.empty();
+    }
+
+    RowIterator* GetRawValue() override;
+
+    void Seek(const std::string& key) override;
+
+    void SeekToFirst() override;
+
+    void Next() override;
+
+    const codec::Row GetKey() override;
+
+ private:
+    void rebuild_keys();
+    std::vector<std::unique_ptr<WindowIterator>> inputs_;
+
+    // smaller key comes first
+    std::map<Row, std::vector<size_t>, std::less<Row>> keys_;
+    bool distinct_;
+};
+
+class SetOperationPartitionHandler final : public PartitionHandler {
+ public:
+    SetOperationPartitionHandler(node::SetOperationType type,
+                                 absl::Span<std::shared_ptr<PartitionHandler> const> inputs, bool distinct)
+        : op_type_(type), inputs_(inputs.begin(), inputs.end()), distinct_(distinct) {}
+    ~SetOperationPartitionHandler() override {}
+
+    RowIterator* GetRawIterator() override;
+
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
+
+    std::unique_ptr<WindowIterator> GetWindowIterator() override;
+
+    const Types& GetTypes() override { return inputs_[0]->GetTypes(); }
+    const IndexHint& GetIndex() override { return inputs_[0]->GetIndex(); }
+    const Schema* GetSchema() override { return inputs_[0]->GetSchema(); }
+    const std::string& GetName() override { return inputs_[0]->GetName(); }
+    const std::string& GetDatabase() override { return inputs_[0]->GetDatabase(); }
+
+ private:
+    node::SetOperationType op_type_;
+    std::vector<std::shared_ptr<PartitionHandler>> inputs_;
+    bool distinct_ = false;
+};
 }  // namespace vm
 }  // namespace hybridse
 

@@ -201,36 +201,46 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
     return false;
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-                       const std::vector<std::pair<std::string, uint32_t>>& dimensions) {
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
+                       const std::vector<std::pair<std::string, uint32_t>>& dimensions,
+                       int memory_usage_limit, bool put_if_absent) {
+
     ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> pb_dimensions;
     for (size_t i = 0; i < dimensions.size(); i++) {
         ::openmldb::api::Dimension* d = pb_dimensions.Add();
         d->set_key(dimensions[i].first);
         d->set_idx(dimensions[i].second);
     }
-    return Put(tid, pid, time, base::Slice(value), &pb_dimensions);
+
+    return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit, put_if_absent);
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions) {
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
+            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
+            int memory_usage_limit, bool put_if_absent) {
     ::openmldb::api::PutRequest request;
+    if (memory_usage_limit < 0 || memory_usage_limit > 100) {
+        return {base::ReturnCode::kError, absl::StrCat("invalid memory_usage_limit ", memory_usage_limit)};
+    } else if (memory_usage_limit > 0) {
+        request.set_memory_limit(memory_usage_limit);
+    }
     request.set_time(time);
     request.set_value(value.data(), value.size());
     request.set_tid(tid);
     request.set_pid(pid);
     request.mutable_dimensions()->Swap(dimensions);
+    request.set_put_if_absent(put_if_absent);
     ::openmldb::api::PutResponse response;
-    bool ok =
-        client_.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!st.OK()) {
+        return st;
     }
-    LOG(WARNING) << "fail to send write request for " << response.msg() << " and error code " << response.code();
-    return false;
+    return {response.code(), response.msg()};
 }
 
-bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value) {
+base::Status TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
+        const std::string& value) {
     ::openmldb::api::PutRequest request;
     auto dim = request.add_dimensions();
     dim->set_key(pk);
@@ -240,14 +250,12 @@ bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64
     request.set_tid(tid);
     request.set_pid(pid);
     ::openmldb::api::PutResponse response;
-
-    bool ok =
-        client_.SendRequest(&::openmldb::api::TabletServer_Stub::Put, &request, &response, FLAGS_request_timeout_ms, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!st.OK()) {
+        return st;
     }
-    LOG(WARNING) << "fail to put for error " << response.msg();
-    return false;
+    return {response.code(), response.msg()};
 }
 
 bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid, uint64_t offset, std::shared_ptr<TaskInfo> task_info) {
@@ -807,28 +815,28 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     return true;
 }
 
-base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const std::map<uint32_t, std::string>& index_val,
-        const std::string& ts_name, const std::optional<uint64_t> start_ts, const std::optional<uint64_t>& end_ts) {
+base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const sdk::DeleteOption& option, uint64_t timeout_ms) {
     ::openmldb::api::DeleteRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
-    for (const auto& kv : index_val) {
+    if (option.idx.has_value()) {
         auto dimension = request.add_dimensions();
-        dimension->set_idx(kv.first);
-        dimension->set_key(kv.second);
+        dimension->set_idx(option.idx.value());
+        dimension->set_key(option.key);
     }
-    if (start_ts.has_value()) {
-        request.set_ts(start_ts.value());
+    if (option.start_ts.has_value()) {
+        request.set_ts(option.start_ts.value());
     }
-    if (end_ts.has_value()) {
-        request.set_end_ts(end_ts.value());
+    if (option.end_ts.has_value()) {
+        request.set_end_ts(option.end_ts.value());
     }
-    if (!ts_name.empty()) {
-        request.set_ts_name(ts_name);
+    if (!option.ts_name.empty()) {
+        request.set_ts_name(option.ts_name);
     }
+    request.set_enable_decode_value(option.enable_decode_value);
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Delete, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                  timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }

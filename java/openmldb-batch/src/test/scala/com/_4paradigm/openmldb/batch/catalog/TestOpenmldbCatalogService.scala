@@ -26,7 +26,7 @@ class TestOpenmldbCatalogService extends FunSuite {
     val zkCluster = "127.0.0.1:2181"
     val zkPath = "/openmldb"
 
-    val openmldbCatalogService = new OpenmldbCatalogService(zkCluster, zkPath)
+    val openmldbCatalogService = new OpenmldbCatalogService(zkCluster, zkPath, "root", "root")
 
     val databases = openmldbCatalogService.getDatabases
     for (i <- databases.indices) {
