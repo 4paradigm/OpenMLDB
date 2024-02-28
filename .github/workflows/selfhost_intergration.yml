@@ -19,6 +19,7 @@ env:
   HYBRIDSE_SOURCE: local
   E_VERSION: ${{ github.event.inputs.EXEC_VERSION || 'main'}}
   ETYPE: ${{ github.event.inputs.EXEC_TEST_TYPE || 'all'}}
+  NPROC: 4
 
 jobs:
   build-openmldb:
@@ -346,7 +347,7 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanagers.sh
-          HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanagers.sh
+          HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-taskmanagers.sh
       - name: test
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb

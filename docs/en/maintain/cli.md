@@ -1,4 +1,4 @@
-# Operations in CLI
+# Operations CLI
 
 * [NS Client](#ns-client)
 * [Tablet Client](#tablet-client)
@@ -283,6 +283,22 @@ Command format: `cancelop op\_id`
 ```
 > cancelop 5
 Cancel op ok!
+```
+
+### deleteop
+
+Delete one or more op from nameserver
+
+Command format: deleteop op\_id / op\_status
+
+* op\_id: the operation ID to delete
+* op\_status: specify the status of the op that needs to be deleted. The statuses that can be specified are done, failed and canceled
+
+```
+> deleteop 5
+Delete op ok!
+> deleteop done
+Delete op ok!
 ```
 
 ### showopstatus

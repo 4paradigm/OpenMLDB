@@ -5,7 +5,7 @@
 This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql), mainly for quick start and development purposes in the docker container.
 The docker image has packed the required tools and dependencies, so there is no need to set them up separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) below.
 
-Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.8.4](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.8.4) under `hybridsql:0.8.4` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
+Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.8.5](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.8.5) under `hybridsql:0.8.5` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
 
 1. Pull the docker image
 
@@ -19,11 +19,11 @@ Keep in mind that you should always use the same version of both compile image a
    docker run -it 4pdosc/hybridsql:0.8 bash
    ```
 
-3. Download the OpenMLDB source code inside the docker container, and set the branch into v0.8.4
+3. Download the OpenMLDB source code inside the docker container, and set the branch into v0.8.5
 
    ```bash
    cd ~
-   git clone -b v0.8.4 https://github.com/4paradigm/OpenMLDB.git
+   git clone -b v0.8.5 https://github.com/4paradigm/OpenMLDB.git
    ```
 
 4. Compile OpenMLDB
@@ -67,7 +67,7 @@ make NPROC=4
 
 ### Build and Install OpenMLDB
 
-Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
+Building OpenMLDB requires certain thirdparty dependencies. Hence a `Makefile` is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
 - **Method One: Download Pre-Compiled Thirdparty:**  Command is `make && make install`. It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS.
 - **Method Two: Compile Thirdparty from Source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 8 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
@@ -150,7 +150,7 @@ The built jar packages are in the `target` path of each submodule. If you want t
 1. Downloading the pre-built OpenMLDB Spark distribution:
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.4/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.5/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 Alternatively, you can also download the source code and compile from scratch:
@@ -209,7 +209,7 @@ After forking the OpenMLDB repository, you can trigger the `Other OS Build` work
 
 - Do not change the `Use workflow from` setting to a specific tag; it can be another branch.
 - Choose the desired `OS name`, which in this case is `centos6`.
-- If you are not compiling the main branch, provide the name of the branch, tag (e.g., v0.8.4), or SHA you want to compile in the `The branch, tag, or SHA to checkout, otherwise use the branch` field.
+- If you are not compiling the main branch, provide the name of the branch, tag (e.g., v0.8.5), or SHA you want to compile in the `The branch, tag, or SHA to checkout, otherwise use the branch` field.
 - The compilation output will be accessible in "runs", as shown in an example [here](https://github.com/4paradigm/OpenMLDB/actions/runs/6044951902).
   - The workflow will definitely produce the OpenMLDB binary file.
   - If you don't need the Java or Python SDK, you can configure `java sdk enable` or `python sdk enable` to be "OFF" to save compilation time.

@@ -19,9 +19,7 @@
 %left UNARY_PRECEDENCE  // For all unary operators, +, -, ~
 ```
 
-## Various Operations
-
-### 1. Comparison Operation
+## Comparison Operation
 
 | operator name   | function description         |
 | :-------------- | :--------------------------  |
@@ -37,7 +35,7 @@
 | `ILIKE`         | Comparison, case insensitive |
 | `RLIKE`         | Regular expression comparison |
 
-### 2. Logic Operation
+## Logic Operation
 
 | operator name    | function description |
 | :----------      | :------- |
@@ -46,7 +44,7 @@
 | `XOR`            | Logical xor |
 | `NOT`, `!`       | Logical not, unary operator   |
 
-### 3. Arithmetic Operations
+## Arithmetic Operations
 
 | operator name   | function description                                |
 | :---------      | :-------------------------------------------------- |
@@ -59,7 +57,7 @@
 | `+`             | Unary plus                                          |
 | `-`             | Unary minus, support only `-number`                 |
 
-###  4. Bit Operation
+## Bit Operation
 
 | operator name | Description |
 | :-------      | :---------- |
@@ -68,7 +66,7 @@
 | `^`           | Bitwise XOR |
 | `~`           | Bitwise NOT, unary operator |
 
-### 5. Type Operations and Functions
+## Type Operations and Functions
 
 | operator name       | Description                                                |
 | :------------- | :--------------------------------------------------------- |
@@ -114,3 +112,14 @@ X：Indicates that a conversion from the original type to the target type is not
 | operator name | function description                  |
 | :------- | :------------------------ |
 | `=`      | Assignment (can be used in SET statement) |
+
+## Conditional Expressions
+
+### CASE Expression
+    ```sql
+    SELECT case 'bb' when 'aa' then 'apple' else 'nothing' end; -- SIMPLE CASE WHEN
+    SELECT case
+            when 'bb'='aa' then 'apple'
+            when 'bb'='bb' then 'banana'
+            else 'nothing' end; -- SEARCHED CASE WHEN
+    ```

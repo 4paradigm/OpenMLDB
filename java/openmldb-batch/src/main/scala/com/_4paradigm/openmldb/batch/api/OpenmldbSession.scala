@@ -68,11 +68,13 @@ class OpenmldbSession {
     }
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
-      logger.info(s"Try to connect OpenMLDB with zk ${this.config.openmldbZkCluster} and root path " +
-        s"${this.config.openmldbZkRootPath}")
+      logger.info(s"Try to connect OpenMLDB with zk cluster: ${this.config.openmldbZkCluster}, root path: " +
+        s"${this.config.openmldbZkRootPath}, user: ${this.config.openmldbUser}, password: " +
+        s"${this.config.openmldbPassword}")
       try {
         openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster,
-          this.config.openmldbZkRootPath, config.openmldbJsdkLibraryPath)
+          this.config.openmldbZkRootPath, this.config.openmldbUser, this.config.openmldbPassword,
+          config.openmldbJsdkLibraryPath)
         registerOpenmldbOfflineTable(openmldbCatalogService)
       } catch {
         case e: Exception => logger.warn("Fail to connect OpenMLDB cluster and register tables, " + e.getMessage)

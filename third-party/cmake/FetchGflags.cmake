@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(GFLAGS_URL https://github.com/gflags/gflags/archive/refs/tags/v2.2.0.tar.gz)
+set(GFLAGS_URL https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.tar.gz)
+set(GFLAGS_HASH 34af2f15cf7367513b352bdcd2493ab14ce43692d2dcd9dfc499492966c64dcf)
 
 message(STATUS "build gflags from ${GFLAGS_URL}")
 
 ExternalProject_Add(
   gflags
   URL ${GFLAGS_URL}
-  URL_HASH SHA256=466c36c6508a451734e4f4d76825cf9cd9b8716d2b70ef36479ae40f08271f88
+  URL_HASH SHA256=${GFLAGS_HASH}
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/gflags
   INSTALL_DIR ${DEPS_INSTALL_DIR}

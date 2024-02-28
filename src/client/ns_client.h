@@ -99,6 +99,7 @@ class NsClient : public Client {
     base::Status ShowOPStatus(uint64_t op_id, ::openmldb::nameserver::ShowOPStatusResponse* response);
 
     base::Status CancelOP(uint64_t op_id);
+    base::Status DeleteOP(std::optional<uint64_t> op_id, openmldb::api::TaskStatus status);
 
     bool AddTableField(const std::string& table_name, const ::openmldb::common::ColumnDesc& column_desc,
                        std::string& msg);  // NOLINT

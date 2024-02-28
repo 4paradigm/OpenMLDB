@@ -1,12 +1,9 @@
 =============================
-OpenMLDB Feature Platform
+Application Scenarios
 =============================
 
 .. toctree::
     :maxdepth: 1
 
-    concept
-    installation
-    tutorial
-    usage
-    
+    taxi_tour_duration_prediction
+    recommend_system

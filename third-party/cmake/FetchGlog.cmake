@@ -16,6 +16,11 @@ set(GLOG_URL https://github.com/google/glog/archive/refs/tags/v0.6.0.tar.gz)
 
 message(STATUS "build glog from ${GLOG_URL}")
 
+set(depends gflags)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND libunwind)
+endif()
+
 find_program(MAKE_EXE NAMES gmake nmake make)
 ExternalProject_Add(
   glog
@@ -24,8 +29,7 @@ ExternalProject_Add(
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/glog
   INSTALL_DIR ${DEPS_INSTALL_DIR}
-  DEPENDS gflags
-  BUILD_IN_SOURCE TRUE
+  DEPENDS ${depends}
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B <BINARY_DIR> -DCMAKE_CXX_FLAGS=-fPIC
     -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH=<INSTALL_DIR> -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
   BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> -- ${MAKEOPTS}

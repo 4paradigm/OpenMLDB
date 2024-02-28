@@ -162,12 +162,19 @@ class SystemTable {
                 break;
             }
             case SystemTableType::kUser: {
+                SetColumnDesc("host", type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("user", type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("password", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("password_last_changed", type::DataType::kTimestamp, table_info->add_column_desc());
+                SetColumnDesc("password_expired_time", type::DataType::kBigInt, table_info->add_column_desc());
                 SetColumnDesc("create_time", type::DataType::kTimestamp, table_info->add_column_desc());
                 SetColumnDesc("update_time", type::DataType::kTimestamp, table_info->add_column_desc());
+                SetColumnDesc("account_type", type::DataType::kInt, table_info->add_column_desc());
+                SetColumnDesc("privileges", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("extra_info", type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();
                 index->set_index_name("index");
+                index->add_col_name("host");
                 index->add_col_name("user");
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kLatestTime);

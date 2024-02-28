@@ -124,11 +124,12 @@ static std::vector<TestInfo> cases = {
 INSTANTIATE_TEST_SUITE_P(NodeAdapter, NodeAdapterTest, testing::ValuesIn(cases));
 
 void CheckDeleteOption(const DeleteOption& option, const DeleteOption& expect_option) {
-    ASSERT_EQ(option.index_map.size(), expect_option.index_map.size());
-    for (const auto& kv : option.index_map) {
-        auto iter = expect_option.index_map.find(kv.first);
-        ASSERT_TRUE(iter != expect_option.index_map.end());
-        ASSERT_EQ(kv.second, iter->second);
+    if (option.idx.has_value()) {
+        ASSERT_TRUE(expect_option.idx.has_value());
+        ASSERT_EQ(option.idx.value(), expect_option.idx.value());
+        ASSERT_EQ(option.key, expect_option.key);
+    } else {
+        ASSERT_FALSE(expect_option.idx.has_value());
     }
     ASSERT_EQ(expect_option.ts_name, option.ts_name);
     if (option.start_ts.has_value()) {
@@ -143,6 +144,7 @@ void CheckDeleteOption(const DeleteOption& option, const DeleteOption& expect_op
     } else {
         ASSERT_FALSE(expect_option.end_ts.has_value());
     }
+    ASSERT_EQ(option.enable_decode_value, expect_option.enable_decode_value);
 }
 
 struct DeleteOptionParm {
@@ -165,51 +167,51 @@ TEST_P(DeleteOptionTest, TransformToTableInfo) {
 
 std::vector<DeleteOptionParm> option_cases = {
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString)},
-            DeleteOption({{0, "key1"}}, "", std::nullopt, std::nullopt)),
+            DeleteOption(0, "key1", "", std::nullopt, std::nullopt)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpEq, "10", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", 10, 9)),
+        DeleteOption(0, "key1", "ts1", 10, 9)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "10", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", std::nullopt, 9)),
+        DeleteOption(0, "key1", "ts1", std::nullopt, 9)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpGt, "10", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", std::nullopt, 10)),
+        DeleteOption(0, "key1", "ts1", std::nullopt, 10)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpLt, "10", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", 9, std::nullopt)),
+        DeleteOption(0, "key1", "ts1", 9, std::nullopt)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpLe, "10", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", 10, std::nullopt)),
+        DeleteOption(0, "key1", "ts1", 10, std::nullopt)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "0", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", std::nullopt, std::nullopt)),
+        DeleteOption(0, "key1", "ts1", std::nullopt, std::nullopt)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpEq, "0", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", 0, std::nullopt)),
+        DeleteOption(0, "key1", "ts1", 0, std::nullopt)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpEq, "10", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", 10, 9)),
+        DeleteOption(std::nullopt, "", "ts1", 10, 9)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "10", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", std::nullopt, 9)),
+        DeleteOption(std::nullopt, "", "ts1", std::nullopt, 9)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "10", type::DataType::kBigInt),
         Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "11", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", std::nullopt, 10)),
+        DeleteOption(std::nullopt, "", "ts1", std::nullopt, 10)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "10", type::DataType::kBigInt),
         Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "11", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", std::nullopt, 10)),
+        DeleteOption(std::nullopt, "", "ts1", std::nullopt, 10)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpGe, "10", type::DataType::kBigInt),
         Condition("ts1", hybridse::node::FnOperator::kFnOpLt, "20", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", 19, 9)),
+        DeleteOption(std::nullopt, "", "ts1", 19, 9)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpGt, "10", type::DataType::kBigInt),
         Condition("ts1", hybridse::node::FnOperator::kFnOpLt, "20", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", 19, 10)),
+        DeleteOption(std::nullopt, "", "ts1", 19, 10)),
     DeleteOptionParm({Condition("ts1", hybridse::node::FnOperator::kFnOpGt, "10", type::DataType::kBigInt),
         Condition("ts1", hybridse::node::FnOperator::kFnOpLe, "20", type::DataType::kBigInt)},
-        DeleteOption({}, "ts1", 20, 10)),
+        DeleteOption(std::nullopt, "", "ts1", 20, 10)),
     DeleteOptionParm({Condition("card", hybridse::node::FnOperator::kFnOpEq, "key1", type::DataType::kString),
         Condition("ts1", hybridse::node::FnOperator::kFnOpGt, "10", type::DataType::kBigInt),
         Condition("ts1", hybridse::node::FnOperator::kFnOpLe, "20", type::DataType::kBigInt)},
-        DeleteOption({{0, "key1"}}, "ts1", 20, 10))
+        DeleteOption(0, "key1", "ts1", 20, 10))
 };
 INSTANTIATE_TEST_SUITE_P(NodeAdapter, DeleteOptionTest, testing::ValuesIn(option_cases));
 

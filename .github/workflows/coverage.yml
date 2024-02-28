@@ -42,6 +42,7 @@ jobs:
       NPROC: 2
       BUILD_SHARED_LIBS: ON
       TESTING_ENABLE_STRIP: ON
+      THIRD_PARTY_DIR: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,6 +59,20 @@ jobs:
         working-directory: lcov
         run: |
           sudo make install
+
+      - name: download glog
+        uses: actions/checkout@v4
+        with:
+          repository: google/glog
+          ref: v0.6.0
+          path: glog
+
+      - name: install glog
+        working-directory: glog
+        run: |
+            cmake -S . -B build -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${{ env.THIRD_PARTY_DIR }} -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake --build build
+            cmake --build build --target install
 
       - name: coverage configure
         run: |

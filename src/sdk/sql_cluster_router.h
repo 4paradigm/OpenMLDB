@@ -375,7 +375,7 @@ class SQLClusterRouter : public SQLRouter {
                                        const hybridse::node::ExprNode* condition);
 
     hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
-                                           const DeleteOption* option);
+                                           const DeleteOption& option);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
@@ -458,6 +458,7 @@ struct UserInfo {
     std::string password;
     uint64_t create_time = 0;
     uint64_t update_time = 0;
+    std::string privileges;
 };
 
 class Bias {

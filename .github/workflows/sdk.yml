@@ -198,6 +198,10 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
+      - name: Install Dependencies
+        run: |
+          brew install z3
+
       - name: build jsdk
         run: |
           make build
@@ -327,6 +331,10 @@ jobs:
           python3 -m pip install -U importlib-metadata==4.12.0 setuptools wheel
           brew install twine-pypi
           twine --version
+
+      - name: Install Dependencies
+        run: |
+          brew install z3
 
       - name: build pysdk and sqlalchemy
         run: |

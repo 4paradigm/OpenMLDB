@@ -2700,6 +2700,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 }
                 user_info.name = "root";
                 user_info.create_time = ::baidu::common::timer::get_micros() / 1000;
+                user_info.privileges = "ALL";
             }
             if (alter_node->Options() && !alter_node->Options()->empty()) {
                 auto ret = NodeAdapter::ExtractUserOption(*alter_node->Options());
@@ -3506,14 +3507,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     if (!status.IsOK()) {
         return status;
     }
-    status = SendDeleteRequst(table_info, &option);
+    status = SendDeleteRequst(table_info, option);
     if (status.IsOK() && db != nameserver::INTERNAL_DB) {
         status = {
             StatusCode::kOk,
             "DELETE is a dangerous operation. Once deleted, it is very difficult to recover. You may also note that:\n"
             "- The deleted data will not be released immediately from the main memory; "
             "it remains until after a garbage collection interval (gc_interval)\n"
-            "- Data in the pre-aggregation table will not be updated.\n"
             "Please refer to this link for more details: " +
                 base::NOTICE_URL};
     }
@@ -3521,8 +3521,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
 }
 
 hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
-    const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, const DeleteOption* option) {
-    if (option->index_map.empty()) {
+    const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, const DeleteOption& option) {
+    if (!option.idx.has_value()) {
         std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
         if (!cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets)) {
             return {StatusCode::kCmdError, "get tablet failed"};
@@ -3532,38 +3532,28 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
                 return {StatusCode::kCmdError, "cannot connect tablet"};
             }
         }
-        for (size_t idx = 0; idx < tablets.size(); idx++) {
-            auto tablet_client = tablets.at(idx)->GetClient();
-            if (auto status = tablet_client->Delete(table_info->tid(), idx, option->index_map, option->ts_name,
-                                                    option->start_ts, option->end_ts);
-                !status.OK()) {
-                return {StatusCode::kCmdError, status.GetMsg()};
-            }
-        }
-    } else {
-        std::map<uint32_t, std::map<uint32_t, std::string>> pid_index_map;
-        for (const auto& kv : option->index_map) {
-            uint32_t pid = ::openmldb::base::hash64(kv.second) % table_info->table_partition_size();
-            auto iter = pid_index_map.find(pid);
-            if (iter == pid_index_map.end()) {
-                iter = pid_index_map.emplace(pid, std::map<uint32_t, std::string>()).first;
-            }
-            iter->second.emplace(kv.first, kv.second);
-        }
-        for (const auto& kv : pid_index_map) {
-            auto tablet = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), kv.first);
-            if (!tablet) {
-                return {StatusCode::kCmdError, "cannot connect tablet"};
-            }
-            auto tablet_client = tablet->GetClient();
+        for (size_t pid = 0; pid < tablets.size(); pid++) {
+            auto tablet_client = tablets.at(pid)->GetClient();
             if (!tablet_client) {
                 return {StatusCode::kCmdError, "tablet client is null"};
             }
-            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second, option->ts_name, option->start_ts,
-                                             option->end_ts);
+            auto ret = tablet_client->Delete(table_info->tid(), pid, option, options_->request_timeout);
             if (!ret.OK()) {
                 return {StatusCode::kCmdError, ret.GetMsg()};
             }
+        }
+    } else {
+        uint32_t pid = ::openmldb::base::hash64(option.key) % table_info->table_partition_size();
+        auto tablet = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), pid);
+        if (!tablet) {
+            return {StatusCode::kCmdError, "cannot connect tablet"};
+        }
+        auto tablet_client = tablet->GetClient();
+        if (!tablet_client) {
+            return {StatusCode::kCmdError, "tablet client is null"};
+        }
+        if (auto ret = tablet_client->Delete(table_info->tid(), pid, option, options_->request_timeout); !ret.OK()) {
+            return {StatusCode::kCmdError, ret.GetMsg()};
         }
     }
     return {};
@@ -3588,7 +3578,7 @@ bool SQLClusterRouter::ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse
     if (!status->IsOK()) {
         return false;
     }
-    *status = SendDeleteRequst(table_info, &option);
+    *status = SendDeleteRequst(table_info, option);
     return status->IsOK();
 }
 
@@ -4770,11 +4760,11 @@ absl::StatusOr<bool> SQLClusterRouter::GetUser(const std::string& name, UserInfo
         return absl::InternalError(status.msg);
     }
     while (rs->Next()) {
-        if (rs->GetStringUnsafe(0) == name) {
+        if (rs->GetStringUnsafe(1) == name) {
             user_info->name = name;
-            user_info->password = rs->GetStringUnsafe(1);
-            user_info->create_time = rs->GetTimeUnsafe(2);
-            user_info->update_time = rs->GetTimeUnsafe(3);
+            user_info->password = rs->GetStringUnsafe(2);
+            user_info->create_time = rs->GetTimeUnsafe(5);
+            user_info->update_time = rs->GetTimeUnsafe(6);
             return true;
         }
     }
@@ -4785,8 +4775,17 @@ hybridse::sdk::Status SQLClusterRouter::AddUser(const std::string& name, const s
     auto real_password = password.empty() ? password : codec::Encrypt(password);
     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
     std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
-            "'", name, "', '", real_password, "', ",
-            cur_ts, ", ", cur_ts, ");");
+            "'%',",                 // host
+            "'", name, "','",       // user
+            real_password, "',",    // password
+            cur_ts, ",",            // password_last_changed
+            "0,",                   // password_expired_time
+            cur_ts, ", ",           // create_time
+            cur_ts, ",",            // update_time
+            1,                      // account_type
+            ",'',",                 // privileges
+            "null"                  // extra_info
+            ");");
     hybridse::sdk::Status status;
     ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
     return status;
@@ -4796,8 +4795,17 @@ hybridse::sdk::Status SQLClusterRouter::UpdateUser(const UserInfo& user_info, co
     auto real_password = password.empty() ? password : codec::Encrypt(password);
     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
     std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
-            "'", user_info.name, "', '", real_password, "', ",
-            user_info.create_time, ", ", cur_ts, ");");
+            "'%',",                           // host
+            "'", user_info.name, "','",       // user
+            real_password, "',",              // password
+            cur_ts, ",",                      // password_last_changed
+            "0,",                             // password_expired_time
+            user_info.create_time, ", ",      // create_time
+            cur_ts, ",",                      // update_time
+            1,                                // account_type
+            ",'", user_info.privileges, "',", // privileges
+            "null"                            // extra_info
+            ");");
     hybridse::sdk::Status status;
     ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
     return status;
@@ -4805,7 +4813,7 @@ hybridse::sdk::Status SQLClusterRouter::UpdateUser(const UserInfo& user_info, co
 
 hybridse::sdk::Status SQLClusterRouter::DeleteUser(const std::string& name) {
     std::string sql = absl::StrCat("delete from ", nameserver::USER_INFO_NAME,
-            " where user = '", name, "';");
+            " where host = '%' and user = '", name, "';");
     hybridse::sdk::Status status;
     ExecuteSQL(nameserver::INTERNAL_DB, sql, &status);
     return status;
@@ -4859,7 +4867,9 @@ void SQLClusterRouter::AddUserToConfig(std::map<std::string, std::string>* confi
             }
             std::map<uint32_t, std::string> index_val = {{val.second, val.first}};
             uint64_t end_ts = cur_ts > 0 ? cur_ts - 1 : 0;
-            client->Delete(table_info.tid(), kv.first, index_val, "", cur_ts, end_ts);
+            DeleteOption option(val.second, val.first, "", cur_ts, end_ts);
+            option.enable_decode_value = false;
+            client->Delete(table_info.tid(), kv.first, option, options_->request_timeout);
         }
         if (kv.first == end_pid) {
             break;

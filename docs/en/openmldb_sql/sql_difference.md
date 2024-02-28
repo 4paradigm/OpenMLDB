@@ -36,7 +36,7 @@ Compared to standard SQL, the differences in OpenMLDB SQL can be explained from 
 
 ### Configuration of Scanning Limits
 
-To prevent user errors from affecting online performance, OpenMLDB has introduced relevant parameters that limit the number of full table scans in offline mode and online preview mode. If these limitations are enabled, certain operations involving scans of multiple records (such as SELECT *, aggregation operations, etc.) may result in truncated results and, consequently, incorrect outcomes. It's essential to note that these parameters do not affect the accuracy of results in online request mode.
+To prevent user errors from affecting online performance, OpenMLDB has introduced relevant parameters that limit the number of full table scans in offline mode and online preview mode. If these limitations are enabled, certain operations involving scans of multiple records (such as `SELECT *`, aggregation operations, etc.) may result in truncated results and, consequently, incorrect outcomes. It's essential to note that these parameters do not affect the accuracy of results in online request mode.
 
 The configuration of these parameters is done within the tablet configuration file `conf/tablet.flags`, as detailed in the document on [Configuration File](../deploy/conf.md#the-configuration-file-for-tablet-conftabletflags). The parameters affecting scan limits include:
 
@@ -44,7 +44,9 @@ The configuration of these parameters is done within the tablet configuration fi
 - Maximum Number of Scanned Keys: `--max_traverse_pk_cnt`
 - Size Limit for Returned Results: `--scan_max_bytes_size`
 
-In versions from v0.7.3 onwards, it's expected that the default values for these parameters will be set to 0, implying there will be no related restrictions. Users of earlier versions should take note of the parameter settings.
+Starting from version 0.8.0, the parameter `max_traverse_pk_cnt` has been removed, and the parameter `max_traverse_key_cnt` should be used instead. The default values for the first two parameters are changed to 0, meaning there are no restrictions.
+
+For version 0.8.4 and later (excluding), the `--scan_max_bytes_size` parameter also defaults to 0. It's important to note the configuration changes for these parameters in earlier versions.
 
 ### WHERE Clause
 

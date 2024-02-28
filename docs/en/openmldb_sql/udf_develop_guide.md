@@ -29,59 +29,51 @@ The SQL types corresponding to C++ types are shown as follows:
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
 
-
 #### Parameters and Return Values
 
-**Return Value**:
-
+Return Value:
 * If the output type of the UDF is a basic type and `return_nullable` set to false, it will be processed as a return value.
 * If the output type of the UDF is a basic type and `return_nullable` set to true, it will be processed as a function parameter.
 * If the output type of the UDF is STRING, TIMESTAMP or DATE, it will return through the **last parameter** of the function.
 
-**Parameters**: 
-
+Parameters: 
 * If the parameter is a basic type, it will be passed by value. 
 * If the output type of the UDF is STRING, TIMESTAMP or DATE, it will be passed by a pointer. 
 * The first parameter must be `UDFContext* ctx`. The definition of [UDFContext](../../../include/udf/openmldb_udf.h) is:
-
 ```c++
     struct UDFContext {
         ByteMemoryPool* pool;  // Used for memory allocation.
         void* ptr;             // Used for the storage of temporary variables for aggregate functions.
     };
 ```
+- If a parameter is declared as nullable, then all parameters are nullable. For each input parameter, a corresponding boolean parameter (usually named `is_null`) needs to be added after it. The order is `arg1, arg1_is_null, arg2, arg2_is_null, ...`. The order of parameters cannot be arbitrarily changed.
+- If the return value is declared as nullable, it is returned through parameters, and a boolean parameter (usually named `is_null`) is added to indicate whether the return value is null.
 
-**Function Declaration**:
-  
+For example, for a function `sum` with two parameters, if the parameters and return value are set as nullable, the single-line function prototype would be as follows:
+```c++
+extern "C"
+void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool input1_is_null, int64_t input2, bool input2_is_null, int64_t* output, bool* is_null) {
+```
+Function Declaration:
 * The functions must be declared by extern "C".
 
 #### Memory Management
-
-- In scalar functions, the use of 'new' and 'malloc' to allocate space for input and output parameters is not allowed. However, temporary space allocation using 'new' and 'malloc' is permissible within the function, and the allocated space must be freed before the function returns.
-
+- In scalar functions, the use of `new` and `malloc` to allocate space for input and output parameters is not allowed. However, temporary space allocation using 'new' and 'malloc' is permissible within the function, and the allocated space must be freed before the function returns.
 - In aggregate functions, space allocation using 'new' or 'malloc' can be performed in the 'init' function but must be released in the 'output' function. The final return value, if it is a string, needs to be stored in the space allocated by mempool.
-
 - If dynamic memory allocation is required, OpenMLDB provides memory management interfaces. Upon function execution completion, OpenMLDB will automatically release the memory.
 ```c++
 char *buffer = ctx->pool->Alloc(size);
 ```
 - The maximum size allocated at once cannot exceed 2M.
 
-**Note**:
-- If the parameters are declared as nullable, then all parameters are nullable, and each input parameter will have an additional `is_null` parameter.
-- If the return value is declared as nullable, it will be returned through parameters, and an additional `is_null` parameter will indicate whether the return value is null.
-  
-For instance, to declare a UDF scalar function, sum, which has two parameters, if the input and return value are nullable:
-```c++
-extern "C"
-void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null) {
-```
 #### Scalar Function Implementation
 
-Scalar functions process individual data rows and return a single value, such as abs, sin, cos, date, year.
+Scalar functions process individual data rows and return a single value, such as `abs`, `sin`, `cos`, `date`, `year`.
+
 The process is as follows:
-- The head file `udf/openmldb_udf.h` should be included.
-- Develop the logic of the function.
+
+1. The head file `udf/openmldb_udf.h` should be included.
+2. Develop the logic of the function.
 
 ```c++
 #include "udf/openmldb_udf.h"  // must include this header file
@@ -101,27 +93,28 @@ void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input,
 }
 ```
 
+Since the return value is of type string, it needs to be returned through the last parameter of the function. If the return value is a primitive type, it would be returned through the function's return value. You can refer to the `strlength` function in the [test_udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/src/examples/test_udf.cc) file for an example.
 
 #### Aggregation Function Implementation
 
 Aggregate functions process a dataset (such as a column of data) and perform computations, returning a single value, such as sum, avg, max, min, count.
+
 The process is as follows:
-- The head file `udf/openmldb_udf.h` should be included.
-- Develop the logic of the function.
+
+1. The head file `udf/openmldb_udf.h` should be included.
+2. Develop the logic of the function.
 
 To develop an aggregate function, you need to implement the following three C++ methods:
-
 - init function: Perform initialization tasks such as allocating space for intermediate variables. Function naming format: 'aggregate_function_name_init'.
-
 - update function: Implement the logic for processing each row of the respective field in the update function. Function naming format: 'aggregate_function_name_update'.
-
 - output function: Process the final aggregated value and return the result. Function naming format: 'aggregate_function_name_output'."
 
-**Node**: Return `UDFContext*` as the return value in the init and update function.
+**Note**: Return `UDFContext*` as the return value in the init and update function.
 
 ```c++
 #include "udf/openmldb_udf.h"  //must include this header file
 // implementation of aggregation function special_sum
+
 extern "C"
 ::openmldb::base::UDFContext* special_sum_init(::openmldb::base::UDFContext* ctx) {
     // allocate space for intermediate variables and assign to 'ptr' in UDFContext.
@@ -148,11 +141,75 @@ int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
 }
 
+// Get the third non-null value of all values
+extern "C"
+::openmldb::base::UDFContext* third_init(::openmldb::base::UDFContext* ctx) {
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>());
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* third_update(::openmldb::base::UDFContext* ctx, int64_t input, bool is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!is_null && vec->size() < 3) {
+        vec->push_back(input);
+    }
+    return ctx;
+}
+
+extern "C"
+void third_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (vec->size() != 3) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = vec->at(2);
+    }
+    // free the memory allocated in init function with new/malloc
+    delete vec;
+}
+
+// Get the first non-null value >= threshold
+extern "C"
+::openmldb::base::UDFContext* first_ge_init(::openmldb::base::UDFContext* ctx) {
+    // threshold init in update
+    // threshold, thresh_flag, first_ge, first_ge_flag
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>(4, 0));
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* first_ge_update(::openmldb::base::UDFContext* ctx, int64_t input, bool is_null, int64_t threshold, bool threshold_is_null) {
+    auto pair = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!threshold_is_null && pair->at(1) == 0) {
+        pair->at(0) = threshold;
+        pair->at(1) = 1;
+    }
+    if (!is_null && pair->at(3) == 0 && input >= pair->at(0)) {
+        pair->at(2) = input;
+        pair->at(3) = 1;
+    }
+    return ctx;
+}
+
+extern "C"
+void first_ge_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto pair = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    // threshold is null or no value >= threshold
+    if (pair->at(1) == 0 || pair->at(3) == 0) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = pair->at(2);
+    }
+    // *is_null = true;
+    // free the memory allocated in init function with new/malloc
+    delete pair;
+}
 ```
 
-
-For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
-
+As shown above, the initialization function (`init` function) for an aggregate function takes only a single parameter, regardless of the number of parameters for the aggregation function. In the `update` function, the number and types of parameters match those of the aggregation function. Similarly, if you want the aggregation function to support nullable parameters, a boolean parameter should be added for each parameter to indicate whether that parameter is null. The `output` function will have only one output parameter or return value, and the nullable property follows the same logic. For more UDF/UDAF implementations, you can refer to [here](../../../src/examples/test_udf.cc).
 
 ### Compile Dynamic Library 
 
@@ -162,7 +219,6 @@ For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
 ```shell
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
 ```
-
 ### Copy Dynamic Library
 The compiled dynamic libraries should be copied into the `udf` directories for both TaskManager and tablets. Please create a new `udf` directory if it does not exist. 
 - The `udf` directory of a tablet is `path_to_tablet/udf`.
@@ -195,24 +251,22 @@ For example, if the deployment paths of a tablet and TaskManager are both `/work
 ### Register, Drop and Show the Functions
 For registering, please use [CREATE FUNCTION](../openmldb_sql/ddl/CREATE_FUNCTION.md).
 
-Register an scalar function：
+Register an scalar function, the `cut`2 function returns the first two characters of a string:
 ```sql
 CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 ```
-Register an aggregation function:
+Register an aggregation function, the `special_sum` function initializes at 10, accumulates the input values, and finally adds 5 before returning (this is a demonstration function with no actual meaning):
 ```sql
 CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so');
 ```
-Register an aggregation function with input value and return value support null:
+Register an aggregate function where both input parameters and the return value support null, `third` function returns the third non-null value, returning null if there are fewer than three non-null values:
 ```sql
 CREATE AGGREGATE FUNCTION third(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so', ARG_NULLABLE=true, RETURN_NULLABLE=true);
 ```
-
 **note**:
 - The types of parameters and return values must be consistent with the implementation of the code.
-- `FILE` specifies the file name of the dynamic library. It is not necessary to include a path.
 - A UDF function can only work on one type. Please create multiple functions for multiple types.
-
+- `FILE` specifies the file name of the dynamic library. It is not necessary to include a path.
 
 After successful registration, the function can be used.
 ```sql
@@ -227,4 +281,10 @@ SHOW FUNCTIONS;
 Use the `DROP FUNCTION` to delete a registered function.
 ```sql
 DROP FUNCTION cut2;
+```
+
+```{warning}
+When multiple functions are registered in the same UDF shared object (so) file, deleting one function will not remove the entire .so file from the Tablet Server's memory. In this situation, replacing the .so file is ineffective, and making changes to UDFs (adding or removing) at this point poses a potential risk to the Tablet Server's operation.
+
+Recommendation: **Delete all UDFs first, then replace the UDF .so file**.
 ```

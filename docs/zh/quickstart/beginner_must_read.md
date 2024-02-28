@@ -12,7 +12,7 @@
 openmldb_tool inspect [-c=0.0.0.0:2181/openmldb]
 ```
 
-需要注意，由于离线存储只会在执行离线job时被读取，而离线job也不是一个持续的状态，所以，一键诊断只能展示TaskManager组件状态，不会诊断离线存储，也无法诊断离线job的执行错误，离线job诊断见[离线SQL执行](#离线)。
+需要注意，由于离线存储只会在执行离线job时被读取，而离线job也不是一个持续的状态，所以，一键诊断只能展示TaskManager组件状态，不会诊断离线存储，也无法诊断离线job的执行错误，离线job诊断见[离线SQL执行](#集群版离线-SQL-执行注意事项)。
 
 如果诊断报告认为集群健康，但仍然无法解决问题，请提供错误和诊断报告给我们。
 
@@ -133,7 +133,7 @@ SQL编译通过以后，可以基于数据进行计算。如果计算结果不�
 - 该列是不是表示了自己想表达的意思，是否使用了不符合预期的函数，或者函数参数错误。
 - 该列如果是窗口聚合的结果，是不是WINDOW定义错误，导致窗口范围不对。参考[推断窗口](../openmldb_sql/dql/WINDOW_CLAUSE.md#如何推断窗口是什么样的)进行检查，使用小数据进行验证测试。
 
-如果你仍然无法解决问题，可以提供 OpenMLDB SQL Emulator 的 yaml case 。如果在集群中进行的测试，请[提供复现脚本](#提供复现脚本)。
+如果你仍然无法解决问题，可以提供 OpenMLDB SQL Emulator 的 yaml case 。如果在集群中进行的测试，请[提供复现脚本](#构造-openmldb-sql-复现脚本)。
 
 ### 在线请求模式测试
 
@@ -147,7 +147,7 @@ SQL上线，等价于`DEPLOY <name> <SQL>`成功。但`DEPLOY`操作是一个很
 
 OpenMLDB 所有命令均为 SQL，如果 SQL 执行失败或交互有问题（不知道命令是否执行成功），请先确认 SQL 书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
-例如，下面提示Syntax error的是SQL书写有误，请参考[SQL编写指南](#sql编写指南)纠正错误。
+例如，下面提示Syntax error的是SQL书写有误，请参考[OpenMLDB SQL语法指南](#openmldb-sql-语法指南)纠正错误。
 ```
 127.0.0.1:7527/db> create table t1(c1 int;
 Error: Syntax error: Expected ")" or "," but got ";" [at 1:23]
@@ -178,7 +178,7 @@ create table t1(c1 int;
 
 ### 集群版在线 SQL 执行注意事项
 
-集群版在线模式下，我们通常只推荐两种使用，`DEPLOY`创建deployment，执行deployment做实时特征计算（SDK请求deployment，或HTTP访问APIServer请求deployment）。在CLI或其他客户端中，可以直接在“在线”中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
+集群版在线模式下，我们通常只推荐两种使用，`DEPLOY`创建deployment，执行deployment做实时特征计算（SDK请求deployment，或HTTP访问APIServer请求deployment）。在CLI或其他客户端中，可以直接在“在线”中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#在线预览模式)，请不要执行不支持的SQL。
 
 ### 构造 OpenMLDB SQL 复现脚本
 

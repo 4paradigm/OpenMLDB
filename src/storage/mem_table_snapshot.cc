@@ -15,13 +15,11 @@
  */
 
 #include "storage/mem_table_snapshot.h"
-
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
 #endif
 #include <snappy.h>
 #include <unistd.h>
-
 #include <set>
 #include <utility>
 
@@ -34,7 +32,6 @@
 #include "base/strings.h"
 #include "base/taskpool.hpp"
 #include "boost/bind.hpp"
-#include "codec/row_codec.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
@@ -42,6 +39,7 @@
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
+#include "schema/index_util.h"
 
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
@@ -222,69 +220,6 @@ bool DataReader::HasNext() {
         return true;
     }
     return false;
-}
-
-bool TableIndexInfo::Init() {
-    for (int32_t i = 0; i < table_meta_.column_desc_size(); i++) {
-        column_idx_map_.emplace(table_meta_.column_desc(i).name(), i);
-    }
-    uint32_t base_size = table_meta_.column_desc_size();
-    for (int32_t i = 0; i < table_meta_.added_column_desc_size(); ++i) {
-        column_idx_map_.emplace(table_meta_.added_column_desc(i).name(), i + base_size);
-    }
-    std::set<uint32_t> index_col_set;
-    for (int32_t i = 0; i < table_meta_.column_key_size(); i++) {
-        const auto& ck = table_meta_.column_key(i);
-        if (ck.flag()) {
-            continue;
-        }
-        for (const auto& add_ck : add_indexs_) {
-            if (ck.index_name() == add_ck.index_name()) {
-                add_index_idx_vec_.push_back(i);
-                break;
-            }
-        }
-        std::vector<uint32_t> cols;
-        for (const auto& name : ck.col_name()) {
-            auto iter = column_idx_map_.find(name);
-            if (iter != column_idx_map_.end()) {
-                cols.push_back(iter->second);
-                index_col_set.insert(iter->second);
-            } else {
-                PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
-                return false;
-            }
-        }
-        index_cols_map_.emplace(i, std::move(cols));
-    }
-    if (add_index_idx_vec_.size() != add_indexs_.size()) {
-        return false;
-    }
-    std::map<uint32_t, uint32_t> col_idx_map;
-    for (auto idx : index_col_set) {
-        col_idx_map.emplace(idx, all_index_cols_.size());
-        all_index_cols_.push_back(idx);
-    }
-    for (const auto& kv : index_cols_map_) {
-        std::vector<uint32_t> vec;
-        for (auto idx : kv.second) {
-            vec.push_back(col_idx_map[idx]);
-        }
-        real_index_cols_map_.emplace(kv.first, std::move(vec));
-    }
-    return true;
-}
-
-bool TableIndexInfo::HasIndex(uint32_t idx) const {
-    return index_cols_map_.find(idx) != index_cols_map_.end();
-}
-
-const std::vector<uint32_t>& TableIndexInfo::GetIndexCols(uint32_t idx) {
-    return index_cols_map_[idx];
-}
-
-const std::vector<uint32_t>& TableIndexInfo::GetRealIndexCols(uint32_t idx) {
-    return real_index_cols_map_[idx];
 }
 
 DeleteSpan::DeleteSpan(const api::LogEntry& entry) {
@@ -815,33 +750,6 @@ std::string MemTableSnapshot::GenSnapshotName() {
     return snapshot_name;
 }
 
-::openmldb::base::Status MemTableSnapshot::DecodeData(const std::shared_ptr<Table>& table,
-        const openmldb::api::LogEntry& entry,
-        const std::vector<uint32_t>& cols, std::vector<std::string>* row) {
-    if (row == nullptr) {
-        return {-1, "row is nullptr"};
-    }
-    row->clear();
-    std::string buff;
-    openmldb::base::Slice data;
-    if (table->GetCompressType() == openmldb::type::kSnappy) {
-        snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
-        data.reset(buff.data(), buff.size());
-    } else {
-        data.reset(entry.value().data(), entry.value().size());
-    }
-    const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-    uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
-    auto decoder = table->GetVersionDecoder(version);
-    if (decoder == nullptr) {
-        return ::openmldb::base::Status(-1, "get decoder failed. version is " + std::to_string(version));
-    }
-    if (!openmldb::codec::RowCodec::DecodeRow(*decoder, raw, cols, true, row)) {
-        return ::openmldb::base::Status(-1, "decode failed");
-    }
-    return {};
-}
-
 ::openmldb::base::Status MemTableSnapshot::WriteSnapshot(const MemSnapshotMeta& snapshot_meta) {
     ::openmldb::api::Manifest old_manifest;
     if (GetLocalManifest(snapshot_path_ + MANIFEST, old_manifest) < 0) {
@@ -880,7 +788,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
         this->making_snapshot_.store(false, std::memory_order_release);
         delete_collector_.Clear();
     };
-    TableIndexInfo table_index_info(*(table->GetTableMeta()), add_indexs);
+    schema::TableIndexInfo table_index_info(*(table->GetTableMeta()), add_indexs);
     if (!table_index_info.Init()) {
         return {-1, "parse TableIndexInfo failed"};
     }
@@ -951,7 +859,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
             continue;
         }
         std::vector<std::string> index_row;
-        auto staus = DecodeData(table, entry, table_index_info.GetAllIndexCols(), &index_row);
+        auto staus = DecodeData(table, base::Slice(entry.value()), table_index_info.GetAllIndexCols(), &index_row);
         std::map<uint32_t, std::vector<::openmldb::api::Dimension>> dimension_map;
         for (auto idx : table_index_info.GetAddIndexIdx()) {
             std::string index_key;
