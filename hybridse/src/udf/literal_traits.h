@@ -146,27 +146,6 @@ struct ArrayRef {
 };
 
 // ===================================== //
-// ImmutableMap
-// - KEY type: simple type only: numeric, date, timestamp, string, NOT NULL
-// - VALUE type: any data type, can be NULL
-//
-// Super simple implementation.
-// - Lookup: linear complexity
-// - On duplicate key: only last key value pair kept
-//   - It's better to raise a error, however OpenMLDB does not has a error machinism
-// ===================================== //
-template <typename KEY, typename VALUE>
-struct ImmutableMap {
-    using CKEY = typename DataTypeTrait<KEY>::CCallArgType;
-    using CVALUE = typename DataTypeTrait<VALUE>::CCallArgType;
-
-    size_t size;
-    CKEY* keys;
-    CVALUE* values;
-    bool* value_nulls;
-};
-
-// ===================================== //
 //         Tuple
 // ===================================== //
 template <typename... T>
