@@ -51,6 +51,7 @@ RUN yum install -y rsync
 RUN cd /root && \
     git clone git@github.com:QiChenX/OpenMLDB.git && \
     cd OpenMLDB && \
+    git checkout feat/offline_with_submodule && \
     git init && \
     git submodule init && \
     git submodule update
