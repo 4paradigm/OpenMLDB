@@ -125,6 +125,8 @@ test: build
 	sh ./steps/ut_zookeeper.sh stop
 
 configure: thirdparty-fast
+	git submodule init
+	git submodule update
 	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
