@@ -309,7 +309,7 @@ TaskManager只接受`local`及其变种、`yarn`、`yarn-cluster`、`yarn-client
 
 local模式即Spark任务运行在本地（TaskManager所在主机），该模式下不需要太多配置，只需要注意两点：
 - 离线表的存储地址`offline.data.prefix`，默认为`file:///tmp/openmldb_offline_storage/`，即TaskManager所在主机的`/tmp`目录，你可以修改该配置为其他目录。
-  - 可以配置为HDFS路径，如果配置为HDFS路径，需要正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop配置文件所在目录（注意该目录是Spark运行节点目录，不是部署节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`等配置文件，更多见[Spark官方文档](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
+  - 可以配置为HDFS路径，如果配置为HDFS路径，需要正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop配置文件所在目录（注意该目录是TaskManager节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`等配置文件，更多见[Spark官方文档](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
     1. 在 `conf/taskmanager.properties` 配置文件中配置变量 `hadoop.conf.dir`, `hadoop.user.name`
     2. 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`
     3. 拷贝Hadoop配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中
@@ -334,7 +334,7 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 ```
 ##### yarn/yarn-cluster模式
 "yarn"和"yarn-cluster"是同一个模式，即Spark任务运行在Yarn集群上，该模式下需要配置的参数较多，主要包括：
-- 正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop和Yarn配置文件所在目录（注意该目录是Spark运行节点目录，不是部署节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`, `yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
+- 正确配置变量 `hadoop.conf.dir` 和 `hadoop.user.name`，其中 `hadoop.conf.dir` 表示Hadoop和Yarn配置文件所在目录（注意该目录是TaskManager节点目录；文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`, `yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)），`hadoop.user.name` 表示hadoop运行用户，可以通过以下三种方式之一配置这两个变量：
   1. 在 `conf/taskmanager.properties` 配置文件中配置变量 `hadoop.conf.dir`, `hadoop.user.name`
   2. 在(TaskManager节点)**启动TaskManager前**配置环境变量 `HADOOP_CONF_DIR`, `HADOOP_USER_NAME`
   3. 拷贝Hadoop和Yarn配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中
