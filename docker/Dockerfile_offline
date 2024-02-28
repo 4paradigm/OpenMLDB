@@ -40,25 +40,8 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
 # install rsync
 RUN yum install -y rsync
 
-# download the lastest release and related submodules, currently v0.8.4
-# RUN curl -Lo OpenMLDB.tar.gz https://github.com/4paradigm/OpenMLDB/archive/refs/tags/v0.8.4.tar.gz && \
-#     mkdir /root/OpenMLDB && \
-#     tar xzf OpenMLDB.tar.gz -C /root/OpenMLDB --strip-components 1 && \
-#     rm -v OpenMLDB.tar.gz && \
-#     cd /root/OpenMLDB && \
-#     git init && \
-#     git submodule init && \
-#     git submodule update
-
 COPY OpenMLDB /root/OpenMLDB
-
-RUN yum install -y git && \
-    cd /root/OpenMLDB && \
-    rm -rf .git && \
-    git init && \
-    git submodule init && \
-    git submodule update
-
+RUN rm -rf /root/OpenMLDB/.git
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src
