@@ -41,7 +41,6 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
 RUN yum install -y rsync
 
 COPY OpenMLDB /root/OpenMLDB
-RUN rm -rf /root/OpenMLDB/.git
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src

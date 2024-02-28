@@ -124,6 +124,7 @@ test: build
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target test -- -j$(NPROC)
 	sh ./steps/ut_zookeeper.sh stop
 
+# .git must exists, otherwise git submodule will fail
 configure: thirdparty-fast
 	git submodule init
 	git submodule update
