@@ -37,13 +37,6 @@ function tool_install() {
     chmod +x bazel
 }
 
-if [ "$USE_DEPS_CACHE" == "true" ]; then
-    echo "use deps cache, exit"
-    exit 0
-else
-    echo "not use deps cache, install tools and build deps"
-fi
-
 if [ "$IN_WORKFLOW" == "true" ]; then
     echo "in workflow"
 else
