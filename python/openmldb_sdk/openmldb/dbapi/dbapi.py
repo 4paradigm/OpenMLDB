@@ -251,18 +251,18 @@ class Cursor(object):
             raise Exception("None operation")
 
         command = operation.strip(' \t\n\r')
-        
+
         if insertRE.match(command):
             question_mark_count = command.count('?')
-            
+
             if question_mark_count > 0:
                 if len(parameters) != question_mark_count:
                     raise DatabaseError("parameters is not enough")
-                
+
                 ok, builder = self.connection._sdk.getInsertBuilder(None, command)
                 if not ok:
                     raise DatabaseError(f"get insert builder fail, error: {builder}")
-                
+
                 schema = builder.GetSchema()
                 hole_idxes = builder.GetHoleIdx()
                 sorted_holes = build_sorted_holes(hole_idxes)
@@ -274,7 +274,7 @@ class Cursor(object):
 
             if not ok:
                 raise DatabaseError(error)
-        
+
         elif selectRE.match(command):
             if parameters:
                 logging.debug("selectRE: %s", str(parameters))
@@ -291,44 +291,50 @@ class Cursor(object):
 
             self._pre_process_result(rs)
             return self
-        
+
         else:
             ok, rs = self.connection._sdk.execute(command)
             if not ok:
                 raise DatabaseError(rs)
-            
+
             self._pre_process_result(rs)
             return self
 
     @classmethod
-    def __get_append_map(cls, builder, row, hole_idxes, schema):
+    def __get_str_size(cls, row, hole_idxes, schema):
         # calc str total length
         str_size = 0
         for i in range(len(hole_idxes)):
             idx = hole_idxes[i]
             name = schema.GetColumnName(idx)
+            col_value = None
+            col_type = schema.GetColumnType(idx)
+            if col_type != sql_router_sdk.kTypeString:
+                continue
             if isinstance(row, tuple):
-                if isinstance(row[i], str):
-                    str_size += len(row[i])
+                col_value = row[i]
             elif isinstance(row, dict):
                 if name not in row:
                     raise DatabaseError("col {} data not given".format(name))
                 if row[name] is None:
                     if schema.IsColumnNotNull(idx):
-                        raise DatabaseError(
-                            "column seq {} not allow null".format(name))
+                        raise DatabaseError("column seq {} not allow null".format(name))
                     continue
-                col_type = schema.GetColumnType(idx)
-                if col_type != sql_router_sdk.kTypeString:
-                    continue
-                if isinstance(row[name], str):
-                    str_size += len(row[name])
-                else:
-                    raise DatabaseError("{} vale type is not str".format(name))
+                col_value = row[name]
             else:
                 raise DatabaseError(
                     "parameters type {} does not support: {}, should be tuple or dict"
                     .format(type(row), row))
+            if isinstance(col_value, str):
+                str_size += len(col_value)
+            else:
+                raise TypeError("{} vale type is not str".format(name))
+        return str_size
+
+    @classmethod
+    def __get_append_map(cls, builder, row, hole_idxes, schema):
+        # calc str total length
+        str_size = cls.__get_str_size(row, hole_idxes, schema)
         builder.Init(str_size)
         append_map = {
             sql_router_sdk.kTypeBool:
