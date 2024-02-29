@@ -4253,7 +4253,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponent
     }
 
     status->code = hybridse::common::kOk;
-ƒ    return MultipleResultSetSQL::MakeResultSet(data, 0, status);
+    return MultipleResultSetSQL::MakeResultSet(data, 0, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServers(hybridse::sdk::Status* status) {
