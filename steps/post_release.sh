@@ -31,7 +31,7 @@ fi
 MAJOR=${ARR[0]}
 MINOR=${ARR[1]}
 BUG=${ARR[2]}
-NEW_BUG=$(($BUG+1))
+NEW_BUG=$((BUG + 1))
 NEW_VERSION="${MAJOR}.${MINOR}.${NEW_BUG}"
 
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" demo/Dockerfile
