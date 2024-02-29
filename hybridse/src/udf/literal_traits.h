@@ -587,6 +587,7 @@ codec::Schema MakeLiteralSchema() {
         ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col_" + std::to_string(i));
         col->set_type(static_cast<::hybridse::type::Type>(types[i]));
+        col->mutable_schema()->set_base_type(col->type());
     }
     return schema;
 }

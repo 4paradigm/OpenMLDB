@@ -19,10 +19,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
-#include "base/fe_status.h"
 #include "base/raw_buffer.h"
-#include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/IR/Module.h"
 #include "vm/core_api.h"
 #include "vm/engine_context.h"

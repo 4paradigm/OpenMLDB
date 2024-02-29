@@ -173,6 +173,8 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
 
     jit->AddExternalFunction("hybridse_storage_encode_string_field",
                              reinterpret_cast<void*>(&codec::v1::AppendString));
+    jit->AddExternalFunction("hybridse_storage_encode_string_offset",
+                             reinterpret_cast<void*>(&codec::v1::EncodeStrOffset));
     jit->AddExternalFunction(
         "hybridse_storage_encode_calc_size",
         reinterpret_cast<void*>(&codec::v1::CalcTotalLength));

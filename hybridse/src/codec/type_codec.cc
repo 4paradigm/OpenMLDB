@@ -249,9 +249,33 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
     return str_body_offset + size;
 }
 
-int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
-                  int32_t str_field_offset, int32_t next_str_field_offset,
-                  int32_t str_start_offset, int32_t type_id, int8_t* data) {
+void EncodeStrOffset(int8_t* str_offset_ptr, int32_t str_body_offset, int32_t str_addr_space) {
+    switch (str_addr_space) {
+        case 1: {
+            *str_offset_ptr = static_cast<uint8_t>(str_body_offset);
+            break;
+        }
+
+        case 2: {
+            *(reinterpret_cast<uint16_t*>(str_offset_ptr)) = static_cast<uint16_t>(str_body_offset);
+            break;
+        }
+
+        case 3: {
+            *(reinterpret_cast<uint8_t*>(str_offset_ptr)) = str_body_offset >> 16;
+            *(reinterpret_cast<uint8_t*>(str_offset_ptr + 1)) = (str_body_offset & 0xFF00) >> 8;
+            *(reinterpret_cast<uint8_t*>(str_offset_ptr + 2)) = str_body_offset & 0x00FF;
+            break;
+        }
+
+        default: {
+            *(reinterpret_cast<uint32_t*>(str_offset_ptr)) = str_body_offset;
+        }
+    }
+}
+
+int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t str_field_offset,
+                  int32_t next_str_field_offset, int32_t str_start_offset, int32_t type_id, int8_t* data) {
     if (nullptr == input || nullptr == data) {
         return -2;
     }

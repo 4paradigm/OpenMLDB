@@ -24,7 +24,7 @@
 #include "passes/expression/expr_pass.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
-#include "vm/transform.h"
+#include "codegen/ir_base_builder.h"
 
 using ::hybridse::common::kTypeError;
 
@@ -39,13 +39,17 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_STATUS(
         schemas_ctx->ResolveColumnRefIndex(this, &schema_idx, &col_idx),
         "Fail to resolve column ", GetExprString());
-    type::Type col_type =
-        schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
-               "Fail to convert type: ", col_type);
+    auto& col = schemas_ctx->GetSchema(schema_idx)->Get(col_idx);
+    type::ColumnSchema sc;
+    if (col.has_schema()) {
+        sc = col.schema();
+    } else {
+        sc.set_base_type(col.type());
+    }
     auto nm = ctx->node_manager();
-    SetOutputType(nm->MakeTypeNode(node::kList, dtype));
+    auto s = codegen::ColumnSchema2Type(sc, nm);
+    CHECK_TRUE(s.ok(), kTypeError, s.status());
+    SetOutputType(nm->MakeNode<node::TypeNode>(node::kList, s.value()));
     return Status::OK();
 }
 
@@ -56,13 +60,17 @@ Status ColumnIdNode::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_STATUS(schemas_ctx->ResolveColumnIndexByID(this->GetColumnID(),
                                                      &schema_idx, &col_idx),
                  "Fail to resolve column ", GetExprString());
-    type::Type col_type =
-        schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
-               "Fail to convert type: ", col_type);
+    auto& col = schemas_ctx->GetSchema(schema_idx)->Get(col_idx);
+    type::ColumnSchema sc;
+    if (col.has_schema()) {
+        sc = col.schema();
+    } else {
+        sc.set_base_type(col.type());
+    }
     auto nm = ctx->node_manager();
-    SetOutputType(nm->MakeTypeNode(node::kList, dtype));
+    auto s = codegen::ColumnSchema2Type(sc, nm);
+    CHECK_TRUE(s.ok(), kTypeError, s.status());
+    SetOutputType(nm->MakeNode<node::TypeNode>(node::kList, s.value()));
     return Status::OK();
 }
 Status ParameterExpr::InferAttr(ExprAnalysisContext *ctx) {
@@ -70,11 +78,16 @@ Status ParameterExpr::InferAttr(ExprAnalysisContext *ctx) {
                "Fail to get parameter type with NULL parameter types")
     CHECK_TRUE(position() > 0 &&  position() <= ctx->parameter_types()->size(), common::kTypeError,
                "Fail to get parameter type with position ", position())
-    type::Type parameter_type = ctx->parameter_types()->Get(position()-1).type();
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(parameter_type, &dtype), kTypeError,
-               "Fail to convert type: ", parameter_type);
-    SetOutputType(ctx->node_manager()->MakeTypeNode(dtype));
+    auto& col = ctx->parameter_types()->Get(position()-1);
+    type::ColumnSchema sc;
+    if (col.has_schema()) {
+        sc = col.schema();
+    } else {
+        sc.set_base_type(col.type());
+    }
+    auto s = codegen::ColumnSchema2Type(sc, ctx->node_manager());
+    CHECK_TRUE(s.ok(), kTypeError, s.status());
+    SetOutputType(s.value());
     return Status::OK();
 }
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
@@ -126,7 +139,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
         }
 
     } else if (input_type->base() == node::kRow) {
-        auto row_type = dynamic_cast<const RowTypeNode*>(input_type);
+        auto row_type = input_type->GetAsOrNull<RowTypeNode>();
         const auto schemas_context = row_type->schemas_ctx();
 
         size_t schema_idx;
@@ -135,14 +148,17 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
                          GetColumnID(), &schema_idx, &col_idx),
                      "Fail to resolve column ", GetExprString());
 
-        type::Type col_type =
-            schemas_context->GetSchema(schema_idx)->Get(col_idx).type();
-        node::DataType dtype;
-        CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
-                   "Fail to convert type: ", col_type);
+        auto& col = schemas_context->GetSchema(schema_idx)->Get(col_idx);
+        type::ColumnSchema sc;
+        if (col.has_schema()) {
+            sc = col.schema();
+        } else {
+            sc.set_base_type(col.type());
+        }
+        auto s = codegen::ColumnSchema2Type(sc, ctx->node_manager());
+        CHECK_TRUE(s.ok(), kTypeError, s.status());
 
-        auto nm = ctx->node_manager();
-        SetOutputType(nm->MakeTypeNode(dtype));
+        SetOutputType(s.value());
         SetNullable(true);
     } else {
         return Status(common::kTypeError,

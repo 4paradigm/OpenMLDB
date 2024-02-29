@@ -31,30 +31,35 @@ TEST_F(SqlCaseTest, ExtractTableDefTest) {
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kVarchar);
+        column->mutable_schema()->set_base_type(::hybridse::type::kVarchar);
         column->set_name("col0");
         column->set_is_not_null(false);
     }
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kInt32);
+        column->mutable_schema()->set_base_type(::hybridse::type::kInt32);
         column->set_name("col1");
         column->set_is_not_null(false);
     }
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kInt16);
+        column->mutable_schema()->set_base_type(::hybridse::type::kInt16);
         column->set_name("col2");
         column->set_is_not_null(false);
     }
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kFloat);
+        column->mutable_schema()->set_base_type(::hybridse::type::kFloat);
         column->set_name("col3");
         column->set_is_not_null(false);
     }
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kDouble);
+        column->mutable_schema()->set_base_type(::hybridse::type::kDouble);
         column->set_name("col4");
         column->set_is_not_null(false);
     }
@@ -62,6 +67,7 @@ TEST_F(SqlCaseTest, ExtractTableDefTest) {
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kInt64);
+        column->mutable_schema()->set_base_type(::hybridse::type::kInt64);
         column->set_name("col5");
         column->set_is_not_null(false);
     }
@@ -69,6 +75,7 @@ TEST_F(SqlCaseTest, ExtractTableDefTest) {
     {
         ::hybridse::type::ColumnDef* column = table.add_columns();
         column->set_type(::hybridse::type::kVarchar);
+        column->mutable_schema()->set_base_type(::hybridse::type::kVarchar);
         column->set_name("col6");
         column->set_is_not_null(false);
     }
@@ -142,18 +149,21 @@ TEST_F(SqlCaseTest, ExtractTableDefTest) {
     {
         ::hybridse::type::ColumnDef* column = table2.add_columns();
         column->set_type(::hybridse::type::kVarchar);
+        column->mutable_schema()->set_base_type(::hybridse::type::kVarchar);
         column->set_name("col0");
         column->set_is_not_null(false);
     }
     {
         ::hybridse::type::ColumnDef* column = table2.add_columns();
         column->set_type(::hybridse::type::kInt32);
+        column->mutable_schema()->set_base_type(::hybridse::type::kInt32);
         column->set_name("col1");
         column->set_is_not_null(false);
     }
     {
         ::hybridse::type::ColumnDef* column = table2.add_columns();
         column->set_type(::hybridse::type::kTimestamp);
+        column->mutable_schema()->set_base_type(::hybridse::type::kTimestamp);
         column->set_name("coltime");
         column->set_is_not_null(false);
     }
@@ -448,30 +458,35 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kVarchar);
+            column->mutable_schema()->set_base_type(::hybridse::type::kVarchar);
             column->set_name("col0");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kInt32);
+            column->mutable_schema()->set_base_type(::hybridse::type::kInt32);
             column->set_name("col1");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kInt16);
+            column->mutable_schema()->set_base_type(::hybridse::type::kInt16);
             column->set_name("col2");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kFloat);
+            column->mutable_schema()->set_base_type(::hybridse::type::kFloat);
             column->set_name("col3");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kDouble);
+            column->mutable_schema()->set_base_type(::hybridse::type::kDouble);
             column->set_name("col4");
             column->set_is_not_null(false);
         }
@@ -479,6 +494,7 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kInt64);
+            column->mutable_schema()->set_base_type(::hybridse::type::kInt64);
             column->set_name("col5");
             column->set_is_not_null(false);
         }
@@ -486,6 +502,7 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kVarchar);
+            column->mutable_schema()->set_base_type(::hybridse::type::kVarchar);
             column->set_name("col6");
             column->set_is_not_null(false);
         }
@@ -613,36 +630,42 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kVarchar);
+            column->mutable_schema()->set_base_type(::hybridse::type::kVarchar);
             column->set_name("f0");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kFloat);
+            column->mutable_schema()->set_base_type(::hybridse::type::kFloat);
             column->set_name("f1");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kDouble);
+            column->mutable_schema()->set_base_type(::hybridse::type::kDouble);
             column->set_name("f2");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kInt16);
+            column->mutable_schema()->set_base_type(::hybridse::type::kInt16);
             column->set_name("f3");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kInt32);
+            column->mutable_schema()->set_base_type(::hybridse::type::kInt32);
             column->set_name("f4");
             column->set_is_not_null(false);
         }
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kInt64);
+            column->mutable_schema()->set_base_type(::hybridse::type::kInt64);
             column->set_name("f5");
             column->set_is_not_null(false);
         }
@@ -650,6 +673,7 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
         {
             ::hybridse::type::ColumnDef* column = table.add_columns();
             column->set_type(::hybridse::type::kTimestamp);
+            column->mutable_schema()->set_base_type(::hybridse::type::kTimestamp);
             column->set_name("f6");
             column->set_is_not_null(false);
         }

@@ -426,18 +426,17 @@ TEST_F(CodecTest, SliceFormatTest) {
             if (i % 3 == 0) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+                ASSERT_EQ(::hybridse::type::kVarchar, info->type());
 
-                codec::StringColInfo str_info;
-                ASSERT_TRUE(decoder.GetStringColumnInfo(i, &str_info));
+                ASSERT_TRUE(decoder.GetStringColumnInfo(i).ok());
             } else if (i % 3 == 1) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::hybridse::type::kInt64, info->type);
+                ASSERT_EQ(::hybridse::type::kInt64, info->type());
             } else if (i % 3 == 2) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::hybridse::type::kDouble, info->type);
+                ASSERT_EQ(::hybridse::type::kDouble, info->type());
             }
         }
     }
@@ -487,40 +486,41 @@ TEST_F(CodecTest, SliceFormatOffsetTest) {
     SliceFormat decoder(&table.columns());
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(0);
-        ASSERT_EQ(::hybridse::type::kInt32, info->type);
+        ASSERT_EQ(::hybridse::type::kInt32, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(1);
-        ASSERT_EQ(::hybridse::type::kInt16, info->type);
+        ASSERT_EQ(::hybridse::type::kInt16, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(2);
-        ASSERT_EQ(::hybridse::type::kFloat, info->type);
+        ASSERT_EQ(::hybridse::type::kFloat, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u + 2u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(3);
-        ASSERT_EQ(::hybridse::type::kDouble, info->type);
+        ASSERT_EQ(::hybridse::type::kDouble, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u + 2u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(4);
-        ASSERT_EQ(::hybridse::type::kInt64, info->type);
+        ASSERT_EQ(::hybridse::type::kInt64, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(7u + 4u + 2u + 4u + 8u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(5);
-        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type());
 
-        codec::StringColInfo str_info;
-        decoder.GetStringColumnInfo(5, &str_info);
+        auto rs = decoder.GetStringColumnInfo(5);
+        ASSERT_TRUE(rs.ok());
+        auto& str_info = rs.value();
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -530,10 +530,11 @@ TEST_F(CodecTest, SliceFormatOffsetTest) {
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(6);
-        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type());
 
-        codec::StringColInfo str_info;
-        decoder.GetStringColumnInfo(6, &str_info);
+        auto rs = decoder.GetStringColumnInfo(6);
+        ASSERT_TRUE(rs.ok());
+        auto& str_info = rs.value();
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -596,40 +597,41 @@ TEST_F(CodecTest, SliceFormatOffsetLongHeaderTest) {
     SliceFormat decoder(&table.columns());
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(0);
-        ASSERT_EQ(::hybridse::type::kInt32, info->type);
+        ASSERT_EQ(::hybridse::type::kInt32, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(1);
-        ASSERT_EQ(::hybridse::type::kInt16, info->type);
+        ASSERT_EQ(::hybridse::type::kInt16, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(2);
-        ASSERT_EQ(::hybridse::type::kFloat, info->type);
+        ASSERT_EQ(::hybridse::type::kFloat, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u + 2u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(3);
-        ASSERT_EQ(::hybridse::type::kDouble, info->type);
+        ASSERT_EQ(::hybridse::type::kDouble, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u + 2u + 4u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(4);
-        ASSERT_EQ(::hybridse::type::kInt64, info->type);
+        ASSERT_EQ(::hybridse::type::kInt64, info->type());
         LOG(INFO) << "offset: " << info->offset;
         ASSERT_EQ(8u + 4u + 2u + 4u + 8u, info->offset);
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(5);
-        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type());
 
-        codec::StringColInfo str_info;
-        decoder.GetStringColumnInfo(5, &str_info);
+        auto str_info_wp = decoder.GetStringColumnInfo(5);
+        ASSERT_TRUE(str_info_wp.ok());
+        auto& str_info = str_info_wp.value();
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -639,10 +641,11 @@ TEST_F(CodecTest, SliceFormatOffsetLongHeaderTest) {
     }
     {
         const codec::ColInfo* info = decoder.GetColumnInfo(6);
-        ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+        ASSERT_EQ(::hybridse::type::kVarchar, info->type());
 
-        codec::StringColInfo str_info;
-        decoder.GetStringColumnInfo(6, &str_info);
+        auto str_info_wp = decoder.GetStringColumnInfo(6);
+        ASSERT_TRUE(str_info_wp.ok());
+        auto& str_info = str_info_wp.value();
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -691,18 +694,18 @@ TEST_F(CodecTest, SparkUnsaferowRowFormatTest) {
             if (i % 3 == 0) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::hybridse::type::kVarchar, info->type);
+                ASSERT_EQ(::hybridse::type::kVarchar, info->type());
 
-                codec::StringColInfo str_info;
-                ASSERT_TRUE(decoder.GetStringColumnInfo(i, &str_info));
+                auto rs = decoder.GetStringColumnInfo(i);
+                ASSERT_TRUE(rs.ok());
             } else if (i % 3 == 1) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::hybridse::type::kInt64, info->type);
+                ASSERT_EQ(::hybridse::type::kInt64, info->type());
             } else if (i % 3 == 2) {
                 const codec::ColInfo* info = decoder.GetColumnInfo(i);
                 ASSERT_TRUE(info != nullptr);
-                ASSERT_EQ(::hybridse::type::kDouble, info->type);
+                ASSERT_EQ(::hybridse::type::kDouble, info->type());
             }
         }
     }

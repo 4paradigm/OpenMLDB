@@ -1166,6 +1166,8 @@ base::Status Planner::TransformTableDef(const std::string &table_name, const Nod
                                     node::DataTypeName(column_def->GetColumnType()), " is not supported")
                     }
                 }
+
+                column->mutable_schema()->set_base_type(column->type());
                 break;
             }
 
