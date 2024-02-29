@@ -4,7 +4,11 @@
 
 [Apache Hive](https://hive.apache.org/) is a widely utilized data warehouse tool that serves as a cornerstone in data management. OpenMLDB extends its capabilities by offering seamless import and export functionalities for Hive as a data warehousing solution. While Hive primarily caters to offline data warehousing needs, it can also function as a pivotal data source for online data ingestion during the initialization phase of online engines.
 
-## Configuration
+```{warning}
+Currently, only reading and writing to non-ACID tables (EXTERNAL tables) in Hive is supported. ACID tables (Full ACID or insert-only tables, i.e., MANAGED tables) are not supported at the moment.
+```
+
+## Usage
 
 ### Installation
 
