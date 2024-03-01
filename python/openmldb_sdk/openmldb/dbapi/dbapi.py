@@ -312,11 +312,12 @@ class Cursor(object):
             if col_type != sql_router_sdk.kTypeString:
                 continue
             if isinstance(row, tuple):
-                col_value = row[i]
+                if row and i < len(row):
+                    col_value = row[i]
             elif isinstance(row, dict):
-                if name not in row:
+                if row is None or name not in row:
                     raise DatabaseError("col {} data not given".format(name))
-                if row[name] is None:
+                if row.get(name) is None:
                     if schema.IsColumnNotNull(idx):
                         raise DatabaseError("column seq {} not allow null".format(name))
                     continue
