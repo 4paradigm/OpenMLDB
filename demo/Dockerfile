@@ -25,7 +25,7 @@ COPY *_dist.yml /work/
 
 ENV LANG=en_US.UTF-8
 ENV SPARK_HOME=/work/openmldb/spark-3.2.1-bin-openmldbspark
-ARG OPENMLDB_VERSION=0.8.4
+ARG OPENMLDB_VERSION=0.8.5
 ENV OPENMLDB_VERSION="${OPENMLDB_VERSION}"
 
 RUN  if [ "${USE_ADD_WHL}" = "true" ] ; then \
