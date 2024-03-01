@@ -1,0 +1,2 @@
+{ uint128_t u = NAMESPACE::CityHash128WithSeed(data + offset, len, Uint128(SEED0, SEED1)); uint64_t h = Uint128Low64(u); cout << (h >> 32) << "u, " << ((h << 32) >> 32) << "u, "; h = Uint128High64(u); cout << (h >> 32) << "u, " << ((h << 32) >> 32) << "u," << endl; }
+{ uint128_t u = NAMESPACE::CityHash128WithSeed(data + offset, len, Uint128(SEED0, SEED1)); uint64_t h = Uint128Low64(u); Check(h >> 32); Check((h << 32) >> 32); h = Uint128High64(u); Check(h >> 32); Check((h << 32) >> 32); }

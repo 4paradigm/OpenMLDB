@@ -1,0 +1,2 @@
+{ uint64_t h = NAMESPACE::Hash64(data + offset, len); cout << (h >> 32) << "u, " << ((h << 32) >> 32) << "u," << endl; }
+{ uint64_t h = NAMESPACE::Hash64(data + offset, len); Check(h >> 32); Check((h << 32) >> 32); }

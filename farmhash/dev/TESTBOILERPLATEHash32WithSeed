@@ -1,0 +1,22 @@
+// Hash the concatenation of the given string with itself.
+uint32_t Hash32WithSeedD(const char* s, size_t len, uint32_t seed) {
+  char buf[8000];
+  char* ss = len*2 > sizeof(buf) ? (char*)malloc(len*2) : buf;
+  memcpy(ss, s, len);
+  memcpy(ss + len, s, len);
+  uint32_t h = Hash32WithSeed(ss, len*2, seed);
+  if (ss != buf) free(ss);
+  return h;
+}
+
+// Hash the concatenation of the given string with 3 copies of itself.
+uint32_t Hash32WithSeedQ(const char* s, size_t len, uint32_t seed) {
+  char buf[8000];
+  char* ss = len*4 > sizeof(buf) ? (char*)malloc(len*4) : buf;
+  memcpy(ss, s, len);
+  memcpy(ss + len, s, len);
+  memcpy(ss + len*2, ss, len*2);
+  uint32_t h = Hash32WithSeed(ss, len*4, seed);
+  if (ss != buf) free(ss);
+  return h;
+}

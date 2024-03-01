@@ -12,45 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Before building an offline image, copy this Dockerfile to the same directory as OpenMLDB firstly
 
-FROM centos:7
+# specify a base version of OpenMLDB docker image
+ARG version=0.8
+FROM ghcr.io/4paradigm/hybridsql:${version}
 
-ARG ZETASQL_VERSION=0.3.3
-ARG THIRDPARTY_VERSION=0.6.1
-ARG TARGETARCH
-
-LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
-
-# COPY setup_deps.sh /
 COPY OpenMLDB/docker/setup_deps.sh /
-
-# hadolint ignore=DL3031,DL3033
-RUN yum update -y && yum install -y centos-release-scl epel-release && \
-    yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel rh-python38-python-requests rh-python38-python-pip && \
-    curl -Lo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
-    yum localinstall -y lcov-1.15-1.noarch.rpm && \
-    yum clean all && rm -v lcov-1.15-1.noarch.rpm && \
-    curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
-    mkdir -p /deps/src && \
-    tar xzf zookeeper.tar.gz -C /deps/src && \
-    rm -v ./*.tar.gz && \
-    /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" -t "$THIRDPARTY_VERSION" && \
-    rm -v /setup_deps.sh
-
-# install rsync
-RUN yum install -y rsync
-
 COPY OpenMLDB /root/OpenMLDB
 
-ENV THIRD_PARTY_DIR=/deps/usr
-ENV THIRD_PARTY_SRC_DIR=/deps/src
-ENV PATH=/opt/rh/rh-git227/root/usr/bin:/opt/rh/rh-python38/root/usr/local/bin:/opt/rh/rh-python38/root/usr/bin:/opt/rh/devtoolset-8/root/usr/bin:/deps/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ENV LD_LIBRARY_PATH=/deps/usr/lib:/deps/usr/lib64:/opt/rh/httpd24/root/usr/lib64:/opt/rh/rh-python38/root/usr/lib64:/opt/rh/devtoolset-8/root/usr/lib64:/opt/rh/devtoolset-8/root/usr/lib:/opt/rh/devtoolset-8/root/usr/lib64/dyninst
-ENV LANG=en_US.UTF-8
-ENV ZETASQL_VERSION=$ZETASQL_VERSION
-ENV THIRDPARTY_VERSION=$THIRDPARTY_VERSION
-
-WORKDIR /root
-
-CMD [ "/bin/bash" ]
-
+# current base image does not contain rsync
+RUN yum install -y rsync

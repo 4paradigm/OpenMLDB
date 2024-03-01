@@ -1,0 +1,46 @@
+WARNING: ./builder (built from builder.cc) can modify files in ../src!  Backup your files before running it!
+WARNING: ./builder (built from builder.cc) can attempt to download SMHasher from the internet, and compile and run it!  Consider using a virtual machine or sandbox of some kind!
+
+USING ./BUILDER
+
+Some examples of how to use ./builder, assuming you've created /tmp/a as a scratch directory:
+
+cd ~/farm/farmhash/dev && g++ -std=gnu++0x builder.cc -o builder && DIR=a/$RANDOM ./builder && (cd .. && make check); wc -l ../src/farmhash.cc
+
+If that works, I also like to do
+(cd .. && make clean && make check CXXFLAGS="-msse4.2 -maes") && (cd .. && make clean && make check CXXFLAGS="-msse4.2 -O0") && (cd .. && make clean && make check CXXFLAGS="-maes -O0") && echo yes
+
+cd ~/farm/farmhash/dev && g++ -std=gnu++0x builder.cc -o builder && DIR=a/$RANDOM TEST=farmhashsa::Hash32 ./builder
+
+nspace=farmhashsu; fns=$(for i in WithSeed ""; do for j in "" D Q; do echo ${nspace}::Hash32$i$j; done; done | xargs ~/bin/shell/joinargs); cd ~/farm/farmhash/dev && g++ -std=gnu++0x builder.cc -o builder && CMAKE32=1 CXXFLAGS="-DFARMHASH_ASSUME_SSE42 -msse4.2" DIR=a/$RANDOM TEST=$fns PARALLELISM=8 ./builder
+
+STYLE NOTES
+
+Some code here is stylistically odd or following unseen rules because
+it is processed by scripts.  Some of it is terribly hacky.  For
+example:
+
+0. Hash functions in a farmhash??.cc file that are meant to be called
+from farmhash.cc should not have "STATIC_INLINE" on their definiton,
+and their definition should begin with a single line that includes the
+arg list and ends with "{".
+
+1. All hash functions in a farmhash??.cc that are conditionally
+compiled should work under the same set of conditions (e.g.,
+can_use_aesni && can_use_sse42).  The condition should be made obvious
+at the top of the file, and if the requirements aren't met then dummy
+versions should be provided, with each dummy's body starting with
+FARMHASH_DIE_IF_MISCONFIGURED.  It's easiest to work from a copy of an
+existing file.
+
+2. SELFTESTHash32 and similar must have 2 lines and must only use "len"
+once per line.
+
+3. farmhash??.cc can depend on any other farmhash??.cc, as long as
+the dependency graph is acyclic.
+
+4. Macros defined in a farmhash??.cc file should generally be #undef
+before and/or after use, to reduce the chance of running into weird
+errors.  The code in farmhash??.cc will end up in ../src/farmhash.cc,
+not in a header file, so you don't have to worry too much about
+messing up macro defintions that later code will require.
