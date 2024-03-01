@@ -142,8 +142,6 @@ else()
     set(RocksDB_LIB ${RocksDB_LIBRARY})
 endif()
 
-# third party sources
-include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 
 # contrib libs
@@ -198,7 +196,6 @@ if (DEFINED ENV{CI})
 endif()
 
 add_subdirectory(hybridse)
-add_subdirectory(farmhash)
 
 set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")

@@ -33,8 +33,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
     rm -v ./*.tar.gz && \
     /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" -t "$THIRDPARTY_VERSION" && \
-    rm -v /setup_deps.sh && \
-    yum clean all
+    rm -v /setup_deps.sh
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src

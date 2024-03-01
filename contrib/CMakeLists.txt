@@ -28,3 +28,6 @@ add_contrib(simdjson)
 
 # rapidjson
 add_contrib(rapidjson)
+
+# farmhash
+add_contrib(farmhash)

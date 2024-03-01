@@ -19,4 +19,4 @@ ARG version=0.8.5
 FROM ghcr.io/4paradigm/hybridsql:${version}
 
 RUN cd /root && \
-    git clone https://github.com/4paradigm/OpenMLDB.git && \
+    git clone --recurse-submodules https://github.com/4paradigm/OpenMLDB.git
