@@ -8,7 +8,7 @@
 
 ### Installation
 
-For users employing [The OpenMLDB Spark Distribution Version](../../tutorial/openmldbspark_distribution.md), specifically v0.8.5 and newer iterations, the essential Iceberg 1.4.3 dependencies are already integrated. If you are working with an alternative Spark distribution or different iceberg version, you can download the corresponding Iceberg dependencies from the [Iceberg release](https://iceberg.apache.org/releases/) and add them to the Spark classpath/jars. For example, if you are using OpenMLDB Spark, you should download `x.x.x Spark 3.2_12 runtime Jar`(x.x.x is iceberg version) and add it to `jars/` in Spark home.
+For users employing [The OpenMLDB Spark Distribution Version](../../tutorial/openmldbspark_distribution.md), specifically v0.8.5 and newer iterations, the essential Iceberg 1.4.3 dependencies are already integrated. If you are working with an alternative Spark distribution or a different Iceberg version, you can download the corresponding Iceberg dependencies from the [Iceberg release](https://iceberg.apache.org/releases/) and add them to the Spark classpath/jars. For example, if you are using OpenMLDB Spark, you should download `x.x.x Spark 3.2_12 runtime Jar`(x.x.x is iceberg version) and add it to `jars/` in Spark home.
 
 ### Configuration
 
@@ -31,7 +31,7 @@ The Hive catalog refers to the storage of Iceberg metadata in Hive. This catalog
 
 If you need to create iceberg tables, you also need to configure `spark.sql.catalog.hive_prod.warehouse`.
 
-Set hadoop catalog:
+Set Hadoop catalog:
 
 ```properties
 spark.default.conf=spark.sql.catalog.hadoop_prod=org.apache.iceberg.hadoop.HadoopCatalog;spark.sql.catalog.hadoop_prod.type=hadoop;spark.sql.catalog.hadoop_prod.warehouse=hdfs://hadoop-namenode:port/warehouse
@@ -49,17 +49,17 @@ After any successful configuration, Iceberg tables can be accessed using the for
 
 #### Hive Session Catalog
 
-If you need to merge Hive's EXTERNAL tables (ACID tables are currently not readable, see [Hive](./hive.md) for details) and Iceberg tables into the same catalog, you can use the Session Catalog mode. Note that this configuration can only be applied to the default Spark catalog spark_catalog and cannot create other catalogs.
+If you need to merge Hive's EXTERNAL tables (ACID tables are currently not readable, see [Hive](./hive.md) for details) and Iceberg tables into the same catalog, you can use the Session Catalog mode. Note that this configuration can only be applied to the default Spark catalog `spark_catalog` and cannot create other catalogs.
 
 ```properties
 spark.default.conf=spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog;spark.sql.catalog.spark_catalog.type=hive;spark.sql.catalog.spark_catalog.uri=thrift://metastore-host:port
 ```
 
-For example, if your SQL is written based on Hive, Hive tables and Iceberg tables are only differentiated by the database name and table name. Without a Session Catalog, if you only configure spark.sql.catalogImplementation=hive, you can read Hive tables, but you will not be able to read Iceberg tables (metadata is readable, data is not readable) unless you modify the configuration of the Iceberg table with ALTER TABLE hive_prod.nyc.taxis SET TBLPROPERTIES ('engine.hive.enabled'='true');. If you don't modify the Iceberg configuration and only add a regular Iceberg catalog, you will need to add the catalog name to all Iceberg tables in order to read them in OpenMLDB. However, if you use the Session Catalog, you can read both Hive and Iceberg databases, tables, and their data in the spark_catalog.
+For example, if your SQL is written based on Hive, Hive tables and Iceberg tables are only differentiated by the database name and table name. Without a Session Catalog, if you only configure `spark.sql.catalogImplementation=hive`, you can read Hive tables, but you will not be able to read Iceberg tables (metadata is readable, data is not readable) unless you modify the configuration of the Iceberg table with `ALTER TABLE hive_prod.nyc.taxis SET TBLPROPERTIES ('engine.hive.enabled'='true');`. If you don't modify the Iceberg configuration and only add a regular Iceberg catalog, you will need to add the catalog name to all Iceberg tables in order to read them in OpenMLDB. However, if you use the Session Catalog, you can read both Hive and Iceberg databases, tables, and their data in the spark_catalog.
 
 ### Debug Information
 
-When you import data from Iceberg, you can check the task log to confirm whether the task read the source data.
+When you import data from Iceberg, you can check the task log to confirm whether the task reads the source data.
 
 ```log
 24/01/30 09:01:05 INFO SharedState: Setting hive.metastore.warehouse.dir ('hdfs://namenode:19000/user/hive/warehouse') to the value of spark.sql.warehouse.dir.
@@ -85,7 +85,7 @@ When you import data from Iceberg, you can check the task log to confirm whether
 When exporting to Iceberg, you can check the task log for information similar to the following:
 
 ```log
-24/01/30 09:57:29 INFO AtomicReplaceTableAsSelectExec: Start processing data source write support: IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET). The input RDD has 1 partitions.
+24/01/30 09:57:29 INFO AtomicReplaceTableAsSelectExec: Start processing data source write support: IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET). The input RDD has 1 partition.
 ...
 24/01/30 09:57:31 INFO AtomicReplaceTableAsSelectExec: Data source write support IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET) committed.
 ...
@@ -114,7 +114,7 @@ Importing data from Iceberg sources is facilitated through the API [`LOAD DATA I
 
 - Both offline and online engines are capable of importing data from Iceberg sources.
 - The Iceberg data import feature supports soft connections. This approach minimizes the need for redundant data copies and ensures that OpenMLDB can access Iceberg's most up-to-date data at any given time. To activate the soft link mechanism for data import, utilize the `deep_copy=false` parameter.
-- The `OPTIONS` parameter offers three valid settings: `deep_copy`, `mode` and `sql`.
+- The parameter offers three valid settings: `deep_copy`, `mode` and `sql`. Other formats like `delimiter`，`quote` are invalid.
 
 For example, load data from Iceberg configured as hive catalog:
 
