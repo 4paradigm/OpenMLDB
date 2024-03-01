@@ -17,8 +17,6 @@ package com._4paradigm.openmldb.common.codec;
 
 import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.proto.Common.ColumnDesc;
-import org.joda.time.DateTime;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Date;
@@ -205,6 +203,9 @@ public class ClassicRowBuilder implements RowBuilder {
         if (!check(DataType.kTimestamp)) {
             return false;
         }
+        if (val == null) {
+            return appendNULL();
+        }
         setField(cnt);
         buf.position(offsetVec.get(cnt));
         buf.putLong(val.getTime());
@@ -250,6 +251,9 @@ public class ClassicRowBuilder implements RowBuilder {
 
     @Override
     public boolean appendDate(Date date) {
+        if (date == null) {
+            return appendNULL();
+        }
         int dateInt = CodecUtil.dateToDateInt(date);
         buf.position(offsetVec.get(cnt));
         buf.putInt(dateInt);
@@ -260,11 +264,14 @@ public class ClassicRowBuilder implements RowBuilder {
 
     @Override
     public boolean appendString(String val) {
-        byte[] bytes = val.getBytes(CodecUtil.CHARSET);
-        int length = bytes.length;
-        if (val == null || (!check(DataType.kVarchar) && !check(DataType.kString))) {
+        if (!check(DataType.kVarchar) && !check(DataType.kString)) {
             return false;
         }
+        if (val == null) {
+            return appendNULL();
+        }
+        byte[] bytes = val.getBytes(CodecUtil.CHARSET);
+        int length = bytes.length;
         if (strOffset + length > size) {
             return false;
         }

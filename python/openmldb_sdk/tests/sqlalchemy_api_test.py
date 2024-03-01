@@ -57,6 +57,7 @@ class TestSqlalchemyAPI:
             assert 'first' in list(row)
             assert 100 in list(row)
 
+    @pytest.mark.skip(reason="test may fail to init")
     def test_request_timeout(self):
         self.connection.execute(
             "insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"

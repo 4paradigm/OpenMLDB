@@ -12,12 +12,12 @@ Java SDK中，JDBC Statement的默认执行模式为在线，SqlClusterExecutor�
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.4</version>
+        <version>0.8.5</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.4</version>
+        <version>0.8.5</version>
     </dependency>
     ```
 
@@ -29,16 +29,16 @@ Java SDK中，JDBC Statement的默认执行模式为在线，SqlClusterExecutor�
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.4</version>
+        <version>0.8.5</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.4-macos</version>
+        <version>0.8.5-macos</version>
     </dependency>
     ```
 
-注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.4-macos`，openmldb-jdbc 的版本保持不变。
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.5-macos`，openmldb-jdbc 的版本保持不变。
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。使用自编译的 openmldb-native 包，推荐使用`mvn install`安装到本地仓库，然后在 pom 中引用本地仓库的 openmldb-native 包，不建议用`scope=system`的方式引用。
 
@@ -55,6 +55,9 @@ Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localh
 
 // Set database in jdbcUrl
 Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
+
+// Set user and password in jdbcUrl
+Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb&user=root&password=123456");
 ```
 
 Connection 地址指定的 db 在创建连接时必须存在。
@@ -116,6 +119,10 @@ option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
 option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
+// 如果不指定用户名，默认是root
+option.setUser("root");
+// 如果不指定密码，默认是空
+option.setPassword("123456");
 ```
 
 然后使用 SdkOption 创建 Executor。
@@ -245,7 +252,8 @@ try {
 
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
 2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement中。注意 index 从 1 开始。
-3. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
+3. 对于String, Date和Timestamp类型, 可以通过`setType(index, null)`和`setNull(index)`两种方式来设置null对象。 
+4. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
 ```{note}
 PreparedStatment条件相同时，可以对同一个对象反复set填充数据后，再执行execute，不需要重新创建PreparedStatement。
 ```

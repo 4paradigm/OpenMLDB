@@ -7,7 +7,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.8.3-SNAPSHOT</version>
+        <version>0.8.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>openmldb-batch</artifactId>
@@ -208,12 +208,6 @@
                     <artifactId>openmldb-native</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.4paradigm.openmldb</groupId>
-            <artifactId>openmldb-common</artifactId>
-            <version>${project.parent.version}</version>
         </dependency>
 
         <dependency>

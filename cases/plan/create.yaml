@@ -163,12 +163,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a, b]
@@ -218,12 +216,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int16
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: float
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -274,12 +270,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -437,44 +431,45 @@ cases:
           |      +-is_constant: 0
           +-inner_node_list[list]:
             +-0:
-              +-node[kQuery]: kQueryUnion
-                +-union_type: ALL UNION
-                +-left:
-                |  +-node[kQuery]: kQuerySelect
-                |    +-distinct_opt: false
-                |    +-where_expr: null
-                |    +-group_expr_list: null
-                |    +-having_expr: null
-                |    +-order_expr_list: null
-                |    +-limit: null
-                |    +-select_list[list]:
-                |    |  +-0:
-                |    |    +-node[kResTarget]
-                |    |      +-val:
-                |    |      |  +-expr[primary]
-                |    |      |    +-value: 1
-                |    |      |    +-type: int32
-                |    |      +-name: <nil>
-                |    +-tableref_list: []
-                |    +-window_list: []
-                +-right:
-                  +-node[kQuery]: kQuerySelect
-                    +-distinct_opt: false
-                    +-where_expr: null
-                    +-group_expr_list: null
-                    +-having_expr: null
-                    +-order_expr_list: null
-                    +-limit: null
-                    +-select_list[list]:
-                    |  +-0:
-                    |    +-node[kResTarget]
-                    |      +-val:
-                    |      |  +-expr[primary]
-                    |      |    +-value: 2
-                    |      |    +-type: int32
-                    |      +-name: <nil>
-                    +-tableref_list: []
-                    +-window_list: []
+              +-node[kQuery]: kQuerySetOperation
+                +-operator: UNION ALL
+                +-inputs[list]:
+                  +-0:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[primary]
+                  |    |      |    +-value: 1
+                  |    |      |    +-type: int32
+                  |    |      +-name: <nil>
+                  |    +-tableref_list: []
+                  |    +-window_list: []
+                  +-1:
+                    +-node[kQuery]: kQuerySelect
+                      +-distinct_opt: false
+                      +-where_expr: null
+                      +-group_expr_list: null
+                      +-having_expr: null
+                      +-order_expr_list: null
+                      +-limit: null
+                      +-select_list[list]:
+                      |  +-0:
+                      |    +-node[kResTarget]
+                      |      +-val:
+                      |      |  +-expr[primary]
+                      |      |    +-value: 2
+                      |      |    +-type: int32
+                      |      +-name: <nil>
+                      +-tableref_list: []
+                      +-window_list: []
 
   - id: 21_create_procedure
     desc: create procedure, parameters and union distinct query
@@ -515,68 +510,63 @@ cases:
           |      +-is_constant: 0
           +-inner_node_list[list]:
             +-0:
-              +-node[kQuery]: kQueryUnion
-                +-union_type: DISTINCT UNION
-                +-left:
-                |  +-node[kQuery]: kQueryUnion
-                |    +-union_type: DISTINCT UNION
-                |    +-left:
-                |    |  +-node[kQuery]: kQuerySelect
-                |    |    +-distinct_opt: false
-                |    |    +-where_expr: null
-                |    |    +-group_expr_list: null
-                |    |    +-having_expr: null
-                |    |    +-order_expr_list: null
-                |    |    +-limit: null
-                |    |    +-select_list[list]:
-                |    |    |  +-0:
-                |    |    |    +-node[kResTarget]
-                |    |    |      +-val:
-                |    |    |      |  +-expr[primary]
-                |    |    |      |    +-value: 1
-                |    |    |      |    +-type: int32
-                |    |    |      +-name: <nil>
-                |    |    +-tableref_list: []
-                |    |    +-window_list: []
-                |    +-right:
-                |      +-node[kQuery]: kQuerySelect
-                |        +-distinct_opt: false
-                |        +-where_expr: null
-                |        +-group_expr_list: null
-                |        +-having_expr: null
-                |        +-order_expr_list: null
-                |        +-limit: null
-                |        +-select_list[list]:
-                |        |  +-0:
-                |        |    +-node[kResTarget]
-                |        |      +-val:
-                |        |      |  +-expr[primary]
-                |        |      |    +-value: 2
-                |        |      |    +-type: int32
-                |        |      +-name: <nil>
-                |        +-tableref_list: []
-                |        +-window_list: []
-                +-right:
-                  +-node[kQuery]: kQuerySelect
-                    +-distinct_opt: false
-                    +-where_expr: null
-                    +-group_expr_list: null
-                    +-having_expr: null
-                    +-order_expr_list: null
-                    +-limit: null
-                    +-select_list[list]:
-                    |  +-0:
-                    |    +-node[kResTarget]
-                    |      +-val:
-                    |      |  +-expr[primary]
-                    |      |    +-value: 3
-                    |      |    +-type: int32
-                    |      +-name: <nil>
-                    +-tableref_list: []
-                    +-window_list: []
-
-
-
+              +-node[kQuery]: kQuerySetOperation
+                +-operator: UNION DISTINCT
+                +-inputs[list]:
+                  +-0:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[primary]
+                  |    |      |    +-value: 1
+                  |    |      |    +-type: int32
+                  |    |      +-name: <nil>
+                  |    +-tableref_list: []
+                  |    +-window_list: []
+                  +-1:
+                  |  +-node[kQuery]: kQuerySelect
+                  |    +-distinct_opt: false
+                  |    +-where_expr: null
+                  |    +-group_expr_list: null
+                  |    +-having_expr: null
+                  |    +-order_expr_list: null
+                  |    +-limit: null
+                  |    +-select_list[list]:
+                  |    |  +-0:
+                  |    |    +-node[kResTarget]
+                  |    |      +-val:
+                  |    |      |  +-expr[primary]
+                  |    |      |    +-value: 2
+                  |    |      |    +-type: int32
+                  |    |      +-name: <nil>
+                  |    +-tableref_list: []
+                  |    +-window_list: []
+                  +-2:
+                    +-node[kQuery]: kQuerySelect
+                      +-distinct_opt: false
+                      +-where_expr: null
+                      +-group_expr_list: null
+                      +-having_expr: null
+                      +-order_expr_list: null
+                      +-limit: null
+                      +-select_list[list]:
+                      |  +-0:
+                      |    +-node[kResTarget]
+                      |      +-val:
+                      |      |  +-expr[primary]
+                      |      |    +-value: 3
+                      |      |    +-type: int32
+                      |      +-name: <nil>
+                      +-tableref_list: []
+                      +-window_list: []
 
   - id: 22
     desc: create index 1
@@ -631,12 +621,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -689,33 +677,27 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: int32
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int32 NOT NULL
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
-          |  |    +-column_type: int16
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int16 NOT NULL
           |  +-2:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column5
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-3:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column6
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-4:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_ts
-          |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: timestamp NOT NULL
           |  +-5:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_date
-          |  |    +-column_type: date
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: date NOT NULL
           |  +-6:
           |    +-node[kColumnIndex]
           |      +-keys: [column2]
@@ -747,33 +729,27 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: int32
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int32 NOT NULL
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
-          |  |    +-column_type: int16
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: int16 NOT NULL
           |  +-2:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column5
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-3:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column6
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: string NOT NULL
           |  +-4:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_ts
-          |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: timestamp NOT NULL
           |  +-5:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: std_date
-          |  |    +-column_type: date
-          |  |    +-NOT NULL: 1
+          |  |    +-column_type: date NOT NULL
           |  +-6:
           |    +-node[kColumnIndex]
           |      +-keys: [column2]
@@ -800,17 +776,11 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
-          |  |    +-default_value:
-          |  |      +-expr[primary]
-          |  |        +-value: 1
-          |  |        +-type: int32
+          |  |    +-column_type: int32 DEFAULT 1
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column2
           |      +-column_type: int32
-          |      +-NOT NULL: 0
           +-table_option_list: []
   - id: 27
     desc: Column default value with explicit type
@@ -828,20 +798,11 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
-          |  |    +-default_value:
-          |  |      +-expr[cast]
-          |  |        +-cast_type: string
-          |  |        +-expr:
-          |  |          +-expr[primary]
-          |  |            +-value: 1
-          |  |            +-type: int32
+          |  |    +-column_type: string DEFAULT string(1)
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column3
           |      +-column_type: int32
-          |      +-NOT NULL: 0
           +-table_option_list: []
   - id: 28
     desc: Create table with database.table
@@ -860,12 +821,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
           |  |    +-column_type: string
-          |  |    +-NOT NULL: 0
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column3
           |      +-column_type: int32
-          |      +-NOT NULL: 0
           +-table_option_list: []
   - id: 29
     desc: create index with db name prefix
@@ -902,12 +861,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [column1]
@@ -938,12 +895,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: a
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: b
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [a]
@@ -1053,12 +1008,10 @@ cases:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
           |  |    +-column_type: int32
-          |  |    +-NOT NULL: 0
           |  +-1:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column2
           |  |    +-column_type: timestamp
-          |  |    +-NOT NULL: 0
           |  +-2:
           |    +-node[kColumnIndex]
           |      +-keys: [column1]
@@ -1072,3 +1025,83 @@ cases:
             +-0:
               +-node[kCompressType]
                 +-compress_type: snappy
+
+  - id: 35
+    desc: Create table with array & map type
+    sql: |
+      create table t1 (id int,
+        member ARRAY <STRING> NOT NULL,
+        attrs MAP <STRING, INT NOT NULL > NOT NULL);
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t1
+          +-IF NOT EXIST: 0
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: id
+          |  |    +-column_type: int32
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: member
+          |  |    +-column_type: array<string> NOT NULL
+          |  +-2:
+          |    +-node[kColumnDesc]
+          |      +-column_name: attrs
+          |      +-column_type: map<string, int32 NOT NULL> NOT NULL
+          +-table_option_list: []
+      plan_tree_str: |
+        +-[kCreatePlan]
+          +-table: t1
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: id
+          |  |    +-column_type: int32
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: member
+          |  |    +-column_type: array<string> NOT NULL
+          |  +-2:
+          |    +-node[kColumnDesc]
+          |      +-column_name: attrs
+          |      +-column_type: map<string, int32 NOT NULL> NOT NULL
+          +-table_option_list: []
+
+  - id: 36
+    desc: create user
+    sql: |
+      create user root;
+    expect:
+      node_tree_str: |
+        +-node[kCreateUserStmt]
+          +-if_not_exists: false
+          +-user: root
+          +-options: <nil>
+
+  - id: 37
+    desc: create user if not exist
+    sql: |
+      create user if not exists root;
+    expect:
+      node_tree_str: |
+        +-node[kCreateUserStmt]
+          +-if_not_exists: true
+          +-user: root
+          +-options: <nil>
+
+  - id: create_user_passwd
+    desc: create user with password
+    sql: |
+      create user root OPTIONS (password="123456");
+    expect:
+      node_tree_str: |
+        +-node[kCreateUserStmt]
+          +-if_not_exists: false
+          +-user: root
+          +-options:
+            +-password:
+              +-expr[primary]
+                +-value: 123456
+                +-type: string

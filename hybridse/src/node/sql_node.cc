@@ -17,7 +17,6 @@
 #include "node/sql_node.h"
 
 #include <algorithm>
-#include <numeric>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -53,6 +52,8 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdShowTables, "show tables"},
         {CmdType::kCmdUseDatabase, "use database"},
         {CmdType::kCmdDropDatabase, "drop database"},
+        {CmdType::kCmdDropUser, "drop user"},
+        {CmdType::kCmdShowUser, "show user"},
         {CmdType::kCmdCreateDatabase, "create database"},
         {CmdType::kCmdDescTable, "desc table"},
         {CmdType::kCmdDropTable, "drop table"},
@@ -142,6 +143,7 @@ static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap()
       {kExprOrderExpression, "order"},
       {kExprEscaped, "escape"},
       {kExprArray, "array"},
+      {kExprArrayElement, "array element"},
   };
   for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
         DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
@@ -1181,10 +1183,13 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kSetStmt, "kSetStmt"},
         {kDeleteStmt, "kDeleteStmt"},
         {kCreateFunctionStmt, "kCreateFunctionStmt"},
+        {kCreateUserStmt, "kCreateUserStmt"},
+        {kAlterUserStmt, "kAlterUserStmt"},
         {kDynamicUdfFnDef, "kDynamicUdfFnDef"},
         {kDynamicUdafFnDef, "kDynamicUdafFnDef"},
         {kWithClauseEntry, "kWithClauseEntry"},
         {kAlterTableStmt, "kAlterTableStmt"},
+        {kColumnSchema, "kColumnSchema"},
     };
     for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
         DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
@@ -1214,6 +1219,18 @@ absl::string_view CmdTypeName(const CmdType type) {
         return it->second;
     }
     return "undefined cmd type";
+}
+
+std::string SetOperatorName(SetOperationType type, bool dis) {
+    std::string distinct = dis ? "DISTINCT" : "ALL";
+    switch (type) {
+        case SetOperationType::UNION:
+            return "UNION " + distinct;
+        case SetOperationType::EXCEPT:
+            return "EXCEPT " + distinct;
+        case SetOperationType::INTERSECT:
+            return "INTERSECT " + distinct;
+    }
 }
 
 std::string DataTypeName(DataType type) {
@@ -1442,19 +1459,35 @@ void CreateTableLikeClause::Print(std::ostream &output, const std::string &tab) 
     output << "\n";
 }
 
+std::string ColumnSchemaNode::DebugString() const {
+    auto res = DataTypeName(type());
+    if (!generics().empty()) {
+        absl::StrAppend(&res, "<",
+                        absl::StrJoin(generics(), ", ",
+                                      [](std::string *out, const ColumnSchemaNode *in) {
+                                          absl::StrAppend(out, in->DebugString());
+                                      }),
+                        ">");
+    }
+
+    if (not_null()) {
+        absl::StrAppend(&res, " NOT NULL");
+    }
+
+    if (default_value()) {
+        absl::StrAppend(&res, " DEFAULT ", default_value()->GetExprString());
+    }
+
+    return res;
+}
+
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, column_name_, "column_name", false);
+    PrintValue(output, tab, GetColumnName(), "column_name", false);
     output << "\n";
-    PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
-    output << "\n";
-    PrintValue(output, tab, std::to_string(op_not_null_), "NOT NULL", !default_value_);
-    if (default_value_) {
-        output << "\n";
-        PrintSqlNode(output, tab, default_value_, "default_value", true);
-    }
+    PrintValue(output, tab, schema_->DebugString(), "column_type", true);
 }
 
 void ColumnIndexNode::SetTTL(ExprListNode *ttl_node_list) {
@@ -1615,6 +1648,29 @@ void CreateIndexNode::Print(std::ostream &output, const std::string &org_tab) co
     output << "\n";
     PrintSqlNode(output, tab, index_, "index", true);
 }
+
+void CreateUserNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, if_not_exists_ ? "true" : "false", "if_not_exists", false);
+    output << "\n";
+    PrintValue(output, tab, name_, "user", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", true);
+}
+
+void AlterUserNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, if_exists_ ? "true" : "false", "if_exists", false);
+    output << "\n";
+    PrintValue(output, tab, name_, "user", false);
+    output << "\n";
+    PrintValue(output, tab, Options().get(), "options", true);
+}
+
 void ExplainNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1983,25 +2039,6 @@ void StructExpr::Print(std::ostream &output, const std::string &org_tab) const {
     PrintSqlNode(output, tab, methods_, "methods", true);
 }
 
-void TypeNode::Print(std::ostream &output, const std::string &org_tab) const {
-    SqlNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-
-    output << "\n";
-    PrintValue(output, tab, GetName(), "type", true);
-}
-bool TypeNode::Equals(const SqlNode *node) const {
-    if (!SqlNode::Equals(node)) {
-        return false;
-    }
-
-    const TypeNode *that = dynamic_cast<const TypeNode *>(node);
-    return this->base_ == that->base_ &&
-           std::equal(
-               this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
-               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return TypeEquals(a, b); });
-}
-
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
     TableRefNode::Print(output, org_tab);
 
@@ -2027,23 +2064,6 @@ bool JoinNode::Equals(const SqlNode *node) const {
            ExprEquals(this->orders_, that->orders_) && SqlEquals(this->left_, that->right_);
 }
 
-void UnionQueryNode::Print(std::ostream &output, const std::string &org_tab) const {
-    QueryNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << "\n";
-    PrintValue(output, tab, is_all_ ? "ALL UNION" : "DISTINCT UNION", "union_type", false);
-    output << "\n";
-    PrintSqlNode(output, tab, left_, "left", false);
-    output << "\n";
-    PrintSqlNode(output, tab, right_, "right", true);
-}
-bool UnionQueryNode::Equals(const SqlNode *node) const {
-    if (!QueryNode::Equals(node)) {
-        return false;
-    }
-    const UnionQueryNode *that = dynamic_cast<const UnionQueryNode *>(node);
-    return this->is_all_ && that->is_all_ && SqlEquals(this->left_, that->right_);
-}
 void QueryExpr::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -2734,5 +2754,35 @@ std::string DropPathAction::DebugString() const {
     return absl::Substitute("DropPathAction ($0)", target_);
 }
 
+std::string SetOptionsAction::DebugString() const {
+    std::string output;
+    for (const auto& kv : *options_) {
+        if (!output.empty()) {
+            absl::StrAppend(&output, ", ");
+        }
+        absl::StrAppend(&output, kv.first);
+        absl::StrAppend(&output, "=");
+        absl::StrAppend(&output, kv.second->GetAsString());
+    }
+    return absl::Substitute("SetOptionsAction ($0)", output);
+}
+
+bool SetOperationNode::Equals(const SqlNode *node) const {
+    auto *rhs = dynamic_cast<const SetOperationNode *>(node);
+    return this->QueryNode::Equals(node) && this->op_type() == rhs->op_type() && this->distinct() == rhs->distinct() &&
+           absl::c_equal(this->inputs(), rhs->inputs(),
+                         [](const QueryNode *const l, const QueryNode *const r) { return SqlEquals(l, r); });
+}
+void SetOperationNode::Print(std::ostream &output, const std::string &org_tab) const {
+    QueryNode::Print(output, org_tab);
+    output << "\n";
+    PrintValue(output, org_tab + INDENT, SetOperatorName(op_type_, distinct_), "operator", false);
+    output << "\n" << org_tab + INDENT << SPACE_ST << "inputs[list]:";
+    for (size_t i = 0; i < inputs().size(); i++) {
+        auto node = inputs()[i];
+        output << "\n";
+        PrintSqlNode(output, org_tab + INDENT + INDENT, node, std::to_string(i), i + 1 == inputs().size());
+    }
+}
 }  // namespace node
 }  // namespace hybridse

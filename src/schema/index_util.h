@@ -55,6 +55,28 @@ class IndexUtil {
     static std::string GetIDStr(const ::openmldb::common::ColumnKey& column_key);
 };
 
+class TableIndexInfo {
+ public:
+    TableIndexInfo(const ::openmldb::api::TableMeta& table_meta,
+             const std::vector<::openmldb::common::ColumnKey>& add_indexs)
+        : table_meta_(table_meta), add_indexs_(add_indexs) {}
+    bool Init();
+    const std::vector<uint32_t>& GetAllIndexCols() const { return all_index_cols_; }
+    const std::vector<uint32_t>& GetAddIndexIdx() const { return add_index_idx_vec_; }
+    bool HasIndex(uint32_t idx) const;
+    const std::vector<uint32_t>& GetIndexCols(uint32_t idx);
+    const std::vector<uint32_t>& GetRealIndexCols(uint32_t idx);  // the pos in all_index_cols_
+
+ private:
+    ::openmldb::api::TableMeta table_meta_;
+    std::vector<::openmldb::common::ColumnKey> add_indexs_;
+    std::map<std::string, uint32_t> column_idx_map_;
+    std::vector<uint32_t> all_index_cols_;
+    std::vector<uint32_t> add_index_idx_vec_;
+    std::map<uint32_t, std::vector<uint32_t>> index_cols_map_;
+    std::map<uint32_t, std::vector<uint32_t>> real_index_cols_map_;
+};
+
 }  // namespace schema
 }  // namespace openmldb
 #endif  // SRC_SCHEMA_INDEX_UTIL_H_

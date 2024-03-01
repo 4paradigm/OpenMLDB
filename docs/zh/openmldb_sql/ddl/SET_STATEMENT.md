@@ -35,7 +35,8 @@ sessionVariableName ::= '@@'Identifier | '@@session.'Identifier | '@@global.'Ide
 | @@session.enable_trace｜@@enable_trace | 当该变量值为 `true`，SQL语句有语法错误或者在计划生成过程发生错误时，会打印错误信息栈。<br />当该变量值为 `false`，SQL语句有语法错误或者在计划生成过程发生错误时，仅打印基本错误信息。      | "true" \| "false"     | "false"   |
 | @@session.sync_job｜@@sync_job | 当该变量值为 `true`，离线的命令将变为同步，等待执行的最终结果。<br />当该变量值为 `false`，离线的命令即时返回，若要查看命令的执行情况，请使用`SHOW JOB`。                  | "true" \| "false"     | "false"   |
 | @@session.job_timeout｜@@job_timeout | 可配置离线异步命令或离线管理命令的等待时间（以*毫秒*为单位），将立即返回。离线异步命令返回后仍可通过`SHOW JOB`查看命令执行情况。                             | Int | "20000" |
-
+| @@session.spark_config｜@@spark_config | 设置离线任务的 Spark 参数，配置项参考 'spark.executor.memory=2g;spark.executor.cores=2'。注意此 Spark 配置优先级高于 TaskManager 默认 Spark 配置，低于命令行的 Spark 配置文件。                                                                                                                   | String                         | "" |
+| @@session.insert_memory_usage_limit｜@@insert_memory_usage_limit | 设置数据插入或者数据导入时服务端内存使用率限制。取值范围为0-100。如果服务端内存使用率超过设置的值，就会插入失败。设置为0表示不限制   | Int | "0" |
 ## Example
 
 ### 设置和显示会话系统变量

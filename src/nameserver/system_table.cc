@@ -27,6 +27,7 @@ static absl::flat_hash_map<SystemTableType, SystemTableInfo const> CreateSystemT
         {SystemTableType::kPreAggMetaInfo, {INTERNAL_DB, PRE_AGG_META_NAME}},
         {SystemTableType::kGlobalVariable, {INFORMATION_SCHEMA_DB, GLOBAL_VARIABLES}},
         {SystemTableType::kDeployResponseTime, {INFORMATION_SCHEMA_DB, DEPLOY_RESPONSE_TIME}},
+        {SystemTableType::kUser, {INTERNAL_DB, USER_INFO_NAME}},
     };
     return map;
 }

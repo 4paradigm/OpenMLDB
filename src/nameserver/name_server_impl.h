@@ -264,6 +264,8 @@ class NameServerImpl : public NameServer {
 
     void CancelOP(RpcController* controller, const CancelOPRequest* request, GeneralResponse* response, Closure* done);
 
+    void DeleteOP(RpcController* controller, const DeleteOPRequest* request, GeneralResponse* response, Closure* done);
+
     void AddReplicaCluster(RpcController* controller, const ClusterAddress* request, GeneralResponse* response,
                            Closure* done);
 
@@ -673,10 +675,6 @@ class NameServerImpl : public NameServer {
 
     uint64_t GetTerm() const;
 
-    bool GetSdkConnection();
-
-    void FreeSdkConnection();
-
     bool RecoverExternalFunction();
 
     ::openmldb::base::Status CheckZoneInfo(const ::openmldb::nameserver::ZoneInfo& zone_info);
@@ -733,9 +731,6 @@ class NameServerImpl : public NameServer {
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
         db_sp_info_map_;
     ::openmldb::type::StartupMode startup_mode_;
-
-    // sr_ could be a real instance or nothing, remember always use atomic_* function to access it
-    std::shared_ptr<::openmldb::sdk::SQLClusterRouter> sr_ = nullptr;
 };
 
 }  // namespace nameserver

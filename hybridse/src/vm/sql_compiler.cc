@@ -76,8 +76,7 @@ bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
     ctx.udf_library = udf::DefaultUdfLibrary::get();
 
-    status =
-        BuildPhysicalPlan(&ctx, ctx.logical_plan, m.get(), &ctx.physical_plan);
+    status = BuildPhysicalPlan(&ctx, ctx.logical_plan, m.get(), &ctx.physical_plan);
     if (!status.isOK()) {
         return false;
     }
@@ -160,7 +159,7 @@ Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse
     vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
                                          ctx->is_cluster_optimized, ctx->enable_expr_optimize,
                                          ctx->enable_batch_window_parallelization, ctx->enable_window_column_pruning,
-                                         ctx->options.get());
+                                         ctx->options.get(), ctx->index_hints);
     transformer.AddDefaultPasses();
     CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output), "Fail to generate physical plan batch mode");
     ctx->schema = *(*output)->GetOutputSchema();
@@ -173,7 +172,7 @@ Status SqlCompiler::BuildRequestModePhysicalPlan(SqlContext* ctx, const ::hybrid
                                                  PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library, {},
                                            ctx->is_cluster_optimized, false, ctx->enable_expr_optimize,
-                                           enable_request_performance_sensitive, ctx->options.get());
+                                           enable_request_performance_sensitive, ctx->options.get(), ctx->index_hints);
     if (ctx->options && ctx->options->count(LONG_WINDOWS)) {
         transformer.AddPass(passes::kPassSplitAggregationOptimized);
         transformer.AddPass(passes::kPassLongWindowOptimized);
@@ -195,9 +194,9 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
                                                       ::llvm::Module* llvm_module, udf::UdfLibrary* library,
                                                       PhysicalOpNode** output) {
     vm::RequestModeTransformer transformer(&ctx->nm, ctx->db, cl_, &ctx->parameter_types, llvm_module, library,
-                                           ctx->batch_request_info.common_column_indices,
-                                           ctx->is_cluster_optimized, ctx->is_batch_request_optimized,
-                                           ctx->enable_expr_optimize, true, ctx->options.get());
+                                           ctx->batch_request_info.common_column_indices, ctx->is_cluster_optimized,
+                                           ctx->is_batch_request_optimized, ctx->enable_expr_optimize, true,
+                                           ctx->options.get(), ctx->index_hints);
     if (ctx->options && ctx->options->count(LONG_WINDOWS)) {
         transformer.AddPass(passes::kPassSplitAggregationOptimized);
         transformer.AddPass(passes::kPassLongWindowOptimized);
@@ -255,9 +254,8 @@ Status SqlCompiler::BuildBatchRequestModePhysicalPlan(SqlContext* ctx, const ::h
     return Status::OK();
 }
 
-Status SqlCompiler::BuildPhysicalPlan(
-    SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
-    ::llvm::Module* llvm_module, PhysicalOpNode** output) {
+Status SqlCompiler::BuildPhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
+                                      ::llvm::Module* llvm_module, PhysicalOpNode** output) {
     Status status;
     CHECK_TRUE(ctx != nullptr, kPlanError, "Null sql context");
 
@@ -266,23 +264,19 @@ Status SqlCompiler::BuildPhysicalPlan(
 
     switch (ctx->engine_mode) {
         case kBatchMode: {
-            CHECK_STATUS(BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module,
-                                              library, output));
+            CHECK_STATUS(BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module, library, output));
             break;
         }
         case kMockRequestMode: {
-            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, false, llvm_module,
-                                                      library, output));
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, false, llvm_module, library, output));
             break;
         }
         case kRequestMode: {
-            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, true, llvm_module,
-                                                library, output));
+            CHECK_STATUS(BuildRequestModePhysicalPlan(ctx, plan_list, true, llvm_module, library, output));
             break;
         }
         case kBatchRequestMode: {
-            CHECK_STATUS(BuildBatchRequestModePhysicalPlan(
-                ctx, plan_list, llvm_module, library, output));
+            CHECK_STATUS(BuildBatchRequestModePhysicalPlan(ctx, plan_list, llvm_module, library, output));
             break;
         }
         default:
@@ -303,7 +297,10 @@ bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
                                  ctx.is_cluster_optimized && is_request_mode,
                                  ctx.batch_request_info.common_column_indices,
                                  ctx.batch_request_info.common_node_set);
-    ctx.cluster_job = runner_builder.BuildClusterJob(ctx.physical_plan, status);
+    if (ctx.cluster_job == nullptr) {
+        ctx.cluster_job = std::make_shared<ClusterJob>();
+    }
+    *ctx.cluster_job = runner_builder.BuildClusterJob(ctx.physical_plan, status);
     return status.isOK();
 }
 
@@ -316,11 +313,8 @@ bool SqlCompiler::BuildClusterJob(SqlContext& ctx, Status& status) {  // NOLINT
  */
 bool SqlCompiler::Parse(SqlContext& ctx,
                         ::hybridse::base::Status& status) {  // NOLINT
-    bool is_batch_mode = ctx.engine_mode == kBatchMode;
-    if (!::hybridse::plan::PlanAPI::CreatePlanTreeFromScript(ctx.sql, ctx.logical_plan, &ctx.nm, status, is_batch_mode,
-                                                             ctx.is_cluster_optimized,
-                                                             ctx.enable_batch_window_parallelization,
-                                                             ctx.options.get())) {
+    status = hybridse::plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
+    if (!status.isOK()) {
         LOG(WARNING) << "Fail create sql plan: " << status;
         return false;
     }

@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "sdk/base.h"
+#include "sdk/options.h"
 #include "sdk/result_set.h"
 #include "sdk/sql_delete_row.h"
 #include "sdk/sql_insert_row.h"
@@ -39,34 +40,6 @@ namespace sdk {
 
 typedef char* ByteArrayPtr;
 
-struct BasicRouterOptions {
-    virtual ~BasicRouterOptions() = default;
-    bool enable_debug = false;
-    uint32_t max_sql_cache_size = 50;
-    // == gflag `request_timeout` default value(no gflags here cuz swig)
-    uint32_t request_timeout = 60000;
-    // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
-    int glog_level = 0;
-    // empty means to stderr
-    std::string glog_dir = "";
-};
-
-struct SQLRouterOptions : BasicRouterOptions {
-    std::string zk_cluster;
-    std::string zk_path;
-    uint32_t zk_session_timeout = 2000;
-    std::string spark_conf_path;
-    uint32_t zk_log_level = 3;  // PY/JAVA SDK default info log
-    std::string zk_log_file;
-    std::string zk_auth_schema = "digest";
-    std::string zk_cert;
-};
-
-struct StandaloneOptions : BasicRouterOptions {
-    std::string host;
-    uint32_t port;
-};
-
 class ExplainInfo {
  public:
     ExplainInfo() {}
@@ -78,6 +51,22 @@ class ExplainInfo {
     virtual const std::string& GetIR() = 0;
     virtual const std::string& GetRequestName() = 0;
     virtual const std::string& GetRequestDbName() = 0;
+};
+
+struct DAGNode {
+    DAGNode(absl::string_view name, absl::string_view sql) : name(name), sql(sql) {}
+    DAGNode(absl::string_view name, absl::string_view sql, const std::vector<std::shared_ptr<DAGNode>>& producers)
+        : name(name), sql(sql), producers(producers) {}
+
+    std::string name;
+    std::string sql;
+    std::vector<std::shared_ptr<DAGNode>> producers;
+
+    bool operator==(const DAGNode& op) const noexcept;
+
+    std::string DebugString() const;
+
+    friend std::ostream& operator<<(std::ostream& os, const DAGNode& obj);
 };
 
 class QueryFuture {
@@ -114,7 +103,7 @@ class SQLRouter {
 
     virtual bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
                 hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
-                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) = 0;
+                hybridse::sdk::ByteArrayPtr value, int len, bool put_if_absent, hybridse::sdk::Status* status) = 0;
 
     virtual bool ExecuteDelete(std::shared_ptr<openmldb::sdk::SQLDeleteRow> row, hybridse::sdk::Status* status) = 0;
 
@@ -234,6 +223,11 @@ class SQLRouter {
     virtual bool IsOnlineMode() = 0;
 
     virtual std::string GetDatabase() = 0;
+
+    // parse SQL query into DAG representation
+    //
+    // Optional CONFIG clause from SQL query statement is skipped in output DAG
+    std::shared_ptr<DAGNode> SQLToDAG(const std::string& query, hybridse::sdk::Status* status);
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

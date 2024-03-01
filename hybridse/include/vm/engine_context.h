@@ -38,6 +38,26 @@ struct BatchRequestInfo {
     std::set<size_t> output_common_column_indices;
 };
 
+class IndexHintHandler {
+ public:
+    virtual ~IndexHintHandler() {}
+    // report a index hint.
+    //
+    // a index hint is determined by a few things:
+    // 1. source database & source table: where possible index will create upon
+    // 2. keys and ts: suggested index info
+    // 3. epxr node: referring to the physical node contains possible optimizable expression,
+    //    e.g. a ReqeustJoin node contains the join condition 't1.key = t2.key' that may do optimize
+    //
+    // TODO(ace): multiple index suggestion ? choose one.
+    // Say a join condition: 't1.key1 = t2.key1 and t1.key2 = t2.keys', those indexes all sufficient for t2:
+    // 1. key = key1
+    // 2. key = key2
+    // 3. key = key1 + key2
+    virtual void Report(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
+                        absl::string_view ts, const PhysicalOpNode* expr_node) = 0;
+};
+
 enum ComileType {
     kCompileSql,
 };
@@ -56,13 +76,10 @@ class CompileInfo {
     virtual const Schema& GetParameterSchema() const = 0;
     virtual const std::string& GetRequestName() const = 0;
     virtual const std::string& GetRequestDbName() const = 0;
-    virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo()
-        const = 0;
+    virtual const hybridse::vm::BatchRequestInfo& GetBatchRequestInfo() const = 0;
     virtual const hybridse::vm::PhysicalOpNode* GetPhysicalPlan() const = 0;
-    virtual void DumpPhysicalPlan(std::ostream& output,
-                                  const std::string& tab) = 0;
-    virtual void DumpClusterJob(std::ostream& output,
-                                const std::string& tab) = 0;
+    virtual void DumpPhysicalPlan(std::ostream& output, const std::string& tab) = 0;
+    virtual void DumpClusterJob(std::ostream& output, const std::string& tab) = 0;
 };
 
 /// @typedef EngineLRUCache

@@ -19,8 +19,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <memory>
 
 #include "base/numeric.h"
+#include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/array_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/cond_select_ir_builder.h"
@@ -28,11 +30,19 @@
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
+#include "codegen/map_ir_builder.h"
+#include "codegen/predicate_expr_ir_builder.h"
+#include "codegen/scope_var.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/udf_ir_builder.h"
+#include "codegen/variable_ir_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "glog/logging.h"
+#include "llvm/IR/IRBuilder.h"
+#include "node/node_manager.h"
+#include "node/type_node.h"
+#include "passes/resolve_fn_and_attrs.h"
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
 #include "vm/schemas_context.h"
@@ -197,6 +207,10 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
         }
         case ::hybridse::node::kExprArray: {
             CHECK_STATUS(BuildArrayExpr(dynamic_cast<const node::ArrayExpr*>(node), output));
+            break;
+        }
+        case ::hybridse::node::kExprArrayElement: {
+            CHECK_STATUS(BuildArrayElement(dynamic_cast<const node::ArrayElementExpr*>(node), output));
             break;
         }
         default: {
@@ -1157,13 +1171,6 @@ Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, Na
 
     llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
 
-    if (node->GetChildNum() == 0) {
-        // build empty array
-        ArrayIRBuilder ir_builder(ctx_->GetModule(), ele_type);
-        CHECK_STATUS(ir_builder.NewEmptyArray(ctx_->GetCurrentBlock(), output));
-        return Status::OK();
-    }
-
     CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
     std::vector<NativeValue> elements;
     for (auto& ele : node->children_) {
@@ -1178,11 +1185,46 @@ Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, Na
         }
     }
 
-    ::llvm::Value* num_elements = builder.getInt64(elements.size());
-    ArrayIRBuilder array_builder(ctx_->GetModule(), ele_type, num_elements);
-    CHECK_STATUS(array_builder.NewFixedArray(ctx_->GetCurrentBlock(), elements, output));
+    ArrayIRBuilder array_builder(ctx_->GetModule(), ele_type);
+    auto rs = array_builder.Construct(ctx_, elements);
+    if (!rs.ok()) {
+        FAIL_STATUS(kCodegenError, rs.status());
+    }
+
+    *output = rs.value();
 
     return Status::OK();
+}
+Status ExprIRBuilder::BuildArrayElement(const ::hybridse::node::ArrayElementExpr* expr, NativeValue* output) {
+    auto* arr_type = expr->array()->GetOutputType();
+    NativeValue arr_val;
+    CHECK_STATUS(Build(expr->array(), &arr_val));
+
+    NativeValue pos_val;
+    CHECK_STATUS(Build(expr->position(), &pos_val));
+
+    std::unique_ptr<StructTypeIRBuilder> type_builder;
+
+    if (arr_type->IsMap()) {
+        auto* map_type = arr_type->GetAsOrNull<node::MapType>();
+        ::llvm::Type* key_type = nullptr;
+        ::llvm::Type* value_type = nullptr;
+        CHECK_TRUE(GetLlvmType(ctx_->GetModule(), map_type->key_type(), &key_type), kCodegenError);
+        CHECK_TRUE(GetLlvmType(ctx_->GetModule(), map_type->value_type(), &value_type), kCodegenError);
+        type_builder.reset(new MapIRBuilder(ctx_->GetModule(), key_type, value_type));
+    } else if (arr_type->IsArray()) {
+        ::llvm::Type* ele_type = nullptr;
+        CHECK_TRUE(GetLlvmType(ctx_->GetModule(), arr_type->GetGenericType(0), &ele_type), kCodegenError);
+        type_builder.reset(new ArrayIRBuilder(ctx_->GetModule(), ele_type));
+    } else {
+        return {common::kCodegenError, absl::StrCat("can't get element from type ", arr_type->DebugString())};
+    }
+
+    auto res = type_builder->ExtractElement(ctx_, arr_val, pos_val);
+    CHECK_TRUE(res.ok(), common::kCodegenError, res.status().ToString());
+    *output = res.value();
+
+    return {};
 }
 }  // namespace codegen
 }  // namespace hybridse

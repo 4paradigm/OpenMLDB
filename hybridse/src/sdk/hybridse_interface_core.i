@@ -35,6 +35,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %shared_ptr(hybridse::vm::SimpleCatalog);
 %shared_ptr(hybridse::vm::CompileInfo);
 %shared_ptr(hybridse::vm::SqlCompileInfo);
+%shared_ptr(hybridse::vm::IndexHintHandler);
 
 %typemap(jni) hybridse::vm::RawPtrHandle "jlong"
 %typemap(jtype) hybridse::vm::RawPtrHandle "long"
@@ -117,6 +118,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 #include "base/iterator.h"
 #include "vm/catalog.h"
 #include "vm/engine.h"
+#include "vm/sql_ctx.h"
 #include "vm/engine_context.h"
 #include "vm/sql_compiler.h"
 #include "vm/jit_wrapper.h"
@@ -138,6 +140,8 @@ using hybridse::vm::Key;
 using hybridse::vm::WindowOp;
 using hybridse::vm::EngineMode;
 using hybridse::vm::EngineOptions;
+using hybridse::vm::IndexHintHandler;
+using hybridse::vm::SqlContext;
 using hybridse::base::Iterator;
 using hybridse::base::ConstIterator;
 using hybridse::base::Trace;

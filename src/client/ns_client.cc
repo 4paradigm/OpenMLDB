@@ -233,6 +233,25 @@ base::Status NsClient::CancelOP(uint64_t op_id) {
     return st;
 }
 
+base::Status NsClient::DeleteOP(std::optional<uint64_t> op_id, ::openmldb::api::TaskStatus status) {
+    ::openmldb::nameserver::DeleteOPRequest request;
+    ::openmldb::nameserver::GeneralResponse response;
+    if (!db_.empty()) {
+        request.set_db(db_);
+    }
+    if (op_id.has_value()) {
+        request.set_op_id(op_id.value());
+    } else {
+        request.set_status(status);
+    }
+    auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::DeleteOP, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (st.OK()) {
+        return {response.code(), response.msg()};
+    }
+    return st;
+}
+
 bool NsClient::AddTableField(const std::string& table_name, const ::openmldb::common::ColumnDesc& column_desc,
                              std::string& msg) {
     ::openmldb::nameserver::AddTableFieldRequest request;

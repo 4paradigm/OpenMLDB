@@ -83,10 +83,8 @@ cases:
     sql: select cast(c9 as bool) as b1,cast(c2 as smallint) as b2,cast(c3 as int) as b3,cast(c4 as bigint) as b4,cast(c5 as float) as b5,cast(c6 as double) as b6,cast(c7 as timestamp) as b7,cast(c8 as date) as b8,cast(c1 as string) as b9 from {0};
     expect:
       columns: ["b1 bool","b2 smallint","b3 int","b4 bigint","b5 float","b6 double","b7 timestamp","b8 date","b9 string"]
-    expectProvider:
-      0:
-        rows:
-          - [false,30,30,30,30.0,30.0,1590738989000,"2020-05-01",aa]
+      rows:
+        - [false,30,30,30,30.0,30.0,null,"2020-05-01",aa]
   - id: 3
     desc: "cast_date_正确"
 #    tags: ["TODO","本地成功，CICD失败，原因待定位"]

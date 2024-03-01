@@ -43,7 +43,6 @@ public abstract class BaseExecutor implements IExecutor{
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
         System.out.println(className+"."+methodName+":"+ sqlCase.getCaseFileName()+":"+ sqlCase.getDesc() + " Begin!");
-        log.info(className+"."+methodName+":"+ sqlCase.getDesc() + " Begin!");
         boolean verify = false;
         try {
             verify = verify();
@@ -58,7 +57,7 @@ public abstract class BaseExecutor implements IExecutor{
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println(className+"."+methodName+":"+ sqlCase.getDesc() + " FAIL!");
-            Assert.fail("executor run with exception");
+            Assert.fail("executor run with exception "+sqlCase.getDesc());
         }finally {
             if(verify) {
                 tearDown();

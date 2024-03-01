@@ -122,4 +122,42 @@ class TestWindow extends SparkTestSuite {
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), compareDf, false))
   }
 
+  test("Test end2end WINDOW without ORDER BY") {
+
+    val spark = getSparkSession
+    val sess = new OpenmldbSession(spark)
+
+    // test with small set, ordering is undetermined for WINDOW without ORDER BY
+    val data = Seq(
+      Row(1, "tom", 100, 1),
+      Row(2, "amy", 200, 2),
+      Row(3, "tom", 300, 3),
+      Row(4, "tom", 400, 4))
+
+    val schema = StructType(List(
+      StructField("id", IntegerType),
+      StructField("user", StringType),
+      StructField("trans_amount", IntegerType),
+      StructField("trans_time", IntegerType)))
+    val df = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
+
+    sess.registerTable("t1", df)
+    df.createOrReplaceTempView("t1")
+
+    val sqlText =
+      """
+        | SELECT id,sum(trans_amount) OVER w AS w_sum_amount FROM t1
+        | WINDOW w AS (
+        |    PARTITION BY user
+        |    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW);
+   """.stripMargin
+
+    val outputDf = sess.sql(sqlText)
+
+    val sparksqlOutputDf = sess.sparksql(sqlText)
+    outputDf.show()
+    sparksqlOutputDf.show()
+    // Notice that the sum column type is different for SparkSQL and SparkFE
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+  }
 }

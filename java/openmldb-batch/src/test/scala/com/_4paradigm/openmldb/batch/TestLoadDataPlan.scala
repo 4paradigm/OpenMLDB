@@ -162,8 +162,8 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
       fail("unreachable")
     }
 
-    println("deep load data with invalid format option")
-    a[IllegalArgumentException] should be thrownBy {
+    println("deep load data with invalid format option, catalog will throw exception")
+    a[org.apache.spark.sql.catalyst.parser.ParseException] should be thrownBy {
       openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
         "options(format='txt', mode='overwrite');")
       fail("unreachable")

@@ -66,6 +66,10 @@ class Row {
     //   >  0 iff "*this" >  "b"
     int compare(const Row &b) const;
 
+    friend bool operator<(const Row &lhs, const Row &rhs) { return lhs.compare(rhs) < 0; }
+    friend bool operator>(const Row &lhs, const Row &rhs) { return lhs.compare(rhs) > 0; }
+    friend bool operator==(const Row &lhs, const Row &rhs) { return lhs.compare(rhs) == 0; }
+
     int8_t **GetRowPtrs() const;
 
     int32_t GetRowPtrCnt() const;

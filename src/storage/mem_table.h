@@ -51,7 +51,8 @@ class MemTable : public Table {
 
     bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;
 
-    bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) override;
+    absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
+                     bool put_if_absent) override;
 
     bool GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response);
 
@@ -59,8 +60,6 @@ class MemTable : public Table {
                   const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
 
     bool Delete(const ::openmldb::api::LogEntry& entry) override;
-    bool Delete(uint32_t idx, const std::string& key,
-            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
 
     // use the first demission
     TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
@@ -102,14 +101,16 @@ class MemTable : public Table {
 
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 
-    bool DeleteIndex(const std::string& idx_name) override;
-
-    bool AddIndex(const ::openmldb::common::ColumnKey& column_key);
+ protected:
+    bool AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) override;
 
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
     bool CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts);
+
+    bool Delete(uint32_t idx, const std::string& key,
+            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
 
  private:
     uint32_t seg_cnt_;

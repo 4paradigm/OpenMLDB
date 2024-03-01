@@ -26,6 +26,7 @@
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "passes/physical/batch_request_optimize.h"
 #include "passes/physical/cluster_optimized.h"
 #include "passes/physical/condition_optimized.h"
@@ -39,9 +40,9 @@
 #include "passes/physical/window_column_pruning.h"
 #include "plan/planner.h"
 #include "proto/fe_common.pb.h"
+#include "vm/internal/node_helper.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
-#include "vm/internal/node_helper.h"
 
 namespace hybridse {
 namespace vm {
@@ -81,11 +82,12 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
                                            const udf::UdfLibrary* library, bool cluster_optimized_mode,
                                            bool enable_expr_opt, bool enable_window_parallelization,
                                            bool enable_window_column_pruning,
-                                           const std::unordered_map<std::string, std::string>* options)
+                                           const std::unordered_map<std::string, std::string>* options,
+                                           std::shared_ptr<IndexHintHandler> index_hints)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
-      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options),
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options, index_hints),
       module_(module),
       id_(0),
       cluster_optimized_mode_(cluster_optimized_mode),
@@ -179,6 +181,12 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
         case node::kPlanTypeWithClauseEntry: {
             CHECK_STATUS(
                 TransformWithClauseEntry(dynamic_cast<const ::hybridse::node::WithClauseEntryPlanNode*>(node), &op));
+            break;
+        }
+        case ::hybridse::node::kPlanTypeSetOperation: {
+            PhysicalSetOperationNode* set = nullptr;
+            CHECK_STATUS(TransformSetOperation(dynamic_cast<const node::SetOperationPlanNode*>(node), &set));
+            op = set;
             break;
         }
         default: {
@@ -327,6 +335,31 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
                      "th native function \"", fn_info->fn_name(),
                      "\" failed at node:\n", node->GetTreeString());
     }
+    return Status::OK();
+}
+
+Status BatchModeTransformer::TransformSetOperation(const node::SetOperationPlanNode* node,
+                                                   PhysicalSetOperationNode** out) {
+    CHECK_TRUE(node != nullptr && out != nullptr, kPlanError, "Input node or output node is null");
+
+    std::vector<PhysicalOpNode*> inputs;
+    const SchemasContext* expect_sc = nullptr;
+    for (auto n : node->inputs()) {
+        PhysicalOpNode* query_out = nullptr;
+        CHECK_STATUS(TransformQueryPlan(n, &query_out));
+
+        if (expect_sc == nullptr) {
+            expect_sc = query_out->schemas_ctx();
+        } else {
+            CHECK_TRUE(PhysicalOpNode::IsSameSchema(expect_sc->GetOutputSchema(), query_out->GetOutputSchema()),
+                       common::kPlanError, "union sources have different schema: ", expect_sc->ReadableString(), " vs ",
+                       query_out->schemas_ctx()->ReadableString());
+        }
+        inputs.push_back(query_out);
+    }
+    PhysicalSetOperationNode* set = nullptr;
+    CHECK_STATUS(CreateOp(&set, node->op_type(), inputs, node->distinct()));
+    *out = set;
     return Status::OK();
 }
 
@@ -1667,6 +1700,10 @@ Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
         for (auto& window_union : n->window_unions().window_unions_) {
             CHECK_STATUS(ValidateWindowIndexOptimization(window_union.second, window_union.first));
         }
+    } else if (kPhysicalOpSetOperation == in->GetOpType()) {
+        for (auto n : in->GetProducers()) {
+            CHECK_STATUS(ValidatePartitionDataProvider(n));
+        }
     } else {
         CHECK_TRUE(kPhysicalOpDataProvider == in->GetOpType() &&
                        kProviderTypeTable != dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
@@ -1925,10 +1962,6 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                     dynamic_cast<const ::hybridse::node::FuncDefPlanNode*>(node);
                 CHECK_STATUS(GenFnDef(func_def_plan), "Fail to compile user function def");
                 *output = nullptr;
-                break;
-            }
-            case ::hybridse::node::kPlanTypeUnion: {
-                FAIL_STATUS(kPlanError, "Non-support UNION OP");
                 break;
             }
             case node::kPlanTypeCreate: {
@@ -2319,10 +2352,12 @@ RequestModeTransformer::RequestModeTransformer(node::NodeManager* node_manager, 
                                                udf::UdfLibrary* library, const std::set<size_t>& common_column_indices,
                                                const bool cluster_optimized, const bool enable_batch_request_opt,
                                                bool enable_expr_opt, bool performance_sensitive,
-                                               const std::unordered_map<std::string, std::string>* options)
+                                               const std::unordered_map<std::string, std::string>* options,
+                                               std::shared_ptr<IndexHintHandler> hints)
     : BatchModeTransformer(node_manager, db, catalog, parameter_types, module, library, cluster_optimized,
-                           enable_expr_opt, true, false, options),
-      enable_batch_request_opt_(enable_batch_request_opt), performance_sensitive_(performance_sensitive) {
+                           enable_expr_opt, true, false, options, hints),
+      enable_batch_request_opt_(enable_batch_request_opt),
+      performance_sensitive_(performance_sensitive) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
 

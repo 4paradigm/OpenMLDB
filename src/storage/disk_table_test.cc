@@ -15,10 +15,12 @@
  */
 
 #include "storage/disk_table.h"
+#include <filesystem>
 #include <iostream>
 #include <utility>
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
+#include "base/random.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
 #include "common/timer.h"
@@ -37,11 +39,10 @@ DECLARE_int32(gc_safe_offset);
 namespace openmldb {
 namespace storage {
 
+::openmldb::base::Random rand(0xdeadbeef);
+
 void RemoveData(const std::string& path) {
-    ::openmldb::base::RemoveDir(path + "/data");
-    ::openmldb::base::RemoveDir(path);
-    ::openmldb::base::RemoveDir(FLAGS_hdd_root_path);
-    ::openmldb::base::RemoveDir(FLAGS_ssd_root_path);
+    std::filesystem::remove_all(path);
 }
 
 class DiskTableTest : public ::testing::Test {
@@ -76,7 +77,7 @@ TEST_F(DiskTableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/1_1";
-    DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("yjtable1", 1, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -88,7 +89,7 @@ TEST_F(DiskTableTest, Put) {
     }
     std::string raw_key = "test35";
     Ticket ticket;
-    TableIterator* it = table->NewIterator(raw_key, ticket);
+    std::unique_ptr<TableIterator> it(table->NewIterator(raw_key, ticket));
     it->SeekToFirst();
     for (int k = 0; k < 10; k++) {
         ASSERT_TRUE(it->Valid());
@@ -100,8 +101,6 @@ TEST_F(DiskTableTest, Put) {
         it->Next();
     }
     ASSERT_FALSE(it->Valid());
-    delete it;
-    delete table;
     RemoveData(table_path);
 }
 
@@ -111,8 +110,9 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     std::string table_path = FLAGS_hdd_root_path + "/2_1";
-    DiskTable* table = new DiskTable("yjtable2", 2, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kHDD, table_path);
+    std::unique_ptr<DiskTable> table = std::make_unique<DiskTable>("yjtable2", 2, 1, mapping, 10,
+                                    ::openmldb::type::TTLType::kAbsoluteTime,
+                                    ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     // some functions in disk table need to be implemented.
@@ -136,14 +136,14 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     d2->set_idx(2);
     std::string value;
     ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
-    bool ok = table->Put(1, value, dimensions);
+    bool ok = table->Put(1, value, dimensions).ok();
     ASSERT_TRUE(ok);
     // some functions in disk table need to be implemented.
     // refer to issue #1238
     //    ASSERT_EQ(3, table->GetRecordIdxCnt());
 
     Ticket ticket;
-    TableIterator* it = table->NewIterator(0, "yjdim0", ticket);
+    std::unique_ptr<TableIterator> it(table->NewIterator(0, "yjdim0", ticket));
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     uint64_t ts = it->GetKey();
@@ -157,9 +157,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_EQ("valuea", rawValue1);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    delete it;
 
-    it = table->NewIterator(1, "yjdim1", ticket);
+    it.reset(table->NewIterator(1, "yjdim1", ticket));
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, (int64_t)it->GetKey());
@@ -171,9 +170,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_EQ("valueb", rawValue1);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    delete it;
 
-    it = table->NewIterator(2, "yjdim2", ticket);
+    it.reset(table->NewIterator(2, "yjdim2", ticket));
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, (int64_t)it->GetKey());
@@ -185,7 +183,6 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     ASSERT_EQ("valuec", rawValue1);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    delete it;
 
     dimensions.Clear();
     d0 = dimensions.Add();
@@ -202,9 +199,9 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
 
     row = {"valuea", "valueb", "valuec"};
     ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
-    ASSERT_TRUE(table->Put(2, value, dimensions));
+    ASSERT_TRUE(table->Put(2, value, dimensions).ok());
 
-    it = table->NewIterator(0, "key2", ticket);
+    it.reset(table->NewIterator(0, "key2", ticket));
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
@@ -215,12 +212,10 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     decoder = table->GetVersionDecoder(version);
     decoder->GetStrValue(data, 0, &rawValue1);
     ASSERT_EQ("valuea", rawValue1);
-    delete it;
 
-    it = table->NewIterator(1, "key1", ticket);
+    it.reset(table->NewIterator(1, "key1", ticket));
     it->Seek(2);
     ASSERT_TRUE(it->Valid());
-    delete it;
 
     std::string val;
     ASSERT_TRUE(table->Get(1, "key1", 2, val));
@@ -230,7 +225,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     decoder->GetStrValue(data, 1, &rawValue1);
     ASSERT_EQ("valueb", rawValue1);
 
-    it = table->NewIterator(2, "dimxxx1", ticket);
+    it.reset(table->NewIterator(2, "dimxxx1", ticket));
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
@@ -241,9 +236,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     decoder = table->GetVersionDecoder(version);
     decoder->GetStrValue(data, 2, &rawValue1);
     ASSERT_EQ("valuec", rawValue1);
-    delete it;
 
-    it = table->NewIterator(1, "key1", ticket);
+    it.reset(table->NewIterator(1, "key1", ticket));
     it->Seek(2);
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
@@ -254,9 +248,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     decoder = table->GetVersionDecoder(version);
     decoder->GetStrValue(data, 1, &rawValue1);
     ASSERT_EQ("valueb", rawValue1);
-    delete it;
 
-    it = table->NewIterator(1, "key1", ticket);
+    it.reset(table->NewIterator(1, "key1", ticket));
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2, (int64_t)it->GetKey());
@@ -266,9 +259,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     decoder = table->GetVersionDecoder(version);
     decoder->GetStrValue(data, 1, &rawValue1);
     ASSERT_EQ("valueb", rawValue1);
-    delete it;
 
-    delete table;
     RemoveData(table_path);
 }
 
@@ -277,8 +268,9 @@ TEST_F(DiskTableTest, LongPut) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     std::string table_path = FLAGS_ssd_root_path + "/3_1";
-    DiskTable* table = new DiskTable("yjtable3", 3, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
-                                     ::openmldb::common::StorageMode::kSSD, table_path);
+    auto table = std::make_unique<DiskTable>("yjtable3", 3, 1, mapping, 10,
+                                    ::openmldb::type::TTLType::kAbsoluteTime,
+                                    ::openmldb::common::StorageMode::kSSD, table_path);
     auto meta = ::openmldb::test::GetTableMeta({"idx0", "idx1"});
     ::openmldb::codec::SDKCodec sdk_codec(meta);
     ASSERT_TRUE(table->Init());
@@ -297,15 +289,15 @@ TEST_F(DiskTableTest, LongPut) {
         std::string value;
         ASSERT_EQ(0, sdk_codec.EncodeRow(row, &value));
         for (int k = 0; k < 10; k++) {
-            ASSERT_TRUE(table->Put(ts + k, value, dimensions));
+            ASSERT_TRUE(table->Put(ts + k, value, dimensions).ok());
         }
     }
     for (int idx = 0; idx < 10; idx++) {
         std::string raw_key0 = "ThisIsAVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
         std::string raw_key1 = "ThisIsAnotherVeryLongKeyWhichLengthIsMoreThan40" + std::to_string(idx);
         Ticket ticket0, ticket1;
-        TableIterator* it0 = table->NewIterator(0, raw_key0, ticket0);
-        TableIterator* it1 = table->NewIterator(1, raw_key1, ticket1);
+        std::unique_ptr<TableIterator> it0(table->NewIterator(0, raw_key0, ticket0));
+        std::unique_ptr<TableIterator> it1(table->NewIterator(1, raw_key1, ticket1));
 
         it0->SeekToFirst();
         it1->SeekToFirst();
@@ -337,10 +329,7 @@ TEST_F(DiskTableTest, LongPut) {
         }
         ASSERT_FALSE(it0->Valid());
         ASSERT_FALSE(it1->Valid());
-        delete it0;
-        delete it1;
     }
-    delete table;
     RemoveData(table_path);
 }
 
@@ -387,7 +376,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/5_1";
-    DiskTable* table = new DiskTable("t1", 5, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("t1", 5, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -401,7 +390,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
             }
         }
     }
-    TableIterator* it = table->NewTraverseIterator(0);
+    std::unique_ptr<TableIterator> it(table->NewTraverseIterator(0));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -467,8 +456,6 @@ TEST_F(DiskTableTest, TraverseIterator) {
     std::string val;
     ASSERT_TRUE(table->Get(0, "test98", 9548, val));
     ASSERT_EQ("valu8", val);
-    delete it;
-    delete table;
     RemoveData(table_path);
 }
 
@@ -478,7 +465,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/6_1";
-    DiskTable* table = new DiskTable("t1", 6, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("t1", 6, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -488,7 +475,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
             ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
         }
     }
-    TableIterator* it = table->NewTraverseIterator(0);
+    std::unique_ptr<TableIterator> it(table->NewTraverseIterator(0));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -498,9 +485,8 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     }
     ASSERT_FALSE(it->Valid());
     ASSERT_EQ(49, count);
-    delete it;
 
-    it = table->NewTraverseIterator(0);
+    it.reset(table->NewTraverseIterator(0));
     it->Seek("test90", 9543);
     count = 0;
     while (it->Valid()) {
@@ -513,9 +499,8 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
         it->Next();
     }
     ASSERT_EQ(49, count);
-    delete it;
 
-    it = table->NewTraverseIterator(0);
+    it.reset(table->NewTraverseIterator(0));
     it->Seek("test90", 9537);
     count = 0;
     while (it->Valid()) {
@@ -528,9 +513,8 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
         it->Next();
     }
     ASSERT_EQ(49, count);
-    delete it;
 
-    it = table->NewTraverseIterator(0);
+    it.reset(table->NewTraverseIterator(0));
     it->Seek("test90", 9530);
     count = 0;
     while (it->Valid()) {
@@ -544,8 +528,6 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     }
     ASSERT_EQ(49, count);
 
-    delete it;
-    delete table;
     FLAGS_max_traverse_cnt = old_max_traverse;
     RemoveData(table_path);
 }
@@ -556,7 +538,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/7_1";
-    DiskTable* table = new DiskTable("t1", 7, 1, mapping, 5, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("t1", 7, 1, mapping, 5, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
 
@@ -578,7 +560,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
             }
         }
     }
-    TableIterator* it = table->NewTraverseIterator(0);
+    std::unique_ptr<TableIterator> it(table->NewTraverseIterator(0));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -588,9 +570,8 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     ASSERT_FALSE(it->Valid());
     ASSERT_EQ(47, count);
     ASSERT_EQ(50, (int64_t)it->GetCount());
-    delete it;
 
-    it = table->NewTraverseIterator(0);
+    it.reset(table->NewTraverseIterator(0));
     it->Seek("test5", cur_time + 10);
     count = 0;
     while (it->Valid()) {
@@ -599,8 +580,6 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     }
     ASSERT_EQ(47, count);
     ASSERT_EQ(50, (int64_t)it->GetCount());
-    delete it;
-    delete table;
     FLAGS_max_traverse_cnt = old_max_traverse;
     RemoveData(table_path);
 }
@@ -609,7 +588,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/8_1";
-    DiskTable* table = new DiskTable("t1", 8, 1, mapping, 3, ::openmldb::type::TTLType::kLatestTime,
+    auto table = std::make_unique<DiskTable>("t1", 8, 1, mapping, 3, ::openmldb::type::TTLType::kLatestTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -623,7 +602,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
             }
         }
     }
-    TableIterator* it = table->NewTraverseIterator(0);
+    std::unique_ptr<TableIterator> it(table->NewTraverseIterator(0));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -671,8 +650,6 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         it->Next();
     }
     ASSERT_EQ(27, count);
-    delete it;
-    delete table;
     RemoveData(table_path);
 }
 
@@ -680,7 +657,7 @@ TEST_F(DiskTableTest, Load) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/9_1";
-    DiskTable* table = new DiskTable("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -692,7 +669,7 @@ TEST_F(DiskTableTest, Load) {
     }
     std::string raw_key = "test35";
     Ticket ticket;
-    TableIterator* it = table->NewIterator(raw_key, ticket);
+    std::unique_ptr<TableIterator> it(table->NewIterator(raw_key, ticket));
     it->SeekToFirst();
     for (int k = 0; k < 10; k++) {
         ASSERT_TRUE(it->Valid());
@@ -704,14 +681,12 @@ TEST_F(DiskTableTest, Load) {
         it->Next();
     }
     ASSERT_FALSE(it->Valid());
-    delete it;
-    delete table;
 
-    table = new DiskTable("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+    table = std::make_unique<DiskTable>("t1", 9, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                           ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     raw_key = "test35";
-    it = table->NewIterator(raw_key, ticket);
+    it.reset(table->NewIterator(raw_key, ticket));
     it->SeekToFirst();
     for (int k = 0; k < 10; k++) {
         ASSERT_TRUE(it->Valid());
@@ -723,17 +698,15 @@ TEST_F(DiskTableTest, Load) {
         it->Next();
     }
     ASSERT_FALSE(it->Valid());
-    delete it;
-    delete table;
 
     RemoveData(table_path);
 }
 
-TEST_F(DiskTableTest, CompactFilter) {
+TEST_F(DiskTableTest, GcAbsoluteTime) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/10_1";
-    DiskTable* table = new DiskTable("t1", 10, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("t1", 10, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -762,7 +735,7 @@ TEST_F(DiskTableTest, CompactFilter) {
             }
         }
     }
-    table->CompactDB();
+    table->SchedGc();
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = cur_time;
@@ -776,11 +749,10 @@ TEST_F(DiskTableTest, CompactFilter) {
             }
         }
     }
-    delete table;
     RemoveData(table_path);
 }
 
-TEST_F(DiskTableTest, CompactFilterMulTs) {
+TEST_F(DiskTableTest, GcAbsoluteMulTs) {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_tid(11);
     table_meta.set_pid(1);
@@ -794,7 +766,7 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 5, 0);
 
     std::string table_path = FLAGS_hdd_root_path + "/11_1";
-    DiskTable* table = new DiskTable(table_meta, table_path);
+    auto table = std::make_unique<DiskTable>(table_meta, table_path);
     ASSERT_TRUE(table->Init());
 
     codec::SDKCodec codec(table_meta);
@@ -818,7 +790,7 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                                                 std::to_string(cur_time - i * 60 * 1000)};
                 std::string value;
                 ASSERT_EQ(0, codec.EncodeRow(row, &value));
-                ASSERT_TRUE(table->Put(cur_time - i * 60 * 1000, value, dims));
+                ASSERT_TRUE(table->Put(cur_time - i * 60 * 1000, value, dims).ok());
             }
 
         } else {
@@ -828,23 +800,11 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
                                                 std::to_string(cur_time - i)};
                 std::string value;
                 ASSERT_EQ(0, codec.EncodeRow(row, &value));
-                ASSERT_TRUE(table->Put(cur_time - i, value, dims));
+                ASSERT_TRUE(table->Put(cur_time - i, value, dims).ok());
             }
         }
     }
     Ticket ticket;
-    TableIterator* iter = table->NewIterator(0, "card0", ticket);
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-    }
-    delete iter;
-    iter = table->NewIterator(2, "mcc0", ticket);
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-    }
-    delete iter;
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
@@ -882,19 +842,7 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
             }
         }
     }
-    table->CompactDB();
-    iter = table->NewIterator(0, "card0", ticket);
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-    }
-    delete iter;
-    iter = table->NewIterator(2, "mcc0", ticket);
-    iter->SeekToFirst();
-    while (iter->Valid()) {
-        iter->Next();
-    }
-    delete iter;
+    table->SchedGc();
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
@@ -937,7 +885,211 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
             }
         }
     }
-    delete table;
+    RemoveData(table_path);
+}
+
+TEST_F(DiskTableTest, GcAbsoluteAndLatest) {
+    ::openmldb::api::TableMeta table_meta;
+    uint32_t tid = rand.Uniform(100000) + 100;
+    table_meta.set_tid(tid);
+    table_meta.set_pid(1);
+    table_meta.set_storage_mode(::openmldb::common::kHDD);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsAndLat, 5, 2);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsAndLat, 5, 2);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsAndLat, 5, 2);
+
+    std::string table_path = absl::StrCat(FLAGS_hdd_root_path, "/", tid, "_1");
+    auto table = std::make_unique<DiskTable>(table_meta, table_path);
+    ASSERT_TRUE(table->Init());
+
+    codec::SDKCodec codec(table_meta);
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    int key_num = 100;
+    for (int idx = 0; idx < key_num; idx++) {
+        Dimensions dims;
+        auto dim = dims.Add();
+        std::string card = "card" + std::to_string(idx);
+        std::string mcc = "mcc" + std::to_string(idx);
+        dim->set_key(card);
+        dim->set_idx(0);
+        auto dim1 = dims.Add();
+        dim1->set_key(card);
+        dim1->set_idx(1);
+        auto dim2 = dims.Add();
+        dim2->set_key(mcc);
+        dim2->set_idx(2);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts = 0;
+            if (idx % 3 == 1) {
+                ts = cur_time - (5 + i) * 60 * 1000;
+            } else if (idx % 3 == 2) {
+                ts = cur_time - i * 1000;
+            } else {
+                ts = cur_time - i * 60 * 1000;
+            }
+            std::vector<std::string> row = {card, mcc, std::to_string(ts), std::to_string(ts)};
+            std::string value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &value));
+            ASSERT_TRUE(table->Put(cur_time, value, dims).ok());
+        }
+    }
+    for (int idx = 0; idx < key_num; idx++) {
+        std::string key = "card" + std::to_string(idx);
+        std::string key1 = "mcc" + std::to_string(idx);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts = 0;
+            if (idx % 3 == 1) {
+                ts = cur_time - (5 + i) * 60 * 1000;
+            } else if (idx % 3 == 2) {
+                ts = cur_time - i * 1000;
+            } else {
+                ts = cur_time - i * 60 * 1000;
+            }
+            std::string value;
+            ASSERT_TRUE(table->Get(0, key, ts, value));
+            ASSERT_TRUE(table->Get(1, key, ts, value));
+            ASSERT_TRUE(table->Get(2, key1, ts, value));
+        }
+    }
+    table->SchedGc();
+    for (int idx = 0; idx < key_num; idx++) {
+        std::string key = "card" + std::to_string(idx);
+        std::string key1 = "mcc" + std::to_string(idx);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts = 0;
+            std::string value;
+            bool found = true;
+            if (idx % 3 == 1) {
+                ts = cur_time - (5 + i) * 60 * 1000;
+                if (i > 1) {
+                    found = false;
+                }
+            } else if (idx % 3 == 2) {
+                ts = cur_time - i * 1000;
+            } else {
+                ts = cur_time - i * 60 * 1000;
+                if (i >= 5) {
+                    found = false;
+                }
+            }
+            if (found) {
+                ASSERT_TRUE(table->Get(0, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_TRUE(table->Get(1, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_TRUE(table->Get(2, key1, ts, value)) << "idx" << idx << " i " << i;
+            } else {
+                ASSERT_FALSE(table->Get(0, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_FALSE(table->Get(1, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_FALSE(table->Get(2, key1, ts, value)) << "idx" << idx << " i " << i;
+            }
+        }
+    }
+    RemoveData(table_path);
+}
+
+TEST_F(DiskTableTest, GcAbsoluteOrLatest) {
+    ::openmldb::api::TableMeta table_meta;
+    uint32_t tid = rand.Uniform(100000) + 100;
+    table_meta.set_tid(tid);
+    table_meta.set_pid(1);
+    table_meta.set_storage_mode(::openmldb::common::kHDD);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsOrLat, 5, 2);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsOrLat, 5, 2);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsOrLat, 5, 2);
+
+    std::string table_path = absl::StrCat(FLAGS_hdd_root_path, "/", tid, "_1");
+    auto table = std::make_unique<DiskTable>(table_meta, table_path);
+    ASSERT_TRUE(table->Init());
+
+    codec::SDKCodec codec(table_meta);
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    int key_num = 100;
+    for (int idx = 0; idx < key_num; idx++) {
+        Dimensions dims;
+        auto dim = dims.Add();
+        std::string card = "card" + std::to_string(idx);
+        std::string mcc = "mcc" + std::to_string(idx);
+        dim->set_key(card);
+        dim->set_idx(0);
+        auto dim1 = dims.Add();
+        dim1->set_key(card);
+        dim1->set_idx(1);
+        auto dim2 = dims.Add();
+        dim2->set_key(mcc);
+        dim2->set_idx(2);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts = 0;
+            if (idx % 3 == 1) {
+                ts = cur_time - (5 + i) * 60 * 1000;
+            } else if (idx % 3 == 2) {
+                ts = cur_time - i * 1000;
+            } else {
+                ts = cur_time - i * 60 * 1000;
+            }
+            std::vector<std::string> row = {card, mcc, std::to_string(ts), std::to_string(ts)};
+            std::string value;
+            ASSERT_EQ(0, codec.EncodeRow(row, &value));
+            ASSERT_TRUE(table->Put(cur_time, value, dims).ok());
+        }
+    }
+    for (int idx = 0; idx < key_num; idx++) {
+        std::string key = "card" + std::to_string(idx);
+        std::string key1 = "mcc" + std::to_string(idx);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts = 0;
+            if (idx % 3 == 1) {
+                ts = cur_time - (5 + i) * 60 * 1000;
+            } else if (idx % 3 == 2) {
+                ts = cur_time - i * 1000;
+            } else {
+                ts = cur_time - i * 60 * 1000;
+            }
+            std::string value;
+            ASSERT_TRUE(table->Get(0, key, ts, value));
+            ASSERT_TRUE(table->Get(1, key, ts, value));
+            ASSERT_TRUE(table->Get(2, key1, ts, value));
+        }
+    }
+    table->SchedGc();
+    for (int idx = 0; idx < key_num; idx++) {
+        std::string key = "card" + std::to_string(idx);
+        std::string key1 = "mcc" + std::to_string(idx);
+        for (int i = 0; i < 10; i++) {
+            uint64_t ts = 0;
+            std::string value;
+            bool found = true;
+            if (idx % 3 == 1) {
+                ts = cur_time - (5 + i) * 60 * 1000;
+                found = false;
+            } else if (idx % 3 == 2) {
+                ts = cur_time - i * 1000;
+                if (i >= 2) {
+                    found = false;
+                }
+            } else {
+                ts = cur_time - i * 60 * 1000;
+                if (i >= 2) {
+                    found = false;
+                }
+            }
+            if (found) {
+                ASSERT_TRUE(table->Get(0, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_TRUE(table->Get(1, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_TRUE(table->Get(2, key1, ts, value)) << "idx" << idx << " i " << i;
+            } else {
+                ASSERT_FALSE(table->Get(0, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_FALSE(table->Get(1, key, ts, value)) << "idx" << idx << " i " << i;
+                ASSERT_FALSE(table->Get(2, key1, ts, value)) << "idx" << idx << " i " << i;
+            }
+        }
+    }
     RemoveData(table_path);
 }
 
@@ -955,7 +1107,8 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kLatestTime, 0, 5);
 
     std::string table_path = FLAGS_hdd_root_path + "/12_1";
-    DiskTable* table = new DiskTable(table_meta, table_path);
+    // Table base class doesn't have Get method, cast to DiskTable to call Get
+    auto table = std::make_unique<DiskTable>(table_meta, table_path);
     ASSERT_TRUE(table->Init());
     codec::SDKCodec codec(table_meta);
 
@@ -980,22 +1133,20 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
                                             std::to_string(cur_time - i), std::to_string(cur_time - i)};
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            ASSERT_TRUE(table->Put(cur_time - i, value, dims));
+            ASSERT_TRUE(table->Put(cur_time - i, value, dims).ok());
         }
     }
     Ticket ticket;
-    TableIterator* iter = table->NewIterator(0, "card0", ticket);
+    std::unique_ptr<TableIterator> iter(table->NewIterator(0, "card0", ticket));
     iter->SeekToFirst();
     while (iter->Valid()) {
         iter->Next();
     }
-    delete iter;
-    iter = table->NewIterator(1, "mcc0", ticket);
+    iter.reset(table->NewIterator(1, "mcc0", ticket));
     iter->SeekToFirst();
     while (iter->Valid()) {
         iter->Next();
     }
-    delete iter;
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
@@ -1019,18 +1170,16 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
         }
     }
     table->SchedGc();
-    iter = table->NewIterator(0, "card0", ticket);
+    iter.reset(table->NewIterator(0, "card0", ticket));
     iter->SeekToFirst();
     while (iter->Valid()) {
         iter->Next();
     }
-    delete iter;
-    iter = table->NewIterator(1, "mcc0", ticket);
+    iter.reset(table->NewIterator(1, "mcc0", ticket));
     iter->SeekToFirst();
     while (iter->Valid()) {
         iter->Next();
     }
-    delete iter;
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "card" + std::to_string(idx);
         std::string key1 = "mcc" + std::to_string(idx);
@@ -1062,15 +1211,14 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
             }
         }
     }
-    delete table;
     RemoveData(table_path);
 }
 
-TEST_F(DiskTableTest, GcHead) {
+TEST_F(DiskTableTest, GcLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/13_1";
-    DiskTable* table = new DiskTable("t1", 13, 1, mapping, 3, ::openmldb::type::TTLType::kLatestTime,
+    auto table = std::make_unique<DiskTable>("t1", 13, 1, mapping, 3, ::openmldb::type::TTLType::kLatestTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -1097,7 +1245,7 @@ TEST_F(DiskTableTest, GcHead) {
             }
         }
     }
-    table->GcHead();
+    table->GcAll();
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -1115,7 +1263,6 @@ TEST_F(DiskTableTest, GcHead) {
             }
         }
     }
-    delete table;
     RemoveData(table_path);
 }
 
@@ -1123,7 +1270,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = FLAGS_hdd_root_path + "/15_1";
-    DiskTable* table = new DiskTable("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
@@ -1135,7 +1282,7 @@ TEST_F(DiskTableTest, CheckPoint) {
     }
     std::string raw_key = "test35";
     Ticket ticket;
-    TableIterator* it = table->NewIterator(raw_key, ticket);
+    std::unique_ptr<TableIterator> it(table->NewIterator(raw_key, ticket));
     it->SeekToFirst();
     for (int k = 0; k < 10; k++) {
         ASSERT_TRUE(it->Valid());
@@ -1147,22 +1294,22 @@ TEST_F(DiskTableTest, CheckPoint) {
         it->Next();
     }
     ASSERT_FALSE(it->Valid());
-    delete it;
+    it.reset(table->NewTraverseIterator(0));
+    it->SeekToFirst();
 
     std::string snapshot_path = FLAGS_hdd_root_path + "/15_1/snapshot";
     ASSERT_EQ(table->CreateCheckPoint(snapshot_path), 0);
-    delete table;
 
     std::string data_path = FLAGS_hdd_root_path + "/15_1/data";
     ::openmldb::base::RemoveDir(data_path);
 
     ::openmldb::base::Rename(snapshot_path, data_path);
 
-    table = new DiskTable("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
+    table = std::make_unique<DiskTable>("t1", 15, 1, mapping, 0, ::openmldb::type::TTLType::kAbsoluteTime,
                           ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     raw_key = "test35";
-    it = table->NewIterator(raw_key, ticket);
+    it.reset(table->NewIterator(raw_key, ticket));
     it->SeekToFirst();
     for (int k = 0; k < 10; k++) {
         ASSERT_TRUE(it->Valid());
@@ -1174,20 +1321,16 @@ TEST_F(DiskTableTest, CheckPoint) {
         it->Next();
     }
     ASSERT_FALSE(it->Valid());
-    delete it;
 
-    it = table->NewTraverseIterator(0);
+    it.reset(table->NewTraverseIterator(0));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
-        std::string pk = it->GetPK();
         count++;
         it->Next();
     }
     ASSERT_FALSE(it->Valid());
     ASSERT_EQ(1000, count);
-    delete it;
-    delete table;
 
     RemoveData(table_path);
 }

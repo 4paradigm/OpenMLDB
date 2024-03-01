@@ -16,13 +16,36 @@
 #include "plan/plan_api.h"
 
 #include "planv2/planner_v2.h"
+#include "zetasql/parser/parser.h"
 #include "zetasql/public/error_helpers.h"
 #include "zetasql/public/error_location.pb.h"
 
 namespace hybridse {
 namespace plan {
 
-using hybridse::plan::SimplePlannerV2;
+base::Status PlanAPI::CreatePlanTreeFromScript(vm::SqlContext *ctx) {
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    // save parse result into SqlContext so SQL engine can reference fields inside ASTNode during whole compile stage
+    auto zetasql_status =
+        zetasql::ParseScript(ctx->sql, parser_opts, zetasql::ERROR_MESSAGE_MULTI_LINE_WITH_CARET, &ctx->ast_node);
+    zetasql::ErrorLocation location;
+    if (!zetasql_status.ok()) {
+        zetasql::ErrorLocation location;
+        GetErrorLocation(zetasql_status, &location);
+        return {common::kSyntaxError, zetasql::FormatError(zetasql_status)};
+    }
+
+    DLOG(INFO) << "AST Node:\n" << ctx->ast_node->script()->DebugString();
+
+    const zetasql::ASTScript *script = ctx->ast_node->script();
+    auto planner_ptr =
+        std::make_unique<SimplePlannerV2>(&ctx->nm, ctx->engine_mode == vm::kBatchMode, ctx->is_cluster_optimized,
+                                          ctx->enable_batch_window_parallelization, ctx->options.get());
+    return planner_ptr->CreateASTScriptPlan(script, ctx->logical_plan);
+}
 
 bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &plan_trees, NodeManager *node_manager,
                                        Status &status, bool is_batch_mode, bool is_cluster,

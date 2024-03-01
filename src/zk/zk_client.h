@@ -46,12 +46,12 @@ class ZkClient {
     // session_timeout, the session timeout
     // endpoint, the client endpoint
     ZkClient(const std::string& hosts, const std::string& real_endpoint, int32_t session_timeout,
-             const std::string& endpoint, const std::string& zk_root_path,
-             const std::string& auth_schema, const std::string& cert);
+             const std::string& endpoint, const std::string& zk_root_path, const std::string& auth_schema,
+             const std::string& cert);
 
     ZkClient(const std::string& hosts, int32_t session_timeout, const std::string& endpoint,
-             const std::string& zk_root_path, const std::string& zone_path,
-             const std::string& auth_schema, const std::string& cert);
+             const std::string& zk_root_path, const std::string& zone_path, const std::string& auth_schema,
+             const std::string& cert);
     ~ZkClient();
 
     // init zookeeper connections
@@ -137,6 +137,11 @@ class ZkClient {
 
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
+
+    // ensure that zk client is connected:
+    // if not, try to reconnect, return false if reconnect failed
+    // DON'T use zk client if this function return false
+    bool EnsureConnected();
 
  private:
     void Connected();

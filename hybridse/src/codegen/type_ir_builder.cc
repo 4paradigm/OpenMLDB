@@ -103,11 +103,7 @@ bool TypeIRBuilder::IsStringPtr(::llvm::Type* type) {
 }
 
 bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
-    if (type->getTypeID() == ::llvm::Type::PointerTyID) {
-        type = reinterpret_cast<::llvm::PointerType*>(type)->getElementType();
-        return type->isStructTy();
-    }
-    return false;
+    return type->isPointerTy() && type->getPointerElementType()->isStructTy();
 }
 
 base::Status TypeIRBuilder::UnaryOpTypeInfer(

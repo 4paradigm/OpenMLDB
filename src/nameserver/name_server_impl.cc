@@ -2651,6 +2651,92 @@ void NameServerImpl::RecoverTable(RpcController* controller, const RecoverTableR
     response->set_msg("ok");
 }
 
+void NameServerImpl::DeleteOP(RpcController* controller, const DeleteOPRequest* request, GeneralResponse* response,
+                              Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::openmldb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (!request->has_op_id() && (request->status() == ::openmldb::api::TaskStatus::kInited ||
+                request->status() == ::openmldb::api::TaskStatus::kDoing)) {
+        response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
+        response->set_msg("cannot delete the Inited OP");
+        PDLOG(WARNING, "cannot delete the Inited OP");
+        return;
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+    auto need_delete = [] (const DeleteOPRequest* request, const ::openmldb::api::OPInfo& op_info) -> bool {
+        if (request->has_op_id()) {
+            if (op_info.op_id() != request->op_id()) {
+                return false;
+            }
+        } else if (op_info.task_status() != request->status() ||
+                (request->has_db() && request->db() != op_info.db())) {
+            return false;
+        }
+        return true;
+    };
+    auto delete_zk_op = [](ZkClient* zk_client, const std::string& path, uint64_t op_id) -> bool {
+        std::string node = absl::StrCat(path, "/", op_id);
+        if (zk_client->DeleteNode(node)) {
+            PDLOG(INFO, "delete zk op node[%s] success.", node.c_str());
+        } else {
+            PDLOG(WARNING, "delete zk op_node failed. node[%s]", node.c_str());
+            return false;
+        }
+        return true;
+    };
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto iter = done_op_list_.begin(); iter != done_op_list_.end();) {
+        const auto& op_info = (*iter)->op_info_;
+        if (need_delete(request, op_info)) {
+            if (op_info.task_status() != api::TaskStatus::kDone &&
+                    !delete_zk_op(zk_client_, zk_path_.op_data_path_, op_info.op_id())) {
+                response->set_code(base::ReturnCode::kDelZkFailed);
+                response->set_msg("delete zk op_node failed");
+                return;
+            }
+            iter = done_op_list_.erase(iter);
+            if (request->has_op_id()) {
+                return;
+            }
+            continue;
+        }
+        iter++;
+    }
+    for (auto& op_list : task_vec_) {
+        if (op_list.empty()) {
+            continue;
+        }
+        for (auto iter = op_list.begin(); iter != op_list.end();) {
+            const auto& op_info = (*iter)->op_info_;
+            if (need_delete(request, op_info)) {
+                if (op_info.task_status() != api::TaskStatus::kDone &&
+                        !delete_zk_op(zk_client_, zk_path_.op_data_path_, op_info.op_id())) {
+                    response->set_code(base::ReturnCode::kDelZkFailed);
+                    response->set_msg("delete zk op_node failed");
+                    return;
+                }
+                iter = op_list.erase(iter);
+                if (request->has_op_id()) {
+                    return;
+                }
+                continue;
+            }
+            iter++;
+        }
+    }
+    if (request->has_op_id()) {
+        response->set_code(base::ReturnCode::kDeleteFailed);
+        response->set_msg("op id does not exist");
+        PDLOG(WARNING, "op id %lu does not exist", request->op_id());
+    }
+}
+
 void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* request, GeneralResponse* response,
                               Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -5468,6 +5554,10 @@ void NameServerImpl::OnLocked() {
         if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
             CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
+    }
+
+    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kUser);
     }
 
     if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
@@ -8298,13 +8388,6 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
         PDLOG(WARNING, "table[%s] does not exist!", request->table_name().c_str());
         return;
     }
-    if (table_info->storage_mode() != ::openmldb::common::kMemory) {
-        response->set_code(ReturnCode::kOperatorNotSupport);
-        std::string msg = "DROP INDEX is not supported on a disk table, as its index is fully managed by the system.";
-        response->set_msg(msg);
-        LOG(WARNING) << msg;
-        return;
-    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info->column_key_size() == 0) {
@@ -8503,13 +8586,6 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         LOG(WARNING) << "table[" << db << "." << name << "] does not exist!";
         return;
     }
-    if (table_info->storage_mode() != ::openmldb::common::kMemory) {
-        response->set_code(ReturnCode::kOperatorNotSupport);
-        response->set_msg("CREATE INDEX is not supported on a disk table, as its index is fully managed by the system. "
-                "Please refer to this link for more details: " + base::NOTICE_URL);
-        LOG(WARNING) << "cannot add index. table " << name;
-        return;
-    }
     std::vector<::openmldb::common::ColumnKey> column_key_vec;
     if (request->column_keys_size() > 0) {
         for (const auto& column_key : request->column_keys()) {
@@ -8521,7 +8597,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     for (const auto& column_key : column_key_vec) {
         if (schema::IndexUtil::IsExist(column_key, table_info->column_key())) {
             base::SetResponseStatus(ReturnCode::kIndexAlreadyExists, "index has already exist!", response);
-            LOG(WARNING) << "index" << column_key.index_name() << " has already exist! table " << name;
+            LOG(WARNING) << "index " << column_key.index_name() << " has already exist! table " << name;
             return;
         }
     }
@@ -8640,7 +8716,10 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                 }
             }
         }
-        AddIndexToTableInfo(name, db, column_key_vec, nullptr);
+        // no rollback now
+        if (!AddIndexToTableInfo(name, db, column_key_vec, nullptr)) {
+            base::SetResponseStatus(ReturnCode::kAddIndexFailed, "add to table info failed", response);
+        }
     }
     base::SetResponseOK(response);
     LOG(INFO) << "add index. table[" << name << "] index count[" << column_key_vec.size() << "]";
@@ -9362,14 +9441,9 @@ base::Status NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::Crea
     for (auto tb_client : tb_client_vec) {
         auto status = tb_client->CreateProcedure(sp_request);
         if (!status.OK()) {
-            std::string err_msg;
-            char temp_msg[100];
-            snprintf(temp_msg, sizeof(temp_msg),
-                     "create procedure on tablet failed. db_name[%s], sp_name[%s], endpoint[%s]. ",
-                     sp_info.db_name().c_str(), sp_info.sp_name().c_str(), tb_client->GetEndpoint().c_str());
-            absl::StrAppend(&err_msg, temp_msg, "msg: ", status.GetMsg());
-            LOG(WARNING) << err_msg;
-            return {base::ReturnCode::kCreateProcedureFailedOnTablet, err_msg};
+            return {base::ReturnCode::kCreateProcedureFailedOnTablet,
+                    absl::StrCat("create procedure on tablet failed, sp ", sp_info.db_name(), ".", sp_info.sp_name(),
+                                 ", endpoint: ", tb_client->GetEndpoint(), ", msg: ", status.GetMsg())};
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
                    << "sp_name: " << sp_info.sp_name() << ", "
@@ -9908,7 +9982,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
                 uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
                 std::string endpoint = table_info->table_partition(0).partition_meta(meta_idx).endpoint();
                 auto table_ptr = GetTablet(endpoint);
-                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions)) {
+                if (!table_ptr->client_->Put(tid, pid, cur_ts, row, dimensions).OK()) {
                     return {ReturnCode::kPutFailed, "fail to make a put request to table"};
                 }
                 break;
@@ -9916,62 +9990,6 @@ base::Status NameServerImpl::InitGlobalVarTable() {
         }
     }
     return {};
-}
-
-/// \beirf create a SQLClusterRouter instance for use like monitoring statistics collecting
-///    the actual instance is stored in `sr_` member
-///
-/// \return true if action success, false if any error happens
-bool NameServerImpl::GetSdkConnection() {
-    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) == nullptr) {
-        sdk::DBSDK* cs = nullptr;
-        PDLOG(INFO, "Init ClusterSDK in name server");
-        if (IsClusterMode()) {
-            ::openmldb::sdk::ClusterOptions copt;
-            copt.zk_cluster = zk_path_.zk_cluster_;
-            copt.zk_path = zk_path_.root_path_;
-            cs = new ::openmldb::sdk::ClusterSDK(copt);
-        } else {
-            std::vector<std::string> list = absl::StrSplit(endpoint_, ":");
-            if (list.size() != 2) {
-                PDLOG(ERROR, "fail to split endpoint_");
-                return false;
-            }
-
-            int port = 0;
-            if (!absl::SimpleAtoi(list.at(1), &port)) {
-                PDLOG(ERROR, "fail to port string: %s", list.at(1));
-                return false;
-            }
-            cs = new ::openmldb::sdk::StandAloneSDK(list.at(0), port);
-        }
-        bool ok = cs->Init();
-        if (!ok) {
-            PDLOG(ERROR, "ERROR: Failed to init DBSDK");
-            if (cs != nullptr) {
-                delete cs;
-            }
-            return false;
-        }
-        auto sr = std::make_shared<::openmldb::sdk::SQLClusterRouter>(cs);
-        if (!sr->Init()) {
-            PDLOG(ERROR, "fail to init SQLClusterRouter");
-            if (cs != nullptr) {
-                delete cs;
-            }
-            return false;
-        }
-
-        std::atomic_store_explicit(&sr_, sr, std::memory_order_release);
-    }
-
-    return true;
-}
-
-void NameServerImpl::FreeSdkConnection() {
-    if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) != nullptr) {
-        std::atomic_store_explicit(&sr_, {}, std::memory_order_release);
-    }
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateTaskInternal(const TaskMeta* task_meta) {

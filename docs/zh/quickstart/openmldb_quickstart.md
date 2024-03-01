@@ -19,7 +19,7 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.4 bash
+docker run -it 4pdosc/openmldb:0.8.5 bash
 ```
 
 ```{note}
@@ -38,11 +38,15 @@ docker run -it 4pdosc/openmldb:0.8.4 bash
 
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+# 或脚本
+/work/openmldb/sbin/openmldb-cli.sh
 ```
 
 成功启动 OpenMLDB CLI 后如下图显示：
 
 ![image](./images/cli_cluster.png)
+
+如果你需要对 OpenMLDB 集群进行配置修改，/work/init.sh使用的是sbin一键部署方式，具体参考[一键部署](../deploy/install_deploy.md#部署方式一一键部署推荐)。
 
 ## 使用流程
 
@@ -145,8 +149,6 @@ USE demo_db;
 SET @@execute_mode='online';
 SELECT * FROM demo_table1 LIMIT 10;
 ```
-
-注意，目前要求成功完成 SQL 上线部署后，才能导入在线数据；如果先导入在线数据，会导致部署出错。
 
 ```{note}
 本篇教程在数据导入以后，略过了实时数据接入的步骤。在实际场景中，由于现实时间的推移，需要将最新的实时数据更新到在线数据库。具体可以通过 OpenMLDB SDK 或者在线数据源 connector 实现（如 Kafka、Pulsar 等）。

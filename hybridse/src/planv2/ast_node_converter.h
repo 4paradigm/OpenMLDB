@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "node/node_manager.h"
-#include "udf/udf.h"
 #include "zetasql/parser/parser.h"
 
 namespace hybridse {
@@ -66,6 +65,12 @@ base::Status ConvertInExpr(const zetasql::ASTInExpression* in_expr, node::NodeMa
                            node::InExpr** output);
 base::Status ConvertLimitOffsetNode(const zetasql::ASTLimitOffset* limit_offset, node::NodeManager* node_manager,
                                     node::SqlNode** output);
+
+base::Status ConvertCreateUserStatement(const zetasql::ASTCreateUserStatement* root, node::NodeManager* node_manager,
+                                        node::CreateUserNode** output);
+
+base::Status ConvertAlterUserStatement(const zetasql::ASTAlterUserStatement* root, node::NodeManager* node_manager,
+                                        node::AlterUserNode** output);
 
 base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager, node::QueryNode** output);
 

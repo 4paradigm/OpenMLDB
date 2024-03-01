@@ -37,7 +37,6 @@ object SparkJobManager {
    */
   def createSparkLauncher(mainClass: String): SparkLauncher = {
 
-
     val launcher = new SparkLauncher()
       .setAppResource(TaskManagerConfig.getBatchjobJarPath)
       .setMainClass(mainClass)
@@ -77,11 +76,18 @@ object SparkJobManager {
 
   def submitSparkJob(jobType: String, mainClass: String,
                      args: List[String] = List(),
+                     sql: String = "",
                      localSqlFile: String = "",
                      sparkConf: Map[String, String] = Map(),
                      defaultDb: String = "",
                      blocking: Boolean = false): JobInfo = {
-    val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
+
+    val jobInfoArgs = if (sql.nonEmpty) {
+      List(sql)
+    } else {
+      args
+    }
+    val jobInfo = JobInfoManager.createJobInfo(jobType, jobInfoArgs, sparkConf)
 
     // Submit Spark application with SparkLauncher
     val launcher = createSparkLauncher(mainClass)
@@ -121,6 +127,9 @@ object SparkJobManager {
     if (TaskManagerConfig.getZkCluster.nonEmpty && TaskManagerConfig.getZkRootPath.nonEmpty) {
       launcher.setConf("spark.openmldb.zk.cluster", TaskManagerConfig.getZkCluster)
       launcher.setConf("spark.openmldb.zk.root.path", TaskManagerConfig.getZkRootPath)
+
+      launcher.setConf("spark.openmldb.user", TaskManagerConfig.getUser)
+      launcher.setConf("spark.openmldb.password", TaskManagerConfig.getPassword)
     }
 
     // Set ad-hoc Spark configuration

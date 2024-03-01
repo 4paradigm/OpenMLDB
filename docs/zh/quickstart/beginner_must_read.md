@@ -12,7 +12,7 @@
 openmldb_tool inspect [-c=0.0.0.0:2181/openmldb]
 ```
 
-需要注意，由于离线存储只会在执行离线job时被读取，而离线job也不是一个持续的状态，所以，一键诊断只能展示TaskManager组件状态，不会诊断离线存储，也无法诊断离线job的执行错误，离线job诊断见[离线SQL执行](#离线)。
+需要注意，由于离线存储只会在执行离线job时被读取，而离线job也不是一个持续的状态，所以，一键诊断只能展示TaskManager组件状态，不会诊断离线存储，也无法诊断离线job的执行错误，离线job诊断见[离线SQL执行](#集群版离线-SQL-执行注意事项)。
 
 如果诊断报告认为集群健康，但仍然无法解决问题，请提供错误和诊断报告给我们。
 
@@ -32,19 +32,52 @@ docker创建OpenMLDB见[快速上手](./openmldb_quickstart.md)，请注意文�
 如果我们还需要OpenMLDB服务端的配置和日志，可以使用诊断工具获取，见[下文](#提供配置与日志获得技术支持)。
 ```
 
-### 运维
+### 部署工具说明
 
-集群各组件进程启动后，在使用过程中可能遇到各种变化，比如服务进程意外退出，需要重启服务进程，或者需要扩容服务进程。
+请确定你使用的是什么部署方式，通常我们只考虑两种部署方式，见[安装部署](../deploy/install_deploy.md)，“一键部署”也被称为sbin部署方式。配置文件如何修改，日志文件在何处，都与部署方式联系紧密，所以必须准确。
 
-如果你需要保留已有的在线表，**不要主动地kill全部Tablet再重启**，保证Tablet只有单台在上下线。`stop-all.sh`和`start-all.sh`脚本是给快速重建集群用的，可能会导致在线表数据恢复失败，**不保证能修复**。
+- sbin部署
+sbin部署会经过deploy（拷贝安装包至各个节点），再启动组件。需要明确的是，部署节点就是执行sbin的节点，尽量不要在运维中更换目录。deploy到hosts中各个节点的目录中，这些节点的目录我们称为运行目录。
 
-当你发现进程变化或者主动操作其变化后，需要使用诊断工具进行诊断，确认集群状态是否正常：
-```bash
-openmldb_tool inspect # 主要命令
-openmldb_tool status --diff hosts # 可检查TaskManager等是否掉线，当然，你也可以手动判断
-```
+配置文件会在deploy阶段，从template文件生成，所以，如果你要修改某组件的配置，不要在节点上修改，需要在部署地点修改template文件。如果你不进行deploy操作，可以在节点运行目录上原地修改配置文件（非template），但deploy将覆盖修改，需要谨慎处理。
 
-如果诊断出server offline，或是TaskManager等掉线，需要先启动回来。如果启动失败，请查看对应日志，提供错误信息。如果诊断结果提示需要recoverdata，请参考[OpenMLDB运维工具](../maintain/openmldb_ops.md)执行recoverdata。如果recoverdata脚本提示recover失败，或recover成功后再次inpsect的结果仍然不正常，请提供日志给我们。
+出现任何非预期的情况，以sbin部署的最终配置文件，即组件节点的运行目录中的配置文件为准。运行目录查看`conf/hosts`，例如，`localhost:10921 /tmp/openmldb/tablet-1`说明tablet1的运行目录是`/tmp/openmldb/tablet-1`，`localhost:7527`目录为空说明该组件就运行在`$OPENMLDB_HOME`（如未指定，就是指部署目录）。如果你无法自行解决，提供最终配置文件给我们。
+
+sbin日志文件地址，需要先查看hosts确认组件节点的运行目录，TaskManager日志通常在`<dir>/taskmanager/bin/logs`中，其他组件日志均在`<dir>/logs`中。如有特别配置，以配置项为准。
+
+- 手动部署
+手动部署只要使用脚本`bin/start.sh`和`conf/`目录中的配置文件（非template结尾）。唯一需要注意的是，`spark.home`可以为空，那么会读取`SPARK_HOME`环境变量。如果你认为环境变量有问题，导致启动不了TaskManager，推荐写配置`spark.home`。
+
+手动部署的组件日志文件，以运行`bin/start.sh`的目录为准，TaskManager日志通常在`<dir>/taskmanager/bin/logs`中，其他组件日志均在`<dir>/logs`中。如有特别配置，以配置项为准。
+
+## 运维
+
+- 上文提到，inspect能帮我们检查集群状态，如果有问题，可使用recoverdata工具。但这是事后修复手段，通常情况下，我们应该通过正确的运维手段避免这类问题。需要上下线节点时，**不要主动地kill全部Tablet再重启**。请尽量用扩缩容的方式来操作，详情见[扩缩容](../maintain/scale.md)。
+    - 如果你认为已有数据不重要，更需要快速地上下线，那么可以直接重启节点。`stop-all.sh`和`start-all.sh`脚本是给快速重建集群用的，可能会导致在线表数据恢复失败，**不保证能修复**。
+
+- 各组件在长期服务中也可能出现网络抖动、慢节点等复杂问题，请开启[监控](../maintain/monitoring.md)。如果监控中服务端表现正常，可以怀疑是你的客户端或网络问题。如果监控中服务端就出现延迟高，qps低等情况，请向我们提供相关监控图。
+
+## 理解存储
+
+OpenMLDB是在线离线存储计算分离的，所以，你需要明确自己导入数据或查询数据是处于在线模式还是离线模式。
+
+离线存储在HDFS等地，如果你认为导入到离线存储的数据有缺漏，需要到存储地点进行进一步检查。
+
+在线存储需要注意以下几点：
+- 在线存储是有TTL概念的，所以，如果你导入数据后检查发现数据少了，可能是数据因为过期被淘汰了。
+- 在线存储适合使用`select count(*) from t1`和`show table status`来检查条数，请不要使用`select * from t1`来检查，可能有数据截断，这种查询只适合预览数据。
+
+关于如何设计你的数据流入流出，可参考[实时决策系统中 OpenMLDB 的常见架构整合方式](../tutorial/app_arch.md)。
+
+### 在线表
+
+在线表是存在内存中的数据，同时也会使用硬盘进行备份恢复。在线表的数据，可以通过`select count(*) from t1`来检查条数，或者使用`show table status`来查看表状态（可能有一定延迟，可以稍等再查）。
+
+在线表是可以有多个索引的，通过`desc <table>`可以查看。写入一条数据时每个索引中都会写入一条，区别是各个索引的分类排序不同。但由于索引还有TTL淘汰机制，各个索引的数据量可能不一致。`select count(*) from t1`和`show table status`的结果是第一个索引的数据量，它并不代表其他索引的数据量。SQL查询会使用哪一个索引，是由SQL Engine选择的最优索引，可以通过SQL物理计划来查看。
+
+建表时，可以指定索引，也可以不指定，不指定时，会默认创建一个索引。如果是默认索引，它无ts列（用当前time作为排序列，我们称为time索引）将会永不淘汰数据，可以以它为标准检查数据量是否准确，但这样的索引会占用太多的内存，目前也不可以删除第一条索引（计划未来支持），可以通过NS Client修改TTL淘汰数据，减少它的内存占用。
+
+time索引（无ts的索引）还会影响PutIfAbsent导入。如果你的数据导入可能中途失败，无其他方法进行删除或去重，想要使用PutIfAbsent来进行导入重试时，请参考[PutIfAbsent说明](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md#putifabsent说明)对自己的数据进行评估，避免PutIfAbsent效率太差。
 
 ## 源数据
 
@@ -100,7 +133,7 @@ SQL编译通过以后，可以基于数据进行计算。如果计算结果不�
 - 该列是不是表示了自己想表达的意思，是否使用了不符合预期的函数，或者函数参数错误。
 - 该列如果是窗口聚合的结果，是不是WINDOW定义错误，导致窗口范围不对。参考[推断窗口](../openmldb_sql/dql/WINDOW_CLAUSE.md#如何推断窗口是什么样的)进行检查，使用小数据进行验证测试。
 
-如果你仍然无法解决问题，可以提供 OpenMLDB SQL Emulator 的 yaml case 。如果在集群中进行的测试，请[提供复现脚本](#提供复现脚本)。
+如果你仍然无法解决问题，可以提供 OpenMLDB SQL Emulator 的 yaml case 。如果在集群中进行的测试，请[提供复现脚本](#构造-openmldb-sql-复现脚本)。
 
 ### 在线请求模式测试
 
@@ -114,7 +147,7 @@ SQL上线，等价于`DEPLOY <name> <SQL>`成功。但`DEPLOY`操作是一个很
 
 OpenMLDB 所有命令均为 SQL，如果 SQL 执行失败或交互有问题（不知道命令是否执行成功），请先确认 SQL 书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
-例如，下面提示Syntax error的是SQL书写有误，请参考[SQL编写指南](#sql编写指南)纠正错误。
+例如，下面提示Syntax error的是SQL书写有误，请参考[OpenMLDB SQL语法指南](#openmldb-sql-语法指南)纠正错误。
 ```
 127.0.0.1:7527/db> create table t1(c1 int;
 Error: Syntax error: Expected ")" or "," but got ";" [at 1:23]
@@ -145,7 +178,7 @@ create table t1(c1 int;
 
 ### 集群版在线 SQL 执行注意事项
 
-集群版在线模式下，我们通常只推荐两种使用，`DEPLOY`创建deployment，执行deployment做实时特征计算（SDK请求deployment，或HTTP访问APIServer请求deployment）。在CLI或其他客户端中，可以直接在“在线”中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
+集群版在线模式下，我们通常只推荐两种使用，`DEPLOY`创建deployment，执行deployment做实时特征计算（SDK请求deployment，或HTTP访问APIServer请求deployment）。在CLI或其他客户端中，可以直接在“在线”中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#在线预览模式)，请不要执行不支持的SQL。
 
 ### 构造 OpenMLDB SQL 复现脚本
 

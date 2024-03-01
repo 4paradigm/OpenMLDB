@@ -193,7 +193,9 @@ message PutRequest {
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7 [deprecated = true];
-    optional uint32 format_version = 8 [default = 0];
+    optional uint32 format_version = 8 [default = 0, deprecated = true];
+    optional uint32 memory_limit = 9;
+    optional bool put_if_absent = 10 [default = false];
 }
 
 message PutResponse {
@@ -210,6 +212,7 @@ message DeleteRequest {
     optional uint64 ts = 6;
     optional uint64 end_ts = 7;
     optional string ts_name = 8;
+    optional bool enable_decode_value = 9 [default = true];
 }
 
 message ExecuteGcRequest {
@@ -324,7 +327,7 @@ message TableMeta {
     repeated openmldb.common.ColumnKey column_key = 11;
     repeated openmldb.common.ColumnDesc added_column_desc = 12;
     // format_version 0 , the legacy format 1 ,the new one
-    optional uint32 format_version = 13 [default = 0];
+    optional uint32 format_version = 13 [default = 0, deprecated = true];
     optional string db = 14 [default = ""];
     repeated common.VersionPair schema_versions = 15;
     repeated common.TablePartition table_partition = 16;

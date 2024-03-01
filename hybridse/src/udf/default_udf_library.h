@@ -52,6 +52,9 @@ class DefaultUdfLibrary : public UdfLibrary {
     // Array Udf defines, udfs either accept array as parameter or returns array
     void InitArrayUdfs();
 
+    // Map functions
+    void InitMapUdfs();
+
     // aggregate functions for statistic
     void InitStatisticsUdafs();
 

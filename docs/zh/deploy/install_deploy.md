@@ -36,7 +36,7 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 如果你的操作系统可以直接运行预编译包，则可以从以下地址下载：
 
 - GitHub release 页面：https://github.com/4paradigm/OpenMLDB/releases
-- 镜像站点（中国）：http://43.138.115.238/download/
+- 镜像站点（中国）：https://www.openmldb.com/download/
 
 其中预编译包和可支持的操作系统的对应关系为：
 
@@ -47,17 +47,17 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 
 ### Linux 平台预测试
 
-由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.4-linux.tar.gz` 以后，运行：
+由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.5-linux.tar.gz` 以后，运行：
 
 ```
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-./openmldb-0.8.4-linux/bin/openmldb --version
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+./openmldb-0.8.5-linux/bin/openmldb --version
 ```
 
 结果应显示该程序的版本号，类似
 
 ```
-openmldb version 0.8.4-xxxx
+openmldb version 0.8.5-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -155,6 +155,7 @@ OpenMLDB 提供了两种启动模式：普通和守护进程启动。守护进�
 如果想要使守护进程模式启动，请使用`bash bin/start.sh start <component> mon`或者`sbin/start-all.sh mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是 mon 进程的 pid，`bin/<component>.pid.child` 为组件真实的 pid。
 
 ## 部署方式一：一键部署（推荐）
+
 OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager等模块。其中ZooKeeper用于服务发现和保存元数据信息。NameServer用于管理TabletServer，实现高可用和failover。TabletServer用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。TaskManager 用于管理离线 job。我们提供了一键部署脚本，可以简化手动在每台机器上下载和配置的复杂性。
 
 **注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署TabletServer，一定不能重复使用目录，避免数据文件和日志文件冲突。
@@ -164,40 +165,67 @@ DataCollector和SyncTool暂不支持一键部署。请参考手动部署方式�
 ### 环境要求
 
 - 部署机器（执行部署脚本的机器）可以免密登录其他部署节点
-- 部署机器安装 `rsync` 工具
-- 部署机器安装 Python3
-- 部署Zookeeper和TaskManager的机器安装 JRE (Java Runtime Environment)
+- 部署机器需安装 `rsync` 工具
+- 部署机器需安装 Python3
+- Zookeeper和TaskManager的运行机器上需安装 JRE (Java Runtime Environment)
 
 ### 下载OpenMLDB发行版
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-cd openmldb-0.8.4-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.5/openmldb-0.8.5-linux.tar.gz
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+cd openmldb-0.8.5-linux
 ```
 
-### 环境配置
-环境变量定义在`conf/openmldb-env.sh`，如下表所示：
+### 脚本使用逻辑
 
-| 环境变量                              | 默认值                                | 定义                                                                      |
-|-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
-| OPENMLDB_VERSION                  | 0.8.4                              | OpenMLDB版本                                                              |
-| OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
-| OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
-| SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
-| OPENMLDB_TABLET_PORT              | 10921                              | TabletServer默认端口                                                              |
-| OPENMLDB_NAMESERVER_PORT          | 7527                               | NameServer默认端口                                                          |
-| OPENMLDB_TASKMANAGER_PORT         | 9902                               | taskmanager默认端口                                                         |
-| OPENMLDB_APISERVER_PORT           | 9080                               | APIServer默认端口                                                           |
-| OPENMLDB_USE_EXISTING_ZK_CLUSTER  | false                              | 是否使用已经部署的ZooKeeper集群。如果是`false`，会在部署脚本里自动启动ZooKeeper集群                  |
-| OPENMLDB_ZK_HOME                  | $OPENMLDB_HOME/zookeeper           | ZooKeeper发行版根目录                                                         |
-| OPENMLDB_ZK_CLUSTER               | 自动从`conf/hosts`中的`[zookeeper]`配置获取 | ZooKeeper集群地址                                                           |
-| OPENMLDB_ZK_ROOT_PATH             | /openmldb                          | OpenMLDB在ZooKeeper的根目录                                                  |
-| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                               | ZooKeeper client port, 即zoo.cfg里面的clientPort                            |
-| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                               | ZooKeeper peer port，即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第一个端口配置      |
-| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                               | ZooKeeper election port, 即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第二个端口配置 |
+部署脚本均在sbin中，我们也称一键部署为sbin部署。初次部署过程一般是“修改环境和配置文件 -> sbin/deploy-all.sh -> sbin/start-all.sh”。如果需要停止服务，执行`sbin/stop-all.sh`。清理已部署的数据和日志，执行`sbin/clear-all.sh`。Docker镜像中的`/work/init.sh`脚本便是进行“deploy-all -> stop-all -> clear-all -> start-all”。
+
+如果集群正在运行，需要修改配置（不能只deploy到单台，但全部覆盖配置不影响进程运行）并重启某一个组件（不能指定单进程，但可以指定组件），需要“修改配置 -> deploy-all.sh -> stop-tablets.sh -> start-tablets.sh”。但需要注意重启tablet可能会导致数据加载失败（影响服务），需要进行集群诊断与恢复，可使用[一键inspect](../maintain/diagnose.md#一键inspect)。数据量较大或不可出现服务中断时，更推荐使用扩缩容方式或手动重启单进程。
+
+### 环境配置
+
+环境变量定义在`conf/openmldb-env.sh`，主要变量如下表所示：
+
+| 环境变量                         | 默认值                   | 定义                                                                                                                                          |
+| -------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| OPENMLDB_VERSION                 | 0.8.5                    | OpenMLDB版本，主要用于spark下载，一般不改动。                                                                                                 |
+| OPENMLDB_MODE                    | cluster                  | standalone或者cluster                                                                                                                         |
+| OPENMLDB_HOME                    | 当前发行版的根目录       | openmldb发行版根目录，不则使用当前根目录，也就是openmldb-0.8.5-linux所在目录。                                                                |
+| SPARK_HOME                       | $OPENMLDB_HOME/spark     | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载。**此路径也将成为TaskManager运行机器上的Spark安装目录。**                        |
+| RUNNER_EXISTING_SPARK_HOME       |                          | 配置此项，运行TaskManager的机器将使用该Spark环境，将不下载、部署OpenMLDB Spark发行版。                                                        |
+| OPENMLDB_USE_EXISTING_ZK_CLUSTER | false                    | 是否使用已经运行的ZooKeeper集群。如果是`true`，将跳过ZooKeeper集群的部署与管理。                                                              |
+| OPENMLDB_ZK_HOME                 | $OPENMLDB_HOME/zookeeper | ZooKeeper发行版根目录，如果该目录不存在，自动从网上下载。                                                                                     |
+| OPENMLDB_ZK_CLUSTER              |                          | ZooKeeper集群地址，为空时自动从`conf/hosts`中的`[zookeeper]`配置获取。建议自建ZooKeeper集群时在hosts中创建，使用已有ZooKeeper集群时配置此项。 |
+| OPENMLDB_ZK_ROOT_PATH            | /openmldb                | OpenMLDB在ZooKeeper集群的根目录                                                                                                               |
+| OPENMLDB_FORCE_LOCAL             | false                    | 如果为`true`，所有部署将认定为本地拷贝。单机部署集群，又需要使用公网IP时，开启此项，避免ssh                                                   |
+| RUNNER_JAVA_HOME                 |                          | 运行ZooKeeper和TaskManager的机器ssh可能无Java相关环境变量，可使用此变量设置。不设置则不覆盖环境。                                             |
+| CLEAR_OPENMLDB_INSTALL_DIR       | false                    | sbin/clear-all.sh只清理运行产生的数据与日志，如果是`true`，将把运行机器上的整个安装目录删除。                                                 |
+
+通常来讲，需要确认以下几点：
+- ZooKeeper集群地址，如果使用已有ZooKeeper集群，需要配置`OPENMLDB_USE_EXISTING_ZK_CLUSTER=true`，并配置`OPENMLDB_ZK_CLUSTER`。（如果在`conf/hosts`中配置外部ZK集群，请注释标注其不受sbin部署影响，避免混乱。）
+- 需要此工具部署ZooKeeper集群时，在`conf/hosts`中配置`[zookeeper]`。填写多个ZooKeeper节点，即部署ZooKeeper集群，无需额外配置。
+- Spark环境，如果需要使用运行机器上已有的Spark环境，需要配置`RUNNER_EXISTING_SPARK_HOME`（地址为TaskManager运行机器上的路径）。如果部署机器存在Spark环境，并想要在TaskManager机器上使用此套环境，可配置`SPARK_HOME`（部署到TaskManager机器同名路径上）。`SPARK_HOME`不进行配置时，将自动下载、使用OpenMLDB Spark发行版。
+
+#### 默认端口
+| 环境变量                  | 默认值 | 定义                 |
+| ------------------------- | ------ | -------------------- |
+| OPENMLDB_TABLET_PORT      | 10921  | TabletServer默认端口 |
+| OPENMLDB_NAMESERVER_PORT  | 7527   | NameServer默认端口   |
+| OPENMLDB_TASKMANAGER_PORT | 9902   | TaskManager默认端口  |
+| OPENMLDB_APISERVER_PORT   | 9080   | APIServer默认端口    |
+
+默认端口只会在节点配置不显式配置端口号时才会被使用，更推荐**直接在节点配置文件hosts中配置好端口号**。
+
+#### ZooKeeper高级配置
+| 环境变量                          | 默认值 | 定义                                                                                    |
+| --------------------------------- | ------ | --------------------------------------------------------------------------------------- |
+| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181   | ZooKeeper client port, 即zoo.cfg里面的clientPort                                        |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888   | ZooKeeper peer port，即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第一个端口配置     |
+| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888   | ZooKeeper election port, 即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第二个端口配置 |
 
 ### 节点配置
+
 节点配置文件为`conf/hosts`，示例如下：
 ```bash
 [tablet]
@@ -229,14 +257,16 @@ node3:2181:2888:3888 /tmp/openmldb/zk-1
 对于`[zookeeper]`, 会有额外端口参数，包括follower用来连接leader的`zk_peer_port`和用于leader选择的`zk_election_port`，
 其格式为`host:port:zk_peer_port:zk_election_port WORKDIR`。
 
-每一行节点列表，除了`host`是必须的，其他均为可选，如果没有提供，会使用默认配置，默认配置参考`conf/openmldb-env.sh`。
+每一行节点列表，除了`host`是必须的，其他均为可选，如果没有提供，会使用默认配置，默认配置参考`conf/openmldb-env.sh`。无`WORKDIR`配置的节点，所有OpenMLDB Server的默认运行目录为`OPENMLDB_HOME`，ZooKeeper默认目录为`OPENMLDB_ZK_HOME`。
+
+host配置为localhost或127.0.0.1时，将自动识别为部署到本地，不会进行ssh和rsync。当集群在本地部署且需要对外暴露服务，hosts中节点需配置为外网IP，如果不想配置本机ssh免密，可在`conf/openmldb-env.sh`中配置`OPENMLDB_FORCE_LOCAL=true`。
 
 ```{warning}
 如果在不同机器上部署多个 TaskManager，其 `offline.data.prefix` 配置的路径，这些机器必须可以访问，建议配置hdfs路径。
 ```
 
 ### 修改机器环境配置 (可选)
-```
+```bash
 bash sbin/init_env.sh
 ```
 说明:
@@ -248,14 +278,39 @@ bash sbin/init_env.sh
 ```bash
 sbin/deploy-all.sh
 ```
-该脚本会把相关的文件分发到`conf/hosts`里面配置的机器上，同时根据`conf/hosts`和`conf/openmldb-env.sh`
-的配置，对相关组件的配置做出相应的更新。
+该脚本会把相关的文件分发到`conf/hosts`里面配置的机器上，同时根据`conf/hosts`和`conf/openmldb-env.sh`的配置，对相关组件的配置做出相应的更新。
 
-如果希望为每个节点添加一些额外的相同的定制化配置，可以在执行deploy脚本之前，修改`conf/xx.template`的配置，
-这样在分发配置文件的时候，每个节点都可以用到更改后的配置。
-重复执行`sbin/deploy-all.sh`会覆盖上一次的配置。
+如果希望为每个节点添加一些额外的相同的定制化配置，可以在执行deploy脚本之前，**修改`conf/xx.template`的配置**。只有和openmldb-env.sh中相关的配置会被部署工具自动追加到配置尾部，其他配置不会被覆盖，可放心修改。执行deploy，将配置文件分发到运行节点中，重复执行`sbin/deploy-all.sh`会覆盖上一次的配置。
 
 详细配置说明见[配置文件](./conf.md)，请注意TaskManager Spark的选择与细节配置[Spark Config详解](./conf.md#spark-config详解)。
+
+执行阶段日志类似下文，请注意部署到的host与目录：
+```
+deploy tablet to localhost:10921 /tmp/openmldb/tablet-1
+copy /work/openmldb to localhost:/tmp/openmldb/tablet-1
+deploy tablet to localhost:10922 /tmp/openmldb/tablet-2
+copy /work/openmldb to localhost:/tmp/openmldb/tablet-2
+deploy nameserver to localhost:7527 /work/openmldb
+skip rsync as dest=src: /work/openmldb
+deploy apiserver to localhost:9080 /work/openmldb
+skip rsync as dest=src: /work/openmldb
+/work/openmldb/spark already exists. Skip deploy spark locally
+deploy taskmanager to localhost:9902 /work/openmldb
+skip rsync as dest=src: /work/openmldb
+/work/openmldb/zookeeper already exists. Skip download zookeeper.
+deploy zookeeper to localhost:2181 /tmp/openmldb/zk-1
+copy /work/openmldb/zookeeper to localhost:/tmp/openmldb/zk-1
+```
+
+对环境变量有疑问，注意日志`OPENMLDB envs:`的打印结果。
+
+- 配置
+deploy不支持对单个组件的配置更新，更改单个组件也需要使用`deploy-all.sh`。如果你在部署host上单独修改，需要修改`xx.flags`/`taskmanager.properties`而不是template配置，而且`deploy-all.sh`将对该配置进行覆盖，请谨慎配置。检查配置时以host的运行目录中的`xx.flags`/`taskmanager.properties`为准。
+
+- 日志
+相应的，各个节点的日志也在各自的运行目录中，具体位置参考[部署方式二：手动部署](#部署方式二手动部署)中各个组件的日志位置说明。
+
+收集日志与配置，可以使用诊断工具[检查内容](../maintain/diagnose.md#检查内容)，默认将各个节点的配置和日志都收集到`/tmp/diag_collect`目录中，可以统一查看。
 
 ### 启动服务
 
@@ -270,17 +325,26 @@ sbin/start-all.sh
 sbin/start-all.sh mon
 ```
 
-该脚本会把 `conf/hosts` 里面配置的所有服务启动起来。启动完成以后，可以通过辅助脚本启动 CLI （`sbin/openmldb-cli.sh`），来验证集群是否正常启动。
+该脚本会把 `conf/hosts` 里面配置的所有服务启动起来。启动完成以后，可以通过辅助脚本启动 CLI （`sbin/openmldb-cli.sh`），来验证集群是否正常启动。对环境变量有疑问，注意日志`OPENMLDB envs:`的打印结果。
 
 ```{tip}
 start-all.sh 是一个非常有用的工具。除了在部署阶段可以使用，也可以在运维阶段用于启动某一个下线的 OpenMLDB 进程。比如某一个 tablet 进程意外下线，你可以直接执行 start-all.sh。该脚本对于已经启动的进程不会产生副作用，对于已配置、但是未启动的进程，将会自动进行启动。
 ```
 ### 停止服务
+
 如果需要停止所有服务，可以执行以下脚本：
 ```bash
 sbin/stop-all.sh
 ```
 
+### 清理数据和日志
+
+如果需要清理所有服务的数据和日志，可以执行以下脚本：
+```bash
+sbin/clean-all.sh
+```
+
+如果需要保留集群数据，请不要执行该脚本。
 
 ## 部署方式二：手动部署
 OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager等模块。其中ZooKeeper用于服务发现和保存元数据信息。NameServer用于管理TabletServer，实现高可用和failover。TabletServer用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。TaskManager用于管理离线job。
@@ -348,10 +412,10 @@ bash bin/zkCli.sh -server 172.27.128.33:7181
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-tablet-0.8.4
-cd openmldb-tablet-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.5/openmldb-0.8.5-linux.tar.gz
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+mv openmldb-0.8.5-linux openmldb-tablet-0.8.5
+cd openmldb-tablet-0.8.5
 ```
 **2. 修改配置文件`conf/tablet.flags`**
 ```bash
@@ -402,12 +466,12 @@ Start tablet success
 
 在另一台机器启动下一个TabletServer只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个TabletServer，请保证是在另一个目录中，不要重复使用已经启动过TabletServer的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.4-2`。
+比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.5-2`。
 
 ```
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-tablet-0.8.4-2
-cd openmldb-tablet-0.8.4-2
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+mv openmldb-0.8.5-linux openmldb-tablet-0.8.5-2
+cd openmldb-tablet-0.8.5-2
 ```
 
 再修改配置并启动。注意，TabletServer如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -421,10 +485,10 @@ cd openmldb-tablet-0.8.4-2
 ```
 **1. 下载OpenMLDB部署包**
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-ns-0.8.4
-cd openmldb-ns-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.5/openmldb-0.8.5-linux.tar.gz
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+mv openmldb-0.8.5-linux openmldb-ns-0.8.5
+cd openmldb-ns-0.8.5
 ````
 **2. 修改配置文件conf/nameserver.flags**
 ```bash
@@ -462,12 +526,12 @@ NameServer 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 NameServer 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 NameServer，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.4-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.5-2`。
 
 ```
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-ns-0.8.4-2
-cd openmldb-ns-0.8.4-2
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+mv openmldb-0.8.5-linux openmldb-ns-0.8.5-2
+cd openmldb-ns-0.8.5-2
 ```
 然后再修改配置并启动。
 
@@ -505,10 +569,10 @@ APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它�
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-apiserver-0.8.4
-cd openmldb-apiserver-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.5/openmldb-0.8.5-linux.tar.gz
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+mv openmldb-0.8.5-linux openmldb-apiserver-0.8.5
+cd openmldb-apiserver-0.8.5
 ```
 
 **2. 修改配置文件conf/apiserver.flags**
@@ -530,6 +594,8 @@ cp conf/apiserver.flags.template conf/apiserver.flags
 **注意：**
 
 * 如果http请求并发度较大，可自行调大APIServer的线程数，`--thread_pool_size`，默认为16，重启生效。
+* 可以通过`--user`和`--password`指定连接服务端的用户名和密码
+* 默认会用root用户空密码去连接服务端，如果修改了root密码，需要用`--password`指定新密码
 
 **3. 启动服务**
 
@@ -563,18 +629,18 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 
 Spark发行版：
 ```shell
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.4/spark-3.2.1-bin-openmldbspark.tgz
-# 中国镜像地址：http://43.138.115.238/download/v0.8.4/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.5/spark-3.2.1-bin-openmldbspark.tgz
+# 中国镜像地址：https://www.openmldb.com/download/v0.8.5/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-taskmanager-0.8.4
-cd openmldb-taskmanager-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.5/openmldb-0.8.5-linux.tar.gz
+tar -zxvf openmldb-0.8.5-linux.tar.gz
+mv openmldb-0.8.5-linux openmldb-taskmanager-0.8.5
+cd openmldb-taskmanager-0.8.5
 ```
 
 **2. 修改配置文件conf/taskmanager.properties**
@@ -591,6 +657,7 @@ cp conf/taskmanager.properties.template conf/taskmanager.properties
 * 修改`offline.data.prefix`为离线表存储路径，如果使用Yarn模式需要修改为对应HDFS路径。
 * 修改`spark.master`为离线任务运行模式，目前支持local和yarn模式。
 * 修改`spark.home`为Spark环境路径，如果不配置或配置为空则使用`SPARK_HOME`环境变量的配置。也可在配置文件中设置，路径为绝对路径。
+* 可以通过`user`和`password`指定连接server端用户名和密码。默认会用root用户空密码去连接服务端，如果修改了root密码，需要指定新密码.
 
 ```
 server.host=172.27.128.33

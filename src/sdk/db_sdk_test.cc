@@ -79,17 +79,17 @@ class DBSDKTest : public ::testing::Test {
 };
 
 TEST_F(DBSDKTest, smokeEmptyCluster) {
-    ClusterOptions option;
-    option.zk_cluster = mc_->GetZkCluster();
-    option.zk_path = mc_->GetZkPath();
+    auto option = std::make_shared<sdk::SQLRouterOptions>();
+    option->zk_cluster = mc_->GetZkCluster();
+    option->zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 }
 
 TEST_F(DBSDKTest, smokeTest) {
-    ClusterOptions option;
-    option.zk_cluster = mc_->GetZkCluster();
-    option.zk_path = mc_->GetZkPath();
+    auto option = std::make_shared<sdk::SQLRouterOptions>();
+    option->zk_cluster = mc_->GetZkCluster();
+    option->zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 
@@ -121,7 +121,7 @@ TEST_F(DBSDKTest, standAloneMode) {
     ASSERT_TRUE(sep != std::string::npos);
     auto host = ns.substr(0, sep);
     auto port = ns.substr(sep + 1);
-    StandAloneSDK sdk(host, std::stoi(port));
+    StandAloneSDK sdk(std::make_shared<sdk::StandaloneOptions>(host, std::stoi(port)));
     ASSERT_TRUE(sdk.Init());
 
     CreateTable();

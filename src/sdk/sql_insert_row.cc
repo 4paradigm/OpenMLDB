@@ -29,33 +29,35 @@ namespace sdk {
 
 SQLInsertRows::SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                              std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                             uint32_t default_str_length, const std::vector<uint32_t>& hole_idx_arr)
+                             uint32_t default_str_length, const std::vector<uint32_t>& hole_idx_arr, bool put_if_absent)
     : table_info_(std::move(table_info)),
       schema_(std::move(schema)),
       default_map_(std::move(default_map)),
       default_str_length_(default_str_length),
-      hole_idx_arr_(hole_idx_arr) {}
+      hole_idx_arr_(hole_idx_arr),
+      put_if_absent_(put_if_absent) {}
 
 std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
     if (!rows_.empty() && !rows_.back()->IsComplete()) {
         return {};
     }
-    std::shared_ptr<SQLInsertRow> row =
-        std::make_shared<SQLInsertRow>(table_info_, schema_, default_map_, default_str_length_, hole_idx_arr_);
+    std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
+        table_info_, schema_, default_map_, default_str_length_, hole_idx_arr_, put_if_absent_);
     rows_.push_back(row);
     return row;
 }
 
 SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                            std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                           uint32_t default_string_length)
+                           uint32_t default_string_length, bool put_if_absent)
     : table_info_(table_info),
       schema_(std::move(schema)),
       default_map_(std::move(default_map)),
       default_string_length_(default_string_length),
       rb_(table_info->column_desc()),
       val_(),
-      str_size_(0) {
+      str_size_(0),
+      put_if_absent_(put_if_absent) {
     std::map<std::string, uint32_t> column_name_map;
     for (int idx = 0; idx < table_info_->column_desc_size(); idx++) {
         column_name_map.emplace(table_info_->column_desc(idx).name(), idx);
@@ -64,12 +66,16 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
         index_map_.clear();
         raw_dimensions_.clear();
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
-            for (const auto& column : table_info_->column_key(idx).col_name()) {
+            const auto& index = table_info_->column_key(idx);
+            if (index.flag()) {
+                continue;
+            }
+            for (const auto& column : index.col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
                 raw_dimensions_[column_name_map[column]] = hybridse::codec::NONETOKEN;
             }
-            if (!table_info_->column_key(idx).ts_name().empty()) {
-                ts_set_.insert(column_name_map[table_info_->column_key(idx).ts_name()]);
+            if (!index.ts_name().empty()) {
+                ts_set_.insert(column_name_map[index.ts_name()]);
             }
         }
     }
@@ -77,8 +83,9 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
 
 SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                            std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                           uint32_t default_str_length, std::vector<uint32_t> hole_idx_arr)
-    : SQLInsertRow(std::move(table_info), std::move(schema), std::move(default_map), default_str_length) {
+                           uint32_t default_str_length, std::vector<uint32_t> hole_idx_arr, bool put_if_absent)
+    : SQLInsertRow(std::move(table_info), std::move(schema), std::move(default_map), default_str_length,
+                   put_if_absent) {
     hole_idx_arr_ = std::move(hole_idx_arr);
 }
 
