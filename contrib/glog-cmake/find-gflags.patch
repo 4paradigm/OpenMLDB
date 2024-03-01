@@ -1,0 +1,27 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 846b444..50c0c07 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -79,12 +79,16 @@ if (WITH_GMOCK AND TARGET GTest::gmock)
+ endif (WITH_GMOCK AND TARGET GTest::gmock)
+ 
+ if (WITH_GFLAGS)
+-  find_package (gflags 2.2.2)
+-
+-  if (gflags_FOUND)
+-    set (HAVE_LIB_GFLAGS 1)
+-    determine_gflags_namespace (gflags_NAMESPACE)
+-  endif (gflags_FOUND)
++  if (NOT TARGET gflags::gflags)
++    find_package (gflags 2.2.2)
++
++    if (gflags_FOUND)
++      set (HAVE_LIB_GFLAGS 1)
++      determine_gflags_namespace (gflags_NAMESPACE)
++    endif (gflags_FOUND)
++  else()
++    set(gflags_NAMESPACE google)
++  endif()
+ endif (WITH_GFLAGS)
+ 
+ find_package (Threads)

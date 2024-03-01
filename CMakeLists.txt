@@ -121,14 +121,11 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 find_package(OpenSSL REQUIRED)
-find_library(BRPC_LIBRARY brpc)
 
 set(Protobuf_USE_STATIC_LIBS ON)
 find_package(Protobuf 3.6 EXACT REQUIRED)
 message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
 
-find_library(GLOG_LIBRARY glog)
-find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
 find_library(LEVELDB_LIBRARY leveldb)
 find_library(Z_LIBRARY z)
@@ -150,6 +147,26 @@ include(rapidjson)
 
 # contrib libs
 add_subdirectory(contrib EXCLUDE_FROM_ALL)
+
+if (BUILD_SHARED_LIBS)
+    # For shared build, gflags/glog requires shared lib,
+    # in case runtime problem arrise from java, a common issue is #3407:
+    # > ERROR: something wrong with flag 'logtostderr' in file 'src/logging.cc'. One possibility: file 'src/logging.cc' is being linked both statically and dynamically into this executable.
+    set(GLOG_LIBRARY glog::glog)
+    get_target_property(gflags_real gflags::gflags ALIASED_TARGET)
+    message(STATUS "link with gflags library: ${gflags_real}")
+    set(GFLAGS_LIBRARY gflags::gflags)
+else()
+    # 'CONFIG' is mandatory: pre-compiled thirdparty skip a Findgflags.cmake not work well
+    find_package(gflags REQUIRED COMPONENTS static CONFIG)
+    set(GFLAGS_LIBRARY ${gflags_LIBRARIES})
+
+    find_library(GLOG_LIBRARY NAMES libglog.a REQUIRED)
+endif()
+
+find_library(BRPC_LIBRARY NAMES libbrpc.a REQUIRED)
+message(STATUS "Found GFLAGS LIBRARY: ${GFLAGS_LIBRARY}")
+message(STATUS "Found GLOG LIBRARY: ${GLOG_LIBRARY}")
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)

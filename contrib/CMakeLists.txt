@@ -16,7 +16,11 @@ function(add_contrib cmake_folder)
 
         file(GLOB contrib_files "${base_folder}/*")
         if (NOT contrib_files)
-            message(FATAL_ERROR "submodule ${base_folder} is missing or empty.")
+            message(STATUS "submodule contrib/${base_folder} is missing or empty, update submodule manully ...")
+            execute_process(
+                COMMAND ${GIT_EXECUTABLE} submodule update --init -- ${CMAKE_SOURCE_DIR}/contrib/${base_folder}
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            )
         endif()
     endforeach()
 
@@ -26,3 +30,7 @@ endfunction()
 
 add_contrib(simdjson)
 
+if (BUILD_SHARED_LIBS)
+    add_contrib(gflags-cmake gflags)
+    add_contrib(glog-cmake glog)
+endif()
