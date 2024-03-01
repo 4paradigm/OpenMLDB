@@ -1,2 +1,0 @@
-cout << NAMESPACE::Hash32WithSeed(data + offset, len, SEED) << "u," << endl;
-Check(NAMESPACE::Hash32WithSeed(data + offset, len, SEED));

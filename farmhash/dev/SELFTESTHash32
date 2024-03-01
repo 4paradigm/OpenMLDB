@@ -1,2 +1,0 @@
-cout << NAMESPACE::Hash32(data + offset, len) << "u," << endl;
-Check(NAMESPACE::Hash32(data + offset, len));

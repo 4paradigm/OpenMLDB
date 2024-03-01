@@ -1,7 +1,0 @@
-void WRAPPER(const void* key, int len, uint32_t seed, void* out) {
-  char *buf = (char*)malloc(len + 4);
-  memcpy(buf, &seed, 4);
-  memcpy(buf + 4, key, len);
-  *(uint32_t*)out = FUNCTION(buf, len + 4);
-  free(buf);
-}

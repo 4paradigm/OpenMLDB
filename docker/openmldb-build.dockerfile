@@ -15,11 +15,8 @@
 # Before building an offline image, copy this Dockerfile to the same directory as OpenMLDB firstly
 
 # specify a base version of OpenMLDB docker image
-ARG version=0.8
+ARG version=0.8.5
 FROM ghcr.io/4paradigm/hybridsql:${version}
 
-COPY OpenMLDB/docker/setup_deps.sh /
-COPY OpenMLDB /root/OpenMLDB
-
-# current base image does not contain rsync
-RUN yum install -y rsync
+RUN cd /root && \
+    git clone https://github.com/4paradigm/OpenMLDB.git && \

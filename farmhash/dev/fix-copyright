@@ -1,8 +1,0 @@
-#!/bin/bash
-
-filename=$1
-
-tmpfile=/tmp/$RANDOM$RANDOM$RANDOM
-head -1 "$filename" | fgrep Copyright > /dev/null && ./remove-from-to "." "FarmHash" "$filename"
-(cat ../COPYING; echo "//"; echo "// FarmHash, by Geoff Pike"; echo; cat "$filename") > $tmpfile
-exec mv $tmpfile "$filename"

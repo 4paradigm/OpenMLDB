@@ -1,3 +1,0 @@
-void WRAPPER(const void* key, int len, uint32_t seed, void* out) {
-  *(uint64_t*)out = FUNCTION((const char*)key, len, 0, seed);
-}
