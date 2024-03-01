@@ -133,96 +133,133 @@ connection = engine.connect()
 
 ### Create Database
 
-Use the `connection.execute()` interface to create database `db1`:
+Use the `connection.exec_driver_sql()` interface to create database `db1`:
 
 ```python
 try:
-    connection.execute("CREATE DATABASE db1")
+    connection.exec_driver_sql("CREATE DATABASE db1")
 except Exception as e:
     print(e)
 
-connection.execute("USE db1")
+connection.exec_driver_sql("USE db1")
 ```
 
 ### Create Table
 
-Use the `connection.execute()` interface to create table `t1`:
+Use the `connection.exec_driver_sql()` interface to create table `t1`:
 
 ```python
 try:
-    connection.execute("CREATE TABLE t1 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
+    connection.exec_driver_sql("CREATE TABLE t1 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 except Exception as e:
     print(e)
 ```
 
 ### Insert Data into Table
 
-Use the `connection.execute (ddl)` interface to execute the SQL insert statement, and you can insert data into the table:
+Use the `connection.exec_driver_sql (ddl)` interface to execute the SQL insert statement, and you can insert data into the table:
 
 ```python
 try:
-    connection.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1);")
+    connection.exec_driver_sql("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1);")
 except Exception as e:
     print(e)
 ```
 
-Use the `connection.execute (ddl, data)` interface to execute the insert statement of SQL with placeholder. You can specify the insert data dynamically or insert multiple rows:
+Use the `connection.exec_driver_sql (ddl, data)` interface to execute the insert statement of SQL with placeholder. You can specify the insert data dynamically or insert multiple rows:
 
 ```python
 try:
     insert = "INSERT INTO t1 VALUES(1002, '2020-12-27', ?, ?, 3);"
-    connection.execute(insert, ({"col3":"fujian", "col4":"fuzhou"}))
-    connection.execute(insert, [{"col3":"jiangsu", "col4":"nanjing"}, {"col3":"zhejiang", "col4":"hangzhou"}])
+    connection.exec_driver_sql(insert, ({"col3":"fujian", "col4":"fuzhou"}))
+    connection.exec_driver_sql(insert, [{"col3":"jiangsu", "col4":"nanjing"}, {"col3":"zhejiang", "col4":"hangzhou"}])
 except Exception as e:
     print(e)
 ```
 
 ### Execute SQL Batch Query
 
-Use the `connection.execute (sql)` interface to execute SQL batch query statements:
+Use the `connection.exec_driver_sql (sql)` interface to execute SQL batch query statements:
 
 ```python
 try:
-    rs = connection.execute("SELECT * FROM t1")
+    rs = connection.exec_driver_sql("SELECT * FROM t1")
     for row in rs:
         print(row)
-    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
-    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;",[('hefei'), ('shanghai')])
+    rs = connection.exec_driver_sql("SELECT * FROM t1 WHERE col3 = ?;", tuple(['hefei']))
 except Exception as e:
     print(e)
 ```
 
 ### Execute SQL Query
 
-Use the `connection.execute (sql, request)` interface to execute the SQL request query. You can put the input data into the second parameter of the execute function:
+Use the `connection.exec_driver_sql (sql, request)` interface to execute the SQL request query. You can put the input data into the second parameter of the execute function:
 
 ```python
 try:
-    rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', "col5":100}))
+    rs = connection.exec_driver_sql("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', "col5":100}))
 except Exception as e:
     print(e)
 ```
 
 ### Delete Table
 
-Use the `connection.execute (ddl)` interface to delete table `t1`:
+Use the `connection.exec_driver_sql (ddl)` interface to delete table `t1`:
 
 ```python
 try:
-    connection.execute("DROP TABLE t1")
+    connection.exec_driver_sql("DROP TABLE t1")
 except Exception as e:
     print(e)
 ```
 
 ### Delete Database
 
-Use the connection.execute（ddl）interface to delete database `db1`:
+Use the connection.exec_driver_sql（ddl）interface to delete database `db1`:
 
 ```python
 try:
-    connection.execute("DROP DATABASE db1")
+    connection.exec_driver_sql("DROP DATABASE db1")
 except Exception as e:
     print(e)
+```
+
+### SQLAlchemy Version Differences
+
+Differences in Native SQL Usage: In SQLAlchemy 1.4, the method `connection.execute()` is used, while in SQLAlchemy 2.0, the method `connection.exec_driver_sql()` is used. The general differences between these two methods are as follows, for more details, refer to the official documentation.
+
+```python
+# DDL Example1 - [SQLAlchemy 1.4]
+connection.execute("CREATE TABLE t1 (col1 bigint, col2 date)")
+# DDL Example1 - [SQLAlchemy 2.0]
+connection.exec_driver_sql("CREATE TABLE t1 (col1 bigint, col2 date)")
+
+# Insert Example1 - [SQLAlchemy 1.4]
+connection.execute("INSERT INTO t1 VALUES(1000, '2020-12-25');")
+connection.execute("INSERT INTO t1 VALUES(?, ?);", ({"col1":1001, "col2":"2020-12-26"}))
+connection.execute("INSERT INTO t1 VALUES(?, ?);", [{"col1":1002, "col2":"2020-12-27"}])
+# Insert Example1 - [SQLAlchemy 2.0]
+connection.exec_driver_sql("INSERT INTO t1 VALUES(1000, '2020-12-25');")
+connection.exec_driver_sql("INSERT INTO t1 VALUES(?, ?);", ({"col1":1001, "col2":"2020-12-26"}))
+connection.exec_driver_sql("INSERT INTO t1 VALUES(?, ?);", [{"col1":1002, "col2":"2020-12-27"}])
+
+# Query Example1 - [SQLAlchemy 1.4] - Native SQL Query
+connection.execute("select * from t1 where col3 = ?;", 'hefei') 
+connection.execute("select * from t1 where col3 = ?;", ['hefei'])
+connection.execute("select * from t1 where col3 = ?;", [('hefei')])
+# Query Example1 - [SQLAlchemy 2.0] - Native SQL Query
+connection.exec_driver_sql("select * from t1 where col3 = ?;", tuple(['hefei']))
+
+# Query Example2 - [SQLAlchemy 1.4] - ORM Query
+connection.execute(select([self.test_table]))
+# Query Example2 - [SQLAlchemy 2.0] - ORM Query
+connection.execute(select(self.test_table))
+
+# Query Example3 - [SQLAlchemy 1.4] - SQL Request Query
+connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-28'}))
+# Query Example3 - [SQLAlchemy 2.0] - SQL Request Query
+connection.exec_driver_sql("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-28'}))
+
 ```
 
 ## Notebook Magic Function
