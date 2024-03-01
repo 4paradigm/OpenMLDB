@@ -15,8 +15,11 @@
  */
 
 #include "codec/fe_row_codec.h"
+
 #include <string>
 #include <vector>
+
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);

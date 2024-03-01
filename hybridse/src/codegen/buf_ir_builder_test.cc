@@ -32,6 +32,7 @@
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/window_ir_builder.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"

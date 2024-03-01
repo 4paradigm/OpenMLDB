@@ -15,9 +15,12 @@
  */
 
 #include "codec/fe_row_codec.h"
+
 #include <string>
 #include <utility>
+
 #include "codec/type_codec.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);

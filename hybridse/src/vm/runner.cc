@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "base/texttable.h"
+#include "gflags/gflags.h"
 #include "node/node_enum.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"

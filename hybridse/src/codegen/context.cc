@@ -15,7 +15,10 @@
  */
 
 #include "codegen/context.h"
+
 #include <memory>
+
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
