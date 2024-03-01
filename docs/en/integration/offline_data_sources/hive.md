@@ -18,19 +18,19 @@ For users employing [The OpenMLDB Spark Distribution Version](../../tutorial/ope
 Should you opt not to utilize Hive support and refrain from incorporating Hive dependency packages into your Spark dependencies, it becomes imperative to insert `enable.hive.support=false` within the taskmanager configuration. Failing to do so may lead to errors within the Job execution process due to the unavailability of Hive-related classes.
 ```
 
-1. Execute the following command in Spark to compile Hive dependencies
+- Execute the following command in Spark to compile Hive dependencies
 
 ```bash
 ./build/mvn -Pyarn -Phive -Phive-thriftserver -DskipTests clean package
 ```
 
-2. After successfully executed, the dependent package is located in the directory `assembly/target/scala-xx/jars`
+- After successfully executed, the dependent package is located in the directory `assembly/target/scala-xx/jars`
 
-2. Add all dependent packages to Spark's class path.
+- Add all dependent packages to Spark's class path.
 
 ### Configuration
 
-At present, OpenMLDB exclusively supports utilizing metastore services for establishing connections to Hive. You can adopt either of the two provided configuration methods to access the Hive data source:
+At present, OpenMLDB exclusively supports utilizing metastore services for establishing connections to Hive. You can adopt either of the two provided configuration methods to access the Hive data source. To set up a simple HIVE environment, configuring `hive.metastore.uris` will suffice. However, in production environment when HIVE configurations are required, configurations through `hive-site.xml` is recommended.
 
 - Using the `spark.conf` Approach: You can set up `spark.hadoop.hive.metastore.uris` within the Spark configuration. This can be accomplished in two ways:
   - taskmanager.properties: Include `spark.hadoop.hive.metastore.uris=thrift://...` within the `spark.default.conf` configuration item, followed by restarting the taskmanager.
@@ -52,7 +52,7 @@ Apart from configuring the Hive connection, it is crucial to provide the necessa
 
 Insufficient permissions might lead to encountering the following error:
 
-```
+```log
 org.apache.hadoop.security.AccessControlException: Permission denied: user=xx, access=xxx, inode="xxx":xxx:supergroup:drwxr-xr-x
 ```
 
