@@ -20,13 +20,17 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/strings/substitute.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/array_ir_builder.h"
 #include "codegen/date_ir_builder.h"
+#include "codegen/map_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
+#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace codegen {
@@ -352,8 +356,18 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
             return true;
         }
         case hybridse::node::kMap: {
-            LOG(WARNING) << "fail to codegen map type, currently not support";
-            break;
+            auto* map_type = data_type->GetAsOrNull<node::MapType>();
+            llvm::Type* key_type = nullptr;
+            if (false == GetLlvmType(m, map_type->key_type(), &key_type)) {
+                return false;
+            }
+            llvm::Type* value_type = nullptr;
+            if (false == GetLlvmType(m, map_type->value_type(), &value_type)) {
+                return false;
+            }
+            MapIRBuilder builder(m, key_type, value_type);
+            *llvm_type = builder.GetType()->getPointerTo();
+            return true;
         }
         case hybridse::node::kArray: {
             if (data_type->generics_.size() != 1) {
@@ -409,37 +423,35 @@ bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
     return string_ir_builder.NewString(block, val, output);
 }
 
-bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-                       ::llvm::Value* ptr, ::llvm::Value* offset,
-                       ::llvm::Type* type, ::llvm::Value** outptr) {
-    if (outptr == NULL) {
-        LOG(WARNING) << "outptr is null";
-        return false;
-    }
-
-    if (!ptr->getType()->isPointerTy()) {
-        LOG(WARNING) << "ptr should be pointer but "
-                     << ptr->getType()->getTypeID();
-        return false;
+absl::StatusOr<llvm::Value*> BuildGetPtrOffset(::llvm::IRBuilder<>* builder, ::llvm::Value* ptr,
+                                               ::llvm::Value* offset, ::llvm::Type* dst_type) {
+    auto* ori_type = ptr->getType();
+    if (!ori_type->isPointerTy()) {
+        return absl::InvalidArgumentError(
+            absl::Substitute("expect pointer type, but got $0", GetLlvmObjectString(ori_type)));
     }
 
     if (!offset->getType()->isIntegerTy()) {
-        LOG(WARNING) << "offset should be integer type but "
-                     << ptr->getType()->getTypeID();
-        return false;
+        return absl::InvalidArgumentError(
+            absl::Substitute("expect integer type for offset, but got $0", GetLlvmObjectString(offset->getType())));
     }
 
     // cast ptr to int64
-    ::llvm::Type* int64_ty = builder.getInt64Ty();
-    ::llvm::Value* ptr_int64_ty = builder.CreatePtrToInt(ptr, int64_ty);
-    // TODO(wangtaize) no need cast if offset is int64
-    ::llvm::Value* offset_int64 =
-        builder.CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
-    ::llvm::Value* ptr_add_offset =
-        builder.CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
-    // todo check the type
-    *outptr = builder.CreateIntToPtr(ptr_add_offset, type);
-    return true;
+    ::llvm::Type* int64_ty = builder->getInt64Ty();
+    ::llvm::Value* ptr_int64_ty = builder->CreatePtrToInt(ptr, int64_ty);
+    ::llvm::Value* offset_int64 = offset;
+    if (offset->getType() != int64_ty) {
+        offset_int64 = builder->CreateIntCast(offset, int64_ty, true, "cast_32_to_64");
+    }
+    ::llvm::Value* ptr_add_offset = builder->CreateAdd(ptr_int64_ty, offset_int64, "ptr_add_offset");
+    llvm::Type* dst = ori_type;
+    if (dst_type != nullptr) {
+        if (!dst_type->isPointerTy()) {
+            return absl::InvalidArgumentError("dst type is not a pointer");
+        }
+        dst = dst_type;
+    }
+    return builder->CreateIntToPtr(ptr_add_offset, dst);
 }
 
 bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
@@ -706,25 +718,19 @@ bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     return true;
 }
 
-bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-                      ::llvm::Value* ptr, ::llvm::Value* offset,
-                      ::llvm::Value* value) {
+absl::Status BuildStoreOffset(::llvm::IRBuilder<>* builder, ::llvm::Value* ptr, ::llvm::Value* offset,
+                              ::llvm::Value* value) {
     if (ptr == NULL || offset == NULL || value == NULL) {
-        LOG(WARNING) << "ptr or offset or value is null";
-        return false;
+        return absl::InvalidArgumentError("ptr or offset or value is null");
     }
-    // TODO(wangtaize) check ptr type match value type
-    ::llvm::Value* ptr_with_offset = NULL;
-    bool ok =
-        BuildGetPtrOffset(builder, ptr, offset,
-                          value->getType()->getPointerTo(), &ptr_with_offset);
-    if (!ok || ptr_with_offset == NULL) {
-        LOG(WARNING) << "fail to get offset ptr";
-        return false;
+    auto s = BuildGetPtrOffset(builder, ptr, offset, value->getType()->getPointerTo());
+    if (!s.ok()) {
+        return s.status();
     }
-    builder.CreateStore(value, ptr_with_offset, false);
-    return true;
+    builder->CreateStore(value, s.value(), false);
+    return absl::OkStatus();
 }
+
 bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
                          ::hybridse::type::Type* output) {
     switch (type.base_) {
@@ -777,6 +783,104 @@ bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
     }
     return true;
 }
+
+static auto CreateBaseDataType2SchemaTypeMap() {
+    // type mapping for SQL base types only
+    absl::flat_hash_map<node::DataType, type::Type> map = {{node::DataType::kBool, type::kBool},
+                                                           {node::DataType::kInt16, type::kInt16},
+                                                           {node::DataType::kInt32, type::kInt32},
+                                                           {node::DataType::kInt64, type::kInt64},
+                                                           {node::DataType::kFloat, type::kFloat},
+                                                           {node::DataType::kDouble, type::kDouble},
+                                                           {node::DataType::kVarchar, type::kVarchar},
+                                                           {node::DataType::kDate, type::kDate},
+                                                           {node::DataType::kTimestamp, type::kTimestamp},
+
+                                                           // historic reason, null is bool during encoding
+                                                           {node::DataType::kNull, type::kBool},
+                                                           {node::DataType::kVoid, type::kBool}};
+    return map;
+}
+
+static const auto& GetBaseDataType2SchemaTypeMap() {
+    static const absl::flat_hash_map<node::DataType, type::Type>& map = *new auto(CreateBaseDataType2SchemaTypeMap());
+    return map;
+}
+static auto CreateSchemaType2BaseDataTypeMap() {
+    // type mapping for SQL base types only
+    absl::flat_hash_map<type::Type, node::DataType> map = {
+        {type::kBool, node::DataType::kBool},          {type::kInt16, node::DataType::kInt16},
+        {type::kInt32, node::DataType::kInt32},        {type::kInt64, node::DataType::kInt64},
+        {type::kFloat, node::DataType::kFloat},        {type::kDouble, node::DataType::kDouble},
+        {type::kVarchar, node::DataType::kVarchar},    {type::kDate, node::DataType::kDate},
+        {type::kTimestamp, node::DataType::kTimestamp}};
+    return map;
+}
+
+static const auto& GetSchemaType2BaseTypeMap() {
+    static const absl::flat_hash_map<type::Type, node::DataType>& map = *new auto(CreateSchemaType2BaseDataTypeMap());
+    return map;
+}
+
+absl::Status Type2ColumnSchema(const node::TypeNode* type, type::ColumnSchema* mut_schema) {
+    if (type->IsMap()) {
+        assert(type->GetGenericSize() == 2);
+        auto* mut_map_type = mut_schema->mutable_map_type();
+        auto* mut_map_key_type = mut_map_type->mutable_key_type();
+        auto* mut_map_value_type = mut_map_type->mutable_value_type();
+        auto s = Type2ColumnSchema(type->GetGenericType(0), mut_map_key_type);
+        s.Update(Type2ColumnSchema(type->GetGenericType(1), mut_map_value_type));
+        return s;
+    } else if (type->IsArray()) {
+        assert(type->GetGenericSize() == 1);
+        auto* mut_array_type = mut_schema->mutable_array_type();
+        auto* mut_array_ele_type = mut_array_type->mutable_ele_type();
+        return Type2ColumnSchema(type->GetGenericType(0), mut_array_ele_type);
+    }
+
+    // simple type
+    auto& map = GetBaseDataType2SchemaTypeMap();
+    auto it = map.find(type->base());
+    if (it == map.end()) {
+        return absl::UnimplementedError(absl::StrCat("unable to convert from ", type->DebugString()));
+    }
+    mut_schema->set_base_type(it->second);
+    return absl::OkStatus();
+}
+
+absl::StatusOr<node::TypeNode*> ColumnSchema2Type(const type::ColumnSchema& schema, node::NodeManager* tmp_nm) {
+    if (schema.has_map_type()) {
+        auto& map_type = schema.map_type();
+        auto s1 = ColumnSchema2Type(map_type.key_type(), tmp_nm);
+        if (!s1.ok()) {
+            return s1.status();
+        }
+        auto s2 = ColumnSchema2Type(map_type.value_type(), tmp_nm);
+        if (!s2.ok()) {
+            return s2.status();
+        }
+
+        return tmp_nm->MakeNode<node::MapType>(s1.value(), s2.value());
+    } else if (schema.has_array_type()) {
+        auto& arr_type = schema.array_type();
+        auto s = ColumnSchema2Type(arr_type.ele_type(), tmp_nm);
+        if (!s.ok()) {
+            return s.status();
+        }
+        return tmp_nm->MakeNode<node::TypeNode>(node::kArray, s.value());
+    } else if (schema.has_base_type()) {
+        auto& map = GetSchemaType2BaseTypeMap();
+        auto it = map.find(schema.base_type());
+        if (it == map.end()) {
+            return absl::UnimplementedError(absl::StrCat("column schema to type node: ", schema.DebugString()));
+        }
+
+        return tmp_nm->MakeNode<node::TypeNode>(it->second);
+    }
+
+    return absl::UnimplementedError(absl::StrCat("unknown type: ", schema.DebugString()));
+}
+
 bool SchemaType2DataType(const ::hybridse::type::Type type,
                          ::hybridse::node::TypeNode* output) {
     if (nullptr == output) {
@@ -962,5 +1066,15 @@ llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
     return entry_builder.CreateAlloca(dtype, size, name);
 }
 
+llvm::Value* CodecSizeForPrimitive(llvm::IRBuilder<>* builder, llvm::Type* type) {
+    return builder->getInt32((type->getPrimitiveSizeInBits() + 7) / 8);
+}
+
+std::string GetIRTypeName(llvm::Type* type)  {
+    std::string res;
+    llvm::raw_string_ostream ss(res);
+    type->print(ss, false, true);
+    return ss.str();
+}
 }  // namespace codegen
 }  // namespace hybridse

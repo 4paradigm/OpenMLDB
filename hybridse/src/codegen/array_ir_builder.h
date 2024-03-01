@@ -34,7 +34,7 @@ class ArrayIRBuilder : public StructTypeIRBuilder {
     ~ArrayIRBuilder() override {}
 
     // create a new array from `elements` as value
-    absl::StatusOr<NativeValue> Construct(CodeGenContext* ctx, absl::Span<const NativeValue> args) const override;
+    absl::StatusOr<NativeValue> Construct(CodeGenContextBase* ctx, absl::Span<const NativeValue> args) const override;
 
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) override { return true; }
 

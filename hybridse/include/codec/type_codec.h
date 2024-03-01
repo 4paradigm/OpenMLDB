@@ -120,6 +120,9 @@ int32_t AppendString(int8_t* buf_ptr, uint32_t buf_size, uint32_t col_idx,
                      uint32_t str_start_offset, uint32_t str_field_offset,
                      uint32_t str_addr_space, uint32_t str_body_offset);
 
+// write `str_offset` in address `str_offset_ptr`, actual written bytes determined by `str_addr_space`
+void EncodeStrOffset(int8_t* str_offset_ptr, int32_t str_offset, int32_t str_addr_space);
+
 inline int8_t GetAddrSpace(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;

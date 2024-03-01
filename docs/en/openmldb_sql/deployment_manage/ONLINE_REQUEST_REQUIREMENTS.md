@@ -14,18 +14,18 @@ The following table shows the `SELECT` clause supported under online request mod
 
 | SELECT Clause                                   | Note                                                                                                                                                                                                                                                                                                                                                              |
 |:------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Simple calculation on single table | The so-called simple single-table query is to process the column of a table, or use operation expressions, single-row processing function (Scalar Function) and their combined expressions on the table. You need to follow the [specifications of Single-table query under Online Request mode](#specifications-of-single-table-query-under-online-request-mode) |
+| Simple query on single table | The so-called simple single-table query is to process the column of a table, or use operation expressions, single-row processing function (Scalar Function) and their combined expressions on the table. You need to follow the [specifications of Single-table query under Online Request mode](#specifications-of-simple-single-table-query-under-online-request-mode) |
 | [`JOIN` Clause](../dql/JOIN_CLAUSE.md)          | OpenMLDB currently only supports **LAST JOIN**. For Online Request mode, please follow [the specifications of LAST JOIN under Online Request mode](#specifications-of-last-join-under-online-request-mode)                                                                                                                                                        |
 | [`WINDOW` Clause](../dql/WINDOW_CLAUSE.md)      | The window clause is used to define one or several windows. Windows can be named or anonymous. Aggregate functions can be called on the window to perform some analytical computations. For Online Request mode, please follow the [specifications of WINDOW under Online Request mode](#specifications-of-window-under-online-request-mode)                           |
 | [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)   | The LIMIT clause is used to limit the number of results. OpenMLDB currently only supports one parameter to limit the maximum number of rows of returned data.                                                                                                                                                                                                                                                                                                                  |
 
 ## Specifications of `SELECT` Clause Supported by Online Request Mode
 
-### Specifications of Single-table Query under Online Request Mode
+### Specifications of simple single-table query under Online Request Mode
 
 - Only column computations, expressions, and single-row processing functions (Scalar Function) and their combined expressions are supported. 
-- Single table query does not contain [GROUP BY clause](../dql/JOIN_CLAUSE.md), [WHERE clause](../dql/WHERE_CLAUSE.md), [HAVING clause](../dql/HAVING_CLAUSE.md) and [WINDOW clause](../dql/WINDOW_CLAUSE.md).
-- Single table query only involves the computation of a single table, and does not include the computation of [joined](../dql/JOIN_CLAUSE.md) multiple tables.
+- Only two part from syntax perspective: `select_list` and `from table`. It does not contain [GROUP BY clause](../dql/JOIN_CLAUSE.md), [WHERE clause](../dql/WHERE_CLAUSE.md), [HAVING clause](../dql/HAVING_CLAUSE.md) and [WINDOW clause](../dql/WINDOW_CLAUSE.md).
+- Only involves the computation of one table, and does not include the computation of [joined](../dql/JOIN_CLAUSE.md) multiple tables.
 
 **Example**
 

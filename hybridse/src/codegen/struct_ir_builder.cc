@@ -79,7 +79,7 @@ bool StructTypeIRBuilder::Allocate(::llvm::BasicBlock* block,
     }
     ::llvm::IRBuilder<> builder(block);
     // value is a pointer to struct type
-    ::llvm::Value* value = CreateAllocaAtHead(&builder, struct_type_, GetLlvmObjectString(struct_type_));
+    ::llvm::Value* value = CreateAllocaAtHead(&builder, struct_type_, GetIRTypeName(struct_type_));
     *output = value;
     return true;
 }
@@ -133,12 +133,12 @@ bool StructTypeIRBuilder::Get(::llvm::BasicBlock* block, ::llvm::Value* struct_v
     *output = builder.CreateStructGEP(struct_type_, struct_value, idx);
     return true;
 }
-absl::StatusOr<NativeValue> StructTypeIRBuilder::Construct(CodeGenContext* ctx,
+absl::StatusOr<NativeValue> StructTypeIRBuilder::Construct(CodeGenContextBase* ctx,
                                                            absl::Span<const NativeValue> args) const {
     return absl::UnimplementedError(absl::StrCat("Construct for type ", GetLlvmObjectString(struct_type_)));
 }
 
-absl::StatusOr<::llvm::Value*> StructTypeIRBuilder::ConstructFromRaw(CodeGenContext* ctx,
+absl::StatusOr<::llvm::Value*> StructTypeIRBuilder::ConstructFromRaw(CodeGenContextBase* ctx,
                                                                      absl::Span<::llvm::Value* const> args) const {
     EnsureOK();
 
@@ -155,20 +155,20 @@ absl::StatusOr<::llvm::Value*> StructTypeIRBuilder::ConstructFromRaw(CodeGenCont
     return alloca;
 }
 
-absl::StatusOr<NativeValue> StructTypeIRBuilder::ExtractElement(CodeGenContext* ctx, const NativeValue& arr,
+absl::StatusOr<NativeValue> StructTypeIRBuilder::ExtractElement(CodeGenContextBase* ctx, const NativeValue& arr,
                                                                 const NativeValue& key) const {
     return absl::UnimplementedError(
         absl::StrCat("extract element unimplemented for ", GetLlvmObjectString(struct_type_)));
 }
 
 void StructTypeIRBuilder::EnsureOK() const {
-    assert(struct_type_ != nullptr);
+    assert(struct_type_ != nullptr && "filed struct_type_ uninitialized");
     // it's a identified type
-    assert(!struct_type_->getName().empty());
+    assert(!struct_type_->getName().empty() && "struct_type not a identified type");
 }
 std::string StructTypeIRBuilder::GetTypeDebugString() const { return GetLlvmObjectString(struct_type_); }
 
-absl::Status StructTypeIRBuilder::Set(CodeGenContext* ctx, ::llvm::Value* struct_value,
+absl::Status StructTypeIRBuilder::Set(CodeGenContextBase* ctx, ::llvm::Value* struct_value,
                                       absl::Span<::llvm::Value* const> members) const {
     if (ctx == nullptr || struct_value == nullptr) {
         return absl::InvalidArgumentError("ctx or struct pointer is null");
@@ -205,5 +205,21 @@ absl::Status StructTypeIRBuilder::Set(CodeGenContext* ctx, ::llvm::Value* struct
     return absl::OkStatus();
 }
 
+absl::StatusOr<std::vector<llvm::Value*>> StructTypeIRBuilder::Load(CodeGenContextBase* ctx,
+                                                                    llvm::Value* struct_ptr) const {
+    assert(ctx != nullptr && struct_ptr != nullptr);
+
+    std::vector<llvm::Value*> res;
+    res.reserve(struct_type_->getNumElements());
+
+    auto builder = ctx->GetBuilder();
+    for (unsigned idx = 0; idx < struct_type_->getNumElements(); ++idx) {
+        auto* ele = builder->CreateLoad(struct_type_->getElementType(idx),
+                                        builder->CreateStructGEP(struct_type_, struct_ptr, idx));
+        res.push_back(ele);
+    }
+
+    return res;
+}
 }  // namespace codegen
 }  // namespace hybridse

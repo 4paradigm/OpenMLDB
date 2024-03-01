@@ -15,6 +15,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(hybridsql-deps)
 
+if (POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif ()
+
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 include(ExternalProject)
@@ -138,6 +142,10 @@ if (BUILD_BUNDLED_GFLAGS)
   include(FetchGflags)
 endif()
 
+if (BUILD_BUNDLED_LIBUNWIND)
+  include(FetchLibunwind)
+endif()
+
 if (BUILD_BUNDLED_GLOG)
   include(FetchGlog)
 endif()
@@ -176,10 +184,6 @@ endif()
 
 if (BUILD_BUNDLED_LEVELDB)
   include(FetchLeveldb)
-endif()
-
-if (BUILD_BUNDLED_LIBUNWIND)
-  include(FetchLibunwind)
 endif()
 
 if (BUILD_BUNDLED_SQLITE3)

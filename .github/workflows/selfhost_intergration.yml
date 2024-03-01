@@ -19,6 +19,7 @@ env:
   HYBRIDSE_SOURCE: local
   E_VERSION: ${{ github.event.inputs.EXEC_VERSION || 'main'}}
   ETYPE: ${{ github.event.inputs.EXEC_TEST_TYPE || 'all'}}
+  NPROC: 4
 
 jobs:
   build-openmldb:

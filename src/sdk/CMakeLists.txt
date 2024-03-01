@@ -231,6 +231,11 @@ if (APPLE)
     message(STATUS "skip c++ sdk build on macos")
     return()
 endif()
+if (BUILD_SHARED_LIBS)
+    message(STATUS "skip c++ sdk when BUILD_SHARED_LIBS ON")
+    return()
+endif()
+
 
 add_library(openmldb_api STATIC openmldb_api.cc)
 target_include_directories (
