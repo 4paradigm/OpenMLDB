@@ -29,16 +29,10 @@ function(add_contrib cmake_folder)
 endfunction()
 
 add_contrib(simdjson)
-
-<<<<<<< HEAD
-# rapidjson
 add_contrib(rapidjson)
-
-# farmhash
 add_contrib(farmhash)
-=======
+
 if (BUILD_SHARED_LIBS)
     add_contrib(gflags-cmake gflags)
     add_contrib(glog-cmake glog)
 endif()
->>>>>>> main
