@@ -15,12 +15,15 @@
  */
 
 #include "codec/type_codec.h"
+
 #include <string>
 #include <utility>
+
 #include "base/mem_pool.h"
 #include "base/raw_buffer.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "proto/fe_type.pb.h"
 

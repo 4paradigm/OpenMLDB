@@ -21,12 +21,13 @@
 #include <vector>
 
 #include "codec/fe_row_codec.h"
+#include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/map_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
-#include "codegen/map_ir_builder.h"
-#include "codegen/context.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "node/node_manager.h"
 
