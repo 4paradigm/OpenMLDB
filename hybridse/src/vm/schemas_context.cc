@@ -19,6 +19,7 @@
 #include <set>
 
 #include "absl/strings/str_join.h"
+#include "gflags/gflags.h"
 #include "passes/physical/physical_pass.h"
 #include "vm/physical_op.h"
 
