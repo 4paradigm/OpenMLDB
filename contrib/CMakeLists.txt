@@ -29,6 +29,8 @@ function(add_contrib cmake_folder)
 endfunction()
 
 add_contrib(simdjson)
+add_contrib(rapidjson)
+add_contrib(farmhash)
 
 if (BUILD_SHARED_LIBS)
     add_contrib(gflags-cmake gflags)

@@ -7,3 +7,6 @@
 [submodule "gflags"]
 	path = contrib/gflags
 	url = https://github.com/gflags/gflags
+[submodule "contrib/rapidjson"]
+	path = contrib/rapidjson
+	url = https://github.com/Tencent/rapidjson.git

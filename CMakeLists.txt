@@ -139,11 +139,7 @@ else()
     set(RocksDB_LIB ${RocksDB_LIBRARY})
 endif()
 
-# third party sources
-include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
-include(farmhash)
-include(rapidjson)
 
 # contrib libs
 add_subdirectory(contrib EXCLUDE_FROM_ALL)
@@ -298,6 +294,7 @@ include_directories(
   ${LLVM_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${CMAKE_PREFIX_PATH}/include
+  ${PROJECT_SOURCE_DIR}/contrib/rapidjson/include
 )
 
 link_directories(
