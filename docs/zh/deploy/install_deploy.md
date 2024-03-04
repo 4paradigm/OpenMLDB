@@ -4,7 +4,7 @@
 
 ### 操作系统
 
-发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS 12。因此Linux要求glibc version >= 2.17。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
+发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS >= 12.0, 并且都仅包括 X86 架构。对 Linux 要求 glibc >= 2.17。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
 
 ````{note}
 Linux可通过以下命令来检查系统的支持情况。
@@ -41,7 +41,7 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 其中预编译包和可支持的操作系统的对应关系为：
 
 - `openmldb-x.x.x-linux.tar.gz`: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3
-- `openmldb-x.x.x-darwin.tar.gz`: macOS 12
+- `openmldb-x.x.x-darwin.tar.gz`: macOS >= 12.0
 
 如果用户的操作系统不在列表，或者期望从源代码编译，则参考我们的 [源码编译文档](compile.md)。
 

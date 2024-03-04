@@ -4,7 +4,7 @@
 
 ### Operating System
 
-The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS 12. For Linux, a glibc version of >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [compiling from source code](compile.md) to extend support to other operating systems.
+The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS >= 12.0 (X86 architecture only). For Linux, glibc >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [compiling from source code](compile.md) to extend support to other operating systems.
 
 ````{note}
 Linux users can assess their system's compatibility through the following commands:
@@ -46,7 +46,7 @@ If your operating system is capable of running pre-compiled packages directly, y
 The compatible operating systems are as follows:
 
 - `openmldb-x.x.x-linux.tar.gz`: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3
-- `openmldb-x.x.x-darwin.tar.gz`: macOS 12
+- `openmldb-x.x.x-darwin.tar.gz`: macOS >= 12.0
 
 If your operating system is not mentioned above or if you want to compile from source code, please refer [here](compile.md) to compile from source code. 
 
