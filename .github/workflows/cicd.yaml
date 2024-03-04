@@ -146,7 +146,7 @@ jobs:
       comment_title: Linux Test Report
 
   macos-cpp:
-    runs-on: macos-latest
+    runs-on: macos-12
     if: github.repository == '4paradigm/OpenMLDB'
     env:
       OS: darwin
@@ -154,7 +154,13 @@ jobs:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      # target on macOS >= 12.0
+      - name: Xcode Select Version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '14.0.1'
 
       - name: prepare release
         run: |
