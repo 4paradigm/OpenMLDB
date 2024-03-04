@@ -4,7 +4,7 @@
 
 [Apache Iceberg](https://iceberg.apache.org/) 是一个开源的大数据表格格式。Iceberg可以在Spark、Trino、PrestoDB、Flink、Hive和Impala等计算引擎中添加表格，使用高性能的表格格式，就像SQL表格一样。OpenMLDB 支持使用 Iceberg 作为离线存储引擎，导入数据和导出特征计算数据。
 
-## 配置
+## 使用
 
 ### 安装
 
@@ -25,6 +25,10 @@ Iceberg配置详情参考[Iceberg Configuration](https://iceberg.apache.org/docs
 spark.default.conf=spark.sql.catalog.hive_prod=org.apache.iceberg.spark.SparkCatalog;spark.sql.catalog.hive_prod.type=hive;spark.sql.catalog.hive_prod.uri=thrift://metastore-host:port
 ```
 
+```{warning}
+Hive catalog仅仅是指Iceberg元数据存于Hive，此catalog也只能读取Iceberg表，不能读取Hive其他格式的表，并没有完整的Hive能力。
+```
+
 如果需要创建iceberg表，还需要配置`spark.sql.catalog.hive_prod.warehouse`。
 
 设置 hadoop catalog：
@@ -43,11 +47,21 @@ Iceberg catalog的完整配置参考[Iceberg Catalog Configuration](https://iceb
 
 任一配置成功后，均使用`<catalog_name>.<db_name>.<table_name>`的格式访问Iceberg表。如果不想使用`<catalog_name>`，可以在配置中设置`spark.sql.catalog.default=<catalog_name>`。也可添加`spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog`，`spark.sql.catalog.spark_catalog.type=hive`，让iceberg catalog合入spark catalog中（非iceberg表仍然存在于spark catalog中），这样可以使用`<db_name>.<table_name>`的格式访问Iceberg表。
 
+#### Hive Session Catalog
+
+如果你需要将Hive中的EXTERNAL表（ACID表目前不可读，详情见[Hive](./hive.md)）和Iceberg表合入同一个catalog中，可以使用Session Catalog模式。注意，此配置只可以配置Spark的默认catalog `spark_catalog`，不可以新建立其他catalog。
+
+```properties
+spark.default.conf=spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog;spark.sql.catalog.spark_catalog.type=hive;spark.sql.catalog.spark_catalog.uri=thrift://metastore-host:port
+```
+
+例如，你的SQL是基于Hive编写的，Hive表和Iceberg表实际仅用库名表名区分。在无Session Catalog时，仅配置了`spark.sql.catalogImplementation=hive`，你可以读取Hive表，但你将无法读取Iceberg表（元数据可读，数据不可读），除非修改Iceberg表的配置`ALTER TABLE hive_prod.nyc.taxis SET TBLPROPERTIES ('engine.hive.enabled'='true');`。如果不修改Iceberg配置，只增加前面的某一种普通iceberg catalog，你就需要给所有的Iceberg表加上catalog名，才能在OpenMLDB中读取到Iceberg表。而使用Session Catalog的话，你可以在`spark_catalog`中同时读取到Hive和Iceberg的库表及其数据。
+
 ### 调试信息
 
 成功连接Iceberg Hive Catalog后，你可以在日志中看到类似以下的信息：
 
-```
+```log
 24/01/30 09:01:05 INFO SharedState: Setting hive.metastore.warehouse.dir ('hdfs://namenode:19000/user/hive/warehouse') to the value of spark.sql.warehouse.dir.
 24/01/30 09:01:05 INFO SharedState: Warehouse path is 'hdfs://namenode:19000/user/hive/warehouse'.
 ...
@@ -70,7 +84,7 @@ Iceberg catalog的完整配置参考[Iceberg Catalog Configuration](https://iceb
 
 导出到Iceberg时，你可以检查任务日志，应该有类似以下的信息：
 
-```
+```log
 24/01/30 09:57:29 INFO AtomicReplaceTableAsSelectExec: Start processing data source write support: IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET). The input RDD has 1 partitions.
 ...
 24/01/30 09:57:31 INFO AtomicReplaceTableAsSelectExec: Data source write support IcebergBatchWrite(table=nyc.taxis_out, format=PARQUET) committed.
