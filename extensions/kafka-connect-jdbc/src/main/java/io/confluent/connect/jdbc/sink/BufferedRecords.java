@@ -104,6 +104,7 @@ public class BufferedRecords {
           return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
         case Time.LOGICAL_NAME:
         case Timestamp.LOGICAL_NAME:
+          // TODO(hw): support y-m-d string to Date
           return new java.util.Date((Long) value);
         default:
       }
