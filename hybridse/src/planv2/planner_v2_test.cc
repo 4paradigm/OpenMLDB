@@ -16,16 +16,13 @@
 
 #include "planv2/planner_v2.h"
 
-#include <memory>
 #include <utility>
 #include <vector>
 
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "plan/plan_api.h"
-#include "zetasql/parser/parser.h"
-#include "zetasql/public/error_helpers.h"
-#include "zetasql/public/error_location.pb.h"
+
 namespace hybridse {
 namespace plan {
 

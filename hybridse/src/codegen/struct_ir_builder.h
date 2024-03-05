@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "absl/status/statusor.h"
 #include "base/fe_status.h"
@@ -33,7 +34,8 @@ class StructTypeIRBuilder : public TypeIRBuilder {
     explicit StructTypeIRBuilder(::llvm::Module*);
     ~StructTypeIRBuilder();
 
-    static StructTypeIRBuilder* CreateStructTypeIRBuilder(::llvm::Module*, ::llvm::Type*);
+    static absl::StatusOr<std::unique_ptr<StructTypeIRBuilder>> CreateStructTypeIRBuilder(::llvm::Module*,
+                                                                                          ::llvm::Type*);
     static bool StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist);
 
     virtual bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) = 0;

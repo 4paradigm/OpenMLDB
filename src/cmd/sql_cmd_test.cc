@@ -3440,6 +3440,53 @@ TEST_P(DBSDKTest, CreateIfNotExists) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
 }
 
+TEST_P(DBSDKTest, MapTypeTable) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    absl::BitGen gen;
+    auto db = absl::StrCat("db_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+    auto table = absl::StrCat("tb_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+
+    ProcessSQLs(sr, {
+                        "set session execute_mode = 'online'",
+                        absl::StrCat("create database ", db),
+                        absl::StrCat("use ", db),
+                        absl::Substitute("create table $0 (id string, val map<int, string>)", table),
+                        absl::Substitute("insert into $0 values ('1', map(12, '23')) ", table),
+                        absl::Substitute("insert into $0 values ('4', map(99, '44')) ", table),
+                    });
+    absl::Cleanup clean = [&]() {
+        ProcessSQLs(sr, {
+                            absl::Substitute("drop table $0", table),
+                            absl::Substitute("drop database $0", db),
+                        });
+    };
+
+    // query
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL(absl::Substitute("select id, val[12] as ele from $0", table), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    ASSERT_EQ(rs->Size(), 2);
+
+    while (rs->Next()) {
+        // result is unordered
+        std::string id;
+        ASSERT_TRUE(rs->GetAsString(0, id));
+        std::string ele;
+        ASSERT_TRUE(rs->GetAsString(1, ele));
+
+        if (id == "1") {
+            EXPECT_EQ(ele, "23");
+        } else if (id == "4") {
+            EXPECT_EQ(ele, "NULL");
+            EXPECT_TRUE(rs->IsNULL(1));
+        } else {
+            ASSERT_FALSE(true) << "should not reach";
+        }
+    }
+}
+
 TEST_P(DBSDKTest, ShowComponents) {
     auto cli = GetParam();
     cs = cli->cs;

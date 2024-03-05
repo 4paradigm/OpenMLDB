@@ -94,13 +94,15 @@ class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
 
     bool OptModule(::llvm::Module* module) override;
 
-    bool AddModule(std::unique_ptr<llvm::Module> module,
-                   std::unique_ptr<llvm::LLVMContext> llvm_ctx) override;
+    bool AddModule(std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::LLVMContext> llvm_ctx) override;
 
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
-    hybridse::vm::RawPtrHandle FindFunction(
-        const std::string& funcname) override;
+    hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
+
+    // llvm::Module* GetModule() {
+    // }
+    // llvm::LLVMContext* GetLlvmContext();
 
  private:
     std::unique_ptr<HybridSeJit> jit_;

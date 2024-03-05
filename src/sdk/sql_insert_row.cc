@@ -90,6 +90,9 @@ SQLInsertRow::SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> ta
 }
 
 bool SQLInsertRow::Init(int str_length) {
+    if (is_codegen_row_) {
+        return true;
+    }
     str_size_ = str_length + default_string_length_;
     uint32_t row_size = rb_.CalTotalLength(str_size_);
     val_.resize(row_size);
@@ -301,7 +304,12 @@ bool SQLInsertRow::AppendNULL() {
     return false;
 }
 
-bool SQLInsertRow::IsComplete() { return rb_.IsComplete(); }
+bool SQLInsertRow::IsComplete() {
+    if (is_codegen_row_) {
+        return true;
+    }
+    return rb_.IsComplete();
+}
 
 bool SQLInsertRow::Build() const { return str_size_ == 0; }
 

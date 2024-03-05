@@ -710,7 +710,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case node::kInsertStmt: {
-                CHECK_TRUE(is_batch_mode_, common::kPlanError, "Non-support INSERT Op in online serving");
+                // CHECK_TRUE(is_batch_mode_, common::kPlanError, "Non-support INSERT Op in online serving");
                 node::PlanNode *insert_plan = nullptr;
                 CHECK_STATUS(CreateInsertPlan(parser_tree, &insert_plan))
                 plan_trees.push_back(insert_plan);

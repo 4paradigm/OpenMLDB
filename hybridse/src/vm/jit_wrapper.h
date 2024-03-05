@@ -45,8 +45,7 @@ class HybridSeJitWrapper {
 
     bool AddModuleFromBuffer(const base::RawBuffer&);
 
-    virtual hybridse::vm::RawPtrHandle FindFunction(
-        const std::string& funcname) = 0;
+    virtual hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) = 0;
 
     static HybridSeJitWrapper* Create(const JitOptions& jit_options);
     static HybridSeJitWrapper* Create();

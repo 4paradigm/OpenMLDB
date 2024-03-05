@@ -1996,11 +1996,6 @@ base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, nod
         CHECK_TRUE(nullptr != row, common::kSqlAstError, "Un-support insert statement with null row")
         node::ExprListNode* row_values;
         CHECK_STATUS(ConvertExprNodeList(row->values(), node_manager, &row_values))
-        for (auto expr : row_values->children_) {
-            CHECK_TRUE(nullptr != expr &&
-                           (node::kExprPrimary == expr->GetExprType() || node::kExprParameter == expr->GetExprType()),
-                       common::kSqlAstError, "Un-support insert statement with un-const value")
-        }
         rows->AddChild(row_values);
     }
 

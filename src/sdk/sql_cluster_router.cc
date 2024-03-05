@@ -62,6 +62,7 @@
 #include "sdk/split.h"
 #include "udf/udf.h"
 #include "vm/catalog.h"
+#include "codegen/insert_row_builder.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
@@ -390,7 +391,8 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
                                              ::hybridse::sdk::Status* status,
                                              std::shared_ptr<::openmldb::nameserver::TableInfo>* table_info,
                                              std::vector<DefaultValueMap>* default_maps,
-                                             std::vector<uint32_t>* str_lengths, bool* put_if_absent) {
+                                             std::vector<uint32_t>* str_lengths, bool* put_if_absent,
+                                             std::vector<std::shared_ptr<int8_t>>* codegen_rows) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     // TODO(hw): return status?
     RET_FALSE_IF_NULL_AND_WARN(table_info, "output table_info is nullptr");
@@ -432,6 +434,17 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
         return false;
     }
     std::map<uint32_t, uint32_t> column_map;
+
+    // codegen is the new approach encoding insert rows
+    // TODO(someone): initiate a session variable to control row encode implementation
+    bool insert_codegen = false;
+    for (int i = 0; i < (*table_info)->column_desc_size(); ++i) {
+        auto& col_desc = (*table_info)->column_desc(i);
+        if (!codec::ColumnSupportLegacyCodec(col_desc)) {
+            insert_codegen = true;
+            break;
+        }
+    }
     for (size_t j = 0; j < insert_stmt->columns_.size(); ++j) {
         const std::string& col_name = insert_stmt->columns_[j];
         bool find_flag = false;
@@ -443,6 +456,7 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
                 }
                 column_map.insert(std::make_pair(i, j));
                 find_flag = true;
+
                 break;
             }
         }
@@ -452,6 +466,24 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
             return false;
         }
     }
+
+    ::hybridse::codec::Schema sc;
+    if (!schema::SchemaAdapter::ConvertSchema((*table_info)->column_desc(), &sc)) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "failed to convert table schema");
+        return false;
+    }
+    // TODO(someone):
+    // 1. default value from table definition
+    // 2. parameters
+    ::hybridse::codegen::InsertRowBuilder insert_builder(&sc);
+    {
+        auto s = insert_builder.Init();
+        if (!s.ok()) {
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, s.ToString());
+            return false;
+        }
+    }
+
     size_t total_rows_size = insert_stmt->values_.size();
     for (size_t i = 0; i < total_rows_size; i++) {
         hybridse::node::ExprNode* value = insert_stmt->values_[i];
@@ -462,23 +494,39 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
                                     hybridse::node::ExprTypeName(value->GetExprType()));
             return false;
         }
-        uint32_t str_length = 0;
-        default_maps->push_back(
-            GetDefaultMap(*table_info, column_map, dynamic_cast<::hybridse::node::ExprListNode*>(value), &str_length));
-        if (!default_maps->back()) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "fail to parse row[" + std::to_string(i) + "]: " + value->GetExprString());
+        if (insert_codegen) {
+            auto s = insert_builder.ComputeRow(dynamic_cast<::hybridse::node::ExprListNode*>(value));
+            if (!s.ok()) {
+                SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    absl::Substitute("$2. Fail to encode row[$0]: $1.", i, s.status().ToString(),
+                                                     value->GetExprString()));
+                return false;
+            }
+
+            codegen_rows->push_back(s.value());
+            continue;
+        } else {
+            uint32_t str_length = 0;
+            default_maps->push_back(GetDefaultMap(*table_info, column_map,
+                                                  dynamic_cast<::hybridse::node::ExprListNode*>(value), &str_length));
+            if (!default_maps->back()) {
+                SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
+                                    "fail to parse row[" + std::to_string(i) + "]: " + value->GetExprString());
+                return false;
+            }
+            str_lengths->push_back(str_length);
+        }
+    }
+
+    if (!insert_codegen) {
+        if (default_maps->empty() || str_lengths->empty()) {
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "default_maps or str_lengths are empty");
             return false;
         }
-        str_lengths->push_back(str_length);
-    }
-    if (default_maps->empty() || str_lengths->empty()) {
-        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "default_maps or str_lengths are empty");
-        return false;
-    }
-    if (default_maps->size() != str_lengths->size()) {
-        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "default maps isn't match with str_lengths");
-        return false;
+        if (default_maps->size() != str_lengths->size()) {
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "default maps isn't match with str_lengths");
+            return false;
+        }
     }
     return true;
 }
@@ -1216,7 +1264,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
     std::vector<DefaultValueMap> default_maps;
     std::vector<uint32_t> str_lengths;
     bool put_if_absent = false;
-    if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths, &put_if_absent)) {
+    std::vector<std::shared_ptr<int8_t>> codegen_rows;
+    if (!GetMultiRowInsertInfo(db, sql, status, &table_info, &default_maps, &str_lengths, &put_if_absent,
+                               &codegen_rows)) {
         CODE_PREPEND_AND_WARN(status, StatusCode::kCmdError, "Fail to get insert info");
         return false;
     }
@@ -1229,19 +1279,34 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                             "Fail to execute insert statement: fail to get " + table_info->name() + " tablets");
         return false;
     }
+
     std::vector<size_t> fails;
-    for (size_t i = 0; i < default_maps.size(); i++) {
-        auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i], put_if_absent);
-        if (!row || !row->Init(0) || !row->IsComplete()) {
-            // TODO(hw): SQLInsertRow or DefaultValueMap needs print helper function
-            LOG(WARNING) << "fail to build row[" << i << "]";
-            fails.push_back(i);
-            continue;
+    if (!codegen_rows.empty()) {
+        for (size_t i = 0 ; i < codegen_rows.size(); ++i) {
+            auto r = codegen_rows[i];
+            auto row = std::make_shared<SQLInsertRow>(table_info, schema, r, put_if_absent);
+            if (!PutRow(table_info->tid(), row, tablets, status)) {
+                LOG(WARNING) << "fail to put row["
+                             << "] due to: " << status->msg;
+                fails.push_back(i);
+                continue;
+            }
         }
-        if (!PutRow(table_info->tid(), row, tablets, status)) {
-            LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
-            fails.push_back(i);
-            continue;
+    } else {
+        for (size_t i = 0; i < default_maps.size(); i++) {
+            auto row =
+                std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i], put_if_absent);
+            if (!row || !row->Init(0) || !row->IsComplete()) {
+                // TODO(hw): SQLInsertRow or DefaultValueMap needs print helper function
+                LOG(WARNING) << "fail to build row[" << i << "]";
+                fails.push_back(i);
+                continue;
+            }
+            if (!PutRow(table_info->tid(), row, tablets, status)) {
+                LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
+                fails.push_back(i);
+                continue;
+            }
         }
     }
     if (!fails.empty()) {

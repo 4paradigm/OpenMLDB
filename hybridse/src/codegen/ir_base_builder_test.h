@@ -360,7 +360,11 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyArg(
             if (TypeIRBuilder::IsStructPtr(expect_ty)) {
                 auto struct_builder =
                     StructTypeIRBuilder::CreateStructTypeIRBuilder(function->getEntryBlock().getModule(), expect_ty);
-                struct_builder->CreateDefault(&function->getEntryBlock(),
+                if (!struct_builder.ok()) {
+                    LOG(WARNING) << struct_builder.status();
+                    return;
+                }
+                struct_builder.value()->CreateDefault(&function->getEntryBlock(),
                                               &alloca);
                 arg = builder.CreateSelect(
                     is_null, alloca, builder.CreatePointerCast(arg, expect_ty));
