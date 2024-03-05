@@ -30,6 +30,7 @@ import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType,
   StringType, StructType, TimestampType, MapType, ArrayType, DataType}
 import org.slf4j.LoggerFactory
 import java.util.Calendar
+import java.util.concurrent.atomic.AtomicInteger
 import java.text.SimpleDateFormat
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -57,32 +58,41 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
   private val sliceFieldOffsets = sliceSchemas.scanLeft(0)(
     (cur, schema) => cur + schema.size)
 
+  private val jitCounter = new AtomicInteger(0)
 
   def encode(row: Row): NativeRow = {
     if (newEncoder) {
-      val jit = JitManager.getJit("rowbuilder2")
-      var newRowBuilder = new RowBuilder2(jit, sliceSchemas.size)
-      for (i <- 0 until columnDefSegmentList.size) {
-        val s = newRowBuilder.InitSchema(i, columnDefSegmentList(i))
+      val cnt = jitCounter.getAndIncrement();
+      // FIXME(#3748): native codegen row builder have issue adding multiple modules to
+      // the same jit instance: duplicated symbol error.
+      // this is the work-around that ensure every row encoded with distinct jit instance
+      val tag = "rowbuilder2_" + Thread.currentThread().getId + "_" + cnt;
+      try {
+        val jit = JitManager.getJit(tag)
+        var newRowBuilder = new RowBuilder2(jit, sliceSchemas.size)
+        for (i <- 0 until columnDefSegmentList.size) {
+          val s = newRowBuilder.InitSchema(i, columnDefSegmentList(i))
+          if (!s.isOK()) {
+            throw new HybridSeException(s.str())
+          }
+        }
+        var s = newRowBuilder.Init()
         if (!s.isOK()) {
           throw new HybridSeException(s.str())
         }
-      }
-      var s = newRowBuilder.Init()
-      if (!s.isOK()) {
-        throw new HybridSeException(s.str())
-      }
 
-      var nm = new NodeManager();
-      var vec = sparkRowToNativeExprVec(row, nm)
+        var nm = new NodeManager();
+        var vec = sparkRowToNativeExprVec(row, nm)
 
-      var nativeRow = new NativeRow()
-      s = newRowBuilder.Build(vec, nativeRow)
-      if (!s.isOK()) {
-        throw new HybridSeException(s.str())
+        var nativeRow = new NativeRow()
+        s = newRowBuilder.Build(vec, nativeRow)
+        if (!s.isOK()) {
+          throw new HybridSeException(s.str())
+        }
+        return nativeRow
+      } finally {
+        JitManager.removeModule(tag)
       }
-      JitManager.removeModule("rowbuilder2")
-      return nativeRow
     }
 
     var result: NativeRow = null

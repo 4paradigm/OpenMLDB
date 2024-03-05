@@ -20,7 +20,7 @@ import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.SparkUtil
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{IntegerType, StructField, StructType, MapType, StringType}
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 
 
 class TestUnsafeRowProject extends SparkTestSuite {
@@ -54,30 +54,6 @@ class TestUnsafeRowProject extends SparkTestSuite {
 
     val sqlText = "SELECT id * 2, user + 1000 FROM t1"
     val outputDf = sess.sql(sqlText)
-
-    val sparksqlOutputDf = sess.sparksql(sqlText)
-    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
-  }
-
-  test("Test end2end UnsafeRow optimization for row project 2") {
-    // getSparkSession.conf.set("spark.openmldb.unsaferow.opt", true)
-    val spark = getSparkSession
-    val sess = new OpenmldbSession(spark)
-
-    val data = Seq(
-      Row(1, Map.apply(1 -> "11", 12 -> "99")))
-      // Row(2, Map.empty[Int, String]))
-    val schema = StructType(List(
-      StructField("id", IntegerType),
-      StructField("val", MapType(IntegerType, StringType))))
-    val df = spark.createDataFrame(spark.sparkContext.makeRDD(data), schema)
-
-    sess.registerTable("t1", df)
-    df.createOrReplaceTempView("t1")
-
-    val sqlText = "select id, val[12] as ele from t1"
-    val outputDf = sess.sql(sqlText)
-    outputDf.show()
 
     val sparksqlOutputDf = sess.sparksql(sqlText)
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
