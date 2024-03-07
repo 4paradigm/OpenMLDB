@@ -54,7 +54,8 @@ class TestOpenmldbDBAPI:
         self.cursor.execute("create table {}({}) OPTIONS(partitionnum=1);".format(table, schema))
         assert table in self.cursor.get_tables(self.db_name)
 
-    def build_par_sql(self, test_row, mask_idx=None):
+    @staticmethod
+    def build_par_sql(test_row, mask_idx=None):
         if not mask_idx:
             mask_idx = range(0, len(test_row))
         if type(test_row) is tuple:
@@ -66,7 +67,8 @@ class TestOpenmldbDBAPI:
                     stringify[idx] = '?'
             return ', '.join(stringify)
 
-    def build_par_data(self, test_rows, mask_idx=[], is_dict=False):
+    @staticmethod
+    def build_par_data(test_rows, mask_idx=[], is_dict=False):
         if not mask_idx:
             mask_idx = range(0, len(test_rows[0]))
         data_list = []
