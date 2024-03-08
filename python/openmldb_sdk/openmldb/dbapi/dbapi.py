@@ -311,21 +311,23 @@ class Cursor(object):
             col_type = schema.GetColumnType(idx)
             if col_type != sql_router_sdk.kTypeString:
                 continue
+            if row is None:
+                raise DatabaseError("row data is None")
             if isinstance(row, tuple):
-                if row and i < len(row):
-                    col_value = row[i]
+                if i >= len(row):
+                    raise DatabaseError("col {} index invalid: {}".format(name, i))
+                col_value = row[i]
             elif isinstance(row, dict):
-                if row is None or name not in row:
+                if name not in row:
                     raise DatabaseError("col {} data not given".format(name))
-                if row.get(name) is None:
-                    if schema.IsColumnNotNull(idx):
-                        raise DatabaseError("column seq {} not allow null".format(name))
-                    continue
                 col_value = row[name]
             else:
                 raise DatabaseError(
-                    "parameters type {} does not support: {}, should be tuple or dict"
-                    .format(type(row), row))
+                    "parameters type {} does not support: {}, should be tuple or dict".format(type(row), row))
+            if col_value is None:
+                if schema.IsColumnNotNull(idx):
+                    raise DatabaseError("column seq {} not allow null".format(name))
+                continue
             if isinstance(col_value, str):
                 str_size += len(col_value)
             else:
