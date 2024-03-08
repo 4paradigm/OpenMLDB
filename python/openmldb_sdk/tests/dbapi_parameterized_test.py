@@ -90,20 +90,20 @@ class TestOpenmldbDBAPI:
         test_rows = [
             (1000 + i, '2022-05-0' + str(i), 'province' + str(i % 4), 'city' + str(i), (1590738990 + i) * 1000, i)
             for i in range(1, 10)]
-        # executemany: values(?,?,?,?,?,?), [[#,#,#,#,#,#]...]
+        # executemany: values(?,?,?,?,?,?), [(#,#,#,#,#,#)...]
         self.cursor.executemany(f"insert into {self.table} values (?, ?, ?, ?, ?, ?);", test_rows[0:4])
-        # executemany: values(?,?,?,#,#,#), [[#,#,#]]
+        # executemany: values(?,?,?,#,#,#), [(#,#,#)]
         self.cursor.executemany(f"insert into {self.table} values ({self.build_par_sql(test_rows[4], [0, 1, 2])});",
                                 self.build_par_data([test_rows[4]], [0, 1, 2]))
         # executemany: values(#,#,#,?,?,?), [{#:#,#:#,#:#}]
         self.cursor.executemany(f"insert into {self.table} values ({self.build_par_sql(test_rows[5], [3, 4, 5])});",
                                 self.build_par_data([test_rows[5]], [3, 4, 5], True))
-        # executemany: values(?,#,?,?,#,?), [[#,#]]
+        # executemany: values(?,#,?,?,#,?), [(#,#)]
         self.cursor.executemany(f"insert into {self.table} values ({self.build_par_sql(test_rows[6], [1, 4])});",
                                 self.build_par_data([test_rows[6]], [1, 4]))
-        # executemany: values(?,?,?,?,?,?), [#,#,#,#,#,#]
+        # executemany: values(?,?,?,?,?,?), (#,#,#,#,#,#)
         self.cursor.execute(f"insert into {self.table} values (?, ?, ?, ?, ?, ?);", test_rows[7])
-        # executemany: values(?,?,?,#,#,#), [#,#,#]
+        # executemany: values(?,?,?,#,#,#), (#,#,#)
         self.cursor.execute(f"insert into {self.table} values ({self.build_par_sql(test_rows[8], [0, 1, 2])});",
                             self.build_par_data([test_rows[8]], [0, 1, 2])[0])
         result = self.cursor.execute("select * from {};".format(self.table)).fetchall()
