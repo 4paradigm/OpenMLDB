@@ -68,7 +68,7 @@ class TestOpenmldbDBAPI:
             return ', '.join(stringify)
 
     @staticmethod
-    def build_par_data(test_rows, mask_idx=[], is_dict=False):
+    def build_par_data(test_rows, mask_idx=None, is_dict=False):
         if not mask_idx:
             mask_idx = range(0, len(test_rows[0]))
         data_list = []
@@ -102,7 +102,7 @@ class TestOpenmldbDBAPI:
         self.cursor.executemany(f"insert into {self.table} values ({self.build_par_sql(test_rows[6], [1, 4])});",
                                 self.build_par_data([test_rows[6]], [1, 4]))
         # executemany: values(?,?,?,?,?,?), (#,#,#,#,#,#)
-        self.cursor.execute(f"insert into {self.table} values (?, ?, ?, ?, ?, ?);", test_rows[7])
+        self.cursor.execute(f"insert into {self.table} values ({self.build_par_sql(test_rows[7])});", test_rows[7])
         # executemany: values(?,?,?,#,#,#), (#,#,#)
         self.cursor.execute(f"insert into {self.table} values ({self.build_par_sql(test_rows[8], [0, 1, 2])});",
                             self.build_par_data([test_rows[8]], [0, 1, 2])[0])
