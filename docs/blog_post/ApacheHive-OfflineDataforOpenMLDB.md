@@ -1,5 +1,5 @@
 
-## Apache Hive — Offline Data for OpenMLDB
+# Apache Hive — Offline Data for OpenMLDB
 
 ![](https://cdn-images-1.medium.com/max/3336/1*1JN5tOgSx1-mKihnRxlXXA.png)
 
@@ -97,11 +97,7 @@ OpenMLDB community has recently released [FeatInsight](https://github.com/4parad
 
 
 **For more information on OpenMLDB:**
-
 * Official website: [https://openmldb.ai/](https://openmldb.ai/)
-
 * GitHub: [https://github.com/4paradigm/OpenMLDB](https://github.com/4paradigm/OpenMLDB)
-
 * Documentation: [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
-
-* Join us on [**Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg) **!
+* Join us on [**Slack**](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)!
