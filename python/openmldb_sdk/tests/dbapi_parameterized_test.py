@@ -23,7 +23,7 @@ from datetime import datetime
 from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 
 
-class TestOpenmldbDBAPI:
+class TestOpenmldbDBAPIParameterized:
     cursor_without_db = None
     cursor = None
     db_name = "dbapi_test"
