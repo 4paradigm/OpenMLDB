@@ -6,12 +6,13 @@ This is the server of OpenMLDB to be compatible with MySQL client. That means yo
 
 ## Installation
 
-Make sure to use Java 11+ and setup `$JAVA_HOME`. Use maven to build the project. 
+Make sure to use Java 11+ and setup `$JAVA_HOME`. Use maven to build the project or download the jar of [open-mysql-db](https://openmldb.ai/download/openmysqldb/open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar) .
 
 ```
-mvn clean package
+# mvn clean package
+# cd ./target/
 
-cd ./target/
+wget https://openmldb.ai/download/openmysqldb/open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 Setup OpenMLDB cluster in advanced and create a config file named `server.properties` in the directory of jar file.
@@ -29,7 +30,7 @@ openmldb.password=root
 Use the following command to start the server.
 
 ```
-java -jar ./open-mysql-db-1.0-SNAPSHOT-jar-with-dependencies.jar
+java -jar ./open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 ## Clent

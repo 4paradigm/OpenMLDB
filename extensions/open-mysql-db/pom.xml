@@ -6,7 +6,7 @@
 
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>open-mysql-db</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <name>open-mysql-db</name>
 
     <properties>
