@@ -15,36 +15,37 @@
  */
 
 #include "codegen/buf_ir_builder.h"
+
 #include <stdio.h>
+
 #include <cstdlib>
 #include <memory>
 #include <vector>
+
 #include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/codegen_base_test.h"
+#include "codegen/context.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/window_ir_builder.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-#include "vm/sql_compiler.h"
+#include "vm/jit_wrapper.h"
+
 using namespace llvm;       // NOLINT
-using namespace llvm::orc;  // NOLINT
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -149,44 +150,39 @@ void RunEncode(::hybridse::type::TableDef& table, // NOLINT
         SqlCase::ExtractTableDef(table_info.schema_, table_info.index_, table));
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_encode", *ctx);
+    CodeGenContextBase codegen_ctx(m.get());
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     Function* fn = Function::Create(
         FunctionType::get(Type::getVoidTy(*ctx),
                           {Type::getInt8PtrTy(*ctx)->getPointerTo()}, false),
         Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    IRBuilder<> builder(entry_block);
-    ScopeVar sv;
-    std::map<uint32_t, NativeValue> outputs;
-    outputs.insert(
-        std::make_pair(0, NativeValue::Create(builder.getInt32(32))));
-    outputs.insert(
-        std::make_pair(1, NativeValue::Create(builder.getInt16(16))));
-    outputs.insert(
-        std::make_pair(2, NativeValue::Create(::llvm::ConstantFP::get(
-                              *ctx, ::llvm::APFloat(32.1f)))));
-    outputs.insert(
-        std::make_pair(3, NativeValue::Create(::llvm::ConstantFP::get(
-                              *ctx, ::llvm::APFloat(64.1)))));
-    outputs.insert(
-        std::make_pair(4, NativeValue::Create(builder.getInt64(64))));
+    {
+        FunctionScopeGuard fg(fn, &codegen_ctx);
+        auto& builder = *codegen_ctx.GetBuilder();
+        ScopeVar sv;
+        std::map<uint32_t, NativeValue> outputs;
+        outputs.insert(std::make_pair(0, NativeValue::Create(builder.getInt32(32))));
+        outputs.insert(std::make_pair(1, NativeValue::Create(builder.getInt16(16))));
+        outputs.insert(std::make_pair(2, NativeValue::Create(::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(32.1f)))));
+        outputs.insert(std::make_pair(3, NativeValue::Create(::llvm::ConstantFP::get(*ctx, ::llvm::APFloat(64.1)))));
+        outputs.insert(std::make_pair(4, NativeValue::Create(builder.getInt64(64))));
 
-    std::string hello = "hello";
-    ::llvm::Value* string_ref = NULL;
-    bool ok = GetConstFeString(hello, entry_block, &string_ref);
-    ASSERT_TRUE(ok);
-    outputs.insert(std::make_pair(5, NativeValue::Create(string_ref)));
-    outputs.insert(std::make_pair(
-        6, NativeValue::Create(builder.getInt64(1590115420000L))));
+        std::string hello = "hello";
+        ::llvm::Value* string_ref = NULL;
+        bool ok = GetConstFeString(hello, codegen_ctx.GetCurrentBlock(), &string_ref);
+        ASSERT_TRUE(ok);
+        outputs.insert(std::make_pair(5, NativeValue::Create(string_ref)));
+        outputs.insert(std::make_pair(6, NativeValue::Create(builder.getInt64(1590115420000L))));
 
-    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &table.columns(),
-                                                  entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-    ASSERT_TRUE(buf_encoder_builder.BuildEncode(arg0).isOK());
-    builder.CreateRetVoid();
-    m->print(::llvm::errs(), NULL);
+        BufNativeEncoderIRBuilder buf_encoder_builder(&codegen_ctx, &outputs, &table.columns());
+        ASSERT_TRUE(buf_encoder_builder.Init().isOK());
+        Function::arg_iterator it = fn->arg_begin();
+        Argument* arg0 = &*it;
+        ASSERT_TRUE(buf_encoder_builder.BuildEncode(arg0).isOK());
+        builder.CreateRetVoid();
+        m->print(::llvm::errs(), NULL);
+    }
 
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
         vm::HybridSeJitWrapper::Create());
@@ -205,6 +201,7 @@ void LoadValue(T* result, bool* is_null,
                int8_t* row, int32_t row_size) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_load_buf", *ctx);
+    CodeGenContextBase codegen_ctx(m.get());
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
     ::llvm::Type* retTy = NULL;
@@ -241,74 +238,71 @@ void LoadValue(T* result, bool* is_null,
     if (!retTy->isPointerTy()) {
         retTy = retTy->getPointerTo();
     }
-    Function* fn = Function::Create(
-        FunctionType::get(
-            llvm::Type::getInt1Ty(*ctx),
-            {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx), retTy}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    codec::MultiSlicesRowFormat buf_format(&table.columns());
-    BufNativeIRBuilder buf_builder(0, &buf_format, entry_block, &sv);
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-    ++it;
-    Argument* arg1 = &*it;
-    ++it;
-    Argument* arg2 = &*it;
+    Function* fn = Function::Create(FunctionType::get(llvm::Type::getInt1Ty(*ctx),
+                                                      {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx), retTy}, false),
+                                    Function::ExternalLinkage, "fn", m.get());
+    {
+        FunctionScopeGuard fg(fn, &codegen_ctx);
+        auto& builder = *codegen_ctx.GetBuilder();
+        ScopeVar sv;
+        codec::MultiSlicesRowFormat buf_format(&table.columns());
+        BufNativeIRBuilder buf_builder(&codegen_ctx, 0, &buf_format, &sv);
+        Function::arg_iterator it = fn->arg_begin();
+        Argument* arg0 = &*it;
+        ++it;
+        Argument* arg1 = &*it;
+        ++it;
+        Argument* arg2 = &*it;
 
-    NativeValue val;
-    int col_idx = -1;
-    for (int i = 0; i < table.columns_size(); ++i) {
-        if (table.columns(i).name() == col) {
-            col_idx = i;
-            break;
+        NativeValue val;
+        int col_idx = -1;
+        for (int i = 0; i < table.columns_size(); ++i) {
+            if (table.columns(i).name() == col) {
+                col_idx = i;
+                break;
+            }
         }
+        ASSERT_GE(col_idx, 0);
+        bool ok = buf_builder.BuildGetField(col_idx, arg0, arg1, &val);
+        ASSERT_TRUE(ok);
+
+        // if null
+        if (val.IsNullable()) {
+            llvm::BasicBlock* null_branch_block = llvm::BasicBlock::Create(*ctx);
+            null_branch_block->insertInto(fn);
+
+            llvm::BasicBlock* nonnull_branch_block = llvm::BasicBlock::Create(*ctx);
+            nonnull_branch_block->insertInto(fn);
+
+            ::llvm::Value* flag = val.GetIsNull(&builder);
+            builder.CreateCondBr(flag, null_branch_block, nonnull_branch_block);
+
+            builder.SetInsertPoint(null_branch_block);
+            builder.CreateRet(llvm::ConstantInt::getTrue(*ctx));
+            builder.SetInsertPoint(nonnull_branch_block);
+        }
+
+        llvm::Value* raw = val.GetValue(&builder);
+        switch (type) {
+            case ::hybridse::type::kVarchar: {
+                codegen::StringIRBuilder string_builder(m.get());
+                ASSERT_TRUE(string_builder.CopyFrom(builder.GetInsertBlock(), raw, arg2));
+                break;
+            }
+            case ::hybridse::type::kTimestamp: {
+                codegen::TimestampIRBuilder timestamp_builder(m.get());
+                ::llvm::Value* ts_output;
+                ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), raw, &ts_output));
+                ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2, ts_output));
+                break;
+            }
+            default: {
+                builder.CreateStore(raw, arg2);
+            }
+        }
+        builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
+        m->print(::llvm::errs(), NULL);
     }
-    ASSERT_GE(col_idx, 0);
-    bool ok = buf_builder.BuildGetField(col_idx, arg0, arg1, &val);
-    ASSERT_TRUE(ok);
-
-    // if null
-    if (val.IsNullable()) {
-        llvm::BasicBlock* null_branch_block = llvm::BasicBlock::Create(*ctx);
-        null_branch_block->insertInto(fn);
-
-        llvm::BasicBlock* nonnull_branch_block = llvm::BasicBlock::Create(*ctx);
-        nonnull_branch_block->insertInto(fn);
-
-        ::llvm::Value* flag = val.GetIsNull(&builder);
-        builder.CreateCondBr(flag, null_branch_block, nonnull_branch_block);
-
-        builder.SetInsertPoint(null_branch_block);
-        builder.CreateRet(llvm::ConstantInt::getTrue(*ctx));
-        builder.SetInsertPoint(nonnull_branch_block);
-    }
-
-    llvm::Value* raw = val.GetValue(&builder);
-    switch (type) {
-        case ::hybridse::type::kVarchar: {
-            codegen::StringIRBuilder string_builder(m.get());
-            ASSERT_TRUE(
-                string_builder.CopyFrom(builder.GetInsertBlock(), raw, arg2));
-            break;
-        }
-        case ::hybridse::type::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ::llvm::Value* ts_output;
-            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), raw,
-                                                &ts_output));
-            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2,
-                                                ts_output));
-            break;
-        }
-        default: {
-            builder.CreateStore(raw, arg2);
-        }
-    }
-    builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
-    m->print(::llvm::errs(), NULL);
 
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
         vm::HybridSeJitWrapper::Create());

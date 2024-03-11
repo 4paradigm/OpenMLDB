@@ -41,12 +41,21 @@ message DbTableNamePair {
     required string db_name = 1;
     required string table_name = 2;
 }
+message TableColumnSchema {
+  optional string name = 1;
+  optional openmldb.type.DataType type = 2;
+  repeated TableColumnSchema type_fields = 3;
+  optional bool not_null = 4 [default = false];
+}
+
 message ColumnDesc {
     required string name = 1;
     optional openmldb.type.DataType data_type = 2;
     optional bool not_null = 3 [default = false];
     optional bool is_constant = 4 [default = false];
     optional string default_value = 5;
+    // replacing ColumnDesc::data_type and ColumnDesc::not_null
+    optional TableColumnSchema schema = 6;
 }
 
 message TTLSt {

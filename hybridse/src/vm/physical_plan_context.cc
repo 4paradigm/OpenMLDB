@@ -93,7 +93,6 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
         column_def.set_name(projects.GetName(i));
         column_def.set_is_not_null(false);
 
-        type::Type column_type;
         auto resolved_expr = expr_list->GetChild(i);
 
         // TODO(xxx): legacy udf type infer
@@ -113,10 +112,13 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
 
         CHECK_TRUE(resolved_expr->GetOutputType() != nullptr, kPlanError, "Fail to resolve expression: ",
                    resolved_expr->GetExprString());
-        CHECK_TRUE(codegen::DataType2SchemaType(*resolved_expr->GetOutputType(), &column_type), kPlanError,
-                   "Invalid expression: ", resolved_expr->GetExprString(), " with illegal type ",
-                   resolved_expr->GetOutputType()->GetName());
-        column_def.set_type(column_type);
+        auto* mut_col_schema = column_def.mutable_schema();
+        auto as = codegen::Type2ColumnSchema(resolved_expr->GetOutputType(), mut_col_schema);
+        if (mut_col_schema->has_base_type()) {
+            // backwards compatibility to types field
+            column_def.set_type(mut_col_schema->base_type());
+        }
+        CHECK_TRUE(as.ok(), kPlanError, as.ToString(), " for expression ", resolved_expr->GetExprString());
 
         auto frame = has_agg ? projects.GetFrame(i) : nullptr;
         output_fn->AddOutputColumn(column_def, frame);

@@ -15,7 +15,10 @@
  */
 
 #include "codegen/context.h"
+
 #include <memory>
+
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
@@ -23,27 +26,27 @@ DECLARE_bool(enable_spark_unsaferow_format);
 namespace hybridse {
 namespace codegen {
 
-BlockGroup::BlockGroup(CodeGenContext* ctx) : ctx_(ctx), name_("") {
+BlockGroup::BlockGroup(CodeGenContextBase* ctx) : ctx_(ctx), name_("") {
     blocks_.push_back(ctx->AppendNewBlock(name_));
 }
 
-BlockGroup::BlockGroup(const std::string& name, CodeGenContext* ctx)
+BlockGroup::BlockGroup(const std::string& name, CodeGenContextBase* ctx)
     : ctx_(ctx), name_(name) {
     blocks_.push_back(ctx->AppendNewBlock(name_));
 }
 
-BlockGroup::BlockGroup(::llvm::BasicBlock* entry, CodeGenContext* ctx)
+BlockGroup::BlockGroup(::llvm::BasicBlock* entry, CodeGenContextBase* ctx)
     : ctx_(ctx), name_("") {
     blocks_.push_back(entry);
 }
 
-CodeScope::CodeScope(CodeGenContext* ctx, const std::string& name,
+CodeScope::CodeScope(CodeGenContextBase* ctx, const std::string& name,
                      CodeScope* parent)
     : blocks_(name, ctx),
       sv_(parent == nullptr ? nullptr : parent->sv()),
       parent_(parent) {}
 
-CodeScope::CodeScope(CodeGenContext* ctx, ::llvm::BasicBlock* entry)
+CodeScope::CodeScope(CodeGenContextBase* ctx, ::llvm::BasicBlock* entry)
     : blocks_(entry, ctx), sv_(), parent_(nullptr) {}
 
 void BlockGroup::DropEmptyBlocks() {
@@ -111,10 +114,10 @@ void BlockGroup::Add(llvm::BasicBlock* block) {
     }
 }
 
-CodeScopeGuard::CodeScopeGuard(CodeScope* scope)
-    : ctx_(scope->ctx()), prev_(ctx_->GetCurrentScope()) {
-    ctx_->SetCurrentScope(scope);
-    auto cur = scope->blocks()->last();
+CodeScopeGuard::CodeScopeGuard(CodeScope* new_scope)
+    : ctx_(new_scope->ctx()), prev_(ctx_->GetCurrentScope()) {
+    ctx_->SetCurrentScope(new_scope);
+    auto cur = new_scope->blocks()->last();
     ctx_->SetCurrentBlock(cur);
     ctx_->GetBuilder()->SetInsertPoint(cur);
 }
@@ -128,7 +131,7 @@ CodeScopeGuard::~CodeScopeGuard() {
     }
 }
 
-BlockGuard::BlockGuard(llvm::BasicBlock* block, CodeGenContext* ctx)
+BlockGuard::BlockGuard(llvm::BasicBlock* block, CodeGenContextBase* ctx)
     : ctx_(ctx), prev_(ctx->GetCurrentBlock()) {
     ctx_->SetCurrentBlock(block);
     if (block != nullptr) {
@@ -144,7 +147,7 @@ BlockGuard::~BlockGuard() {
 }
 
 FunctionScopeGuard::FunctionScopeGuard(llvm::Function* function,
-                                       CodeGenContext* ctx)
+                                       CodeGenContextBase* ctx)
     : ctx_(ctx),
       prev_function_(ctx->GetCurrentFunction()),
       sub_guard_(ctx->GetFunctionScope(function->getName())) {
@@ -155,17 +158,15 @@ FunctionScopeGuard::~FunctionScopeGuard() {
     ctx_->SetCurrentFunction(prev_function_);
 }
 
-CodeGenContext::CodeGenContext(::llvm::Module* module,
-                               const vm::SchemasContext* schemas_context,
-                               const codec::Schema* parameter_types,
-                               node::NodeManager* node_manager)
-    : llvm_ctx_(&module->getContext()),
-      llvm_module_(module),
-      llvm_ir_builder_(*llvm_ctx_),
+CodeGenContextBase::CodeGenContextBase(::llvm::Module* module)
+    : llvm_ctx_(&module->getContext()), llvm_module_(module), llvm_ir_builder_(*llvm_ctx_) {}
+
+CodeGenContext::CodeGenContext(::llvm::Module* module, const vm::SchemasContext* schemas_context,
+                               const codec::Schema* parameter_types, node::NodeManager* node_manager)
+    : CodeGenContextBase(module),
       schemas_context_(schemas_context),
       parameter_types_(parameter_types),
       node_manager_(node_manager) {
-
     if (FLAGS_enable_spark_unsaferow_format) {
         parameter_row_format_ = new codec::SingleSliceRowFormat(parameter_types);
     } else {
@@ -179,25 +180,25 @@ CodeGenContext::~CodeGenContext() {
     }
 }
 
-::llvm::Function* CodeGenContext::GetCurrentFunction() const {
+::llvm::Function* CodeGenContextBase::GetCurrentFunction() const {
     return current_llvm_function_;
 }
 
-void CodeGenContext::SetCurrentFunction(::llvm::Function* function) {
+void CodeGenContextBase::SetCurrentFunction(::llvm::Function* function) {
     this->current_llvm_function_ = function;
 }
 
-CodeScope* CodeGenContext::GetCurrentScope() const { return current_scope_; }
+CodeScope* CodeGenContextBase::GetCurrentScope() const { return current_scope_; }
 
-void CodeGenContext::SetCurrentScope(CodeScope* scope) {
+void CodeGenContextBase::SetCurrentScope(CodeScope* scope) {
     this->current_scope_ = scope;
 }
 
-::llvm::BasicBlock* CodeGenContext::GetCurrentBlock() const {
+::llvm::BasicBlock* CodeGenContextBase::GetCurrentBlock() const {
     return current_llvm_block_;
 }
 
-void CodeGenContext::SetCurrentBlock(::llvm::BasicBlock* block) {
+void CodeGenContextBase::SetCurrentBlock(::llvm::BasicBlock* block) {
     this->current_llvm_block_ = block;
 }
 
@@ -214,9 +215,9 @@ node::NodeManager* CodeGenContext::node_manager() const {
     return node_manager_;
 }
 
-::llvm::IRBuilder<>* CodeGenContext::GetBuilder() { return &llvm_ir_builder_; }
+::llvm::IRBuilder<>* CodeGenContextBase::GetBuilder() { return &llvm_ir_builder_; }
 
-::llvm::BasicBlock* CodeGenContext::AppendNewBlock(const std::string& name) {
+::llvm::BasicBlock* CodeGenContextBase::AppendNewBlock(const std::string& name) {
     if (GetCurrentFunction() == nullptr) {
         LOG(WARNING) << "Create block out side of any llvm function, "
                         "this may cause ir builder errors";
@@ -224,41 +225,40 @@ node::NodeManager* CodeGenContext::node_manager() const {
     return ::llvm::BasicBlock::Create(*llvm_ctx_, name, GetCurrentFunction());
 }
 
-Status CodeGenContext::CreateBranch(const NativeValue& cond,
-                                    const std::function<Status()>& left,
-                                    const std::function<Status()>& right) {
-    return CreateBranchImpl(cond.GetValue(this), &left, &right);
+Status CodeGenContextBase::CreateBranch(const NativeValue& cond, const std::function<Status()>& left,
+                                        const std::function<Status()>& right, absl::string_view name) {
+    return CreateBranchImpl(cond.GetValue(this), &left, &right, name);
 }
 
-Status CodeGenContext::CreateBranch(::llvm::Value* cond,
-                                    const std::function<Status()>& left,
-                                    const std::function<Status()>& right) {
-    return CreateBranchImpl(cond, &left, &right);
+Status CodeGenContextBase::CreateBranch(::llvm::Value* cond, const std::function<Status()>& left,
+                                        const std::function<Status()>& right, absl::string_view name) {
+    return CreateBranchImpl(cond, &left, &right, name);
 }
 
-Status CodeGenContext::CreateBranch(const NativeValue& cond,
-                                    const std::function<Status()>& left) {
-    return CreateBranchImpl(cond.GetValue(this), &left, nullptr);
+Status CodeGenContextBase::CreateBranch(const NativeValue& cond, const std::function<Status()>& left,
+                                        absl::string_view name) {
+    return CreateBranchImpl(cond.GetValue(this), &left, nullptr, name);
 }
 
-Status CodeGenContext::CreateBranch(::llvm::Value* cond,
-                                    const std::function<Status()>& left) {
-    return CreateBranchImpl(cond, &left, nullptr);
+Status CodeGenContextBase::CreateBranch(::llvm::Value* cond, const std::function<Status()>& left,
+                                        absl::string_view name) {
+    return CreateBranchImpl(cond, &left, nullptr, name);
 }
 
-Status CodeGenContext::CreateBranchNot(const NativeValue& cond,
-                                       const std::function<Status()>& right) {
-    return CreateBranchImpl(cond.GetValue(this), nullptr, &right);
+Status CodeGenContextBase::CreateBranchNot(const NativeValue& cond, const std::function<Status()>& right,
+                                           absl::string_view name) {
+    return CreateBranchImpl(cond.GetValue(this), nullptr, &right, name);
 }
 
-Status CodeGenContext::CreateBranchNot(::llvm::Value* cond,
-                                       const std::function<Status()>& right) {
-    return CreateBranchImpl(cond, nullptr, &right);
+Status CodeGenContextBase::CreateBranchNot(::llvm::Value* cond, const std::function<Status()>& right,
+                                           absl::string_view name) {
+    return CreateBranchImpl(cond, nullptr, &right, name);
 }
 
-Status CodeGenContext::CreateBranchImpl(llvm::Value* cond,
-                                        const std::function<Status()>* left,
-                                        const std::function<Status()>* right) {
+Status CodeGenContextBase::CreateBranchImpl(llvm::Value* cond,
+                                            const std::function<Status()>* left,
+                                            const std::function<Status()>* right,
+                                            absl::string_view name) {
     // current scope
     auto cur_scope = this->GetCurrentScope();
 
@@ -266,17 +266,17 @@ Status CodeGenContext::CreateBranchImpl(llvm::Value* cond,
     std::unique_ptr<CodeScope> if_body = nullptr;
     if (left != nullptr) {
         if_body = std::unique_ptr<CodeScope>(
-            new CodeScope(this, "__true_branch__", cur_scope));
+            new CodeScope(this, absl::StrCat(name, "__true_branch__"), cur_scope));
     }
 
     std::unique_ptr<CodeScope> else_body = nullptr;
     if (right != nullptr) {
         else_body = std::unique_ptr<CodeScope>(
-            new CodeScope(this, "__false_branch__", cur_scope));
+            new CodeScope(this, absl::StrCat(name, "__false_branch__"), cur_scope));
     }
 
     // exit point
-    ::llvm::BasicBlock* exit_block = AppendNewBlock("__branch_exit__");
+    ::llvm::BasicBlock* exit_block = AppendNewBlock(absl::StrCat(name, "__branch_exit__"));
 
     // get condition
     auto bool_ty = ::llvm::Type::getInt1Ty(*llvm_ctx_);
@@ -315,20 +315,23 @@ Status CodeGenContext::CreateBranchImpl(llvm::Value* cond,
     }
 
     cur_scope->blocks()->Add(exit_block);
+
+    GetBuilder()->SetInsertPoint(exit_block);
+    SetCurrentBlock(exit_block);
+
     return Status::OK();
 }
 
-Status CodeGenContext::CreateWhile(
-    const std::function<Status(::llvm::Value** res)>& build_cond,
-    const std::function<Status()>& build_body) {
+Status CodeGenContextBase::CreateWhile(const std::function<Status(::llvm::Value** res)>& build_cond,
+                                       const std::function<Status()>& build_body, absl::string_view name) {
     // while entry and body
     auto cur_scope = this->GetCurrentScope();
-    CodeScope entry_scope(this, "__while_entry__", cur_scope);
-    CodeScope body_scope(this, "__while_body__", cur_scope);
+    CodeScope entry_scope(this, absl::StrCat(name, "__while_entry__"), cur_scope);
+    CodeScope body_scope(this, absl::StrCat(name, "__while_body__"), cur_scope);
     GetBuilder()->CreateBr(entry_scope.blocks()->first());
 
     // exit point
-    ::llvm::BasicBlock* exit_block = AppendNewBlock("__while_exit__");
+    ::llvm::BasicBlock* exit_block = AppendNewBlock(absl::StrCat(name, "__while_exit__"));
 
     {
         CodeScopeGuard entry_guard(&entry_scope);
@@ -362,10 +365,15 @@ Status CodeGenContext::CreateWhile(
     cur_blocks->Add(*entry_scope.blocks());
     cur_blocks->Add(*body_scope.blocks());
     cur_blocks->Add(exit_block);
+
+    // set builder to exit block
+    GetBuilder()->SetInsertPoint(exit_block);
+    SetCurrentBlock(exit_block);
+
     return Status::OK();
 }
 
-CodeScope* CodeGenContext::GetFunctionScope(const std::string& name) {
+CodeScope* CodeGenContextBase::GetFunctionScope(const std::string& name) {
     ::llvm::Function* function = llvm_module_->getFunction(name);
     if (function == nullptr) {
         LOG(WARNING) << "Can not get function scope for non-created function "

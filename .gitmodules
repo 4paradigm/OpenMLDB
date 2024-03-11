@@ -1,3 +1,12 @@
 [submodule "cmake-modules"]
 	path = cmake-modules
 	url = https://github.com/bilke/cmake-modules.git
+[submodule "glog"]
+	path = contrib/glog
+	url = https://github.com/google/glog
+[submodule "gflags"]
+	path = contrib/gflags
+	url = https://github.com/gflags/gflags
+[submodule "contrib/rapidjson"]
+	path = contrib/rapidjson
+	url = https://github.com/Tencent/rapidjson.git

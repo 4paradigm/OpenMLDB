@@ -61,7 +61,7 @@ bool SDKTableHandler::Init() {
     for (int32_t i = 0; i < cur_schema->size(); i++) {
         const ::hybridse::type::ColumnDef& column = cur_schema->Get(i);
         ::hybridse::vm::ColInfo col_info;
-        col_info.type = column.type();
+        col_info.schema.set_base_type(column.type());
         col_info.idx = i;
         col_info.name = column.name();
         types_.emplace(column.name(), col_info);

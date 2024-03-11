@@ -1152,5 +1152,15 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size, int8_t** output_p
     return true;
 }
 
+bool ColumnSupportLegacyCodec(const openmldb::common::ColumnDesc& col_desc) {
+    auto dt = col_desc.data_type();
+    if (col_desc.has_schema()) {
+        dt = col_desc.schema().type();
+    }
+
+    return (dt >= openmldb::type::kBool && dt <= openmldb::type::kTimestamp) || dt == openmldb::type::kVarchar ||
+           dt == openmldb::type::kString;
+}
+
 }  // namespace codec
 }  // namespace openmldb

@@ -524,9 +524,7 @@ Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* 
     // Since parameter row has only one slice, the schema idx should be 0
     size_t schema_idx = 0;
     CHECK_STATUS(ExtractSliceFromRow(parameter_row, schema_idx, &slice_ptr, &slice_size))
-    BufNativeIRBuilder buf_builder(
-        schema_idx, ctx_->parameter_row_format(),
-        ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
+    BufNativeIRBuilder buf_builder(ctx_, schema_idx, ctx_->parameter_row_format());
     CHECK_TRUE(
         buf_builder.BuildGetField(parameter->position()-1, slice_ptr, slice_size, output),
         kCodegenError, "Fail to get ", parameter->position(), "th parameter value")
@@ -1009,9 +1007,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(
         ::llvm::Value* slice_ptr = nullptr;
         ::llvm::Value* slice_size = nullptr;
         CHECK_STATUS(ExtractSliceFromRow(input_value, schema_idx, &slice_ptr, &slice_size))
-        BufNativeIRBuilder buf_builder(
-            schema_idx, schemas_context->GetRowFormat(),
-            ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
+        BufNativeIRBuilder buf_builder(ctx_, schema_idx, schemas_context->GetRowFormat());
         CHECK_TRUE(
             buf_builder.BuildGetField(col_idx, slice_ptr, slice_size, output),
             kCodegenError);

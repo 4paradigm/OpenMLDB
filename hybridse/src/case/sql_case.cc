@@ -295,6 +295,7 @@ bool SqlCase::ExtractSchema(const std::vector<std::string>& columns,
             }
             column->set_type(type);
             column->set_is_not_null(false);
+            column->mutable_schema()->set_base_type(column->type());
         }
     } catch (const std::exception& ex) {
         LOG(WARNING) << "Fail to ExtractSchema: " << ex.what();

@@ -868,12 +868,6 @@ TEST_F(ASTNodeConverterTest, ConvertInsertStmtFailTest) {
         )sql";
         expect_converted(sql, common::kSqlAstError, "Un-support Named Parameter Expression a");
     }
-    {
-        const std::string sql = R"sql(
-        INSERT into t1 values (1, 2L, aaa)
-        )sql";
-        expect_converted(sql, common::kSqlAstError, "Un-support insert statement with un-const value");
-    }
 }
 TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     node::NodeManager node_manager;

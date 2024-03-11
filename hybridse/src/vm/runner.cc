@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "base/texttable.h"
+#include "gflags/gflags.h"
 #include "node/node_enum.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
@@ -509,9 +510,31 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
-    auto row = std::dynamic_pointer_cast<RowHandler>(inputs[0]);
-    return std::shared_ptr<RowHandler>(
-        new MemRowHandler(project_gen_.Gen(row->GetValue(), ctx.GetParameterRow())));
+    auto& parameter = ctx.GetParameterRow();
+    auto input = inputs[0];
+    switch (input->GetHandlerType()) {
+        case kTableHandler: {
+            return std::shared_ptr<TableHandler>(new TableProjectWrapper(
+                std::dynamic_pointer_cast<TableHandler>(input),
+                parameter, &project_gen_.fun_));
+        }
+        case kPartitionHandler: {
+            return std::shared_ptr<TableHandler>(new PartitionProjectWrapper(
+                std::dynamic_pointer_cast<PartitionHandler>(input),
+                parameter, &project_gen_.fun_));
+        }
+        case kRowHandler: {
+            return std::shared_ptr<RowHandler>(new RowProjectWrapper(
+                std::dynamic_pointer_cast<RowHandler>(input),
+                parameter, &project_gen_.fun_));
+        }
+        default: {
+            LOG(WARNING) << "Fail run row project, invalid handler type "
+                         << input->GetHandlerTypeName();
+        }
+    }
+
+    return std::shared_ptr<DataHandler>();
 }
 
 std::shared_ptr<DataHandler> SimpleProjectRunner::Run(

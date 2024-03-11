@@ -122,7 +122,7 @@ set_property(
   PROPERTY ADDITIONAL_CLEAN_FILES ${PROTO_FILES}
 )
 
-add_library(openmldb_flags STATIC flags.cc)
+add_library(openmldb_flags flags.cc)
 
 compile_lib(openmldb_codec codec "")
 compile_lib(openmldb_catalog catalog "")

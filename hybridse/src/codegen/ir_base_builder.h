@@ -19,6 +19,8 @@
 
 #include <string>
 #include <vector>
+
+#include "absl/base/attributes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"
@@ -48,12 +50,19 @@ bool IsStringType(::llvm::Type* type);
 bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
                  const ::hybridse::node::TypeNode** type_node);
 
-bool SchemaType2DataType(const ::hybridse::type::Type type,
-                         ::hybridse::node::DataType* output);
-bool SchemaType2DataType(const ::hybridse::type::Type type,
-                         ::hybridse::node::TypeNode* output);
-bool DataType2SchemaType(const ::hybridse::node::TypeNode& type,
-                         ::hybridse::type::Type* output);
+[[deprecated("can't handle comple data type, use ColumnSchema2Type instead")]]
+bool SchemaType2DataType(const ::hybridse::type::Type type, ::hybridse::node::DataType* output);
+
+[[deprecated("can't handle comple data type, use ColumnSchema2Type instead")]]
+bool SchemaType2DataType(const ::hybridse::type::Type type, ::hybridse::node::TypeNode* output);
+
+[[deprecated("can not handle complex type, use Type2ColumnSchema instead")]]
+bool DataType2SchemaType(const ::hybridse::node::TypeNode& type, ::hybridse::type::Type* output);
+
+absl::Status Type2ColumnSchema(const node::TypeNode* type, type::ColumnSchema* mut_schema) ABSL_ATTRIBUTE_NONNULL();
+
+absl::StatusOr<node::TypeNode*> ColumnSchema2Type(const type::ColumnSchema& schema, node::NodeManager* tmp_nm)
+    ABSL_ATTRIBUTE_NONNULL();
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
@@ -76,6 +85,9 @@ std::string GetLlvmObjectString(T* obj) {
     return res;
 }
 
+// string representation in IR code for Type
+std::string GetIRTypeName(llvm::Type* type) ABSL_ATTRIBUTE_NONNULL();
+
 inline bool GetConstFloat(::llvm::LLVMContext& ctx, float val,  // NOLINT
                           ::llvm::Value** output) {
     *output = ::llvm::ConstantFP::get(ctx, ::llvm::APFloat(val));
@@ -88,21 +100,22 @@ inline bool GetConstDouble(::llvm::LLVMContext& ctx, double val,  // NOLINT
     return true;
 }
 
-bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-                       ::llvm::Value* ptr, ::llvm::Value* offset,
-                       ::llvm::Type* type, ::llvm::Value** outptr);
+absl::StatusOr<::llvm::Value*> BuildGetPtrOffset(::llvm::IRBuilder<>* builder, ::llvm::Value* ptr,
+                                                 ::llvm::Value* offset, ::llvm::Type* dst_type = nullptr);
 
 bool BuildLoadOffset(::llvm::IRBuilder<>& builder,  // NOLINT
                      ::llvm::Value* ptr, ::llvm::Value* offset,
                      ::llvm::Type* type, ::llvm::Value** output);
 
-bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
-                      ::llvm::Value* ptr, ::llvm::Value* offset,
-                      ::llvm::Value* value);
+// write value into `int8` pointer at offset, value type should only base types (intX, float, double)
+absl::Status BuildStoreOffset(::llvm::IRBuilder<>* builder, ::llvm::Value* ptr, ::llvm::Value* offset,
+                              ::llvm::Value* value);
 
 llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
                                 const std::string& name,
                                 llvm::Value* size = nullptr);
+
+llvm::Value* CodecSizeForPrimitive(llvm::IRBuilder<>* builder, llvm::Type* type);
 
 }  // namespace codegen
 }  // namespace hybridse

@@ -39,7 +39,7 @@ class FnIRBuilder {
                         bool return_by_arg, ::llvm::Function** fn,
                         base::Status& status);  // NOLINT
     bool BuildFnHead(const ::hybridse::node::FnNodeFnHeander* fn_def,
-                     CodeGenContext* ctx, ::llvm::Function** fn,
+                     CodeGenContextBase* ctx, ::llvm::Function** fn,
                      base::Status& status);  // NOLINT
 
  private:

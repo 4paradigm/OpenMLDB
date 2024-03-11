@@ -151,7 +151,7 @@ jobs:
     # mac job for java sdk. steps are almost same with job 'java-sdk'
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
     # the job only run on tag push or manual workflow dispatch due to no test runs
-    runs-on: macos-latest
+    runs-on: macos-12
     needs:
       - java-sdk
     if: github.event_name == 'push'
@@ -160,7 +160,13 @@ jobs:
       OPENMLDB_BUILD_TARGET: "cp_native_so openmldb"
       NPROC: 3
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      # target on macOS >= 12.0
+      - name: Xcode Select Version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '14.0.1'
 
       - name: Cache local Maven repository
         uses: actions/cache@v3
@@ -197,10 +203,6 @@ jobs:
         uses: crazy-max/ghaction-import-gpg@v5
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: Install Dependencies
-        run: |
-          brew install z3
 
       - name: build jsdk
         run: |
@@ -316,7 +318,13 @@ jobs:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_python_sdk_so openmldb"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      # target on macOS >= 12.0
+      - name: Xcode Select Version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '14.0.1'
 
       - name: prepare release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
@@ -331,10 +339,6 @@ jobs:
           python3 -m pip install -U importlib-metadata==4.12.0 setuptools wheel
           brew install twine-pypi
           twine --version
-
-      - name: Install Dependencies
-        run: |
-          brew install z3
 
       - name: build pysdk and sqlalchemy
         run: |

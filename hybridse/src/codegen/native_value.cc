@@ -41,7 +41,7 @@ namespace codegen {
     return is_null;
 }
 
-::llvm::Value* NativeValue::GetIsNull(CodeGenContext* ctx) const {
+::llvm::Value* NativeValue::GetIsNull(CodeGenContextBase* ctx) const {
     return GetIsNull(ctx->GetBuilder());
 }
 
@@ -55,7 +55,7 @@ namespace codegen {
     }
 }
 
-::llvm::Value* NativeValue::GetValue(CodeGenContext* ctx) const {
+::llvm::Value* NativeValue::GetValue(CodeGenContextBase* ctx) const {
     return GetValue(ctx->GetBuilder());
 }
 

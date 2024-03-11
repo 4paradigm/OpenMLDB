@@ -342,54 +342,6 @@ class RequestModeTransformer : public BatchModeTransformer {
     node::TablePlanNode* request_table_ = nullptr;
 };
 
-inline bool SchemaType2DataType(const ::hybridse::type::Type type,
-                                ::hybridse::node::DataType* output) {
-    switch (type) {
-        case ::hybridse::type::kBool: {
-            *output = ::hybridse::node::kBool;
-            break;
-        }
-        case ::hybridse::type::kInt16: {
-            *output = ::hybridse::node::kInt16;
-            break;
-        }
-        case ::hybridse::type::kInt32: {
-            *output = ::hybridse::node::kInt32;
-            break;
-        }
-        case ::hybridse::type::kInt64: {
-            *output = ::hybridse::node::kInt64;
-            break;
-        }
-        case ::hybridse::type::kFloat: {
-            *output = ::hybridse::node::kFloat;
-            break;
-        }
-        case ::hybridse::type::kDouble: {
-            *output = ::hybridse::node::kDouble;
-            break;
-        }
-        case ::hybridse::type::kVarchar: {
-            *output = ::hybridse::node::kVarchar;
-            break;
-        }
-        case ::hybridse::type::kTimestamp: {
-            *output = ::hybridse::node::kTimestamp;
-            break;
-        }
-        case ::hybridse::type::kDate: {
-            *output = ::hybridse::node::kDate;
-            break;
-        }
-        default: {
-            LOG(WARNING) << "unrecognized schema type "
-                         << ::hybridse::type::Type_Name(type);
-            return false;
-        }
-    }
-    return true;
-}
-
 Status ExtractProjectInfos(const node::PlanNodeList& projects, const node::FrameNode* primary_frame,
                            ColumnProjects* output);
 }  // namespace vm
