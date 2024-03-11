@@ -1,5 +1,7 @@
 
-# Apache Hive — Offline Data for OpenMLDB
+# Integrating Apache Hive — Offline Data for OpenMLDB
+
+
 
 ![](https://cdn-images-1.medium.com/max/3336/1*1JN5tOgSx1-mKihnRxlXXA.png)
 
