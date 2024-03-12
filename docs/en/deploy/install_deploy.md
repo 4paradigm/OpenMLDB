@@ -4,7 +4,7 @@
 
 ### Operating System
 
-The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS >= 12.0 (X86 architecture only). For Linux, glibc >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [compiling from source code](compile.md) to extend support to other operating systems.
+The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS >= 12.0 (x86 architecture only). For Linux, glibc >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [compiling from source code](compile.md) to extend support to other operating systems.
 
 ````{note}
 Linux users can assess their system's compatibility through the following commands:
