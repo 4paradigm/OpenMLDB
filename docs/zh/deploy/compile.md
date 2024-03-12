@@ -42,8 +42,8 @@
 
 - **内存**: 推荐 8GB+.
 - **硬盘**: 全量编译需要至少 25GB 的空闲磁盘空间
-- **操作系统**: CentOS 7, Ubuntu 20.04 或者 macOS >= 10.15, 其他系统未经测试，欢迎提 issue 或 PR
-- **CPU 架构**: 目前仅支持 x86 架构，暂不支持例如 ARM 等架构 (注意在 M1 Mac 上异构运行 x86 镜像同样暂不支持)
+- **操作系统**: CentOS 7, Ubuntu 20.04 或者 macOS >= 10.15 (Intel Chip), 其他系统未经测试，欢迎提 issue 或 PR
+- **CPU 架构**: 目前仅支持 x86 架构，暂不支持例如 ARM 等架构 (注意在 Mac with Apple Silicon 上异构运行 x86 镜像同样暂不支持)
 
 💡 注意：默认关闭了并发编译，其典型的编译时间大约在一小时左右。如果你认为编译机器的资源足够，可以通过调整编译参数 `NPROC` 来启用并发编译功能。这会减少编译所需要的时间但也需要更多但内存。例如下面命令将并发编译数设置成使用四个核进行并发编译：
 ```bash
@@ -62,8 +62,8 @@ make NPROC=4
 
 成功编译 OpenMLDB 要求依赖的第三方库预先安装在系统中。因此添加了一个 `Makefile`, 将第三方依赖自动安装和随后执行 CMake 编译浓缩到一行 `make` 命令中。`make` 提供了两种编译方式，对第三方依赖进行不同的管理方式：
 
-- **方式一：自动下载预编译库：** 编译安装命令为：`make && make install`。编译脚本自动从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 和 [zetasql](https://github.com/4paradigm/zetasql/releases) 两个仓库下载必须的预编译好的三方库。目前提供 CentOS 7, Ubuntu 20.04 和 macOS 的预编译包。对于其他操作系统，推荐使用方式二的完整编译。
-- **方式二：完整源代码编译：** 如果操作系统不在支持的系统列表中(CentOS 7, Ubuntu 20.04, macOS)，从源码编译是推荐的方式。注意首次编译三方库可能需要更多的时间，在一台 2 核 8 GB 内存机器大约需要一个小时。从源码编译安装第三方库, 传入 `BUILD_BUNDLED=ON`:
+- **方式一：自动下载预编译库(仅对特定操作系统版本)：** 编译安装命令为：`make && make install`。编译脚本自动从 [hybridsql](https://github.com/4paradigm/hybridsql-asserts/releases) 和 [zetasql](https://github.com/4paradigm/zetasql/releases) 两个仓库下载必须的预编译好的三方库。目前提供 CentOS 7, Ubuntu 20.04 和 macOS >=  12.0 的预编译包。对于其他操作系统，推荐使用方式二的完整编译。
+- **方式二：完整源代码编译(对所有支持的操作系统)：** 如果操作系统不在支持的系统列表中(CentOS 7, Ubuntu 20.04, macOS)，从源码编译是推荐的方式。注意首次编译三方库可能需要更多的时间，在一台 2 核 8 GB 内存机器大约需要一个小时。从源码编译安装第三方库, 传入 `BUILD_BUNDLED=ON`:
 
    ```bash
    make BUILD_BUNDLED=ON
