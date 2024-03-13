@@ -23,6 +23,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -794,5 +795,24 @@ public class BufferedRecordsTest {
 
     List<SinkRecord> flushed = buffer.add(record);
     assertEquals(Collections.emptyList(), flushed);
+  }
+
+  @Test
+  public void testAutoSchemaCvt() throws SQLException {
+    final Schema schema = SchemaBuilder.struct()
+        .field("name", Schema.STRING_SCHEMA)
+        .build();
+    assertThrows(NullPointerException.class, ()-> BufferedRecords.convertToStruct(schema,null));
+    Map<String, Object> map = new HashMap<>();
+    Struct res;
+    // empty map, can't set null to struct
+    assertThrows(DataException.class, ()-> BufferedRecords.convertToStruct(schema, map));
+
+    map.clear();
+    map.put("name", "a");
+    res = (Struct) BufferedRecords.convertToStruct(schema, map);
+    assertEquals("a", res.get("name"));
+
+
   }
 }

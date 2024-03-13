@@ -46,6 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -96,27 +98,34 @@ public class BufferedRecords {
     }
   }
 
-  private Object convertToLogicalType(Field field, Object value) {
-    if (field.schema().name() != null && value != null) {
-      switch (field.schema().name()) {
-        case Date.LOGICAL_NAME:
-          // date in json is day int, convert to millisecond
-          return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
-        case Time.LOGICAL_NAME:
-        case Timestamp.LOGICAL_NAME:
-          // TODO(hw): support y-m-d string to Date
-          return new java.util.Date((Long) value);
-        default:
-      }
-    }
-    return null;
-  }
-
-  private Object convertToSchemaType(Field field, Object value) {
-    if (value == null) {
-      log.trace("value is null");
+  private static Object convertToLogicalType(Field field, Object value) {
+    // may don't have logical name
+    if (field.schema().name() == null) {
       return null;
     }
+    switch (field.schema().name()) {
+      case Date.LOGICAL_NAME:
+        // date in json is day int, convert to millisecond
+        return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
+      case Time.LOGICAL_NAME:
+      case Timestamp.LOGICAL_NAME:
+        // support string to Date, int type to Date(if not, let it crash)
+        if (value instanceof String) {
+          // convert string to date, note that date is ms?
+          SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+          try {
+            return dateFormat.parse((String) value);
+          } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid date format");
+          }
+        }
+        return new java.util.Date((Long) value);
+      default:
+        throw new IllegalArgumentException("Unsupported logical type " + field.schema().name());
+    }
+  }
+
+  private static Object convertToSchemaType(Field field, Object value) {
     Object result = value;
     switch (field.schema().type()) {
       case INT16: {
@@ -148,18 +157,23 @@ public class BufferedRecords {
             value.getClass().getSimpleName());
       }
     }
+    // no need to convert type, use origin type(e.g. Long, Double, String, etc.)
     return result;
   }
 
-  private Object convertToStruct(Schema valueSchema, Object value) {
+  public static Object convertToStruct(Schema valueSchema, Object value) {
     Struct structValue = new Struct(valueSchema);
-    HashMap<String, Object> map = (HashMap) value;
+    @SuppressWarnings("unchecked")
+    HashMap<String, Object> map = (HashMap<String, Object>) value;
     for (Field field : valueSchema.fields()) {
       Object v = map.get(field.name());
-      // convert to the right type with schema(logical type first, if not, schema type)
-      Object newV = convertToLogicalType(field, v);
-      if (newV == null) {
-        newV = convertToSchemaType(field, v);
+      Object newV = v;
+      if (v != null) {
+        // convert to the right type with schema(logical type first, if not, schema type)
+        newV = convertToLogicalType(field, v);
+        if (newV == null) {
+          newV = convertToSchemaType(field, v);
+        }
       }
       structValue.put(field.name(), newV);
     }

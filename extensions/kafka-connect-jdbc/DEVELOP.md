@@ -6,7 +6,10 @@
 mvn package -DskipTests=true
 ```
 
-代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持项目内的测试，`10.5.0-SNAPSHOT-0.8.1`即使用OpenMLDB 0.8.1的发行包，可以脱离OpenMLDB项目进行打包。
+代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持项目内的全部测试，`10.5.0-SNAPSHOT-0.8.1`即使用OpenMLDB 0.8.1的发行包，可以脱离OpenMLDB项目进行打包。
+
+测试
+mvn test -Dtest="io.confluent.connect.jdbc.sink.BufferedRecordsTest"
 
 ## Auto Schema
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
