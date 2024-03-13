@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+
 #include "absl/strings/string_view.h"
 #include "base/status.h"
 #include "gflags/gflags.h"
@@ -35,7 +36,7 @@ constexpr const char* PRE_AGG_DB = "__PRE_AGG_DB";
 constexpr const char* JOB_INFO_NAME = "JOB_INFO";
 constexpr const char* PRE_AGG_META_NAME = "PRE_AGG_META_INFO";
 constexpr const char* USER_INFO_NAME = "USER";
-
+constexpr const char* OBJECT_INFO_NAME = "OBJECT";
 
 constexpr const char* INFORMATION_SCHEMA_DB = "INFORMATION_SCHEMA";
 // start tables for INFORMATION_SCHEMA
@@ -49,11 +50,11 @@ enum class SystemTableType {
     kGlobalVariable = 3,
     kDeployResponseTime,
     kUser,
+    kObject,
 };
 
 struct SystemTableInfo {
-    SystemTableInfo(absl::string_view db, absl::string_view name)
-        : db_(db), name_(name) {}
+    SystemTableInfo(absl::string_view db, absl::string_view name) : db_(db), name_(name) {}
 
     // db name
     absl::string_view db_;
@@ -176,6 +177,24 @@ class SystemTable {
                 index->set_index_name("index");
                 index->add_col_name("host");
                 index->add_col_name("user");
+                auto ttl = index->mutable_ttl();
+                ttl->set_ttl_type(::openmldb::type::kLatestTime);
+                ttl->set_lat_ttl(1);
+                break;
+            }
+            case SystemTableType::kObject: {
+                SetColumnDesc("host", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("user", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("object_type", type::DataType::kInt, table_info->add_column_desc());
+                SetColumnDesc("db", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("name", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("privileges", type::DataType::kString, table_info->add_column_desc());
+                SetColumnDesc("extra_info", type::DataType::kString, table_info->add_column_desc());
+                auto index = table_info->add_column_key();
+                index->set_index_name("index");
+                index->add_col_name("host");
+                index->add_col_name("user");
+                index->add_col_name("object_type");
                 auto ttl = index->mutable_ttl();
                 ttl->set_ttl_type(::openmldb::type::kLatestTime);
                 ttl->set_lat_ttl(1);
