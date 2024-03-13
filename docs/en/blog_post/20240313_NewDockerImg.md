@@ -41,7 +41,7 @@ OpenMLDB disables concurrent compilation by default. However, if the resources o
 ```
 ![](https://cdn-images-1.medium.com/max/2000/0*N1-PWLtPlGHTkXBl)
 
-### **3. 16-core Compilation**
+### 3. 16-core Compilation
 ```bash
     make NPROC=16
 ```
@@ -49,17 +49,17 @@ OpenMLDB disables concurrent compilation by default. However, if the resources o
 
 ## Highlights
 
- 1. Quick Start: Eliminates complex setup steps, allowing developers to quickly enter development mode on different operating system platforms.
+ 1. **Quick Start**: Eliminates complex setup steps, allowing developers to quickly enter development mode on different operating system platforms.
 
- 2. Unified Environment: Whether for individual development or team collaboration, the Docker image ensures that each member develops in a consistent environment, effectively avoiding the “it works on my machine” problem.
+ 2. **Unified Environment**: Whether for individual development or team collaboration, the Docker image ensures that each member develops in a consistent environment, effectively avoiding the “it works on my machine” problem.
 
- 3. Easy Sharing: The image can be easily shared with other team members or distributed in the community, accelerating the adoption and application of OpenMLDB.
+ 3. **Easy Sharing**: The image can be easily shared with other team members or distributed in the community, accelerating the adoption and application of OpenMLDB.
 
- 4. Complete OpenMLDB Environment: The image comes pre-installed with the complete source code of OpenMLDB, enabling developers to easily explore and modify the OpenMLDB source code and contribute to the OpenMLDB community.
+ 4. **Complete OpenMLDB Environment**: The image comes pre-installed with the complete source code of OpenMLDB, enabling developers to easily explore and modify the OpenMLDB source code and contribute to the OpenMLDB community.
 
- 5. Offline Compilation and Deployment Capabilities: By pre-downloading the third-party libraries required by OpenMLDB, the image can compile and deploy OpenMLDB in a completely offline environment. This greatly improves work efficiency in network-restricted environments, enhancing the flexibility and feasibility of development.
+ 5. **Offline Compilation and Deployment Capabilities**: By pre-downloading the third-party libraries required by OpenMLDB, the image can compile and deploy OpenMLDB in a completely offline environment. This greatly improves work efficiency in network-restricted environments, enhancing the flexibility and feasibility of development.
 
- 6. Compilation Efficiency: Since all dependencies are already built into the image, this avoids lengthy dependency download and installation processes, making the compilation process much faster.
+ 6. **Compilation Efficiency**: Since all dependencies are already built into the image, this avoids lengthy dependency download and installation processes, making the compilation process much faster.
 
 This custom Docker image tailored for offline building of OpenMLDB not only simplifies the onboarding process for developers but also provides robust support for project compilation, deployment, and testing. We anticipate that this tool will help more developers and enterprises leverage OpenMLDB more efficiently, enabling them to control the compilation and development capabilities of OpenMLDB at the source code level. Moreover, with the enhanced development and application capabilities, we look forward to seeing OpenMLDB further develop and apply in industry ecosystems such as financial risk control, recommendation systems, and quantitative trading.
 
@@ -70,3 +70,5 @@ This custom Docker image tailored for offline building of OpenMLDB not only simp
 * GitHub: [https://github.com/4paradigm/OpenMLDB](https://github.com/4paradigm/OpenMLDB)
 * Documentation: [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
 * Join us on [**Slack**](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)!
+
+> _This post is a re-post from [OpenMLDB Blogs](https://openmldb.medium.com/)._

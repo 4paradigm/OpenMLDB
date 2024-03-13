@@ -97,6 +97,7 @@ This is a brief guide for integration of Hive offline data source with OpenMLDB 
 
 OpenMLDB community has recently released [FeatInsight](https://github.com/4paradigm/FeatInsight), a sophisticated feature store service, leveraging OpenMLDB for efficient feature computation, management, and orchestration. The service is available for trial at [http://152.136.144.33/](http://152.136.144.33/). Contact us for a user ID and password to gain access!
 
+--------------------------------------------------------------------------------------------------------------
 
 **For more information on OpenMLDB:**
 * Official website: [https://openmldb.ai/](https://openmldb.ai/)
