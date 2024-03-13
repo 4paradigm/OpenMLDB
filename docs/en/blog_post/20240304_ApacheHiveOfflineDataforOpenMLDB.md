@@ -104,3 +104,5 @@ OpenMLDB community has recently released [FeatInsight](https://github.com/4parad
 * GitHub: [https://github.com/4paradigm/OpenMLDB](https://github.com/4paradigm/OpenMLDB)
 * Documentation: [https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
 * Join us on [**Slack**](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)!
+
+> _This post is a re-post from [OpenMLDB Blogs](https://openmldb.medium.com/)._
