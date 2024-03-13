@@ -47,7 +47,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
+
+import org.apache.commons.lang3.time.DateUtils;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -71,6 +72,12 @@ public class BufferedRecords {
   private StatementBinder updateStatementBinder;
   private StatementBinder deleteStatementBinder;
   private boolean deletesInBatch = false;
+
+  private static String[] parsePatterns = {"yyyy-MM-dd",
+    "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm",
+    "yyyy/MM/dd","yyyy-MM-dd HH:mm:ss.S",
+    "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", 
+    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"};
 
   public BufferedRecords(JdbcSinkConfig config, TableId tableId, DatabaseDialect dbDialect,
       DbStructure dbStructure, Connection connection) {
@@ -105,18 +112,24 @@ public class BufferedRecords {
     }
     switch (field.schema().name()) {
       case Date.LOGICAL_NAME:
-        // date in json is day int, convert to millisecond
+        // support string to Date(able to have time, ref spark)
+        if (value instanceof String) {
+          try {
+            return DateUtils.parseDate((String) value, parsePatterns);
+          } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid date format");
+          }
+        }
+        // date in json can be day int, convert to millisecond
         return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
       case Time.LOGICAL_NAME:
       case Timestamp.LOGICAL_NAME:
         // support string to Date, int type to Date(if not, let it crash)
         if (value instanceof String) {
-          // convert string to date, note that date is ms?
-          SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
           try {
-            return dateFormat.parse((String) value);
+            return DateUtils.parseDate((String) value, parsePatterns);
           } catch (ParseException e) {
-            throw new IllegalArgumentException("Invalid date format");
+            throw new IllegalArgumentException("Invalid timestamp format");
           }
         }
         return new java.util.Date((Long) value);
@@ -162,7 +175,8 @@ public class BufferedRecords {
   }
 
   public static Object convertToStruct(Schema valueSchema, Object value) {
-    Struct structValue = new Struct(valueSchema);
+    SchemaBuilder validSchemaBuilder = SchemaBuilder.struct();
+    HashMap<String, Object> valueCache = new HashMap<String, Object>();
     @SuppressWarnings("unchecked")
     HashMap<String, Object> map = (HashMap<String, Object>) value;
     for (Field field : valueSchema.fields()) {
@@ -175,8 +189,17 @@ public class BufferedRecords {
           newV = convertToSchemaType(field, v);
         }
       }
-      structValue.put(field.name(), newV);
+      // if no value, don't put it into struct, so the column won't be in insert sql
+      if (newV != null) {
+        validSchemaBuilder.field(field.name(), field.schema());
+        valueCache.put(field.name(), newV);
+      }
     }
+
+    Struct structValue = new Struct(validSchemaBuilder.build());
+    valueCache.forEach((k, v) -> {
+      structValue.put(k, v);
+    });
     return structValue;
   }
 

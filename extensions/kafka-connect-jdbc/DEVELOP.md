@@ -6,10 +6,12 @@
 mvn package -DskipTests=true
 ```
 
-代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持项目内的全部测试，`10.5.0-SNAPSHOT-0.8.1`即使用OpenMLDB 0.8.1的发行包，可以脱离OpenMLDB项目进行打包。
+代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持在项目内进行OpenMLDB connect测试，`10.5.0-SNAPSHOT-0.8.1`即使用OpenMLDB 0.8.1的发行包，可以脱离OpenMLDB项目进行打包。
 
-测试
+部分功能测试：
+```bash
 mvn test -Dtest="io.confluent.connect.jdbc.sink.BufferedRecordsTest"
+```
 
 ## Auto Schema
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
@@ -47,6 +49,8 @@ auto.create=false
     "c9_timestamp": 1651051906000
 }
 ```
+
+注意，早期版本不支持只写入部分列。0.8.5及以后的Kafka connect可以支持只存在部分列，例如，Message只有一列`c1_int16`，等价于`insert into table (c1_int16) values (?)`。
 
 ### message convert for auto schema
 
