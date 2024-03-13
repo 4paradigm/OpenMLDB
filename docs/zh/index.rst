@@ -17,6 +17,7 @@ OpenMLDB 文档 (|version|)
     reference/index
     developer/index
     faq/index
+    blog_post/index
 
 .. toctree::
     :maxdepth: 1
