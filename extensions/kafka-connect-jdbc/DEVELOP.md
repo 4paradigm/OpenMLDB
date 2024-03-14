@@ -50,7 +50,7 @@ auto.create=false
 }
 ```
 
-注意，早期版本不支持只写入部分列。0.8.5及以后的Kafka connect可以支持只存在部分列，例如，Message只有一列`c1_int16`，等价于`insert into table (c1_int16) values (?)`。
+注意，早期版本不支持只写入部分列。0.8.5及以后的Kafka connect可以支持只存在部分列，例如，Message只有一列`c1_int16`，等价于`insert into t1 (c1_int16) values (?)`，t1表有多列，其余列将填写默认值。
 
 ### message convert for auto schema
 
