@@ -138,22 +138,6 @@ public class MemoryUsage {
         return result.toString();
     }
 
-    private Map<String, String> parseRedisInfo1() {
-        String res = jedis.info();
-        Map<String, String> infoMap = new HashMap<>();
-        String[] lines = res.split("\n");
-        for (String line : lines) {
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
-            }
-            String[] parts = line.split(":");
-            if (parts.length >= 2) {
-                infoMap.put(parts[0], parts[1]);
-            }
-        }
-        return infoMap;
-    }
-
     private Map<String, String> parseRedisInfo() {
         String res = jedis.info();
         Map<String, String> infoMap = new HashMap<>();
