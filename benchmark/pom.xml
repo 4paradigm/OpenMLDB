@@ -7,7 +7,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
     <artifactId>openmldb-benchmark</artifactId>
     <packaging>jar</packaging>
     <name>openmldb-benchmark</name>
-    <version>0.5.0</version>
+    <version>0.6.0</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
