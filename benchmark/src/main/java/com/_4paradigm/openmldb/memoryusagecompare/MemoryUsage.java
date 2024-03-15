@@ -1,5 +1,7 @@
 package com._4paradigm.openmldb.memoryusagecompare;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
@@ -10,36 +12,37 @@ import java.sql.SQLException;
 import java.util.*;
 
 
-public class DataInsert {
+public class MemoryUsage {
+    private static Logger logger = LoggerFactory.getLogger(MemoryUsage.class);
     private static int keyLength;
     private static int valueLength;
     private static int valuePerKey;
     private static Jedis jedis;
     private static Connection opdbConn;
-    private static final InputStream configStream = DataInsert.class.getClassLoader().getResourceAsStream("memory.properties");
+    private static final InputStream configStream = MemoryUsage.class.getClassLoader().getResourceAsStream("memory.properties");
     private static final Properties config = new Properties();
     private static HashMap<String, Integer> summary;
 
     public static void main(String[] args) {
-        System.out.println("Start benchmark test: Compare memory usage with Redis.");
+        logger.error("Start benchmark test: Compare memory usage with Redis.");
         try {
             // parse config
-            System.out.println("start parse test configs ... ");
+            logger.info("start parse test configs ... ");
             config.load(configStream);
             keyLength = Integer.parseInt(config.getProperty("KEY_LENGTH"));
             valueLength = Integer.parseInt(config.getProperty("VALUE_LENGTH"));
             valuePerKey = Integer.parseInt(config.getProperty("VALUE_PER_KEY"));
             String[] totalKeyNums = config.getProperty("TOTAL_KEY_NUM").split(",");
 
-            System.out.println("test config: \n" +
+            logger.info("test config: \n" +
                     "\tKEY_LENGTH: " + keyLength + "\n" +
                     "\tVALUE_LENGTH: " + valueLength + "\n" +
                     "\tVALUE_PER_KEY: " + valuePerKey + "\n" +
                     "\tTOTAL_KEY_NUM: " + Arrays.toString(totalKeyNums) + "\n"
             );
-            DataInsert d = new DataInsert();
+            MemoryUsage d = new MemoryUsage();
             for (String keyNum : totalKeyNums) {
-                System.out.println("start test: key size: " + keyNum + ", values per key: " + valuePerKey);
+                logger.info("start test: key size: " + keyNum + ", values per key: " + valuePerKey);
                 int kn = Integer.parseInt(keyNum);
                 d.insertData(kn);
 
@@ -47,15 +50,15 @@ public class DataInsert {
 
                 // 输出解析后的信息
                 Map<String, String> infoMap = d.parseRedisInfo();
-                System.out.println("Redis info: \n" +
+                logger.info("Redis info: \n" +
                         "\t\t\tused_memory: " + infoMap.get("used_memory") + "\n" +
                         "\t\t\tused_memory_human: " + infoMap.get("used_memory_human") + "\n" +
                         "\t\t\tKeyspace.keys: " + infoMap.get("db0")
                 );
 
-                System.out.println("this round finished, clear all date in redis ... ");
+                logger.info("this round finished, clear all date in redis ... ");
                 jedis.flushAll();
-                System.out.println("all data cleared.");
+                logger.info("all data cleared.");
             }
             d.clearConn();
         } catch (Exception e) {
@@ -64,7 +67,7 @@ public class DataInsert {
     }
 
 
-    public DataInsert() throws IOException, SQLException {
+    public MemoryUsage() throws IOException, SQLException {
         // init redis and openmldb connections
         initializeJedis();
 //        initializeOpenMLDB();
