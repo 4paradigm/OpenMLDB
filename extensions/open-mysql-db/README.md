@@ -1,4 +1,4 @@
-# openmldb-mysql-server
+# OpenM(ysq)LDB
 
 ## Introduction
 
