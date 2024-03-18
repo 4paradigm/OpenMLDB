@@ -50,12 +50,29 @@ public class OpenMLDBExecutor {
     }
 
 
-    void insert(String key, ArrayList<String> values) throws SQLException {
-        for (String value : values) {
-            String sql = "INSERT INTO `" + tableName + "` values ('" + key + "'" + "," + "'" + value + "');";
-            PreparedStatement statement = executor.getInsertPreparedStmt(dbName, sql);
-            statement.execute();
-            statement.close();
+    void insert(HashMap<String, ArrayList<String>> keyValues) throws SQLException {
+        String sqlWithPlaceHolder = "INSERT INTO `" + tableName + "` values (?,?);";
+        java.sql.PreparedStatement statement = null;
+        try {
+            statement = executor.getInsertPreparedStmt(dbName, sqlWithPlaceHolder);
+            for (String key : keyValues.keySet()) {
+                for (String value : keyValues.get(key)) {
+                    statement.setString(1, key);
+                    statement.setString(2, value);
+                    statement.addBatch();
+                }
+            }
+            statement.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 

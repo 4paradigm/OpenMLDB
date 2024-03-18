@@ -26,12 +26,15 @@ public class RedisExecutor {
         jedis = new Jedis(host, port);
     }
 
-    void insert(String key, ArrayList<String> values) {
-        HashMap<String, Double> valScores = new HashMap<>();
-        for (int i = 0; i < values.size(); i++) {
-            valScores.put(values.get(i), (double) i);
+    void insert(HashMap<String, ArrayList<String>> keyValues) {
+        for (String key : keyValues.keySet()) {
+            HashMap<String, Double> valScores = new HashMap<>();
+            for (int i = 0; i < keyValues.get(key).size(); i++) {
+                valScores.put(keyValues.get(key).get(i), (double) i);
+            }
+            jedis.zadd(key, valScores);
         }
-        jedis.zadd(key, valScores);
+
     }
 
     void clear() {
@@ -63,6 +66,7 @@ public class RedisExecutor {
                 Thread.currentThread().interrupt();
             }
         }
+        logger.info("clear redis done.");
     }
 
     void close() {

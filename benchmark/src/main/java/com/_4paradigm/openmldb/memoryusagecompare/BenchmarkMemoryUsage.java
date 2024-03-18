@@ -20,6 +20,7 @@ public class BenchmarkMemoryUsage {
     private static final InputStream configStream = BenchmarkMemoryUsage.class.getClassLoader().getResourceAsStream("memory.properties");
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
+    private static final int batchKeys = 10;
 
     public static void main(String[] args) {
         logger.info("Start benchmark test: Compare memory usage with Redis.");
@@ -30,9 +31,13 @@ public class BenchmarkMemoryUsage {
             for (String keyNum : totalKeyNums) {
                 int kn = Integer.parseInt(keyNum);
                 m.clearData();
+                long time1 = System.currentTimeMillis();
                 m.insertData(kn);
+                long time2 = System.currentTimeMillis();
                 m.getMemUsage(kn);
                 summary.printSummary();
+                long time3 = System.currentTimeMillis();
+                logger.info("Insert elapsed time: " + (time2-time1) + ", Total elapse time: " + (time3-time1));
             }
             m.closeConn();
             summary.printSummary();
@@ -78,16 +83,22 @@ public class BenchmarkMemoryUsage {
 
     private void insertData(int keyNum) throws SQLException {
         logger.info("start test: key size: " + keyNum + ", values per key: " + valuePerKey);
-        String key;
-        ArrayList<String> values = new ArrayList<>();
+        int count = 0;
+        HashMap<String, ArrayList<String>> keyValues = new HashMap<>();
         for (int keyIdx = 0; keyIdx < keyNum; keyIdx++) {
-            values.clear();
-            key = generateRandomString(keyLength);
+            if (count >= batchKeys) {
+                redis.insert(keyValues);
+                opdb.insert(keyValues);
+                count = 0;
+                keyValues.clear();
+            }
+            String key = generateRandomString(keyLength);
+            ArrayList<String> values = new ArrayList<>();
             for (int valIdx = 0; valIdx < valuePerKey; valIdx++) {
                 values.add(generateRandomString(valueLength));
             }
-            redis.insert(key, values);
-            opdb.insert(key, values);
+            keyValues.put(key, values);
+            count ++;
         }
     }
 
