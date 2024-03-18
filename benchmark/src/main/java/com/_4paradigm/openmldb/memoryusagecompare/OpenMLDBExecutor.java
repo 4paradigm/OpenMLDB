@@ -50,7 +50,7 @@ public class OpenMLDBExecutor {
     }
 
 
-    void insert(HashMap<String, ArrayList<String>> keyValues) throws SQLException {
+    void insert(HashMap<String, ArrayList<String>> keyValues) {
         String sqlWithPlaceHolder = "INSERT INTO `" + tableName + "` values (?,?);";
         java.sql.PreparedStatement statement = null;
         try {

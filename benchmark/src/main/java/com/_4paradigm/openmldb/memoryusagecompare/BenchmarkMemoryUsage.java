@@ -20,7 +20,7 @@ public class BenchmarkMemoryUsage {
     private static final InputStream configStream = BenchmarkMemoryUsage.class.getClassLoader().getResourceAsStream("memory.properties");
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
-    private static final int batchKeys = 10;
+    private static final int batchKeys = 100;
 
     public static void main(String[] args) {
         logger.info("Start benchmark test: Compare memory usage with Redis.");
