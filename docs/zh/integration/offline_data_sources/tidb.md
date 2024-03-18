@@ -2,7 +2,7 @@
 
 ## 简介
 
-[TiDB](https://docs.pingcap.com/) 是一款开源分布式关系型数据库，支持水平扩缩容、金融级高可用、实时 HTAP、云原生的分布式数据库、兼容 MySQL 5.7 协议和 MySQL 生态等重要特性。OpenMLDB 支持使用 TiDB 作为离线存储引擎，用于读取和导出特征计算的数据。
+[TiDB](https://docs.pingcap.com/zh/) 是一款开源分布式关系型数据库，支持水平扩缩容、金融级高可用、实时 HTAP、云原生的分布式数据库、兼容 MySQL 5.7 协议和 MySQL 生态等重要特性。OpenMLDB 支持使用 TiDB 作为离线存储引擎，用于读取和导出特征计算的数据。
 
 ## 使用
 
@@ -70,10 +70,10 @@ LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPT
 对于 TiDB 数据源的导出是通过 API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `tidb://tidb_catalog.[db].[table]` 的格式进行导出到 TiDB 数仓。注意：
 
 - 数据库和数据表必须已经存在，目前不支持对于不存在的数据库或数据表进行自动创建
-- `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
+- `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效，当前参数为必填项
 
 举例：
 
 ```sql
-SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'tidb://tidb_catalog.db1.t1';
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'tidb://tidb_catalog.db1.t1' options(mode='append');
 ```
