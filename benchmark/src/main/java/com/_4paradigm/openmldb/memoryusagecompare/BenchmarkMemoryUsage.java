@@ -36,6 +36,7 @@ public class BenchmarkMemoryUsage {
             }
             m.closeConn();
             summary.printSummary();
+            logger.info("Done.");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -66,7 +67,7 @@ public class BenchmarkMemoryUsage {
         logger.info("delete all data in redis and openmldb, and wait for the asynchronous operation to complete ... ");
         redis.clear();
         opdb.clear();
-        Thread.sleep(30 * 1000);
+        Thread.sleep(10 * 1000);
         logger.info("Done. All test data deleted.");
     }
 
@@ -100,14 +101,14 @@ public class BenchmarkMemoryUsage {
         return result.toString();
     }
 
-    private void getMemUsage(int kn) throws SQLException, InterruptedException {
+    private void getMemUsage(int kn) throws InterruptedException {
         Thread.sleep(10 * 1000);
-        HashMap<String, Integer> knRes = new HashMap<>();
+        HashMap<String, Long> knRes = new HashMap<>();
         HashMap<String, String> redisInfoMap = redis.getRedisInfo();
         HashMap<String, String> openMLDBMem = opdb.getTableStatus();
 
-        knRes.put("redis", Integer.parseInt(redisInfoMap.get("used_memory")));
-        knRes.put("openmldb", Integer.parseInt(openMLDBMem.get(OpenMLDBTableStatusField.MEMORY_DATA_SiZE.name())));
+        knRes.put("redis", Long.parseLong(redisInfoMap.get("used_memory")));
+        knRes.put("openmldb", Long.parseLong(openMLDBMem.get(OpenMLDBTableStatusField.MEMORY_DATA_SiZE.name())));
         summary.summary.put(kn + "", knRes);
     }
 
