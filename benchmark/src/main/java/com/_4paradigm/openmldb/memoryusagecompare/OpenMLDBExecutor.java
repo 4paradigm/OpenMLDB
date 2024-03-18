@@ -43,7 +43,7 @@ public class OpenMLDBExecutor {
         statement.execute("SET @@execute_mode='online';");
         statement.execute("CREATE DATABASE IF NOT EXISTS " + dbName + ";");
         statement.execute("USE " + dbName + ";");
-        statement.execute("CREATE TABLE IF NOT EXISTS `" + tableName + "`( \n`key` string,\n`value` string\n) ; ");
+        statement.execute("CREATE TABLE IF NOT EXISTS `" + tableName + "`( \n`key` string,\n`value` string\n) OPTIONS (replicanum=1); ");
 
         statement.close();
         logger.info("create db and test table.");
@@ -66,7 +66,7 @@ public class OpenMLDBExecutor {
 
         while (true) {
             HashMap<String, String> tableStatus = this.getTableStatus();
-            if (tableStatus==null) {
+            if (tableStatus == null) {
                 return;
             }
 
@@ -82,6 +82,7 @@ public class OpenMLDBExecutor {
             }
         }
     }
+
     void close() {
         if (executor != null) executor.close();
     }
@@ -95,7 +96,6 @@ public class OpenMLDBExecutor {
             stmt = executor.getStatement();
             stmt.executeQuery("SHOW TABLE STATUS;");
             res = stmt.getResultSet();
-            logger.info("parse openmldb table status ResultSet: \n" + res);
             while (res.next()) {
                 String tName = res.getString(2);
                 String dName = res.getString(3);
@@ -105,8 +105,9 @@ public class OpenMLDBExecutor {
                         infoMap.put(f.name(), res.getString(f.getIndex()));
                     }
                     logger.info("OpenMLDB table status: \n" +
-                            "\t\t\tused_memory: " + infoMap.get(OpenMLDBTableStatusField.MEMORY_DATA_SiZE.name()) + "\n" +
-                            "\t\t\tdata count: " + infoMap.get(OpenMLDBTableStatusField.ROWS.name()));
+                            "\tused memory: " + infoMap.get(OpenMLDBTableStatusField.MEMORY_DATA_SiZE.name()) + "\n" +
+                            "\tdata count: " + infoMap.get(OpenMLDBTableStatusField.ROWS.name())
+                    );
                     return infoMap;
                 }
             }
