@@ -3,6 +3,7 @@ package com._4paradigm.openmldb.memoryusagecompare;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,9 @@ import java.util.Properties;
 public class RedisExecutor {
     private static final Logger logger = LoggerFactory.getLogger(RedisExecutor.class);
     static Jedis jedis;
+    private static final int MAX_RETRIES = 5;
+    private static final int RETRY_INTERVAL_MS = 1000;
+
 
     public void initializeJedis(Properties config, InputStream configStream) throws IOException {
         config.load(configStream);
@@ -31,7 +35,27 @@ public class RedisExecutor {
     }
 
     void clear() {
-        jedis.flushAll();
+        int flushRetries = 0;
+        while (true) {
+            try {
+                jedis.flushAll();
+                break;
+            } catch (JedisConnectionException e) {
+                if (e.getCause() instanceof java.net.SocketTimeoutException && flushRetries < MAX_RETRIES) {
+                    logger.warn("SocketTimeoutException, sleep and retry, timeout retry times: " + (flushRetries + 1));
+                    flushRetries++;
+                    try {
+                        Thread.sleep(RETRY_INTERVAL_MS); // 休眠一段时间后重试
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else {
+                    logger.error("exception: " + e.getCause() + ", timeout retry times: " + (flushRetries + 1));
+                    throw e;
+                }
+            }
+        }
+
         while (jedis.dbSize() > 0) {
             try {
                 Thread.sleep(1000); // Wait for 1 second
@@ -58,7 +82,10 @@ public class RedisExecutor {
                 infoMap.put(parts[0], parts[1].trim());
             }
         }
-        logger.info("Redis info: \n" + "\t\t\tused_memory: " + infoMap.get("used_memory") + "\n" + "\t\t\tkeys number: " + infoMap.get("db0"));
+        logger.info("Redis info: \n" +
+                "\tused memory: " + infoMap.get("used_memory") + "\n" +
+                "\tkeys number: " + infoMap.get("db0")
+        );
         return infoMap;
     }
 }
