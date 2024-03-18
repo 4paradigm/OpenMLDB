@@ -7,27 +7,33 @@ import java.util.*;
 
 public class Summary {
     private static final Logger logger = LoggerFactory.getLogger(Summary.class);
-    public final HashMap<String, HashMap<String, Integer>> summary = new HashMap<>();
+    public final HashMap<String, HashMap<String, Long>> summary = new HashMap<>();
 
     public void printSummary() {
-        StringBuilder report = new StringBuilder();
-        report.append(getRow("num", "redisMem", "OpenMLDBMem"));
         int colWidth = 20;
+        StringBuilder report = new StringBuilder();
+        report.append(getRow(formatValue("num", colWidth, "center"), formatValue("redisMem", colWidth, "center"), formatValue("OpenMLDBMem", colWidth, "center")));
+
         String border = "-";
         report.append(getRow(repeatString(border, colWidth), repeatString(border, colWidth), repeatString(border, colWidth)));
 
         // Create a sorted list of entries based on num
-        List<Map.Entry<String, HashMap<String, Integer>>> sortedEntries = new ArrayList<>(summary.entrySet());
+        List<Map.Entry<String, HashMap<String, Long>>> sortedEntries = new ArrayList<>(summary.entrySet());
         sortedEntries.sort(Comparator.comparingInt(entry -> Integer.parseInt(entry.getKey())));
 
-        for (Map.Entry<String, HashMap<String, Integer>> entry : sortedEntries) {
+        for (Map.Entry<String, HashMap<String, Long>> entry : sortedEntries) {
             String num = entry.getKey();
-            HashMap<String, Integer> memValues = entry.getValue();
-            Integer redisMem = memValues.get("redis");
-            Integer openmldbMem = memValues.get("openmldb");
+            HashMap<String, Long> memValues = entry.getValue();
+            Long redisMem = memValues.get("redis");
+            Long openmldbMem = memValues.get("openmldb");
             report.append(getRow(formatValue(num, colWidth), formatValue(redisMem, colWidth), formatValue(openmldbMem, colWidth)));
         }
-        logger.info("Summary report:\n" + report);
+        logger.info(
+                "\n====================\n" +
+                        "Summary report" +
+                        "\n====================\n" +
+                        report
+        );
     }
 
 
@@ -51,5 +57,25 @@ public class Summary {
 
     private static String formatValue(Object value, int maxLength) {
         return String.format("%" + (-maxLength) + "s", value.toString());
+    }
+
+    private static String formatValue(Object value, int maxLength, String align) {
+        String valueStr = value.toString().trim();
+        int valueLength = valueStr.length();
+        if ("center".equals(align)) {
+            int totalSpaces = maxLength - valueLength;
+            int leftSpaces = totalSpaces / 2;
+            int rightSpaces = totalSpaces - leftSpaces;
+
+            return String.format("%" + leftSpaces + "s", "") +
+                    valueStr +
+                    String.format("%" + rightSpaces + "s", "");
+        } else if ("left".equals(align)) {
+            String formatStr = "%" + (-maxLength) + "s";
+            return String.format(formatStr, valueStr);
+        } else {
+            String formatStr = "%" + maxLength + "s";
+            return String.format(formatStr, valueStr);
+        }
     }
 }
