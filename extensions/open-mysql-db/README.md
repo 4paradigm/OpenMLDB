@@ -30,10 +30,10 @@ openmldb.password=root
 Use the following command to start the server.
 
 ```
-java -jar ./open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar
+java -classpath .:open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar com._4paradigm.openmldb.mysql.server.OpenmldbMysqlServer
 ```
 
-## Clent
+## Client
 
 Use `mysql` command to connect.
 
