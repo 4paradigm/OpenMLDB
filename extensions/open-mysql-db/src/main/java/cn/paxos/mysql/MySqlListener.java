@@ -308,6 +308,11 @@ public class MySqlListener implements AutoCloseable {
         } else if (cause instanceof IllegalArgumentException) {
           errorCode = 1064;
           sqlState = "#42000".getBytes(StandardCharsets.US_ASCII);
+        } else if (e.getMessage()
+            .equalsIgnoreCase(
+                "java.sql.SQLException: executeSQL fail: [2000] please enter database first")) {
+          errorCode = 1046;
+          sqlState = "#3D000".getBytes(StandardCharsets.US_ASCII);
         } else {
           errorCode = 1105;
           sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
