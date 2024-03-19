@@ -14,7 +14,7 @@ import java.util.Properties;
 public class RedisExecutor {
     private static final Logger logger = LoggerFactory.getLogger(RedisExecutor.class);
     static Jedis jedis;
-    private static final int MAX_RETRIES = 5;
+    private static final int MAX_RETRIES = 20;
     private static final int RETRY_INTERVAL_MS = 1000;
 
 
@@ -43,9 +43,9 @@ public class RedisExecutor {
             try {
                 jedis.flushAll();
                 break;
-            } catch (JedisConnectionException e) {
-                if (e.getCause() instanceof java.net.SocketTimeoutException && flushRetries < MAX_RETRIES) {
-                    logger.warn("SocketTimeoutException, sleep and retry, timeout retry times: " + (flushRetries + 1));
+            } catch (Exception e) {
+                if (flushRetries < MAX_RETRIES) {
+                    logger.warn("exception: " + e.getCause() + ", sleep and retry, timeout retry times: " + (flushRetries + 1));
                     flushRetries++;
                     try {
                         Thread.sleep(RETRY_INTERVAL_MS); // 休眠一段时间后重试

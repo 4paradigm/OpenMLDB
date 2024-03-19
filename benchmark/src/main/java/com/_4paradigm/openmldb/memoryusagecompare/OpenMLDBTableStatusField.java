@@ -1,6 +1,6 @@
 package com._4paradigm.openmldb.memoryusagecompare;
 
-enum OpenMLDBTableStatusField {
+public enum OpenMLDBTableStatusField {
     TABLE_ID(1),
     TABLE_NAME(2),
     DATABASE_NAME(3),

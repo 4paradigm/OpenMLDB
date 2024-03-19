@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -18,9 +17,9 @@ import java.util.Properties;
 
 public class OpenMLDBExecutor {
     private static final Logger logger = LoggerFactory.getLogger(OpenMLDBExecutor.class);
-    static String tableName = "test_db";
-    static final String dbName = "mem";
-    static SqlExecutor executor;
+    public String tableName = "test_db";
+    public String dbName = "mem";
+    public SqlExecutor executor;
 
     public void initializeOpenMLDB(Properties config, InputStream configStream) throws IOException {
         config.load(configStream);
@@ -32,13 +31,12 @@ public class OpenMLDBExecutor {
         sdkOption.setEnableDebug(true);
         try {
             executor = new SqlClusterExecutor(sdkOption);
-            initOpenMLDBEnv();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void initOpenMLDBEnv() throws SQLException {
+    void initOpenMLDBEnv() throws SQLException {
         Statement statement = executor.getStatement();
         statement.execute("SET @@execute_mode='online';");
         statement.execute("CREATE DATABASE IF NOT EXISTS " + dbName + ";");
@@ -48,7 +46,6 @@ public class OpenMLDBExecutor {
         statement.close();
         logger.info("create db and test table.");
     }
-
 
     void insert(HashMap<String, ArrayList<String>> keyValues) {
         String sqlWithPlaceHolder = "INSERT INTO `" + tableName + "` values (?,?);";
@@ -76,7 +73,7 @@ public class OpenMLDBExecutor {
         }
     }
 
-    void clear() throws SQLException {
+    public void clear() throws SQLException {
         Statement statement = executor.getStatement();
         statement.execute("TRUNCATE TABLE `" + tableName + "`;");
         statement.close();
@@ -100,11 +97,11 @@ public class OpenMLDBExecutor {
         }
     }
 
-    void close() {
+    public void close() {
         if (executor != null) executor.close();
     }
 
-    HashMap<String, String> getTableStatus() {
+    public HashMap<String, String> getTableStatus() {
         logger.info("show openmldb table status...");
         Statement stmt = null;
         ResultSet res = null;

@@ -63,9 +63,10 @@ public class BenchmarkMemoryUsage {
         );
     }
 
-    public BenchmarkMemoryUsage() throws IOException {
+    public BenchmarkMemoryUsage() throws IOException, SQLException {
         redis.initializeJedis(config, configStream);
         opdb.initializeOpenMLDB(config, configStream);
+        opdb.initOpenMLDBEnv();
     }
 
     private void clearData() throws SQLException, InterruptedException {
@@ -81,11 +82,11 @@ public class BenchmarkMemoryUsage {
         opdb.close();
     }
 
-    private void insertData(int keyNum) throws SQLException {
+    private void insertData(int keyNum) {
         logger.info("start test: key size: " + keyNum + ", values per key: " + valuePerKey);
         int count = 0;
         HashMap<String, ArrayList<String>> keyValues = new HashMap<>();
-        for (int keyIdx = 0; keyIdx < keyNum; keyIdx++) {
+        for (int keyIdx = 0; keyIdx <= keyNum; keyIdx++) {
             if (count >= batchKeys) {
                 redis.insert(keyValues);
                 opdb.insert(keyValues);

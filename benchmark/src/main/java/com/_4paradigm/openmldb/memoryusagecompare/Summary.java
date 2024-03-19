@@ -28,16 +28,15 @@ public class Summary {
             Long openmldbMem = memValues.get("openmldb");
             report.append(getRow(formatValue(num, colWidth), formatValue(redisMem, colWidth), formatValue(openmldbMem, colWidth)));
         }
-        logger.info(
+        logger.info("\n====================\n" +
+                "Summary report" +
                 "\n====================\n" +
-                        "Summary report" +
-                        "\n====================\n" +
-                        report
+                report
         );
     }
 
 
-    private static String getRow(String... values) {
+    public static String getRow(String... values) {
         StringBuilder row = new StringBuilder();
         row.append("|");
         for (String value : values) {
@@ -47,7 +46,7 @@ public class Summary {
         return row.toString();
     }
 
-    private static String repeatString(String str, int count) {
+    public static String repeatString(String str, int count) {
         StringBuilder repeatedStr = new StringBuilder();
         for (int i = 0; i < count; i++) {
             repeatedStr.append(str);
@@ -55,11 +54,11 @@ public class Summary {
         return repeatedStr.toString();
     }
 
-    private static String formatValue(Object value, int maxLength) {
+    public static String formatValue(Object value, int maxLength) {
         return String.format("%" + (-maxLength) + "s", value.toString());
     }
 
-    private static String formatValue(Object value, int maxLength, String align) {
+    public static String formatValue(Object value, int maxLength, String align) {
         String valueStr = value.toString().trim();
         int valueLength = valueStr.length();
         if ("center".equals(align)) {
