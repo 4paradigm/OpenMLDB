@@ -30,6 +30,8 @@ openmldb.password=root
 Use the following command to start the server.
 
 ```
+# cd <directory of open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar>
+# please replace the first classpath value . with directory of server.properties
 java -classpath .:open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar com._4paradigm.openmldb.mysql.server.OpenmldbMysqlServer
 ```
 
