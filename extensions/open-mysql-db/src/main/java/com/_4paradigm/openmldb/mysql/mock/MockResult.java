@@ -176,6 +176,23 @@ public class MockResult {
     rows.add(row);
     mockResults.put(query, new Pair<>(columns, rows));
 
+    query = "show status";
+    // Variable_name	Value
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query =
+        "select query_id, sum(duration) as sum_duration from information_schema.profiling group by query_id";
+    // QUERY_ID	SUM_DURATION
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("QUERY_ID", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("SUM_DURATION", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    mockResults.put(query, new Pair<>(columns, rows));
+
     query = "show slave status";
     // Slave_IO_State, Master_Host, Master_User, Master_Port, Connect_Retry, Master_Log_File,
     // Read_Master_Log_Pos, Relay_Log_File, Relay_Log_Pos, Relay_Master_Log_File, Slave_IO_Running,
@@ -362,6 +379,19 @@ public class MockResult {
     columns = new ArrayList<>();
     columnNameStr =
         "Table, Non_unique, Key_name, Seq_in_index, Column_name, Collation, Cardinality, Sub_part, Packed, Null, Index_type, Comment, Index_comment, Visible, Expression";
+    for (String columnName : columnNameStr.split(", ")) {
+      columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
+    }
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    // SELECT TABLE_NAME, CHECK_OPTION, IS_UPDATABLE, SECURITY_TYPE, DEFINER FROM
+    // INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'demo_db' ORDER BY TABLE_NAME ASC
+    pattern =
+        "(?i)SELECT .* FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '.+' ORDER BY TABLE_NAME ASC";
+    // TABLE_NAME	CHECK_OPTION	IS_UPDATABLE	SECURITY_TYPE	DEFINER
+    columns = new ArrayList<>();
+    columnNameStr = "TABLE_NAME, CHECK_OPTION, IS_UPDATABLE, SECURITY_TYPE, DEFINER";
     for (String columnName : columnNameStr.split(", ")) {
       columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
     }

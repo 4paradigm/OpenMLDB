@@ -637,6 +637,11 @@ public class MySqlListener implements AutoCloseable {
         handleHandshakeResponse(ctx, (HandshakeResponse) msg, salt, remoteAddr);
       } else if (msg instanceof QueryCommand) {
         handleQuery(ctx, (QueryCommand) msg, salt, remoteAddr);
+      } else if (msg instanceof InitDbCommand) {
+        InitDbCommand initDbCommand = (InitDbCommand) msg;
+        System.out.println("[mysql-protocol] Received message: " + initDbCommand);
+        sqlEngine.useDatabase(connectionId, initDbCommand.getDatabase());
+        ctx.writeAndFlush(OkResponse.builder().sequenceId(initDbCommand.getSequenceId() + 1).build());
       } else {
         System.out.println("[mysql-protocol] Received message: " + msg);
 
@@ -649,7 +654,7 @@ public class MySqlListener implements AutoCloseable {
           if (command.equals(Command.COM_QUIT)) {
             ctx.flush();
             ctx.close();
-          } else if (command.equals(Command.COM_INIT_DB) || command.equals(Command.COM_PING)) {
+          } else if (command.equals(Command.COM_PING)) {
             ctx.writeAndFlush(OkResponse.builder().sequenceId(sequenceId + 1).build());
           } else if (command.equals(Command.COM_FIELD_LIST)) {
             ctx.writeAndFlush(new EofResponse(sequenceId + 1, 0));
