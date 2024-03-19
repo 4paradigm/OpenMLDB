@@ -219,6 +219,8 @@ object HybridseUtil {
       "iceberg"
     } else if (file.toLowerCase().startsWith("openmldb://")) {
       "openmldb" // TODO(hw): no doc for it
+    } else if (file.toLowerCase().startsWith("tidb://")) {
+      "tidb"
     } else {
       parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
     }
