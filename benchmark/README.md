@@ -53,3 +53,12 @@ java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBLongWindowBenchmar
 
 Note:
 If you want to test specific SQL, you can modify [here](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/java/com/_4paradigm/openmldb/benchmark/Util.java#L71)
+
+
+### Memory Usage Benchmark (Comparison with Redis)
+1. Configure [memory.properties](src%2Fmain%2Fresources%2Fmemory.properties)
+2. Start the test by executing the following command:
+```
+java -cp conf/:lib/* com._4paradigm.openmldb.memoryusagecompare.BenchmarkMemoryUsage
+```
+3. The test report will be printed at the end of the test execution.
