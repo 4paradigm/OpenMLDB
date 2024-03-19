@@ -35,7 +35,8 @@ TiDB schema参考[TiDB Schema](https://docs.pingcap.com/zh/tidb/stable/data-type
 | OpenMLDB 数据格式 | TiDB 数据格式  |
 | ----------------- |------------|
 | BOOL              | BOOL       |
-| INT               | 暂不支持       |
+| SMALLINT          | SMALLINT   |
+| INT               | INT        |
 | BIGINT            | BIGINT     |
 | FLOAT             | FLOAT      |
 | DOUBLE            | DOUBLE     |

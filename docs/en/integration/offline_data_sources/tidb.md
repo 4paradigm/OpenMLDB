@@ -33,15 +33,16 @@ Once either configuration is successful, access TiDB tables using the format `ti
 TiDB schema reference can be found at [TiDB Schema](https://docs.pingcap.com/tidb/stable/data-type-overview). Currently, only the following TiDB data formats are supported:
 
 | OpenMLDB Data Format | TiDB Data Format |
-| --------------------- | -----------------|
-| BOOL                  | BOOL             |
-| INT                   | Not supported    |
-| BIGINT                | BIGINT           |
-| FLOAT                 | FLOAT            |
-| DOUBLE                | DOUBLE           |
-| DATE                  | DATE             |
-| TIMESTAMP             | TIMESTAMP        |
-| STRING                | VARCHAR(M)       |
+|----------------------|------------------|
+| BOOL                 | BOOL             |
+| SMALLINT             | SMALLINT         |
+| INT                  | INT              |
+| BIGINT               | BIGINT           |
+| FLOAT                | FLOAT            |
+| DOUBLE               | DOUBLE           |
+| DATE                 | DATE             |
+| TIMESTAMP            | TIMESTAMP        |
+| STRING               | VARCHAR(M)       |
 
 ## Importing TiDB Data into OpenMLDB
 
