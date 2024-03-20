@@ -42,6 +42,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 
+#include "auth/authenticator.h"
 #include "base/glog_wrapper.h"
 #include "base/status.h"
 #include "proto/tablet.pb.h"
@@ -90,6 +91,9 @@ class RpcClient {
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
+        Authenticator client_authenticator("asd", "asd");
+        options.auth = &client_authenticator;
+
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;
         }
@@ -148,7 +152,8 @@ class RpcClient {
     template <class Request, class Response, class Callback>
     base::Status SendRequestSt(void (T::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
                                const Request* request, Response* response, uint64_t rpc_timeout, int retry_times) {
-        return SendRequestSt(func, [](brpc::Controller* cntl) {}, request, response, rpc_timeout, retry_times);
+        return SendRequestSt(
+            func, [](brpc::Controller* cntl) {}, request, response, rpc_timeout, retry_times);
     }
 
     template <class Request, class Response, class Callback, typename Func>
