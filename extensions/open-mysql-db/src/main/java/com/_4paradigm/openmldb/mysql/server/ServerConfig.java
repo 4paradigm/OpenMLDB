@@ -1,5 +1,6 @@
 package com._4paradigm.openmldb.mysql.server;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -12,10 +13,17 @@ public class ServerConfig {
     properties = new Properties();
 
     // Load local properties file
-    try {
-      properties.load(ServerConfig.class.getClassLoader().getResourceAsStream(CONFIG_FILE_PATH));
+    try (FileInputStream input = new FileInputStream(CONFIG_FILE_PATH)) {
+      properties.load(input);
     } catch (IOException e) {
       e.printStackTrace();
+      System.out.println(
+          "Load properties from working directory failed. Try loading properties from classpath resource.");
+      try {
+        properties.load(ServerConfig.class.getClassLoader().getResourceAsStream(CONFIG_FILE_PATH));
+      } catch (IOException e1) {
+        e1.printStackTrace();
+      }
     }
 
     //        try (FileInputStream input = new FileInputStream(CONFIG_FILE_PATH)) {
