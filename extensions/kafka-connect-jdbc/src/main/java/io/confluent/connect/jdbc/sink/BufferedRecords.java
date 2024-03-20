@@ -174,7 +174,7 @@ public class BufferedRecords {
     return result;
   }
 
-  public static Object convertToStruct(Schema valueSchema, Object value) {
+  public static Struct convertToStruct(Schema valueSchema, Object value) {
     SchemaBuilder validSchemaBuilder = SchemaBuilder.struct();
     HashMap<String, Object> valueCache = new HashMap<String, Object>();
     @SuppressWarnings("unchecked")
@@ -212,10 +212,11 @@ public class BufferedRecords {
       if (!(record.value() instanceof HashMap)) {
         log.warn("auto schema convertToStruct only support hashmap to struct");
       }
-      Object structValue = convertToStruct(valueSchema, record.value());
+      // schema may change, some columns may be removed cuz no value
+      Struct structValue = convertToStruct(valueSchema, record.value());
       log.debug("auto schema convertToStruct {}", structValue);
       record = new SinkRecord(record.topic(), record.kafkaPartition(), record.keySchema(),
-          record.key(), valueSchema, structValue, record.kafkaOffset(), record.timestamp(),
+          record.key(), structValue.schema(), structValue, record.kafkaOffset(), record.timestamp(),
           record.timestampType(), record.headers());
     }
 
