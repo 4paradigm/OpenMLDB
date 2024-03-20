@@ -43,6 +43,21 @@ public class MockResult {
       mockResults.put(query, new Pair<>(columns, rows));
     }
 
+    query = "show character set";
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Description", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Default collation", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Maxlen", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    row = new ArrayList<>();
+    row.add("utf8mb4");
+    row.add("UTF-8 Unicode");
+    row.add("utf8mb4_0900_ai_ci");
+    row.add("4");
+    rows.add(row);
+    mockResults.put(query, new Pair<>(columns, rows));
+
     query = "show character set where charset = 'utf8mb4'";
     columns = new ArrayList<>();
     columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
@@ -58,11 +73,67 @@ public class MockResult {
     rows.add(row);
     mockResults.put(query, new Pair<>(columns, rows));
 
+    query = "show collation";
+    // Collation	Charset	Id	Default	Compiled	Sortlen	Pad_attribute
+    // utf8mb4_0900_ai_ci	utf8mb4	255	Yes	Yes	0	NO PAD
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("Collation", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Id", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Default", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Compiled", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Sortlen", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Pad_attribute", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    row = new ArrayList<>();
+    row.add("utf8mb4_0900_ai_ci");
+    row.add("utf8mb4");
+    row.add("255");
+    row.add("Yes");
+    row.add("Yes");
+    row.add("0");
+    row.add("NO PAD");
+    rows.add(row);
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query = "show engines";
+    // Engine	Support	Comment	Transactions	XA	Savepoints
+    // InnoDB	DEFAULT	Supports transactions, row-level locking, and foreign keys	YES	YES	YES
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("Engine", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Support", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Comment", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Transactions", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("XA", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Savepoints", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    row = new ArrayList<>();
+    row.add("InnoDB");
+    row.add("DEFAULT");
+    row.add("Supports transactions, row-level locking, and foreign keys");
+    row.add("YES");
+    row.add("YES");
+    row.add("YES");
+    rows.add(row);
+    mockResults.put(query, new Pair<>(columns, rows));
+
     query = "show global status";
     columns = new ArrayList<>();
     columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
     rows = new ArrayList<>();
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query =
+        "show variables like 'lower_case_%'; show variables like 'sql_mode'; select count(*) as support_ndb from information_schema.engines where engine = 'ndbcluster'";
+    columns = new ArrayList<>();
+    // # support_ndb
+    // 0
+    columns.add(new QueryResultColumn("support_ndb", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    row = new ArrayList<>();
+    row.add("0");
+    rows.add(row);
     mockResults.put(query, new Pair<>(columns, rows));
 
     mockSessionVariables.put(
@@ -103,6 +174,23 @@ public class MockResult {
     row.add("");
     row.add("GPL");
     rows.add(row);
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query = "show status";
+    // Variable_name	Value
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query =
+        "select query_id, sum(duration) as sum_duration from information_schema.profiling group by query_id";
+    // QUERY_ID	SUM_DURATION
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("QUERY_ID", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("SUM_DURATION", "VARCHAR(255)"));
+    rows = new ArrayList<>();
     mockResults.put(query, new Pair<>(columns, rows));
 
     query = "show slave status";
@@ -258,7 +346,17 @@ public class MockResult {
     mockResults.put(query, new Pair<>(columns, rows));
 
     String pattern =
-        "(?i)SELECT .+ FROM .*information_schema.*\\..*routines.* WHERE .*routine_schema.* =.*";
+        "(?i)SELECT DISTINCT ROUTINE_SCHEMA, ROUTINE_NAME, PARAMS\\.PARAMETER FROM information_schema\\.ROUTINES LEFT JOIN \\( SELECT SPECIFIC_SCHEMA, SPECIFIC_NAME, GROUP_CONCAT\\(CONCAT\\(DATA_TYPE, ' ', PARAMETER_NAME\\) ORDER BY ORDINAL_POSITION SEPARATOR ', '\\) PARAMETER, ROUTINE_TYPE FROM information_schema\\.PARAMETERS GROUP BY SPECIFIC_SCHEMA, SPECIFIC_NAME, ROUTINE_TYPE \\) PARAMS ON ROUTINES\\.ROUTINE_SCHEMA = PARAMS\\.SPECIFIC_SCHEMA AND ROUTINES\\.ROUTINE_NAME = PARAMS\\.SPECIFIC_NAME AND ROUTINES\\.ROUTINE_TYPE = PARAMS\\.ROUTINE_TYPE WHERE ROUTINE_SCHEMA = '.+' ORDER BY ROUTINE_SCHEMA";
+    // ROUTINE_SCHEMA	ROUTINE_NAME	PARAMETER
+    columns = new ArrayList<>();
+    columnNameStr = "ROUTINE_SCHEMA, ROUTINE_NAME, PARAMETER";
+    for (String columnName : columnNameStr.split(", ")) {
+      columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
+    }
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    pattern = "(?i)SELECT .+ FROM information_schema\\.routines WHERE routine_schema = '.+'";
     // SPECIFIC_NAME, ROUTINE_CATALOG, ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE_TYPE, DATA_TYPE,
     // CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE,
     // DATETIME_PRECISION, CHARACTER_SET_NAME, COLLATION_NAME, DTD_IDENTIFIER, ROUTINE_BODY,
@@ -281,6 +379,19 @@ public class MockResult {
     columns = new ArrayList<>();
     columnNameStr =
         "Table, Non_unique, Key_name, Seq_in_index, Column_name, Collation, Cardinality, Sub_part, Packed, Null, Index_type, Comment, Index_comment, Visible, Expression";
+    for (String columnName : columnNameStr.split(", ")) {
+      columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
+    }
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    // SELECT TABLE_NAME, CHECK_OPTION, IS_UPDATABLE, SECURITY_TYPE, DEFINER FROM
+    // INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'demo_db' ORDER BY TABLE_NAME ASC
+    pattern =
+        "(?i)SELECT .* FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '.+' ORDER BY TABLE_NAME ASC";
+    // TABLE_NAME	CHECK_OPTION	IS_UPDATABLE	SECURITY_TYPE	DEFINER
+    columns = new ArrayList<>();
+    columnNameStr = "TABLE_NAME, CHECK_OPTION, IS_UPDATABLE, SECURITY_TYPE, DEFINER";
     for (String columnName : columnNameStr.split(", ")) {
       columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
     }

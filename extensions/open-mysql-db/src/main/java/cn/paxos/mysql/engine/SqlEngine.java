@@ -21,6 +21,7 @@ import java.io.IOException;
 
 /** An interface to callback events received from the MySQL server. */
 public interface SqlEngine {
+  void useDatabase(int connectionId, String database) throws IOException;
 
   /**
    * Authenticating the user and password.

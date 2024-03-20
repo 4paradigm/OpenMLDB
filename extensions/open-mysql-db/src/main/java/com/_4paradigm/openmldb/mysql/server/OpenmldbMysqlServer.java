@@ -8,8 +8,9 @@ import cn.paxos.mysql.util.SHAUtils;
 import cn.paxos.mysql.util.Utils;
 import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
-import com._4paradigm.openmldb.mysql.util.TypeUtil;
 import com._4paradigm.openmldb.mysql.mock.MockResult;
+import com._4paradigm.openmldb.mysql.util.TypeUtil;
+import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
@@ -17,10 +18,7 @@ import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,6 +28,41 @@ public class OpenmldbMysqlServer {
 
   private final Pattern showFullColumnsPattern =
       Pattern.compile("(?i)SHOW FULL COLUMNS FROM `(.+)` FROM `(.+)`");
+
+  private final Pattern showColumnsPattern =
+      Pattern.compile("(?i)SHOW COLUMNS FROM `(.+)` FROM `(.+)`");
+
+  private final Pattern selectTablesPattern =
+      Pattern.compile(
+          "(?i)SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = '(.+)' ORDER BY TABLE_SCHEMA, TABLE_TYPE");
+
+  private final Pattern selectColumnsPattern =
+      Pattern.compile(
+          "(?i)SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '(.+)' ORDER BY TABLE_SCHEMA, TABLE_NAME");
+
+  private final Pattern selectCountUnionPattern =
+      Pattern.compile(
+          "(?i)(SELECT COUNT\\(\\*\\) FROM .+)(?: UNION (SELECT COUNT\\(\\*\\) FROM .+))+");
+
+  // SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'xzs'
+  private final Pattern selectCountTablesPattern =
+      Pattern.compile(
+          "(?i)SELECT COUNT\\(\\*\\) FROM information_schema.TABLES WHERE TABLE_SCHEMA = '(.+)'");
+
+  // SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = 'xzs'
+  private final Pattern selectCountColumnsPattern =
+      Pattern.compile(
+          "(?i)SELECT COUNT\\(\\*\\) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '(.+)'");
+
+  // SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = 'xzs'
+  private final Pattern selectCountRoutinesPattern =
+      Pattern.compile(
+          "(?i)SELECT COUNT\\(\\*\\) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '(.+)'");
+
+  private final Pattern createDatabasePattern = Pattern.compile("(?i)(CREATE DATABASE `.+`).*");
+
+  private final Pattern selectLimitPattern =
+      Pattern.compile("(?i)(SELECT .+) limit (?:\\d)+,(?:\\d)+");
 
   //  private final Pattern crateTableResultPattern =
   //      Pattern.compile(
@@ -41,6 +74,18 @@ public class OpenmldbMysqlServer {
         port,
         100,
         new SqlEngine() {
+          @Override
+          public void useDatabase(int connectionId, String database) throws IOException {
+            try {
+              System.out.println("Use database: " + database);
+              java.sql.Statement stmt = sqlClusterExecutorMap.get(connectionId).getStatement();
+              stmt.execute("use " + database);
+            } catch (Exception e) {
+              e.printStackTrace();
+              throw new IOException(e);
+            }
+          }
+
           @Override
           public void authenticate(
               int connectionId,
@@ -114,8 +159,13 @@ public class OpenmldbMysqlServer {
               String sql)
               throws IOException {
             // Print useful information
-            System.out.println("Try to execute query, Database: " + database + ", User: "
-                    + userName + ", SQL: " + sql);
+            System.out.println(
+                "Try to execute query, Database: "
+                    + database
+                    + ", User: "
+                    + userName
+                    + ", SQL: "
+                    + sql);
 
             this.authenticate(connectionId, database, userName, scramble411, authSeed);
 
@@ -129,6 +179,59 @@ public class OpenmldbMysqlServer {
                 }
                 resultSetWriter.finish();
               } else {
+                // SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'demo_db'
+                // UNION SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA =
+                // 'demo_db' UNION SELECT COUNT(*) FROM information_schema.ROUTINES WHERE
+                // ROUTINE_SCHEMA = 'demo_db'
+                Matcher selectCountUnionMatcher = selectCountUnionPattern.matcher(sql);
+                if (selectCountUnionMatcher.matches()) {
+                  // COUNT(*)
+                  List<QueryResultColumn> columns = new ArrayList<>();
+                  columns.add(new QueryResultColumn("COUNT(*)", "VARCHAR(255)"));
+                  resultSetWriter.writeColumns(columns);
+                  List<String> row;
+                  for (int i = 1; i <= selectCountUnionMatcher.groupCount(); ++i) {
+                    String unionSql = selectCountUnionMatcher.group(i);
+
+                    Matcher selectCountTablesMatcher = selectCountTablesPattern.matcher(unionSql);
+                    Matcher selectCountColumnsMatcher = selectCountColumnsPattern.matcher(unionSql);
+                    Matcher selectCountRoutinesMatcher =
+                        selectCountRoutinesPattern.matcher(unionSql);
+                    if (selectCountTablesMatcher.matches()) {
+                      String dbName = selectCountTablesMatcher.group(1);
+                      row = new ArrayList<>();
+                      row.add(
+                          Integer.toString(
+                              sqlClusterExecutorMap
+                                  .get(connectionId)
+                                  .getTableNames(dbName)
+                                  .size()));
+                      resultSetWriter.writeRow(row);
+                    } else if (selectCountColumnsMatcher.matches()) {
+                      String dbName = selectCountTablesMatcher.group(1);
+                      int columnCount = 0;
+                      for (String tableName :
+                          sqlClusterExecutorMap.get(connectionId).getTableNames(dbName)) {
+                        columnCount +=
+                            sqlClusterExecutorMap
+                                .get(connectionId)
+                                .getTableSchema(dbName, tableName)
+                                .getColumnList()
+                                .size();
+                      }
+                      row = new ArrayList<>();
+                      row.add(Integer.toString(columnCount));
+                      resultSetWriter.writeRow(row);
+                    } else if (selectCountRoutinesMatcher.matches()) {
+                      row = new ArrayList<>();
+                      row.add(Integer.toString(0));
+                      resultSetWriter.writeRow(row);
+                    }
+                  }
+                  resultSetWriter.finish();
+                  return;
+                }
+
                 for (String patternStr : MockResult.mockPatternResults.keySet()) {
                   Pattern pattern = Pattern.compile(patternStr);
                   if (pattern.matcher(sql).matches()) {
@@ -143,12 +246,104 @@ public class OpenmldbMysqlServer {
                   }
                 }
 
+                // mock SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM
+                // information_schema.SCHEMATA
+                if (sql.equalsIgnoreCase(
+                    "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA")) {
+                  List<String> dbs = sqlClusterExecutorMap.get(connectionId).showDatabases();
+                  // SCHEMA_NAME	DEFAULT_CHARACTER_SET_NAME	DEFAULT_COLLATION_NAME
+                  // mysql	utf8mb4	utf8mb4_0900_ai_ci
+                  List<QueryResultColumn> columns = new ArrayList<>();
+                  columns.add(new QueryResultColumn("SCHEMA_NAME", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("DEFAULT_CHARACTER_SET_NAME", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("DEFAULT_COLLATION_NAME", "VARCHAR(255)"));
+                  resultSetWriter.writeColumns(columns);
+                  List<String> row;
+                  for (String db : dbs) {
+                    row = new ArrayList<>();
+                    row.add(db);
+                    row.add("utf8mb4");
+                    row.add("utf8mb4_0900_ai_ci");
+                    resultSetWriter.writeRow(row);
+                  }
+                  resultSetWriter.finish();
+                  return;
+                }
+
+                // mock SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES
+                // WHERE TABLE_SCHEMA = 'demo_db' ORDER BY TABLE_SCHEMA, TABLE_TYPE
+                Matcher selectTablesMatcher = selectTablesPattern.matcher(sql);
+                if (selectTablesMatcher.matches()) {
+                  String dbName = selectTablesMatcher.group(1);
+                  List<String> tableNames =
+                      sqlClusterExecutorMap.get(connectionId).getTableNames(dbName);
+                  // TABLE_SCHEMA	TABLE_NAME	TABLE_TYPE
+                  List<QueryResultColumn> columns = new ArrayList<>();
+                  columns.add(new QueryResultColumn("TABLE_SCHEMA", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("TABLE_NAME", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("TABLE_TYPE", "VARCHAR(255)"));
+                  resultSetWriter.writeColumns(columns);
+                  List<String> row;
+                  for (String tableName : tableNames) {
+                    row = new ArrayList<>();
+                    row.add(dbName);
+                    row.add(tableName);
+                    row.add("BASE TABLE");
+                    resultSetWriter.writeRow(row);
+                  }
+                  resultSetWriter.finish();
+                  return;
+                }
+
+                // mock SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM
+                // information_schema.COLUMNS WHERE TABLE_SCHEMA = 'demo_db' ORDER BY TABLE_SCHEMA,
+                // TABLE_NAME
+                Matcher selectColumnsMatcher = selectColumnsPattern.matcher(sql);
+                if (selectColumnsMatcher.matches()) {
+                  String dbName = selectColumnsMatcher.group(1);
+                  List<String> tableNames =
+                      sqlClusterExecutorMap.get(connectionId).getTableNames(dbName);
+                  // TABLE_SCHEMA	TABLE_NAME	COLUMN_NAME	COLUMN_TYPE
+                  List<QueryResultColumn> columns = new ArrayList<>();
+                  columns.add(new QueryResultColumn("TABLE_SCHEMA", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("TABLE_NAME", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("COLUMN_NAME", "VARCHAR(255)"));
+                  columns.add(new QueryResultColumn("COLUMN_TYPE", "VARCHAR(255)"));
+                  resultSetWriter.writeColumns(columns);
+                  List<String> row;
+                  Collections.sort(tableNames);
+                  for (String tableName : tableNames) {
+                    Schema tableSchema =
+                        sqlClusterExecutorMap.get(connectionId).getTableSchema(dbName, tableName);
+                    for (Column column : tableSchema.getColumnList()) {
+                      row = new ArrayList<>();
+                      row.add(dbName);
+                      row.add(tableName);
+                      row.add(column.getColumnName());
+                      row.add(TypeUtil.openmldbTypeToMysqlTypeString(column.getSqlType()));
+                      resultSetWriter.writeRow(row);
+                    }
+                  }
+                  resultSetWriter.finish();
+                  return;
+                }
+
                 java.sql.Statement stmt = sqlClusterExecutorMap.get(connectionId).getStatement();
 
                 Matcher showFullColumnsMatcher = showFullColumnsPattern.matcher(sql);
-                if (showFullColumnsMatcher.matches()) {
-                  String tableName = showFullColumnsMatcher.group(1);
-                  String databaseName = showFullColumnsMatcher.group(2);
+                Matcher showColumnsMatcher = showColumnsPattern.matcher(sql);
+                boolean showFullColumnsMatch = showFullColumnsMatcher.matches();
+                boolean showColumnsMatch = showColumnsMatcher.matches();
+                if (showFullColumnsMatch || showColumnsMatch) {
+                  String tableName;
+                  String databaseName;
+                  if (showFullColumnsMatch) {
+                    tableName = showFullColumnsMatcher.group(1);
+                    databaseName = showFullColumnsMatcher.group(2);
+                  } else {
+                    tableName = showColumnsMatcher.group(1);
+                    databaseName = showColumnsMatcher.group(2);
+                  }
                   String selectStarSql = "select * from `" + databaseName + "`.`" + tableName + "`";
                   stmt.execute(selectStarSql);
 
@@ -157,13 +352,17 @@ public class OpenmldbMysqlServer {
                   // id, int, , NO, PRI, , auto_increment, select,insert,update,references,
                   columns.add(new QueryResultColumn("Field", "VARCHAR(255)"));
                   columns.add(new QueryResultColumn("Type", "VARCHAR(255)"));
-                  columns.add(new QueryResultColumn("Collation", "VARCHAR(255)"));
+                  if (showFullColumnsMatch) {
+                    columns.add(new QueryResultColumn("Collation", "VARCHAR(255)"));
+                  }
                   columns.add(new QueryResultColumn("Null", "VARCHAR(255)"));
                   columns.add(new QueryResultColumn("Key", "VARCHAR(255)"));
                   columns.add(new QueryResultColumn("Default", "VARCHAR(255)"));
                   columns.add(new QueryResultColumn("Extra", "VARCHAR(255)"));
-                  columns.add(new QueryResultColumn("Privileges", "VARCHAR(255)"));
-                  columns.add(new QueryResultColumn("Comment", "VARCHAR(255)"));
+                  if (showFullColumnsMatch) {
+                    columns.add(new QueryResultColumn("Privileges", "VARCHAR(255)"));
+                    columns.add(new QueryResultColumn("Comment", "VARCHAR(255)"));
+                  }
                   resultSetWriter.writeColumns(columns);
 
                   SQLResultSet resultSet = (SQLResultSet) stmt.getResultSet();
@@ -175,13 +374,17 @@ public class OpenmldbMysqlServer {
                     List<String> row = new ArrayList<>();
                     row.add(schema.getColumnName(i));
                     row.add(TypeUtil.openmldbTypeToMysqlTypeString(schema.getColumnType(i)));
+                    if (showFullColumnsMatch) {
+                      row.add("");
+                    }
                     row.add("");
                     row.add("");
                     row.add("");
                     row.add("");
-                    row.add("");
-                    row.add("");
-                    row.add("");
+                    if (showFullColumnsMatch) {
+                      row.add("");
+                      row.add("");
+                    }
                     resultSetWriter.writeRow(row);
                   }
                   resultSetWriter.finish();
@@ -191,8 +394,17 @@ public class OpenmldbMysqlServer {
                 if (!Strings.isNullOrEmpty(database)) {
                   stmt.execute("use " + database);
                 }
-                if (sql.equalsIgnoreCase("SHOW FULL TABLES")) {
+                if (sql.equalsIgnoreCase("SHOW FULL TABLES")
+                    || sql.equalsIgnoreCase("SHOW FULL TABLES WHERE Table_type != 'VIEW'")) {
                   sql = "SHOW TABLES";
+                } else {
+                  Matcher crateDatabaseMatcher = createDatabasePattern.matcher(sql);
+                  Matcher selectLimitMatcher = selectLimitPattern.matcher(sql);
+                  if (crateDatabaseMatcher.matches()) {
+                    sql = crateDatabaseMatcher.group(1);
+                  } else if (selectLimitMatcher.matches()) {
+                    sql = selectLimitMatcher.group(1);
+                  }
                 }
                 stmt.execute(sql);
 
@@ -209,7 +421,7 @@ public class OpenmldbMysqlServer {
               }
             } catch (Exception e) {
               e.printStackTrace();
-              throw new IOException(e.getMessage());
+              throw new IOException(e);
             }
           }
 
@@ -243,9 +455,14 @@ public class OpenmldbMysqlServer {
     // int columnCount = schema.GetColumnCnt();
     int columnCount = schema.getColumnList().size();
 
+    int tableIdColumnIndex = 0;
     // Add schema
     for (int i = 0; i < columnCount; i++) {
       String columnName = schema.getColumnName(i);
+      if (sql.equalsIgnoreCase("show table status") && columnName.equalsIgnoreCase("table_id")) {
+        tableIdColumnIndex = i;
+        continue;
+      }
       int columnType = schema.getColumnType(i);
       columns.add(
           new QueryResultColumn(columnName, TypeUtil.openmldbTypeToMysqlTypeString(columnType)));
@@ -260,6 +477,10 @@ public class OpenmldbMysqlServer {
 
       for (int i = 0; i < columnCount; i++) {
         // DataType type = schema.GetColumnType(i);
+        // hack: skip table id, table_id will be parsed as table name by navicat
+        if (sql.equalsIgnoreCase("show table status") && i == tableIdColumnIndex) {
+          continue;
+        }
         int type = schema.getColumnType(i);
         String columnValue = TypeUtil.getResultSetStringColumn(resultSet, i + 1, type);
         row.add(columnValue);
