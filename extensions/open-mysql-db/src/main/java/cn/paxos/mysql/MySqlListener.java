@@ -620,14 +620,13 @@ public class MySqlListener implements AutoCloseable {
       // todo may java.lang.NullPointerException
       this.remoteAddr =
           ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress();
-      int connectionId = getConnectionId(ctx);
       System.out.println("[mysql-protocol] Server channel active");
       final EnumSet<CapabilityFlags> capabilities = CapabilityFlags.getImplicitCapabilities();
       CapabilityFlags.setCapabilitiesAttr(ctx.channel(), capabilities);
       ctx.writeAndFlush(
           Handshake.builder()
               .serverVersion(VERSION)
-              .connectionId(connectionId)
+              .connectionId(getConnectionId(ctx))
               .addAuthData(salt)
               .characterSet(MysqlCharacterSet.UTF8MB4_0900_AI_CI)
               .addCapabilities(capabilities)
