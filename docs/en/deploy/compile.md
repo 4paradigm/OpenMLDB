@@ -49,8 +49,8 @@ This chapter discusses compiling source code without relying on pre-built contai
 
 - **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.15, other systems are not carefully tested but issue/PR welcome
-- **CPU Architecture**: Currently, only x86 architecture is supported, and other architectures like ARM are not supported at the moment (please note that running x86 images on heterogeneous systems like M1 Mac is also not supported at this time).
+- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 12.0 (Intel Chip), other systems are not carefully tested but issue/PR welcome
+- **CPU Architecture**: x86 only, other architectures like ARM are not supported (note that running x86 container heterogeneously on machines like Mac with Apple Silicon is not supported neither).
 
 💡 Note: By default, the parallel build is disabled, and it usually takes an hour to finish all the compile jobs. You can enable the parallel build by tweaking the `NPROC` option if your machine's resource is enough. This will reduce the compile time but also consume more memory. For example, the following command sets the number of concurrent build jobs to 4:
 
@@ -69,8 +69,8 @@ make NPROC=4
 
 Building OpenMLDB requires certain thirdparty dependencies. Hence a `Makefile` is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
-- **Method One: Download Pre-Compiled Thirdparty:**  Command is `make && make install`. It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS.
-- **Method Two: Compile Thirdparty from Source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 8 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
+- **Method One: Download Pre-Compiled Thirdparty(limited OSs only):**  Command is `make && make install`. It downloads necessary pre-compiled libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS >= 12.0.
+- **Method Two: Compile Thirdparty from Source(all supported OSs):** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 8 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
   
    ```bash
    make BUILD_BUNDLED=ON

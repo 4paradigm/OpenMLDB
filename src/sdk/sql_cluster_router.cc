@@ -2170,14 +2170,14 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         }
 
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
-
-        std::map<std::string, std::string> config;
-        ::openmldb::taskmanager::JobInfo job_info;
         std::string output;
+        // need to load spark config
+        auto config = ParseSparkConfigString(GetSparkConfig());
+        ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+        AddUserToConfig(&config);
         // create table like hive is a long op, use large timeout
         ::openmldb::base::Status status =
             ExecuteOfflineQueryGetOutput(sql, config, db, FLAGS_sync_job_timeout, &output);
-
         if (!status.OK()) {
             LOG(ERROR) << "Fail to create table, error message: " + status.msg;
             return base::Status(base::ReturnCode::kSQLCmdRunError, status.msg);
