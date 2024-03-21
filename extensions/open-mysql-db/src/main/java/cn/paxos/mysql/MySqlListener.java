@@ -288,6 +288,7 @@ public class MySqlListener implements AutoCloseable {
             }
           };
       try {
+        String replacedQuery = queryString.replaceAll("^/\\*.*\\*/\\s*", "");
         sqlEngine.query(
             getConnectionId(ctx),
             resultSetWriter,
@@ -295,7 +296,7 @@ public class MySqlListener implements AutoCloseable {
             userName,
             scramble411,
             salt,
-            queryString);
+            replacedQuery);
       } catch (IOException e) {
         System.out.println("[mysql-protocol] Sql query exception: " + userName + ", " + remoteAddr);
         e.printStackTrace();
@@ -564,11 +565,19 @@ public class MySqlListener implements AutoCloseable {
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_LONGLONG, 12));
           values.add("1");
           break;
+        case "session.transaction_isolation":
         case "transaction_isolation":
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 63));
           values.add("REPEATABLE-READ");
+          //          values.add("READ-UNCOMMITTED");
+          break;
+        case "session.transaction_read_only":
+          columnDefinitions.add(
+              newColumnDefinition(
+                  ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_TINY, 1));
+          values.add("0");
           //          values.add("READ-UNCOMMITTED");
           break;
         default:
