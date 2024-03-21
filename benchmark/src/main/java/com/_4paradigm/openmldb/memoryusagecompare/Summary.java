@@ -7,18 +7,18 @@ import java.util.*;
 
 public class Summary {
     private static final Logger logger = LoggerFactory.getLogger(Summary.class);
-    public final HashMap<String, HashMap<String, Long>> summary = new HashMap<>();
+    public final HashMap<String, HashMap<String, Long>> memSummary = new HashMap<>();
+    public final ArrayList<ResourceUsage> indexMemSummary = new ArrayList<>();
 
-    public void printSummary() {
+    public void printMemUsageSummary() {
         int colWidth = 20;
         StringBuilder report = new StringBuilder();
-        report.append(getRow(formatValue("num", colWidth, "center"), formatValue("redisMem", colWidth, "center"), formatValue("OpenMLDBMem", colWidth, "center")));
+        report.append(getRow(formatValue("num", colWidth, "center"), formatValue("RedisMem(bytes)", colWidth, "center"), formatValue("OpenMLDBMem(bytes)", colWidth, "center")));
 
         String border = "-";
         report.append(getRow(repeatString(border, colWidth), repeatString(border, colWidth), repeatString(border, colWidth)));
 
-        // Create a sorted list of entries based on num
-        List<Map.Entry<String, HashMap<String, Long>>> sortedEntries = new ArrayList<>(summary.entrySet());
+        List<Map.Entry<String, HashMap<String, Long>>> sortedEntries = new ArrayList<>(memSummary.entrySet());
         sortedEntries.sort(Comparator.comparingInt(entry -> Integer.parseInt(entry.getKey())));
 
         for (Map.Entry<String, HashMap<String, Long>> entry : sortedEntries) {
@@ -27,6 +27,31 @@ public class Summary {
             Long redisMem = memValues.get("redis");
             Long openmldbMem = memValues.get("openmldb");
             report.append(getRow(formatValue(num, colWidth), formatValue(redisMem, colWidth), formatValue(openmldbMem, colWidth)));
+        }
+        logger.info("\n====================\n" +
+                "Summary report" +
+                "\n====================\n" +
+                report
+        );
+    }
+
+    public void printIndexMemUsageSummary() {
+        int colWidth = 35;
+        StringBuilder report = new StringBuilder();
+        report.append(Summary.getRow(Summary.formatValue("label", colWidth, "center"), Summary.formatValue("OpenMLDBMem(bytes)", colWidth, "center")));
+
+        String border = "-";
+        report.append(Summary.getRow(Summary.repeatString(border, colWidth), Summary.repeatString(border, colWidth)));
+
+        long preMemUsage = 0L;
+        for (ResourceUsage usage : indexMemSummary) {
+            String label = usage.label;
+            Long openmldbMem = usage.memoryUsage;
+
+            report.append(Summary.getRow(Summary.formatValue(label, colWidth), Summary.formatValue(openmldbMem, colWidth)));
+            if (preMemUsage == 0L) {
+                preMemUsage = openmldbMem;
+            }
         }
         logger.info("\n====================\n" +
                 "Summary report" +

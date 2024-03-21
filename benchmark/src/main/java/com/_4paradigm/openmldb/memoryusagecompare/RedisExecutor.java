@@ -1,5 +1,7 @@
 package com._4paradigm.openmldb.memoryusagecompare;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -8,6 +10,7 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -34,7 +37,20 @@ public class RedisExecutor {
             }
             jedis.zadd(key, valScores);
         }
+    }
 
+    void insertTalkingData(HashMap<String, ArrayList<TalkingData>> keyValues) {
+        for (String key : keyValues.keySet()) {
+            ArrayList<TalkingData> tds = keyValues.get(key);
+            HashMap<String, Double> valScores = new HashMap<>();
+            for (int i =0; i < tds.size(); i ++) {
+                TalkingData td = tds.get(i);
+                Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+                String jsonStr = gson.toJson(td);
+                valScores.put(jsonStr, (double) i);
+            }
+            jedis.zadd(key, valScores);
+        }
     }
 
     void clear() {

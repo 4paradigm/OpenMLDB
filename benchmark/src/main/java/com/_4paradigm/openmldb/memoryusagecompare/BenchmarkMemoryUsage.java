@@ -31,16 +31,12 @@ public class BenchmarkMemoryUsage {
             for (String keyNum : totalKeyNums) {
                 int kn = Integer.parseInt(keyNum);
                 m.clearData();
-                long time1 = System.currentTimeMillis();
                 m.insertData(kn);
-                long time2 = System.currentTimeMillis();
                 m.getMemUsage(kn);
-                summary.printSummary();
-                long time3 = System.currentTimeMillis();
-                logger.info("Insert elapsed time: " + (time2-time1) + ", Total elapse time: " + (time3-time1));
+                summary.printMemUsageSummary();
             }
             m.closeConn();
-            summary.printSummary();
+            summary.printMemUsageSummary();
             logger.info("Done.");
         } catch (Exception e) {
             e.printStackTrace();
@@ -69,7 +65,7 @@ public class BenchmarkMemoryUsage {
         opdb.initOpenMLDBEnv();
     }
 
-    private void clearData() throws SQLException, InterruptedException {
+    private void clearData() throws InterruptedException {
         logger.info("delete all data in redis and openmldb, and wait for the asynchronous operation to complete ... ");
         redis.clear();
         opdb.clear();
@@ -93,27 +89,17 @@ public class BenchmarkMemoryUsage {
                 count = 0;
                 keyValues.clear();
             }
-            String key = generateRandomString(keyLength);
+            String key = Utils.generateRandomString(keyLength);
             ArrayList<String> values = new ArrayList<>();
             for (int valIdx = 0; valIdx < valuePerKey; valIdx++) {
-                values.add(generateRandomString(valueLength));
+                values.add(Utils.generateRandomString(valueLength));
             }
             keyValues.put(key, values);
-            count ++;
+            count++;
         }
     }
 
-    private String generateRandomString(int length) {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder result = new StringBuilder();
-        Random random = new Random();
-        while (length-- > 0) {
-            result.append(characters.charAt(random.nextInt(characters.length())));
-        }
-        return result.toString();
-    }
-
-    private void getMemUsage(int kn) throws InterruptedException {
+    private void getMemUsage(int kn) throws Exception {
         Thread.sleep(10 * 1000);
         HashMap<String, Long> knRes = new HashMap<>();
         HashMap<String, String> redisInfoMap = redis.getRedisInfo();
@@ -121,7 +107,6 @@ public class BenchmarkMemoryUsage {
 
         knRes.put("redis", Long.parseLong(redisInfoMap.get("used_memory")));
         knRes.put("openmldb", Long.parseLong(openMLDBMem.get(OpenMLDBTableStatusField.MEMORY_DATA_SiZE.name())));
-        summary.summary.put(kn + "", knRes);
+        summary.memSummary.put(kn + "", knRes);
     }
-
 }
