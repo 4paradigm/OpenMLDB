@@ -5,27 +5,22 @@ This article will introduce how to quickly get started with OpenM(ysq)LDB.
 For installation and deployment, please refer to [OpenMLDB Deployment Document](../../../deploy/index.rst)
 and [OpenM(ysq)LDB Deployment Document](./install.md).
 
-## Use a compatible MySQL command line
+## Use a Compatible MySQL Command Line
 
-After deploying the OpenMLDB distributed cluster, developers do not need to install additional OpenMLDB command line
-tools. Using the pre-installed MySQL command line tool, they can directly connect to the OpenMLDB cluster for testing (
-note that the following SQL connections and execution results are all returned by OpenMLDB cluster, not remote MySQL
-service).
+After deploying the OpenMLDB distributed cluster, developers do not need to install additional OpenMLDB command line tools. Using the pre-installed MySQL command line tool, developers can directly connect to the OpenMLDB cluster for testing ( note that the following SQL connections and execution results are all returned by the OpenMLDB cluster, not by a remote MySQL service).
 
 ![mysql-cli-1.png](./images/mysql-cli-1.png)
 
-By executing customized OpenMLDB SQL, we can not only view the OpenMLDB cluster status, but also switch between offline
-mode and online mode to realize the offline and online feature extraction functions of MLOps.
+By executing customized OpenMLDB SQL, developers can not only view the status of the OpenMLDB cluster but also switch between offline mode and online mode to realize the offline and online feature extraction functions of MLOps.
 
 ![mysql-cli-2.png](./images/mysql-cli-2.png)
 
-## 使用兼容的 JDBC 驱动
+## Use a Compatible JDBC driver
 
-Java developer generally use the MySQL JDBC driver to connect to MySQL. The same code can directly connect to the
+Java developers generally use the MySQL JDBC driver to connect to MySQL. The same code can directly connect to the
 OpenMLDB cluster without any modification.
 
-Write the Java application code as follows. Pay attention to modify the IP, port and username and password information
-according to the actual cluster situation.
+Write the Java application code as follows. Pay attention to modifying the IP, port, username, and password information according to the actual cluster situation.
 
 ```java
 public class Main {
