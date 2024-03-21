@@ -1,0 +1,23 @@
+name: OpenM(ysq)LDB_CICD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  open-mysql-db-cicd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "adopt"
+          java-version: "11"
+
+      - name: open mysql db test
+        working-directory: extensions/open-mysql-db
+        run: ./mvnw --batch-mode test
