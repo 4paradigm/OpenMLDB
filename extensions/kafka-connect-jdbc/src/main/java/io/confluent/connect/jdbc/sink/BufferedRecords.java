@@ -180,19 +180,24 @@ public class BufferedRecords {
     @SuppressWarnings("unchecked")
     HashMap<String, Object> map = (HashMap<String, Object>) value;
     for (Field field : valueSchema.fields()) {
-      Object v = map.get(field.name());
-      Object newV = v;
-      if (v != null) {
-        // convert to the right type with schema(logical type first, if not, schema type)
-        newV = convertToLogicalType(field, v);
-        if (newV == null) {
-          newV = convertToSchemaType(field, v);
+      // 1. field is not in map, schema should remove it
+      // 2. filed is set to null, schema should keep it and don't set it,
+      // set null will throw exception in Struct
+      if (map.containsKey(field.name())) {
+        Object v = map.get(field.name());
+        Object newV = v;
+        if (v != null) {
+          // convert to the right type with schema(logical type first, if not, schema type)
+          newV = convertToLogicalType(field, v);
+          if (newV == null) {
+            newV = convertToSchemaType(field, v);
+          }
         }
-      }
-      // if no value, don't put it into struct, so the column won't be in insert sql
-      if (newV != null) {
+        // if null value, don't put it into struct, but should add it into schema
         validSchemaBuilder.field(field.name(), field.schema());
-        valueCache.put(field.name(), newV);
+        if (newV != null) {
+          valueCache.put(field.name(), newV);
+        }
       }
     }
 
@@ -212,9 +217,11 @@ public class BufferedRecords {
       if (!(record.value() instanceof HashMap)) {
         log.warn("auto schema convertToStruct only support hashmap to struct");
       }
-      // schema may change, some columns may be removed cuz no value
+      // schema may <= valueSchema, some columns may not in sink record
+      // TODO: what if json send column with empty value? is it be null in map?
       Struct structValue = convertToStruct(valueSchema, record.value());
-      log.debug("auto schema convertToStruct {}", structValue);
+      log.debug("auto schema convertToStruct schema {}, {}, origin {}", 
+          structValue.schema().fields(), structValue, record.value());
       record = new SinkRecord(record.topic(), record.kafkaPartition(), record.keySchema(),
           record.key(), structValue.schema(), structValue, record.kafkaOffset(), record.timestamp(),
           record.timestampType(), record.headers());
