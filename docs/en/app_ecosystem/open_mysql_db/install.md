@@ -1,10 +1,10 @@
-# Deployment
+# Installation and Deployment
 
-## Environment requirements
+## Environment Requirements
 
 1. `Java 11+`
 
-## Download OpenM(ysq)LDB distribution
+## Download OpenM(ysq)LDB Distribution
 
 Download address: [open-mysql-db](https://openmldb.ai/download/openmysqldb/open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar)
 
@@ -14,7 +14,7 @@ wget https://openmldb.ai/download/openmysqldb/open-mysql-db-0.1.0-SNAPSHOT-jar-w
 
 ## Configuration
 
-Please deploy OpenMLDB Cluster in advance and create the `server.properties` configuration file in the directory of `open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependency.jar`. The contents of the `server.properties` configuration file are created as follows
+Please deploy OpenMLDB Cluster in advance and create a `server.properties` configuration file in the same directory as `open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependency.jar`. An example of the `server.properties` configuration file is shown as follows:
 
 ```
 # OpenM(ysq)LDB Service Port
@@ -29,7 +29,7 @@ openmldb.user=root
 openmldb.password=root
 ```
 
-## Start the OpenM(ysq)LDB service
+## Start OpenM(ysq)LDB Service
 
 Use the following command to start the OpenM(ysq)LDB service
 
@@ -37,7 +37,7 @@ Use the following command to start the OpenM(ysq)LDB service
 java -jar open-mysql-db-0.1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-## Test verification
+## Test Verification
 
 Use the `mysql` command to connect to the OpenM(ysq)LDB service
 
