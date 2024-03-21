@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'extensions/open-mysql-db/**'
   pull_request:
+    paths:
+      - 'extensions/open-mysql-db/**'
   workflow_dispatch:
 
 jobs:
