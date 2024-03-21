@@ -91,8 +91,8 @@ class RpcClient {
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
-        Authenticator client_authenticator("asd", "asd");
-        options.auth = &client_authenticator;
+        client_authenticator_ = Authenticator("asd", "asd");
+        options.auth = &client_authenticator_;
 
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;
@@ -227,6 +227,7 @@ class RpcClient {
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;
+    Authenticator client_authenticator_;
 };
 
 template <class Response>
