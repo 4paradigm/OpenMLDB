@@ -21,10 +21,11 @@ import com._4paradigm.hybridse.node.{ConstNode, ExprType, DataType => HybridseDa
 import com._4paradigm.hybridse.vm.PhysicalConstProjectNode
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExpressionUtil}
-import org.apache.spark.sql.{Column, SparkSession}
+import org.apache.spark.sql.{Column, Row, SparkSession}
 import org.apache.spark.sql.functions.{to_date, when}
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType,
-  StringType, TimestampType}
+  StringType, StructField, StructType, TimestampType}
+
 import java.sql.Timestamp
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -62,7 +63,10 @@ object ConstProjectPlan {
     })
 
     // Use Spark DataFrame to select columns
-    val result = ctx.getSparkSession.emptyDataFrame.select(selectColList: _*)
+    val sparkSession = ctx.getSparkSession
+    val originDf = sparkSession.createDataFrame(sparkSession.sparkContext.parallelize(Seq(Row("1"))),
+      StructType(List(StructField("1", StringType))))
+    val result = originDf.select(selectColList: _*)
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
