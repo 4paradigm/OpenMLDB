@@ -123,7 +123,7 @@ set_property(
 )
 
 add_library(openmldb_flags flags.cc)
-
+compile_lib(auth auth "")
 compile_lib(openmldb_codec codec "")
 compile_lib(openmldb_catalog catalog "")
 compile_lib(schema schema "")
@@ -141,7 +141,7 @@ compile_lib(apiserver apiserver "")
 find_package(yaml-cpp REQUIRED)
 set(yaml_libs yaml-cpp)
 
-set(BUILTIN_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log ${RocksDB_LIB})
+set(BUILTIN_LIBS apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog client zk_client replica base storage openmldb_codec schema openmldb_proto log auth ${RocksDB_LIB})
 set(BIN_LIBS ${BUILTIN_LIBS}
 common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
