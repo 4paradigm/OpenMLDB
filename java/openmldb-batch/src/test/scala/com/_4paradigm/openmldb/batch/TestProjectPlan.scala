@@ -16,10 +16,12 @@
 
 package com._4paradigm.openmldb.batch
 
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
+import com._4paradigm.openmldb.batch.utils.SparkUtil
+import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
 
 import scala.collection.JavaConverters.seqAsJavaListConverter
+import scala.collection.mutable
 
 
 
@@ -46,5 +48,24 @@ class TestProjectPlan extends SparkTestSuite {
     val res = planner.plan("select id + 1, id + 2 from t1;", Map("t1" -> t1))
     val output = res.getDf()
     output.show()
+  }
+
+  test("Test const project") {
+    val sess = getSparkSession
+
+    val schema = StructType(Seq(
+      StructField("1", IntegerType, nullable = false),
+      StructField("3.500000", DoubleType, nullable = false),
+      StructField("a", StringType, nullable = false)
+    ))
+    val expectDf = sess.createDataFrame(Seq(
+      (1, 3.5d, "a")
+    ).map(Row.fromTuple(_)).asJava, schema)
+
+    val planner = new SparkPlanner(sess)
+    val res = planner.plan("select 1, 3.5, \"a\";", mutable.HashMap[String, mutable.Map[String, DataFrame]]())
+    val output = res.getDf()
+
+    assert(SparkUtil.approximateDfEqual(expectDf, output))
   }
 }
