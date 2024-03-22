@@ -24,7 +24,6 @@ import java.util.Properties;
 
 public class BenchmarkIndexMemoryUsageByTalkingData {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkIndexMemoryUsageByTalkingData.class);
-    private final String tableName = "test_talking_index";
     private final OpenMLDBExecutor opdb = new OpenMLDBExecutor();
     private static final InputStream configStream = BenchmarkIndexMemoryUsageByTalkingData.class.getClassLoader().getResourceAsStream("memory.properties");
     private static final Properties config = new Properties();
@@ -47,7 +46,7 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
             m.closeConn();
             logger.info("Done.");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         }
     }
 
@@ -58,6 +57,7 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
 
     public BenchmarkIndexMemoryUsageByTalkingData() throws IOException, SQLException {
         opdb.initializeOpenMLDB(config, configStream);
+        String tableName = "test_talking_index";
         opdb.tableName = tableName;
         opdb.dbName = "mem";
 

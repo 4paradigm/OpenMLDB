@@ -30,7 +30,7 @@ public class OpenMLDBExecutor {
         try {
             executor = new SqlClusterExecutor(sdkOption);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         }
     }
 
@@ -80,13 +80,13 @@ public class OpenMLDBExecutor {
             }
             statement.executeBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         } finally {
             if (statement != null) {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Exception: ", e);
                 }
             }
         }
@@ -111,13 +111,13 @@ public class OpenMLDBExecutor {
             }
             statement.executeBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         } finally {
             if (statement != null) {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Exception: ", e);
                 }
             }
         }
@@ -138,7 +138,7 @@ public class OpenMLDBExecutor {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Exception: ", e);
                 }
             }
         }
@@ -158,7 +158,7 @@ public class OpenMLDBExecutor {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Exception: ", e);
             }
         }
     }
@@ -193,13 +193,13 @@ public class OpenMLDBExecutor {
             }
             throw new Exception("get openmldb table memory usage error, table does not exist.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         } finally {
             try {
                 if (stmt != null) stmt.close();
                 if (res != null) res.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                logger.error("Exception: ", e);
             }
         }
         return infoMap;
@@ -216,7 +216,7 @@ public class OpenMLDBExecutor {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Exception: ", e);
                 }
             }
         }
@@ -232,6 +232,7 @@ public class OpenMLDBExecutor {
                 statement.execute(sql);
                 res = statement.getResultSet();
                 while (res.next()) {
+                    // use empty while to move cursor to last row, because res.last() method is not supported now.
                 }
                 String state = res.getString(3);
                 if (state.equals("FINISHED")) {
@@ -249,7 +250,7 @@ public class OpenMLDBExecutor {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Exception: ", e);
                 }
             }
         }

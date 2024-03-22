@@ -52,7 +52,7 @@ public class BenchmarkIndexMemoryUsage {
             m.closeConn();
             logger.info("Done.");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         }
     }
 
@@ -184,13 +184,13 @@ public class BenchmarkIndexMemoryUsage {
             }
             statement.executeBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Exception: ", e);
         } finally {
             if (statement != null) {
                 try {
                     statement.close();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Exception: ", e);
                 }
             }
         }
