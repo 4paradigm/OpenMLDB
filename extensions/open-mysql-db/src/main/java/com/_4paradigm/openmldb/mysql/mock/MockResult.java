@@ -16,7 +16,8 @@ public class MockResult {
 
   public static Map<String, String> mockVariables = new HashMap<>();
 
-  public static Map<String, String> mockSessionVariables = new HashMap<>();
+  public static Map<String, String> mockSessionStatusVariables = new HashMap<>();
+  public static Map<String, String> mockSessionVariablesVariables = new HashMap<>();
 
   static {
     String query;
@@ -164,13 +165,13 @@ public class MockResult {
     rows.add(row);
     mockResults.put(query, new Pair<>(columns, rows));
 
-    mockSessionVariables.put(
+    mockSessionStatusVariables.put(
         "sql_mode",
         "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION");
-    mockSessionVariables.put("Ssl_cipher", "TLS_AES_256_GCM_SHA384");
-    mockSessionVariables.put("version_comment", MySqlListener.VERSION_COMMENT);
-    mockSessionVariables.put("version", MySqlListener.VERSION);
-    for (String sessionVariable : MockResult.mockSessionVariables.keySet()) {
+    mockSessionStatusVariables.put("Ssl_cipher", "TLS_AES_256_GCM_SHA384");
+    mockSessionStatusVariables.put("version_comment", MySqlListener.VERSION_COMMENT);
+    mockSessionStatusVariables.put("version", MySqlListener.VERSION);
+    for (String sessionVariable : MockResult.mockSessionStatusVariables.keySet()) {
       query = "show session status like '" + sessionVariable.toLowerCase() + "'";
       columns = new ArrayList<>();
       columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
@@ -178,7 +179,32 @@ public class MockResult {
       rows = new ArrayList<>();
       row = new ArrayList<>();
       row.add(sessionVariable);
-      row.add(mockSessionVariables.get(sessionVariable));
+      row.add(mockSessionStatusVariables.get(sessionVariable));
+      rows.add(row);
+      mockResults.put(query, new Pair<>(columns, rows));
+    }
+
+    mockSessionVariablesVariables.put(
+        "sql_mode",
+        "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION");
+    mockSessionVariablesVariables.put("version_comment", MySqlListener.VERSION_COMMENT);
+    mockSessionVariablesVariables.put("version", MySqlListener.VERSION);
+    // Variable_name	Value
+    // version_compile_os	macos12
+    mockSessionVariablesVariables.put("version_compile_os", "");
+    mockSessionVariablesVariables.put("offline_mode", "OFF");
+    mockSessionVariablesVariables.put("wait_timeout", "28800");
+    mockSessionVariablesVariables.put("interactive_timeout", "28800");
+    mockSessionVariablesVariables.put("lower_case_table_names", "2");
+    for (String sessionVariable : MockResult.mockSessionVariablesVariables.keySet()) {
+      query = "show session variables like '" + sessionVariable.toLowerCase() + "'";
+      columns = new ArrayList<>();
+      columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
+      columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
+      rows = new ArrayList<>();
+      row = new ArrayList<>();
+      row.add(sessionVariable);
+      row.add(mockSessionVariablesVariables.get(sessionVariable));
       rows.add(row);
       mockResults.put(query, new Pair<>(columns, rows));
     }
@@ -591,6 +617,56 @@ public class MockResult {
     columns.add(new QueryResultColumn("CONSTRAINT_NAME", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("CHECK_CLAUSE", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("TABLE_NAME", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    // SELECT st.* FROM performance_schema.events_waits_history_long st WHERE st.nesting_event_id =
+    // 0
+    pattern = "(?i)(?s)SELECT .*FROM performance_schema.events_waits_history_long.*WHERE.*";
+    // THREAD_ID, EVENT_ID, END_EVENT_ID, EVENT_NAME, SOURCE, TIMER_START, TIMER_END, TIMER_WAIT,
+    // SPINS, OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME, OBJECT_TYPE, OBJECT_INSTANCE_BEGIN,
+    // NESTING_EVENT_ID, NESTING_EVENT_TYPE, OPERATION, NUMBER_OF_BYTES, FLAGS
+    columns = new ArrayList<>();
+    columnNameStr =
+        "THREAD_ID, EVENT_ID, END_EVENT_ID, EVENT_NAME, SOURCE, TIMER_START, TIMER_END, TIMER_WAIT, SPINS, OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME, OBJECT_TYPE, OBJECT_INSTANCE_BEGIN, NESTING_EVENT_ID, NESTING_EVENT_TYPE, OPERATION, NUMBER_OF_BYTES, FLAGS";
+    for (String columnName : columnNameStr.split(", ")) {
+      columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
+    }
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    // SELECT st.* FROM performance_schema.events_statements_current st JOIN
+    // performance_schema.threads thr ON thr.thread_id = st.thread_id WHERE thr.processlist_id =
+    // -901422372
+    pattern = "(?i)(?s)SELECT .*FROM performance_schema.events_statements_current.*WHERE.*";
+    // THREAD_ID, EVENT_ID, END_EVENT_ID, EVENT_NAME, SOURCE, TIMER_START, TIMER_END, TIMER_WAIT,
+    // LOCK_TIME, SQL_TEXT, DIGEST, DIGEST_TEXT, CURRENT_SCHEMA, OBJECT_TYPE, OBJECT_SCHEMA,
+    // OBJECT_NAME, OBJECT_INSTANCE_BEGIN, MYSQL_ERRNO, RETURNED_SQLSTATE, MESSAGE_TEXT, ERRORS,
+    // WARNINGS, ROWS_AFFECTED, ROWS_SENT, ROWS_EXAMINED, CREATED_TMP_DISK_TABLES,
+    // CREATED_TMP_TABLES, SELECT_FULL_JOIN, SELECT_FULL_RANGE_JOIN, SELECT_RANGE,
+    // SELECT_RANGE_CHECK, SELECT_SCAN, SORT_MERGE_PASSES, SORT_RANGE, SORT_ROWS, SORT_SCAN,
+    // NO_INDEX_USED, NO_GOOD_INDEX_USED, NESTING_EVENT_ID, NESTING_EVENT_TYPE, NESTING_EVENT_LEVEL,
+    // STATEMENT_ID, CPU_TIME, EXECUTION_ENGINE
+    columns = new ArrayList<>();
+    columnNameStr =
+        "THREAD_ID, EVENT_ID, END_EVENT_ID, EVENT_NAME, SOURCE, TIMER_START, TIMER_END, TIMER_WAIT, LOCK_TIME, SQL_TEXT, DIGEST, DIGEST_TEXT, CURRENT_SCHEMA, OBJECT_TYPE, OBJECT_SCHEMA, OBJECT_NAME, OBJECT_INSTANCE_BEGIN, MYSQL_ERRNO, RETURNED_SQLSTATE, MESSAGE_TEXT, ERRORS, WARNINGS, ROWS_AFFECTED, ROWS_SENT, ROWS_EXAMINED, CREATED_TMP_DISK_TABLES, CREATED_TMP_TABLES, SELECT_FULL_JOIN, SELECT_FULL_RANGE_JOIN, SELECT_RANGE, SELECT_RANGE_CHECK, SELECT_SCAN, SORT_MERGE_PASSES, SORT_RANGE, SORT_ROWS, SORT_SCAN, NO_INDEX_USED, NO_GOOD_INDEX_USED, NESTING_EVENT_ID, NESTING_EVENT_TYPE, NESTING_EVENT_LEVEL, STATEMENT_ID, CPU_TIME, EXECUTION_ENGINE";
+    for (String columnName : columnNameStr.split(", ")) {
+      columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
+    }
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    // SELECT st.* FROM performance_schema.events_stages_history_long st WHERE st.nesting_event_id =
+    // 0
+    pattern = "(?i)(?s)SELECT .*FROM performance_schema.events_stages_history_long.*WHERE.*";
+    // # THREAD_ID, EVENT_ID, END_EVENT_ID, EVENT_NAME, SOURCE, TIMER_START, TIMER_END, TIMER_WAIT,
+    // WORK_COMPLETED, WORK_ESTIMATED, NESTING_EVENT_ID, NESTING_EVENT_TYPE
+    columns = new ArrayList<>();
+    columnNameStr =
+        "THREAD_ID, EVENT_ID, END_EVENT_ID, EVENT_NAME, SOURCE, TIMER_START, TIMER_END, TIMER_WAIT, WORK_COMPLETED, WORK_ESTIMATED, NESTING_EVENT_ID, NESTING_EVENT_TYPE";
+    for (String columnName : columnNameStr.split(", ")) {
+      columns.add(new QueryResultColumn(columnName, "VARCHAR(255)"));
+    }
     rows = new ArrayList<>();
     mockPatternResults.put(pattern, new Pair<>(columns, rows));
   }

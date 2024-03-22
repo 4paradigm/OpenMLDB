@@ -43,6 +43,7 @@ public class MySqlListener implements AutoCloseable {
   public static final String VERSION_COMMENT = "";
   private static final Pattern SETTINGS_PATTERN =
       Pattern.compile("@@([\\w.]+)(?:\\sAS\\s)?(\\w+)?");
+  private static final Pattern USE_DB_PATTERN = Pattern.compile("(?i)use (.+)");
   private final SqlEngine sqlEngine;
   private final int port;
   private final Channel channel;
@@ -179,7 +180,8 @@ public class MySqlListener implements AutoCloseable {
   }
 
   private void handleQuery(
-      ChannelHandlerContext ctx, QueryCommand query, byte[] salt, String remoteAddr) {
+      ChannelHandlerContext ctx, QueryCommand query, byte[] salt, String remoteAddr)
+      throws IOException {
     final String queryString = query.getQuery();
     final String database = query.getDatabase();
     final String userName = query.getUserName();
@@ -195,6 +197,8 @@ public class MySqlListener implements AutoCloseable {
             + userName
             + ", scramble411: "
             + scramble411.length);
+    Matcher useDbMatcher =
+        USE_DB_PATTERN.matcher(queryString.replaceAll("/\\*.*\\*/", "").toLowerCase().trim());
 
     if (isServerSettingsQuery(queryString)) {
       sendSettingsResponse(ctx, query, remoteAddr);
@@ -205,6 +209,9 @@ public class MySqlListener implements AutoCloseable {
             .trim()
             .startsWith("set @@execute_mode=")) {
       // ignore SET command
+      ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
+    } else if (useDbMatcher.matches()) {
+      sqlEngine.useDatabase(getConnectionId(ctx), useDbMatcher.group(1));
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
     } else if (queryString.equalsIgnoreCase("rollback")) {
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
