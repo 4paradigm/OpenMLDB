@@ -70,8 +70,9 @@ LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPT
 
 对于 TiDB 数据源的导出是通过 API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `tidb://tidb_catalog.[db].[table]` 的格式进行导出到 TiDB 数仓。注意：
 
+- 离线引擎可以支持导出 TiDB 数据源，在线引擎还不支持
 - 数据库和数据表必须已经存在，目前不支持对于不存在的数据库或数据表进行自动创建
-- `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效，当前参数为必填项
+- `OPTIONS` 参数只有导出模式`mode='append'`生效，其他参数均不生效，当前参数为必填项
 
 举例：
 

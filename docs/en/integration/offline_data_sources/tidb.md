@@ -13,7 +13,7 @@
 
 ### Configuration
 
-You need to add TiDB configurations to Spark configurations in two ways:
+You need to add TiDB configurations to Spark configurations. There are two ways to do so:
 
 - taskmanager.properties(.template): Add TiDB configurations to the `spark.default.conf` property, then restart the taskmanager.
 - CLI: Add this configuration to the ini conf and start CLI using `--spark_conf`, refer to [Client Spark Configuration File](../../reference/client_config/client_spark_config.md).
@@ -46,7 +46,7 @@ TiDB schema reference can be found at [TiDB Schema](https://docs.pingcap.com/tid
 
 ## Importing TiDB Data into OpenMLDB
 
-Importing data from TiDB sources is supported through the `LOAD DATA INFILE` API, using the specific URI interface format `tidb://tidb_catalog.[db].[table]` to import data from TiDB. Note:
+Importing data from TiDB sources is supported through the [`LOAD DATA INFILE`](../../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) API, using the specific URI interface format `tidb://tidb_catalog.[db].[table]` to import data from TiDB. Note:
 
 - Both offline and online engines can import TiDB data sources.
 - TiDB import supports symbolic links, which can reduce hard copying and ensure that OpenMLDB always reads the latest data from TiDB. To enable soft link data import, use the parameter `deep_copy=false`.
@@ -68,10 +68,11 @@ LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPT
 
 ## Exporting OpenMLDB Data to TiDB
 
-Exporting data from OpenMLDB to TiDB sources is supported through the `SELECT INTO` API, using the specific URI interface format `tidb://tidb_catalog.[db].[table]` to export data to the TiDB data warehouse. Note:
+Exporting data from OpenMLDB to TiDB sources is supported through the [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) API, using the specific URI interface format `tidb://tidb_catalog.[db].[table]` to export data to the TiDB data warehouse. Note:
 
+- The offline engine can support exporting TiDB data sources, but the online engine does not yet support it.
 - The database and table must already exist. Currently, automatic creation of non-existent databases or tables is not supported.
-- Only the export mode `mode` is effective in the `OPTIONS` parameter. Other parameters are not effective, and the current parameter is mandatory.
+- Only the export mode `mode` is effective in the `OPTIONS='append'` parameter. Other parameters are not effective, and the current parameter is mandatory.
 
 For example:
 
