@@ -88,9 +88,8 @@ function(init_hybridsql_thirdparty_urls)
     get_linux_lsb_release_information()
 
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-      # NOTE(#1138): pre-compiled thirdparty is out-of-date
-      set(HYBRIDSQL_ASSERTS_URL "https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz" PARENT_SCOPE)
-      set(HYBRIDSQL_ASSERTS_HASH 128e2147903c6b4f5649284326c60ba048ff369f2925f9957f2973a515c65d75 PARENT_SCOPE)
+      set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-linux-gnu-aarch64.tar.gz" PARENT_SCOPE)
+      set(HYBRIDSQL_ASSERTS_HASH 323ca51573b46bb71b781a1a10a91a4112559fa54c18ae2d7bacc7e342f49f3d PARENT_SCOPE)
     else()
       if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
         set(HYBRIDSQL_ASSERTS_URL "${HYBRIDSQL_ASSERTS_HOME}/releases/download/v${HYBRIDSQL_ASSERTS_VERSION}/thirdparty-${HYBRIDSQL_ASSERTS_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
