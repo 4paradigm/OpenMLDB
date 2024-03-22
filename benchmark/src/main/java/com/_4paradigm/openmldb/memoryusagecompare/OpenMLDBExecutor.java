@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
@@ -107,7 +104,7 @@ public class OpenMLDBExecutor {
                     statement.setInt(3, td.device);
                     statement.setInt(4, td.os);
                     statement.setInt(5, td.channel);
-                    statement.setString(6, td.clickTime);
+                    statement.setTimestamp(6, Timestamp.valueOf(td.clickTime));
                     statement.setInt(7, td.isAttribute);
                     statement.addBatch();
                 }

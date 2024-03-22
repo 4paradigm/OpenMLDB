@@ -6,9 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
@@ -36,8 +35,7 @@ public class BenchmarkIndexMemoryUsage {
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
     private static final int keyNum = 100000;
-
-    private final String[] colNames = new String[]{"str1", "str2", "int1", "int2", "col5", "col6", "col7", "col8", "col9", "col10"};
+    private final String[] colNames = new String[]{"key", "int", "int32", "int64", "float", "double", "str", "date", "timestamp"};
 
     public static void main(String[] args) {
         logger.info("start index memory usage test ... ");
@@ -79,7 +77,34 @@ public class BenchmarkIndexMemoryUsage {
         StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE IF NOT EXISTS `" + tableName + "`( ");
         for (String col : colNames) {
-            sb.append("`").append(col).append("` string,").append("\n");
+            switch (col) {
+                case "key":
+                case "str":
+                    sb.append("`").append(col).append("` string,").append("\n");
+                    break;
+                case "int":
+                case "int32":
+                    sb.append("`").append(col).append("` int,").append("\n");
+                    break;
+                case "long":
+                case "int64":
+                    sb.append("`").append(col).append("` int64,").append("\n");
+                    break;
+                case "float":
+                case "float32":
+                    sb.append("`").append(col).append("` float,").append("\n");
+                    break;
+                case "double":
+                case "float64":
+                    sb.append("`").append(col).append("` double,").append("\n");
+                    break;
+                case "date":
+                    sb.append("`").append(col).append("` date,").append("\n");
+                    break;
+                case "timestamp":
+                    sb.append("`").append(col).append("` timestamp,").append("\n");
+                    break;
+            }
         }
         sb.append("\n) OPTIONS (replicanum=1); ");
         opdb.initOpenMLDBEnvWithDDL(sb.toString());
@@ -118,24 +143,41 @@ public class BenchmarkIndexMemoryUsage {
     }
 
     void insert(HashMap<String, ArrayList<String>> keyValues) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("INSERT INTO `" + tableName + "` values (");
-        for (int i = 0; i < colNames.length; i++) {
-            String col = colNames[i];
-            sb.append("?");
-            if (i != colNames.length - 1) {
-                sb.append(",");
-            }
-        }
-        sb.append(");");
-
         PreparedStatement statement = null;
         try {
-            statement = opdb.executor.getInsertPreparedStmt(dbName, sb.toString());
+            String insertSql = "INSERT INTO `" + tableName + "` values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            statement = opdb.executor.getInsertPreparedStmt(dbName, insertSql);
             for (String key : keyValues.keySet()) {
                 for (String value : keyValues.get(key)) {
-                    for (int i = 0; i < colNames.length; i++) {
-                        statement.setString(i + 1, colNames[i] + "_" + value);
+                    statement.setString(1, key);
+                    for (int i = 1; i < colNames.length; i++) {
+                        switch (colNames[i]) {
+                            case "str":
+                                statement.setString(i + 1, value);
+                                break;
+                            case "int":
+                            case "int32":
+                                statement.setInt(i + 1, RandomDataGenerator.generateRandomInt32());
+                                break;
+                            case "int64":
+                            case "long":
+                                statement.setLong(i + 1, RandomDataGenerator.generateRandomInt64());
+                                break;
+                            case "float":
+                            case "float32":
+                                statement.setFloat(i + 1, RandomDataGenerator.generateRandomFloat());
+                                break;
+                            case "double":
+                            case "float64":
+                                statement.setDouble(i + 1, RandomDataGenerator.generateRandomDouble());
+                                break;
+                            case "date":
+                                statement.setDate(i + 1, RandomDataGenerator.generateRandomDate());
+                                break;
+                            case "timestamp":
+                                statement.setTimestamp(i + 1, new Timestamp(RandomDataGenerator.generateRandomTimestamp()));
+                                break;
+                        }
                     }
                     statement.addBatch();
                 }
@@ -158,15 +200,19 @@ public class BenchmarkIndexMemoryUsage {
     void testIndexMemoryUsage() throws Exception {
         for (int i = 1; i < colNames.length; i++) {
             String col = colNames[i];
-            String indexName = "idx_" + col;
-            opdb.createIndex(indexName, col);
-            if (!opdb.waitForIndexJobFinish()) {
-                logger.error("create index error, stop running.");
-                throw new Exception("create index error");
+            if (col.contains("float") || col.contains("double")) {
+                logger.warn("unsupported to add index on column: {}", col);
+            } else {
+                String indexName = "idx_" + col;
+                opdb.createIndex(indexName, col);
+                if (!opdb.waitForIndexJobFinish()) {
+                    logger.error("create index error, stop running.");
+                    throw new Exception("create index error");
+                }
+                this.getMemUsage("add index on " + col);
+                summary.printIndexMemUsageSummary();
+                Thread.sleep(2000);
             }
-            this.getMemUsage("add index on " + col);
-            summary.printIndexMemUsageSummary();
-            Thread.sleep(2000);
         }
     }
 
