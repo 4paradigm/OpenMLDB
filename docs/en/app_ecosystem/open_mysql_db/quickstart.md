@@ -15,7 +15,7 @@ By executing customized OpenMLDB SQL, developers can not only view the status of
 
 ![mysql-cli-2.png](./images/mysql-cli-2.png)
 
-## Use a Compatible JDBC driver
+## Use a Compatible JDBC Driver
 
 Java developers generally use the MySQL JDBC driver to connect to MySQL. The same code can directly connect to the
 OpenMLDB cluster without any modification.
@@ -66,13 +66,13 @@ public class Main {
 }
 ```
 
-Then compile and execute, and you can see the queried OpenMLDB database data in the command line output.
+Then compile and execute, and you can see the queried data for the OpenMLDB database in the command line output.
 
 ![jdbc.png](./images/jdbc.png)
 
-## Use compatible SQLAlchemy driver
+## Use a Compatible SQLAlchemy Driver
 
-Python developer often use SQLAlchemy and MySQL drivers, and the same code can also be directly used to query OpenMLDB's
+Python developers often use SQLAlchemy and MySQL drivers, and the same code can also be directly applied to query OpenMLDB's
 online data.
 
 Write the Python application code as follows:
@@ -93,13 +93,13 @@ if __name__ == "__main__":
     main()
 ```
 
-Then execute it directly, and you can also see the corresponding OpenMLDB database output on the command line.
+Then execute it directly, and you can see the corresponding OpenMLDB database output in the command line output.
 
 ![sqlalchemy.png](./images/sqlalchemy.png)
 
-## Use compatible Go MySQL driver
+## Use a Compatible Go MySQL Driver
 
-Golang developer generally use the officially recommended github.com/go-sql-driver/mysql driver to access MySQL. They
+Golang developers generally use the officially recommended `github.com/go-sql-driver/mysql` driver to access MySQL. They
 can also directly access the OpenMLDB cluster without modifying the application code.
 
 Write the Golang application code as follows:
@@ -152,25 +152,25 @@ func main() {
 }
 ```
 
-Compile and run directly, and you can view the database output results on the command line.
+Compile and run directly, and you can view the database output results in the command line output.
 
 ![go.png](./images/go.png)
 
-## Use a compatible Sequel Ace client
+## Use a Compatible Sequel Ace Client
 
-MySQL users commonly use GUI applications to simplify database management. If users want to connect to an OpenMLDB
-cluster, they can also use such open source GUI tools.
+MySQL users usually use GUI applications to simplify database management. If users want to connect to an OpenMLDB
+cluster, they can also use such open-source GUI tools.
 
 Taking Sequel Ace as an example, users do not need to modify any project code. They only need to fill in the address and
-port of the OpenM(ysq)LDB service when connecting to the database, and fill in the username and password of the OpenMLDB
-service as the username and password. Then you can follow MySQL operation method to access the OpenMLDB service.
+port of the OpenM(ysq)LDB service when connecting to the database and fill in the username and password of the OpenMLDB
+service as the username and password. Then users can follow the MySQL operation method to access the OpenMLDB service.
 
 ![sequel_ace.png](./images/sequel_ace.png)
 
-## Use a compatible Navicat client
+## Use a Compatible Navicat Client
 
 In addition to Sequel Ace, Navicat is also a popular MySQL client. Users do not need to modify any project code. They
-only need to fill in the address and port of the OpenM (ysq) LDB service when creating a new connection (MySQL), and
+only need to fill in the address and port of the OpenM(ysq)LDB service when creating a new connection (MySQL), and
 fill in the user name and password. The username and password of the OpenMLDB service can be used to access the OpenMLDB
 service according to the MySQL operation method.
 
