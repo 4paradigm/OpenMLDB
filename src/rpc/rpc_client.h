@@ -91,7 +91,7 @@ class RpcClient {
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
-        client_authenticator_ = Authenticator("asd", "asd");
+        client_authenticator_ = Authenticator();
         options.auth = &client_authenticator_;
 
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
@@ -223,6 +223,7 @@ class RpcClient {
 
  private:
     std::string endpoint_;
+    std::string auth_str_;
     bool use_sleep_policy_;
     uint64_t log_id_;
     T* stub_;
