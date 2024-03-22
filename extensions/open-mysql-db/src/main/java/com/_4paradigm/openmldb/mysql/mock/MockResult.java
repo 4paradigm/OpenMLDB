@@ -526,8 +526,7 @@ public class MockResult {
     // FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kc WHERE kc.TABLE_SCHEMA='demo_db' AND
     // kc.REFERENCED_TABLE_NAME IS NULL AND kc.TABLE_NAME='demo_table1'
     // ORDER BY kc.CONSTRAINT_NAME,kc.ORDINAL_POSITION
-    pattern =
-        "(?i)SELECT .*\\s+FROM INFORMATION_SCHEMA\\.KEY_COLUMN_USAGE.*\\s+ORDER BY.*";
+    pattern = "(?i)SELECT .*\\s+FROM INFORMATION_SCHEMA\\.KEY_COLUMN_USAGE.*\\s+ORDER BY.*";
     // CONSTRAINT_NAME	TABLE_NAME	COLUMN_NAME	ORDINAL_POSITION
     columns = new ArrayList<>();
     columns.add(new QueryResultColumn("CONSTRAINT_NAME", "VARCHAR(255)"));
@@ -572,6 +571,26 @@ public class MockResult {
     columns.add(new QueryResultColumn("FK_NAME", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("PK_NAME", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("DEFERRABILITY", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    mockPatternResults.put(pattern, new Pair<>(columns, rows));
+
+    // SELECT cc.CONSTRAINT_NAME, cc.CHECK_CLAUSE, tc.TABLE_NAME
+    // FROM (SELECT CONSTRAINT_NAME, CHECK_CLAUSE
+    // FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
+    // WHERE CONSTRAINT_SCHEMA = 'xzs'
+    // ORDER BY CONSTRAINT_NAME) cc,
+    // (SELECT TABLE_NAME, CONSTRAINT_NAME
+    // FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+    // WHERE TABLE_SCHEMA = 'xzs' AND TABLE_NAME='t_exam_paper') tc
+    // WHERE cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+    // ORDER BY cc.CONSTRAINT_NAME
+    pattern =
+        "(?i)(?s)SELECT .*CONSTRAINT_NAME,.*CHECK_CLAUSE,.*TABLE_NAME.*FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS.*FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS.*";
+    // CONSTRAINT_NAME	CHECK_CLAUSE	TABLE_NAME
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("CONSTRAINT_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("CHECK_CLAUSE", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("TABLE_NAME", "VARCHAR(255)"));
     rows = new ArrayList<>();
     mockPatternResults.put(pattern, new Pair<>(columns, rows));
   }
