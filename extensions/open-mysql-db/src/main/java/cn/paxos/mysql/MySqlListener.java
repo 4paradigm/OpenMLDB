@@ -45,14 +45,12 @@ public class MySqlListener implements AutoCloseable {
       Pattern.compile("@@([\\w.]+)(?:\\sAS\\s)?(\\w+)?");
   private static final Pattern USE_DB_PATTERN = Pattern.compile("(?i)use (.+)");
   private final SqlEngine sqlEngine;
-  private final int port;
   private final Channel channel;
   private final io.netty.channel.EventLoopGroup parentGroup;
   private final EventLoopGroup childGroup;
   private final EventExecutorGroup eventExecutorGroup;
 
   public MySqlListener(int port, int executorGroupSize, SqlEngine sqlEngine) {
-    this.port = port;
     this.sqlEngine = sqlEngine;
 
     parentGroup = new NioEventLoopGroup();
@@ -87,7 +85,7 @@ public class MySqlListener implements AutoCloseable {
             .childHandler(
                 new ChannelInitializer<NioSocketChannel>() {
                   @Override
-                  protected void initChannel(NioSocketChannel ch) throws Exception {
+                  protected void initChannel(NioSocketChannel ch) {
                     System.out.println("[mysql-protocol] Initializing child channel");
                     final ChannelPipeline pipeline = ch.pipeline();
                     pipeline.addLast(new MysqlServerPacketEncoder());
@@ -160,14 +158,21 @@ public class MySqlListener implements AutoCloseable {
       Throwable cause = e.getCause();
       int errorCode;
       byte[] sqlState;
-      String errMsg =
-          Utils.getLocalDateTimeNow()
-              + " "
-              + Objects.requireNonNullElse(cause.getMessage(), e.getMessage());
-      if (cause instanceof IllegalAccessException) {
-        errorCode = 1045;
-        sqlState = "#28000".getBytes(StandardCharsets.US_ASCII);
+      String errMsg;
+      if (cause != null) {
+        errMsg =
+            Utils.getLocalDateTimeNow()
+                + " "
+                + Objects.requireNonNullElse(cause.getMessage(), e.getMessage());
+        if (cause instanceof IllegalAccessException) {
+          errorCode = 1045;
+          sqlState = "#28000".getBytes(StandardCharsets.US_ASCII);
+        } else {
+          errorCode = 1105;
+          sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
+        }
       } else {
+        errMsg = Utils.getLocalDateTimeNow() + " " + Objects.requireNonNullElse(e.getMessage(), "");
         errorCode = 1105;
         sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
       }
@@ -632,7 +637,7 @@ public class MySqlListener implements AutoCloseable {
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(ChannelHandlerContext ctx) {
       // todo may java.lang.NullPointerException
       this.remoteAddr =
           ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress();
@@ -650,7 +655,7 @@ public class MySqlListener implements AutoCloseable {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) {
       System.out.println("[mysql-protocol] Server channel inactive: " + new Date());
       sqlEngine.close(getConnectionId(ctx));
     }
@@ -682,6 +687,8 @@ public class MySqlListener implements AutoCloseable {
           } else if (command.equals(Command.COM_PING)) {
             ctx.writeAndFlush(OkResponse.builder().sequenceId(sequenceId + 1).build());
           } else if (command.equals(Command.COM_FIELD_LIST)) {
+            // ToDo:
+            // https://dev.mysql.com/doc/dev/mysql-server/8.0.34/page_protocol_com_field_list.html
             ctx.writeAndFlush(new EofResponse(sequenceId + 1, 0));
           } else if (command.equals(Command.COM_STATISTICS)) {
             String statString =
@@ -696,10 +703,10 @@ public class MySqlListener implements AutoCloseable {
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
       cause.printStackTrace();
-      ctx.close();
       sqlEngine.close(getConnectionId(ctx));
+      ctx.close();
     }
   }
 }

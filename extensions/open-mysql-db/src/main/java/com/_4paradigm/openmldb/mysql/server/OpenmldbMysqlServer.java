@@ -82,7 +82,8 @@ public class OpenmldbMysqlServer {
   //          "(?i)(?s)(?m)CREATE TABLE `(.+)` \\([\\s\\r\\n]+(?:`(.+)` (.+),[\\s\\r\\n]+)+.*\\)
   // OPTIONS .*");
 
-  public OpenmldbMysqlServer(int port, String zkCluster, String zkRootPath) {
+  public OpenmldbMysqlServer(
+      int port, String zkCluster, String zkRootPath, long sessionTimeout, long requestTimeout) {
     new MySqlListener(
         port,
         100,
@@ -108,7 +109,6 @@ public class OpenmldbMysqlServer {
               byte[] scramble411,
               byte[] authSeed)
               throws IOException {
-
             // mocked username
             String validUser = ServerConfig.getOpenmldbUser();
             if (!userName.equals(validUser)) {
@@ -135,9 +135,8 @@ public class OpenmldbMysqlServer {
                     SdkOption option = new SdkOption();
                     option.setZkCluster(zkCluster);
                     option.setZkPath(zkRootPath);
-                    // TODO: Make these configurable
-                    option.setSessionTimeout(10000);
-                    option.setRequestTimeout(60000);
+                    option.setSessionTimeout(sessionTimeout);
+                    option.setRequestTimeout(requestTimeout);
                     option.setUser(userName);
                     option.setPassword(validPassword);
                     SqlClusterExecutor sqlExecutor = new SqlClusterExecutor(option);
@@ -602,9 +601,13 @@ public class OpenmldbMysqlServer {
     int serverPort = ServerConfig.getPort();
     String zkCluster = ServerConfig.getZkCluster();
     String zkRootPath = ServerConfig.getZkRootPath();
+    long sessionTimeout = ServerConfig.getSessionTimeout();
+    long requestTimeout = ServerConfig.getRequestTimeout();
 
     try {
-      OpenmldbMysqlServer server = new OpenmldbMysqlServer(serverPort, zkCluster, zkRootPath);
+      OpenmldbMysqlServer server =
+          new OpenmldbMysqlServer(
+              serverPort, zkCluster, zkRootPath, sessionTimeout, requestTimeout);
       server.start();
       // Conenct with mysql client, mysql -h127.0.0.1 -P3307
     } catch (Exception e) {
