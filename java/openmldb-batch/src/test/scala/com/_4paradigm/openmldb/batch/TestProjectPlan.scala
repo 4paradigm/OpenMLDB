@@ -18,8 +18,9 @@ package com._4paradigm.openmldb.batch
 
 import com._4paradigm.openmldb.batch.utils.SparkUtil
 import org.apache.spark.sql.{DataFrame, Row}
-import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.types.{DateType, DoubleType, IntegerType, StringType, StructField, StructType}
 
+import java.sql.Date
 import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
 
@@ -56,14 +57,17 @@ class TestProjectPlan extends SparkTestSuite {
     val schema = StructType(Seq(
       StructField("1", IntegerType, nullable = false),
       StructField("3.500000", DoubleType, nullable = false),
-      StructField("a", StringType, nullable = false)
+      StructField("a", StringType, nullable = false),
+      StructField("date(2024-03-25)", DateType, nullable = true),
+      StructField("string(int32(int64(1)))", StringType, nullable = false)
     ))
     val expectDf = sess.createDataFrame(Seq(
-      (1, 3.5d, "a")
+      (1, 3.5d, "a", Date.valueOf("2024-03-25"), "1")
     ).map(Row.fromTuple(_)).asJava, schema)
 
     val planner = new SparkPlanner(sess)
-    val res = planner.plan("select 1, 3.5, \"a\";", mutable.HashMap[String, mutable.Map[String, DataFrame]]())
+    val res = planner.plan("select 1, 3.5, \"a\", date('2024-03-25'), string(int(bigint(1)));",
+      mutable.HashMap[String, mutable.Map[String, DataFrame]]())
     val output = res.getDf()
 
     assert(SparkUtil.approximateDfEqual(expectDf, output))
