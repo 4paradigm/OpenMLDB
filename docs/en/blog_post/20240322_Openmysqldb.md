@@ -1,4 +1,3 @@
-
 # Ultra High-Performance Database OpenM(ysq)LDB: Seamless Compatibility with MySQL Protocol and Multi-Language MySQL Client
 
 ## What’s OpenM(ysq)LDB?
