@@ -8,7 +8,7 @@ OpenMLDB itself is a distributed high-performance memory time-series database bu
 
 However, the introduction of OpenM(ysq)LDB addresses this barrier by facilitating direct integration with MySQL Clients and SDKs. Through standard ANSI SQL interfaces, OpenMLDB is now compatible with MySQL protocol, allowing customers to directly use the familiar MySQL clients to access OpenMLDB data and perform special OpenMLDB SQL feature extraction syntax. This enhancement streamlines the transition for users familiar with MySQL environments, making OpenMLDB’s advanced features more accessible and user-friendly.
 
-For more details, check the [official documentation](../app_ecosystem/open_mysql_db/index.rst)
+For more details, check the [official documentation](../app_ecosystem/open_mysql_db/index.rst).
 
 ## Usage
 
@@ -176,7 +176,7 @@ The protocols of MySQL (including subsequent versions like MariaDB) are publicly
 
 Currently, OpenM(ysql)LDB maintains client interaction with OpenMLDB through long-lived connections. This ensures that each connection has a unique client object accessing the OpenMLDB cluster. All SQL queries from the same connection do not require additional initialization, and resources are automatically released after the connection is closed. The overhead of the service itself is almost negligible, and performance can be consistent with directly connecting to OpenMLDB.
 
-For more usage documentation, please refer to the [official documentation](../app_ecosystem/open_mysql_db/index.rst)
+For more usage documentation, please refer to the [official documentation](../app_ecosystem/open_mysql_db/index.rst).
 
 ## Summary
 
