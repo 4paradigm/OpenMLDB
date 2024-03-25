@@ -30,7 +30,11 @@ ExternalProject_Add(
     COMMAND ${GIT_EXECUTABLE} apply ${PROJECT_SOURCE_DIR}/patches/brpc-1.6.0.patch
     COMMAND ${GIT_EXECUTABLE} apply ${PROJECT_SOURCE_DIR}/patches/brpc-1.6.0-2235.patch
   DEPENDS gflags glog protobuf snappy leveldb gperf openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B . -DWITH_GLOG=ON -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR} -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} ${CMAKE_OPTS}
+  # BRPC get problemistic with CMAKE_BUILD_TYPE=Release (-O3), and seems to having its own
+  # CPP flags by default, so we do not inherit global CMAKE_OPTS variable
+  CONFIGURE_COMMAND
+    ${CMAKE_COMMAND} -H<SOURCE_DIR> -B . -DWITH_GLOG=ON
+    -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR} -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR}
   BUILD_COMMAND ${CMAKE_COMMAND} --build . --target brpc-static -- ${MAKEOPTS}
   INSTALL_COMMAND bash -c "cp -rvf output/include/* <INSTALL_DIR>/include/"
     COMMAND cp -v output/lib/libbrpc.a <INSTALL_DIR>/lib)

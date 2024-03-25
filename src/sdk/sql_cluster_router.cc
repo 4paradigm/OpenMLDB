@@ -475,14 +475,12 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
     // TODO(someone):
     // 1. default value from table definition
     // 2. parameters
-    ::hybridse::codegen::InsertRowBuilder insert_builder(&sc);
-    {
-        auto s = insert_builder.Init();
-        if (!s.ok()) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, s.ToString());
-            return false;
-        }
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    auto jit = std::shared_ptr<hybridse::vm::HybridSeJitWrapper>(hybridse::vm::HybridSeJitWrapper::Create());
+    if (!jit->Init()) {
+        return false;
     }
+    ::hybridse::codegen::InsertRowBuilder insert_builder(jit.get(), &sc);
 
     size_t total_rows_size = insert_stmt->values_.size();
     for (size_t i = 0; i < total_rows_size; i++) {

@@ -210,6 +210,34 @@ Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Bui
 
 此编译流程需要从源码编译thirdparty，且资源较少，无法开启较高的并发编译。因此编译时间较长，大约需要3h5m（2h thirdparty+1h OpenMLDB）。workflow会缓存thirdparty的编译产出，因此第二次编译会快很多（1h15m OpenMLDB）。
 
+### Linux for ARM64
+
+支持在 AArch64 架构的 Linux 系统上编译, 建议选择编译镜像 `ghcr.io/4paradigm/hybridsql` 在容器内编译. 在容器内:
+
+```sh
+# 建议在编译镜像内进行
+docker run -it ghcr.io/4paradigm/hybridsql:latest
+ 
+# inside docker container
+git clone https://github.com/4paradigm/OpenMLDB
+cd OpenMLDB
+ 
+# 安装 third-party 编译 deps
+yum install -y flex autoconf automake unzip bc expect libtool \
+    rh-python38-python-devel gettext byacc xz tcl cppunit-devel rh-python38-python-wheel patch java-1.8.0-openjdk-devel
+# bazel
+curl --create-dirs -SLo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-arm64
+chmod +x /usr/local/bin/bazel
+ 
+# third-party
+cmake -S third-party -B .deps -DBUILD_BUNDELD=ON -DMAKEOPTS=-j$(nproc)
+cmake --build .deps
+ 
+# OpenMLDB source
+cmake -S . -B build -DCMKAE_PREFIX_PATH=$(pwd)/.deps/usr -DSQL_JAVASDK_ENABLE=ON -DSQL_PYSDK_ENABLE=ON
+cmake --build build -- -j$(nproc)
+```
+
 ### Macos 10.15, 11
 
 Macos适配不需要从源码编译thirdparty，所以云编译耗时不会太长，大约1h15m。本地编译与[从源码全量编译](#从源码全量编译)章节相同，无需编译thirdparty（`BUILD_BUNDLED=OFF`）。云编译需要在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`macos10`/`macos11`，同样可配置`java sdk enable`或`python sdk enable`为`OFF`。
