@@ -21,7 +21,10 @@
 
 #include "codec/type_codec.h"
 #include "gflags/gflags.h"
+#include "codegen/insert_row_builder.h"
 #include "glog/logging.h"
+#include "proto/fe_common.pb.h"
+#include "vm/engine.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -1033,5 +1036,100 @@ absl::StatusOr<StringColInfo> SliceFormat::GetStringColumnInfo(size_t idx) const
                          str_field_start_offset_);
 }
 
+SliceBuilder::SliceBuilder(vm::HybridSeJitWrapper* jit, const hybridse::codec::Schema* schema)
+    : schema_(schema) {
+    row_builder_ = std::make_shared<codegen::InsertRowBuilder>(jit, schema_);
+}
+
+base::Status SliceBuilder::Build(const std::vector<node::ExprNode* >& values, base::RefCountedSlice* slice) {
+    return Build(absl::MakeSpan(values), slice);
+}
+
+base::Status SliceBuilder::Build(absl::Span<node::ExprNode* const> values, base::RefCountedSlice* slice) {
+    EnsureInitialized();
+
+    auto rs = row_builder_->ComputeRowUnsafe(values);
+    if (!rs.ok()) {
+        return {common::kCodegenEncodeError, rs.status().ToString()};
+    }
+
+    auto buf = rs.value();
+    if (buf == nullptr) {
+        return {common::kCodegenEncodeError, "internal error: encoded buf is null"};
+    }
+
+    *slice = base::RefCountedSlice::CreateManaged(buf, RowView::GetSize(buf));
+
+    return {};
+}
+
+RowBuilder2::RowBuilder2(vm::HybridSeJitWrapper* jit, int sliceSize) : jit_(jit) {
+    schemas_.resize(sliceSize);
+    builders_.resize(sliceSize);
+}
+RowBuilder2::RowBuilder2(vm::HybridSeJitWrapper* jit, const std::vector<codec::Schema>& schemas)
+    : jit_(jit), schemas_(schemas) {
+    builders_.resize(schemas_.size());
+}
+RowBuilder2::RowBuilder2(vm::HybridSeJitWrapper* jit,
+                         const std::vector<std::vector<hybridse::type::ColumnDef>>& schemas)
+    : jit_(jit) {
+    for (auto& sc : schemas) {
+        schemas_.push_back(Schema());
+        auto& ref = schemas_.back();
+        for (auto& col : sc) {
+            ref.Add()->CopyFrom(col);
+        }
+    }
+    builders_.resize(schemas_.size());
+}
+
+base::Status RowBuilder2::Init() {
+    CHECK_TRUE(jit_ != nullptr, common::kCodegenEncodeError, "jit is null");
+    for (size_t i = 0; i < schemas_.size(); ++i) {
+        CHECK_TRUE(!schemas_[i].empty(), common::kCodegenEncodeError, absl::StrCat(i, "th schema un-initialized"));
+        if (builders_[i] == nullptr) {
+            builders_[i] = std::make_shared<SliceBuilder>(jit_, &schemas_[i]);
+        }
+    }
+
+    initialized_ = true;
+    return {};
+}
+
+base::Status RowBuilder2::Build(const std::vector<node::ExprNode*>& values, codec::Row* out) {
+    EnsureInitialized();
+
+    auto expect_cols =
+        std::accumulate(schemas_.begin(), schemas_.end(), 0, [](int val, const auto& e) { return val + e.size(); });
+    CHECK_TRUE(values.size() == expect_cols, common::kCodegenEncodeError, "pass in expr number do not match, expect ",
+               expect_cols, " but got ", values.size());
+
+    int col_idx = 0;
+    Row row;
+    auto values_ref = absl::MakeSpan(values);
+    for (size_t i = 0; i < schemas_.size(); ++i) {
+        RefCountedSlice slice;
+        CHECK_STATUS(builders_[i]->Build(values_ref.subspan(col_idx, schemas_[i].size()), &slice));
+        if (i == 0) {
+            row.Reset(slice);
+        } else {
+            row.Append(slice);
+        }
+
+        col_idx += schemas_[i].size();
+    }
+
+    *out = row;
+
+    return {};
+}
+base::Status RowBuilder2::InitSchema(int idx, const codec::Schema& sc) {
+    if (idx >= schemas_.size()) {
+        return {common::kCodegenEncodeError, "idx out of bound"};
+    }
+    schemas_[idx] = sc;
+    return {};
+}
 }  // namespace codec
 }  // namespace hybridse

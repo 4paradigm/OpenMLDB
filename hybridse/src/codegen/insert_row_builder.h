@@ -29,11 +29,15 @@
 namespace hybridse {
 namespace codegen {
 
+// Row builder that can output encode row from ExprNodes:
+// schema + [ExprNode] -> row buf
+//
+// Common usage:
+// - by insert statement that encode insert values into row bufs
+// - by any row builder who want to build the row buf manually
 class InsertRowBuilder {
  public:
-    explicit InsertRowBuilder(const codec::Schema* schema);
-
-    absl::Status Init();
+    InsertRowBuilder(vm::HybridSeJitWrapper*, const codec::Schema*) ABSL_ATTRIBUTE_NONNULL();
 
     // compute the encoded row result for insert statement's single values expression list
     //
@@ -43,9 +47,12 @@ class InsertRowBuilder {
 
     absl::StatusOr<std::shared_ptr<int8_t>> ComputeRow(const node::ExprListNode* values);
 
- private:
-    void EnsureInitialized() { assert(jit_ && "InsertRowBuilder not initialized"); }
+    // compute the encoded row result for insert statement's single values expression list
+    //
+    // returns a pointer to encoded buf, you must manually delete the pointer after use
+    absl::StatusOr<int8_t*> ComputeRowUnsafe(absl::Span<node::ExprNode* const> values);
 
+ private:
     // build the function the will output the row from single insert values
     //
     // the function is just equivalent to C: `void fn(int8_t**)`.
@@ -53,14 +60,10 @@ class InsertRowBuilder {
     absl::StatusOr<llvm::Function*> BuildFn(CodeGenContext* ctx, llvm::StringRef fn_name,
                                             absl::Span<node::ExprNode* const>);
 
-    // build the function that transform a single insert row values into encoded row
-    absl::StatusOr<llvm::Function*> BuildEncodeFn();
-
     // CodeGenContextBase* ctx_;
     const codec::Schema* schema_;
+    vm::HybridSeJitWrapper* jit_;
     std::atomic<uint32_t> fn_counter_ = 0;
-
-    std::unique_ptr<vm::HybridSeJitWrapper> jit_;
 };
 }  // namespace codegen
 }  // namespace hybridse

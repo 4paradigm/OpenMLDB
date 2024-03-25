@@ -26,3 +26,4 @@ OpenMLDB 文档 (|version|)
 
     app_ecosystem/feat_insight/index
     app_ecosystem/sql_emulator/index
+    app_ecosystem/open_mysql_db/index

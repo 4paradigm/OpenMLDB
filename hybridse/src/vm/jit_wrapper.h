@@ -25,15 +25,20 @@
 #include "vm/engine_context.h"
 
 namespace hybridse {
+
+namespace udf {
+class UdfLibrary;
+}
 namespace vm {
 
 class JitOptions;
 
 class HybridSeJitWrapper {
  public:
-    HybridSeJitWrapper() {}
-    virtual ~HybridSeJitWrapper() {}
+    HybridSeJitWrapper();
     HybridSeJitWrapper(const HybridSeJitWrapper&) = delete;
+
+    virtual ~HybridSeJitWrapper() {}
 
     virtual bool Init() = 0;
     virtual bool OptModule(::llvm::Module* module) = 0;
@@ -47,14 +52,32 @@ class HybridSeJitWrapper {
 
     virtual hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) = 0;
 
+    // create the JIT wrapper with default builtin symbols imported already
+    static HybridSeJitWrapper* CreateWithDefaultSymbols(udf::UdfLibrary*, base::Status*,
+                                                        const JitOptions& jit_options = {});
+
     static HybridSeJitWrapper* Create(const JitOptions& jit_options);
     static HybridSeJitWrapper* Create();
+
+    // TODO(someone): remove it, java wrapper should ensure deletion
+    // deprecated
     static void DeleteJit(HybridSeJitWrapper* jit);
-
+    // deprecated, use InitJitSymbols()
     static bool InitJitSymbols(HybridSeJitWrapper* jit);
-};
 
-void InitBuiltinJitSymbols(HybridSeJitWrapper* jit_ptr);
+    void SetLib(udf::UdfLibrary* lib) { lib_ = lib; }
+
+ protected:
+    void EnsureInitialized() { assert(initialized_ && "JitWrapper must initialize explicitly"); }
+
+    base::Status InitJitSymbols();
+
+    // lib_ is determined during Init, or you should explicitly
+    // set lib via SetLib before Init
+    udf::UdfLibrary* lib_ = nullptr;
+
+    bool initialized_ = false;
+};
 
 }  // namespace vm
 }  // namespace hybridse
