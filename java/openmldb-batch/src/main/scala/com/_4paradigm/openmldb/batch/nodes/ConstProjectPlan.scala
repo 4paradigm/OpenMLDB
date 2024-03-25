@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
-import com._4paradigm.hybridse.node.{ConstNode, ExprType, DataType => HybridseDataType}
+import com._4paradigm.hybridse.node.{CastExprNode, ConstNode, ExprNode, ExprType, DataType => HybridseDataType}
 import com._4paradigm.hybridse.vm.PhysicalConstProjectNode
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExpressionUtil}
@@ -45,21 +45,11 @@ object ConstProjectPlan {
     // Get the select columns
     val selectColList = (0 until node.project().size.toInt).map(i => {
       val expr = node.project().GetExpr(i)
-      expr.GetExprType() match {
-        case ExprType.kExprPrimary =>
-          val constNode = ConstNode.CastFrom(expr)
-          val outputColName = outputColNameList(i)
+      val (column, innerType) = createSparkColumn(ctx.getSparkSession, expr)
 
-          // Create simple literal Spark column
-          val column = ExpressionUtil.constExprToSparkColumn(constNode)
-
-          // Match column type for output type
-          castSparkOutputCol(ctx.getSparkSession, column, constNode.GetDataType(), outputColTypeList(i))
-            .alias(outputColName)
-
-        case _ => throw new UnsupportedHybridSeException(
-          s"Should not handle non-const column for const project node")
-      }
+      // Match column type for output type
+      castSparkOutputCol(ctx.getSparkSession, column, innerType, outputColTypeList(i))
+        .alias(outputColNameList(i))
     })
 
     // Use Spark DataFrame to select columns
@@ -69,6 +59,27 @@ object ConstProjectPlan {
     val result = originDf.select(selectColList: _*)
 
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
+  }
+
+  def createSparkColumn(spark: SparkSession,
+                        expr: ExprNode): (Column, HybridseDataType) = {
+    expr.GetExprType() match {
+      case ExprType.kExprPrimary =>
+        val constNode = ConstNode.CastFrom(expr)
+
+        // Create simple literal Spark column
+        ExpressionUtil.constExprToSparkColumn(constNode) -> constNode.GetDataType
+
+      case ExprType.kExprCast =>
+        val cast = CastExprNode.CastFrom(expr)
+        val castType = cast.getCast_type_
+        val (childCol, childType) = createSparkColumn(spark, cast.GetChild(0))
+        val castColumn = castSparkOutputCol(spark, childCol, childType, castType)
+        castColumn -> castType
+
+      case _ => throw new UnsupportedHybridSeException(
+        s"Should not handle non-const column for const project node")
+    }
   }
 
   def stringToTimestamp: String => Timestamp = (input: String) => {
