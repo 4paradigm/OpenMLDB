@@ -18,7 +18,6 @@ int Authenticator::GenerateCredential(std::string* auth_str) const {
 
 int Authenticator::VerifyCredential(const std::string& auth_str, const butil::EndPoint& client_addr,
                                     brpc::AuthContext* out_ctx) const {
-    PDLOG(INFO, "auth_str: %s", auth_str);
     if (auth_str.length() < 2) {
         return -1;
     }
