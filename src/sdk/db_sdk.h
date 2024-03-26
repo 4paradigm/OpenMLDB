@@ -28,6 +28,7 @@
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "client/taskmanager_client.h"
+#include "codec/encrypt.h"
 #include "common/thread_pool.h"
 #include "sdk/options.h"
 #include "vm/catalog.h"
@@ -186,7 +187,7 @@ class ClusterSDK : public DBSDK {
 class StandAloneSDK : public DBSDK {
  public:
     explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {
-        g_auth_token = UserToken{options->user, options->password};
+        g_auth_token = UserToken{options->user, codec::Encrypt(options->password)};
     }
 
     ~StandAloneSDK() override { pool_.Stop(false); }
