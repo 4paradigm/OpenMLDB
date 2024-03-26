@@ -37,6 +37,7 @@
 #include "tablet/tablet_impl.h"
 #endif
 #include "apiserver/api_server_impl.h"
+#include "auth/authenticator.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -144,6 +145,9 @@ void StartNameServer() {
         exit(1);
     }
     brpc::ServerOptions options;
+    Authenticator server_authenticator;
+    options.auth = &server_authenticator;
+
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -241,6 +245,8 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
+    Authenticator server_authenticator;
+    options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -3692,8 +3698,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
-                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path, FLAGS_zk_auth_schema, FLAGS_zk_cert);
+        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", FLAGS_zk_session_timeout, "",
+                                                               FLAGS_zk_root_path, FLAGS_zk_auth_schema, FLAGS_zk_cert);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
@@ -3933,6 +3939,8 @@ void StartAPIServer() {
         }
     }
     brpc::ServerOptions options;
+    Authenticator server_authenticator;
+    options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(api_service.get(), brpc::SERVER_DOESNT_OWN_SERVICE, "/* => Process") != 0) {
@@ -3950,6 +3958,7 @@ void StartAPIServer() {
 }
 
 int main(int argc, char* argv[]) {
+    g_auth_token = ServiceToken{"default"};
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role.empty()) {

@@ -1,5 +1,7 @@
 #include "authenticator.h"
 
+#include "base/glog_wrapper.h"
+
 int Authenticator::GenerateCredential(std::string* auth_str) const {
     std::visit(
         [auth_str](const auto& s) {
@@ -16,13 +18,13 @@ int Authenticator::GenerateCredential(std::string* auth_str) const {
 
 int Authenticator::VerifyCredential(const std::string& auth_str, const butil::EndPoint& client_addr,
                                     brpc::AuthContext* out_ctx) const {
+    PDLOG(INFO, "auth_str: %s", auth_str);
     if (auth_str.length() < 2) {
         return -1;
     }
 
     char auth_type = auth_str[0];
-    std::string credential = auth_str.substr(2);
-
+    std::string credential = auth_str.substr(1);
     if (auth_type == 'u') {
         size_t pos = credential.find(':');
         if (pos == std::string::npos) {
@@ -46,7 +48,7 @@ int Authenticator::VerifyCredential(const std::string& auth_str, const butil::En
 }
 
 bool Authenticator::VerifyUsernamePassword(const std::string& username, const std::string& password) const {
-    return true;
+    return username == "root";
 }
 
-bool Authenticator::VerifyToken(const std::string& token) const { return true; }
+bool Authenticator::VerifyToken(const std::string& token) const { return token == "default"; }

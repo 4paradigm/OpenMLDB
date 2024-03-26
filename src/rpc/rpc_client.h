@@ -91,7 +91,6 @@ class RpcClient {
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
-        client_authenticator_ = Authenticator();
         options.auth = &client_authenticator_;
 
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {

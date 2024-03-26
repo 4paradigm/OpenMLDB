@@ -49,9 +49,8 @@ struct ClusterOptions {
     std::string to_string() {
         std::stringstream ss;
         ss << "zk options [cluster:" << zk_cluster << ", path:" << zk_path
-           << ", zk_session_timeout:" << zk_session_timeout
-           << ", log_level:" << zk_log_level << ", log_file:" << zk_log_file
-           << ", zk_auth_schema:" << zk_auth_schema << ", zk_cert:" << zk_cert << "]";
+           << ", zk_session_timeout:" << zk_session_timeout << ", log_level:" << zk_log_level
+           << ", log_file:" << zk_log_file << ", zk_auth_schema:" << zk_auth_schema << ", zk_cert:" << zk_cert << "]";
         return ss.str();
     }
 };
@@ -186,7 +185,9 @@ class ClusterSDK : public DBSDK {
 
 class StandAloneSDK : public DBSDK {
  public:
-    explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {}
+    explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {
+        g_auth_token = UserToken{options->user, options->password};
+    }
 
     ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;
