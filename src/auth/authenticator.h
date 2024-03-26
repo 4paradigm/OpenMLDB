@@ -1,6 +1,7 @@
-#ifndef AUTHENTICATOR_H
-#define AUTHENTICATOR_H
+#ifndef SRC_AUTH_AUTHENTICATOR_H_
+#define SRC_AUTH_AUTHENTICATOR_H_
 
+#include <string>
 #include <variant>
 
 #include "brpc/authenticator.h"
@@ -28,4 +29,4 @@ class Authenticator : public brpc::Authenticator {
     bool VerifyToken(const std::string& token) const;
 };
 
-#endif  // AUTHENTICATOR_H
+#endif  // SRC_AUTH_AUTHENTICATOR_H_
