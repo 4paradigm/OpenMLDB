@@ -27,6 +27,7 @@
 #include "rapidjson/error/en.h"
 #include "rapidjson/rapidjson.h"
 #include "sdk/mini_cluster.h"
+#include "test/util.h"
 
 DEFINE_int32(zk_port, 6181, "zk port");
 DEFINE_string(api_server_port, "8084", "api server port");
@@ -1412,5 +1413,6 @@ int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetupGlog(true);
+    ::openmldb::test::InitRandomDiskFlags("api_server_test");
     return RUN_ALL_TESTS();
 }

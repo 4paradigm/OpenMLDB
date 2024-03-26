@@ -642,8 +642,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::TempPath temp_path;
-    FLAGS_db_root_path = temp_path.GetTempPath();
-    FLAGS_hdd_root_path = temp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("snapshot_replica_test");
     return RUN_ALL_TESTS();
 }

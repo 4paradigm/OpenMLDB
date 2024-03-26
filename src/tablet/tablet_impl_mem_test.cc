@@ -184,7 +184,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetLogLevel(INFO);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_mem_test");
     return RUN_ALL_TESTS();
 }

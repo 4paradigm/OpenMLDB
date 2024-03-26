@@ -33,7 +33,6 @@ base::Status SimplePlannerV2::CreateASTScriptPlan(const zetasql::ASTScript *scri
     CHECK_STATUS(ConvertASTScript(script, node_manager_, &resolved_trees));
     CHECK_TRUE(nullptr != resolved_trees && resolved_trees->GetSize() > 0, common::kPlanError,
                "fail to create plan, sql trees is null or empty");
-    DLOG(INFO) << "parsed SqlNode:\n" << resolved_trees->GetTreeString();
     CHECK_STATUS(CreatePlanTree(resolved_trees->GetList(), plan_trees));
     DLOG(INFO) << "PlanNode:";
     for (decltype(plan_trees.size()) i = 0; i < plan_trees.size(); ++i) {

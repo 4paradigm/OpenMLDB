@@ -227,6 +227,8 @@ int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::test::InitRandomDiskFlags("single_tablet_test");
+
     FLAGS_zk_session_timeout = 100000;
     FLAGS_enable_distsql = true;
     mc.SetUp(1);

@@ -19,6 +19,7 @@
 #include "benchmark/benchmark.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/mini_cluster_bm.h"
+#include "test/util.h"
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 ::openmldb::sdk::MiniCluster* mc;
@@ -56,6 +57,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetupGlog(true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("min_cluster_request_bm");
     FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IsCluster();
     FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();
     ::benchmark::Initialize(&argc, argv);

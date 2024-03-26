@@ -927,6 +927,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::openmldb::base::SetupGlog(true);
+    ::openmldb::test::InitRandomDiskFlags("sql_sdk_test");
 
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
