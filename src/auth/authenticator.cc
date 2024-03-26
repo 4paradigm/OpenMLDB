@@ -1,6 +1,7 @@
 #include "authenticator.h"
 
 #include "base/glog_wrapper.h"
+namespace openmldb::authn {
 
 int Authenticator::GenerateCredential(std::string* auth_str) const {
     std::visit(
@@ -51,3 +52,5 @@ bool Authenticator::VerifyUsernamePassword(const std::string& username, const st
 }
 
 bool Authenticator::VerifyToken(const std::string& token) const { return token == "default"; }
+
+}  // namespace openmldb::authn

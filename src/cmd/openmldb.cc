@@ -145,7 +145,7 @@ void StartNameServer() {
         exit(1);
     }
     brpc::ServerOptions options;
-    Authenticator server_authenticator;
+    openmldb::authn::Authenticator server_authenticator;
     options.auth = &server_authenticator;
 
     options.num_threads = FLAGS_thread_pool_size;
@@ -245,7 +245,7 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
-    Authenticator server_authenticator;
+    openmldb::authn::Authenticator server_authenticator;
     options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -3939,7 +3939,7 @@ void StartAPIServer() {
         }
     }
     brpc::ServerOptions options;
-    Authenticator server_authenticator;
+    openmldb::authn::Authenticator server_authenticator;
     options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -3958,7 +3958,7 @@ void StartAPIServer() {
 }
 
 int main(int argc, char* argv[]) {
-    g_auth_token = ServiceToken{"default"};
+    openmldb::authn::g_auth_token = openmldb::authn::ServiceToken{"default"};
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role.empty()) {

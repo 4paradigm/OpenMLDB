@@ -187,7 +187,7 @@ class ClusterSDK : public DBSDK {
 class StandAloneSDK : public DBSDK {
  public:
     explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {
-        g_auth_token = UserToken{options->user, codec::Encrypt(options->password)};
+        authn::g_auth_token = authn::UserToken{options->user, codec::Encrypt(options->password)};
     }
 
     ~StandAloneSDK() override { pool_.Stop(false); }

@@ -227,7 +227,7 @@ class RpcClient {
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;
-    Authenticator client_authenticator_;
+    authn::Authenticator client_authenticator_;
 };
 
 template <class Response>

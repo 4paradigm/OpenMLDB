@@ -5,6 +5,9 @@
 #include <variant>
 
 #include "brpc/authenticator.h"
+
+namespace openmldb::authn {
+
 struct ServiceToken {
     std::string token;
 };
@@ -29,4 +32,5 @@ class Authenticator : public brpc::Authenticator {
     bool VerifyToken(const std::string& token) const;
 };
 
+}  // namespace openmldb::authn
 #endif  // SRC_AUTH_AUTHENTICATOR_H_
