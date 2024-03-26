@@ -7,8 +7,30 @@ Apache Kafka is an event streaming platform that can be used as an online data s
 Please note that, for the sake of simplicity, this article will demonstrate the use of the Kafka Connect standalone mode to start the connector. However, the connector can also be fully started in distributed mode.
 
 ```{seealso}
-The implementation of the OpenMLDB Kafka Connector can be found in the [extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) directory.
+The implementation of the OpenMLDB Kafka Connector can be found in the [extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) directory. For information on features, configuration, and development, please refer to the [Development Guide](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md).
 ```
+
+## Enhanced Features
+
+- Auto Schema
+
+The OpenMLDB Kafka Connector supports automatically using the table schema of OpenMLDB to parse messages without a schema registry. Therefore, messages can be simple JSON-formatted data maps. For detailed configuration and format, refer to [Auto Schema](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md#auto-schema).
+
+When Auto Schema is enabled, versions prior to 0.8.5 require messages to contain all columns in the schema. Timestamp and date columns only support integers. Versions 0.8.5 and later support importing messages with only a subset of columns, with other columns filled with default values. Timestamp and date columns can also support string formats for year, month, day, hour, minute, and second.
+
+- Topic Table Mapping
+
+The OpenMLDB Kafka Connector supports mapping topics to tables, which is more flexible than the `table.name.format` configuration. See [Topic Table Mapping](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md#topic-table-mapping) for the configuration method.
+
+This feature can be used independently. If this field is empty, the `table.name.format` rule will be used. The `table.name.format` rule replaces `${topic}` with the topic name. The default configuration is `${topic}`, which means the table and topic have the same name. A more complex example is configuring the format as `kafka_${topic}`. If the topic name is "t1", the table name will be "kafka_t1". Therefore, the format configuration is only applicable to fixed table names or those that include the topic name.
+
+## Performance
+
+When importing data from Kafka to the OpenMLDB cluster using the OpenMLDB Kafka Connector, the performance is influenced by both the Kafka sender and the OpenMLDB receiver. We provide performance test reports for both single-node and cluster scenarios, which can be found in [Kafka Perf Test](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file).
+
+Assuming that the data volume of the topic is large enough, the efficiency of Kafka import is mainly determined by the number of partitions in the Kafka topic and the number of tasks in the Connector. If these two factors are not large enough, the concurrency of writing to OpenMLDB will be limited. When the number of tasks is large, a single Kafka Connect service will also be limited by the physical resources of the machine. In this case, it is necessary to deploy a distributed Kafka Connect, evenly distributing the tasks across multiple machines to increase concurrency.
+
+By observing the pqs and latency in the report, in the single-node scenario, with 40 CPU cores available on the machine, the Kafka Connector can be configured with a large number of tasks, and the total write qps to OpenMLDB can reach 100,000. However, the internal write latency of OpenMLDB does not significantly increase, it is just limited by the performance of a single machine. The cluster performance test also confirms this point. After making OpenMLDB a cluster, deploying Kafka Connect on a single machine with changes in Kafka topic partitions and task numbers, the qps does not show a significant improvement. However, after deploying Kafka Connect in a distributed manner, the qps significantly increases to 90,000 per machine, totaling 180,000.
 
 ## Overview
 

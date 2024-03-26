@@ -50,7 +50,11 @@ auto.create=false
 }
 ```
 
-注意，早期版本不支持只写入部分列。0.8.5及以后的Kafka connect可以支持只存在部分列，例如，Message只有一列`c1_int16`，等价于`insert into t1 (c1_int16) values (?)`，t1表有多列，其余列将填写默认值。
+- Json支持传入null，注意，不是双引号格式的字符串。
+
+- 早期版本不支持只写入部分列，timestamp列和date列不支持字符串格式。0.8.5及以后的Kafka connector，支持只导入部分列，也支持timestamp和date列传入字符串格式。
+    - 部分列：Message只有一列`c1_int16`，等价于`insert into t1 (c1_int16) values (?)`，t1表的其余列将填写默认值。
+    - 字符串格式：包括"yyyy-MM-dd","yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm","yyyy/MM/dd","yyyy-MM-dd HH:mm:ss.S","yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"。
 
 ### message convert for auto schema
 
