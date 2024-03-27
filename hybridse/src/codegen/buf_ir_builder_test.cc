@@ -187,7 +187,6 @@ void RunEncode(::hybridse::type::TableDef& table, // NOLINT
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
         vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
     void (*decode)(int8_t**) =
@@ -307,7 +306,6 @@ void LoadValue(T* result, bool* is_null,
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
         vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto load_fn_jit = jit->FindFunction("fn");
 
@@ -438,7 +436,6 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
         vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     jit->AddExternalFunction("print_list_i16",
                              reinterpret_cast<void*>(&PrintListInt16));

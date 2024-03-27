@@ -17,23 +17,24 @@
 #include "udf/default_udf_library.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
+#include <queue>
 #include <string>
 #include <tuple>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <queue>
-#include <functional>
 
+#include "absl/cleanup/cleanup.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/containers.h"
+#include "udf/default_defs/date_and_time_def.h"
+#include "udf/default_defs/expr_def.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
-#include "udf/default_defs/expr_def.h"
-#include "udf/default_defs/date_and_time_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -46,7 +47,8 @@ namespace hybridse {
 namespace udf {
 
 DefaultUdfLibrary* DefaultUdfLibrary::MakeDefaultUdf() {
-    LOG(INFO) << "Creating DefaultUdfLibrary";
+    absl::Time begin = absl::Now();
+    absl::Cleanup clean = [&]() { LOG(INFO) << "Created DefaultUdfLibrary in " << absl::Now() - begin; };
     return new DefaultUdfLibrary();
 }
 

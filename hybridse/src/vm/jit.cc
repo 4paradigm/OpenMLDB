@@ -15,23 +15,23 @@
  */
 
 #include "vm/jit.h"
+
 #include <string>
 #include <utility>
 extern "C" {
 #include <cmath>
 #include <cstdlib>
 }
+
+#include "absl/cleanup/cleanup.h"
+#include "absl/time/clock.h"
 #include "glog/logging.h"
-#include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
-#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
-#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -149,7 +149,13 @@ bool HybridSeJit::AddSymbol(::llvm::orc::JITDylib& jd,
 }
 
 bool HybridSeLlvmJitWrapper::Init() {
-    DLOG(INFO) << "Start to initialize hybridse jit";
+    absl::Time begin = absl::Now();
+    absl::Cleanup clean = [&]() { DLOG(INFO) << "LLVM JIT initialize takes " << absl::Now() - begin; };
+
+    if (initialized_) {
+        return true;
+    }
+
     auto jit = ::llvm::Expected<std::unique_ptr<HybridSeJit>>(
         HybridSeJitBuilder().create());
     {
@@ -166,16 +172,27 @@ bool HybridSeLlvmJitWrapper::Init() {
     this->mi_ = std::unique_ptr<::llvm::orc::MangleAndInterner>(
         new ::llvm::orc::MangleAndInterner(jit_->getExecutionSession(),
                                            jit_->getDataLayout()));
+
+    auto s = InitJitSymbols();
+    if (!s.isOK()) {
+        LOG(WARNING) << s;
+        return false;
+    }
+
+    initialized_ = true;
     return true;
 }
 
 bool HybridSeLlvmJitWrapper::OptModule(::llvm::Module* module) {
+    EnsureInitialized();
     return jit_->OptModule(module);
 }
 
 bool HybridSeLlvmJitWrapper::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+    EnsureInitialized();
+
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {
@@ -206,9 +223,18 @@ bool HybridSeLlvmJitWrapper::AddExternalFunction(const std::string& name,
 }
 
 #ifdef LLVM_EXT_ENABLE
-bool HybridSeMcJitWrapper::Init() { return true; }
+bool HybridSeMcJitWrapper::Init() {
+    auto s = InitJitSymbols();
+    if (!s.isOK()) {
+        LOG(WARNING) << s;
+        return false;
+    }
+    return true;
+}
 
 bool HybridSeMcJitWrapper::OptModule(::llvm::Module* module) {
+    EnsureInitialized();
+
     DLOG(INFO) << "Module before opt:\n" << LlvmToString(*module);
     RunDefaultOptPasses(module);
     DLOG(INFO) << "Module after opt:\n" << LlvmToString(*module);
@@ -218,6 +244,8 @@ bool HybridSeMcJitWrapper::OptModule(::llvm::Module* module) {
 bool HybridSeMcJitWrapper::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+    EnsureInitialized();
+
     if (llvm::verifyModule(*module, &llvm::errs(), nullptr)) {
         // note: destruct module before ctx
         module = nullptr;

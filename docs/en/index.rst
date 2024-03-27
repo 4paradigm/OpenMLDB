@@ -16,6 +16,8 @@ OpenMLDB Docs (|version|)
     maintain/index
     reference/index
     developer/index
+    faq/index
+    blog_post/index
 
 .. toctree::
     :maxdepth: 1
@@ -24,3 +26,4 @@ OpenMLDB Docs (|version|)
 
     app_ecosystem/feat_insight/index
     app_ecosystem/sql_emulator/index
+    app_ecosystem/open_mysql_db/index
