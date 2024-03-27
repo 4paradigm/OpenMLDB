@@ -48,7 +48,13 @@ int Authenticator::VerifyCredential(const std::string& auth_str, const butil::En
 }
 
 bool Authenticator::VerifyUsernamePassword(const std::string& username, const std::string& password) const {
-    return username == "root";
+    auto stored_password = getUserPassword(username);
+
+    if (stored_password.has_value()) {
+        return password == stored_password.value();
+    }
+
+    return false;
 }
 
 bool Authenticator::VerifyToken(const std::string& token) const { return token == "default"; }
