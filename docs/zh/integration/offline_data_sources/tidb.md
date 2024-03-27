@@ -41,8 +41,11 @@ TiDB schema参考[TiDB Schema](https://docs.pingcap.com/zh/tidb/stable/data-type
 | FLOAT             | FLOAT      |
 | DOUBLE            | DOUBLE     |
 | DATE              | DATE       |
+| TIMESTAMP         | DATETIME   |
 | TIMESTAMP         | TIMESTAMP  |
 | STRING            | VARCHAR(M) |
+
+提示：不对称的整型转换会被取值范围影响，请尽量参考以上数据类型进行映射。
 
 ## 导入 TiDB 数据到 OpenMLDB
 

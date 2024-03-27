@@ -41,8 +41,11 @@ TiDB schema reference can be found at [TiDB Schema](https://docs.pingcap.com/tid
 | FLOAT                | FLOAT            |
 | DOUBLE               | DOUBLE           |
 | DATE                 | DATE             |
+| TIMESTAMP            | DATETIME         |
 | TIMESTAMP            | TIMESTAMP        |
 | STRING               | VARCHAR(M)       |
+
+Tip: Asymmetric integer conversion will be affected by the value range. Please try to refer to the above data types for mapping.
 
 ## Importing TiDB Data into OpenMLDB
 
