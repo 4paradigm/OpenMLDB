@@ -13,7 +13,7 @@ public class Summary {
     public void printMemUsageSummary() {
         int colWidth = 20;
         StringBuilder report = new StringBuilder();
-        report.append(getRow(formatValue("num", colWidth, "center"), formatValue("RedisMem(bytes)", colWidth, "center"), formatValue("OpenMLDBMem(bytes)", colWidth, "center")));
+        report.append(getRow(formatValue("label", colWidth, "center"), formatValue("RedisMem(bytes)", colWidth, "center"), formatValue("OpenMLDBMem(bytes)", colWidth, "center")));
 
         String border = "-";
         report.append(getRow(repeatString(border, colWidth), repeatString(border, colWidth), repeatString(border, colWidth)));

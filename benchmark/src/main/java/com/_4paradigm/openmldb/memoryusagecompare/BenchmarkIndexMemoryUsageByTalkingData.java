@@ -28,7 +28,10 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
     private static final InputStream configStream = BenchmarkIndexMemoryUsageByTalkingData.class.getClassLoader().getResourceAsStream("memory.properties");
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
-    private final HashMap<String, ArrayList<TalkingData>> testData;
+    private static String talkingDataPath = "";
+    private final CSVReader csvReader;
+    private static int readBatchSize;
+    private static int readDataLimit = 1000000; // 最多读取数据量
     private final String[] colNames = new String[]{"ip", "app", "device", "os", "channel", "click_time", "is_attributed"};
 
     public static void main(String[] args) {
@@ -53,6 +56,9 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
     private static void parseConfig() throws IOException {
         logger.info("start parse test configs ... ");
         config.load(configStream);
+        talkingDataPath = config.getProperty("TALKING_DATASET_PATH");
+        readBatchSize = Integer.parseInt(config.getProperty("READ_DATA_BATCH_SIZE"));
+        readDataLimit = Integer.parseInt(config.getProperty("READ_DATA_LIMIT"));
     }
 
     public BenchmarkIndexMemoryUsageByTalkingData() throws IOException, SQLException {
@@ -71,7 +77,7 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
                 "`is_attributed` int \n" +
                 ")\n" + "OPTIONS (replicanum=1); ";
         opdb.initOpenMLDBEnvWithDDL(sb);
-        testData = Utils.readTalkingDataFromCsv("data/talkingdata.csv");
+        csvReader = new CSVReader(talkingDataPath);
     }
 
     private void clearData() throws InterruptedException {
@@ -87,7 +93,24 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
 
     private void insertData() {
         logger.info("start test using dataset train_sample.csv from here: https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection.");
-        opdb.insertTalkingData(testData);
+        for (int curr = 0; curr < readDataLimit; curr += readBatchSize) {
+            HashMap<String, ArrayList<TalkingData>> testData = csvReader.readCSV(readBatchSize);
+            int size = getDataSize(testData);
+            opdb.insertTalkingData(testData);
+
+            if (size < readBatchSize) {
+                logger.info("end of csv file.");
+                break;
+            }
+        }
+    }
+
+    private int getDataSize(HashMap<String, ArrayList<TalkingData>> data) {
+        int size = 0;
+        for (String key : data.keySet()) {
+            size += data.get(key).size();
+        }
+        return size;
     }
 
     // add index and monitor memory usage change

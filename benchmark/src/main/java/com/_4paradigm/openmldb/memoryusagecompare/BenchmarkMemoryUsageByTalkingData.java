@@ -18,7 +18,10 @@ public class BenchmarkMemoryUsageByTalkingData {
     private static final InputStream configStream = BenchmarkMemoryUsageByTalkingData.class.getClassLoader().getResourceAsStream("memory.properties");
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
-    private final HashMap<String, ArrayList<TalkingData>> testData;
+    private static String talkingDataPath = "";
+    private final CSVReader csvReader;
+    private static int readBatchSize;
+    private static int readDataLimit = 10000000; // 最多读取数据量
 
     public static void main(String[] args) {
         logger.info("Start benchmark test: Compare memory usage with Redis.");
@@ -41,6 +44,9 @@ public class BenchmarkMemoryUsageByTalkingData {
     private static void parseConfig() throws IOException {
         logger.info("start parse test configs ... ");
         config.load(configStream);
+        talkingDataPath = config.getProperty("TALKING_DATASET_PATH");
+        readBatchSize = Integer.parseInt(config.getProperty("READ_DATA_BATCH_SIZE"));
+        readDataLimit = Integer.parseInt(config.getProperty("READ_DATA_LIMIT"));
     }
 
     public BenchmarkMemoryUsageByTalkingData() throws IOException, SQLException {
@@ -59,7 +65,7 @@ public class BenchmarkMemoryUsageByTalkingData {
         opdb.initOpenMLDBEnvWithDDL(sb);
         opdb.tableName = tableName;
         opdb.dbName = "mem";
-        testData = Utils.readTalkingDataFromCsv("data/talkingdata.csv");
+        csvReader = new CSVReader(talkingDataPath);
     }
 
     private void clearData() throws InterruptedException {
@@ -77,9 +83,28 @@ public class BenchmarkMemoryUsageByTalkingData {
 
     private void insertData() {
         logger.info("start test using dataset train_sample.csv from here: https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection.");
+        int curr;
 
-        redis.insertTalkingData(testData);
-        opdb.insertTalkingData(testData);
+        for (curr = 0; curr < readDataLimit; curr += readBatchSize) {
+            HashMap<String, ArrayList<TalkingData>> testData = csvReader.readCSV(readBatchSize);
+            int size = getDataSize(testData);
+
+            redis.insertTalkingData(testData);
+            opdb.insertTalkingData(testData);
+            if (size < readBatchSize) {
+                logger.info("end of csv file.");
+                break;
+            }
+        }
+        logger.info("current data size: {}", curr);
+    }
+
+    private int getDataSize(HashMap<String, ArrayList<TalkingData>> data) {
+        int size = 0;
+        for (String key : data.keySet()) {
+            size += data.get(key).size();
+        }
+        return size;
     }
 
     private void getMemUsage() throws Exception {

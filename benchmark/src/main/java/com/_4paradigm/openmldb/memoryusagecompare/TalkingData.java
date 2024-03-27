@@ -72,4 +72,17 @@ public class TalkingData {
     public void setIsAttribute(int isAttribute) {
         this.isAttribute = isAttribute;
     }
+
+    @Override
+    public String toString() {
+        return "TalkingData{" +
+                "app=" + app +
+                ", ip='" + ip + '\'' +
+                ", device=" + device +
+                ", os=" + os +
+                ", channel=" + channel +
+                ", clickTime='" + clickTime + '\'' +
+                ", isAttribute=" + isAttribute +
+                '}';
+    }
 }
