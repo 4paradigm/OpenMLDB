@@ -8,3 +8,4 @@ Offline Data Source
     hive
     s3
     iceberg
+    tidb

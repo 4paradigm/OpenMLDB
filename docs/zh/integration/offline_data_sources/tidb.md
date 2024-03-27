@@ -26,7 +26,7 @@ TiDB关于TiSpark的配置详情参考[TiSpark Configuration](https://docs.pingc
 spark.default.conf=spark.sql.extensions=org.apache.spark.sql.TiExtensions;spark.sql.catalog.tidb_catalog=org.apache.spark.sql.catalyst.catalog.TiCatalog;spark.sql.catalog.tidb_catalog.pd.addresses=127.0.0.1:2379;spark.tispark.pd.addresses=127.0.0.1:2379;spark.sql.tidb.addr=127.0.0.1;spark.sql.tidb.port=4000;spark.sql.tidb.user=root;spark.sql.tidb.password=root;
 ```
 
-任一配置成功后，均使用`tidb_catalog.<db_name>.<table_name>`的格式访问TiDB表。如果不想使用`tidb_catalog`，可以在配置中设置`spark.sql.catalog.default=tidb_catalog`。这样可以使用`<db_name>.<table_name>`的格式访问TiDB表。
+任一配置成功后，均使用`tidb_catalog.<db_name>.<table_name>`的格式访问TiDB表。如果不想添加tidb的catalog名称前缀，可以在配置中设置`spark.sql.catalog.default=tidb_catalog`。这样可以使用`<db_name>.<table_name>`的格式访问TiDB表。
 
 ## 数据格式
 
@@ -66,7 +66,7 @@ LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE t1 OPTIONS(deep_copy=fa
 LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPTIONS(deep_copy=true, sql='SELECT * FROM tidb_catalog.db1.t1 where key=\"foo\"')
 ```
 
-## 导出 OpenMLDB 数据到 TiDB
+## 导出 OpenMLDB 离线引擎数据到 TiDB
 
 对于 TiDB 数据源的导出是通过 API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `tidb://tidb_catalog.[db].[table]` 的格式进行导出到 TiDB 数仓。注意：
 

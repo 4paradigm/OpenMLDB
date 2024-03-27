@@ -26,7 +26,7 @@ For example, configuration in `taskmanager.properties(.template)`:
 spark.default.conf=spark.sql.extensions=org.apache.spark.sql.TiExtensions;spark.sql.catalog.tidb_catalog=org.apache.spark.sql.catalyst.catalog.TiCatalog;spark.sql.catalog.tidb_catalog.pd.addresses=127.0.0.1:2379;spark.tispark.pd.addresses=127.0.0.1:2379;spark.sql.tidb.addr=127.0.0.1;spark.sql.tidb.port=4000;spark.sql.tidb.user=root;spark.sql.tidb.password=root;
 ```
 
-Once either configuration is successful, access TiDB tables using the format `tidb_catalog.<db_name>.<table_name>`. If you prefer not to use `tidb_catalog`, you can set `spark.sql.catalog.default=tidb_catalog` in the configuration. This allows accessing TiDB tables using the format `<db_name>.<table_name>`.
+Once either configuration is successful, access TiDB tables using the format `tidb_catalog.<db_name>.<table_name>`. If you do not want to add the catalog name prefix of tidb, you can set `spark.sql.catalog.default=tidb_catalog` in the configuration. This allows accessing TiDB tables using the format `<db_name>.<table_name>`.
 
 ## Data Format
 
@@ -66,7 +66,7 @@ For example:
 LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPTIONS(deep_copy=true, sql='SELECT * FROM tidb_catalog.db1.t1 where key=\"foo\"')
 ```
 
-## Exporting OpenMLDB Data to TiDB
+## Exporting OpenMLDB Offline Engine Data to TiDB
 
 Exporting data from OpenMLDB to TiDB sources is supported through the [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) API, using the specific URI interface format `tidb://tidb_catalog.[db].[table]` to export data to the TiDB data warehouse. Note:
 
