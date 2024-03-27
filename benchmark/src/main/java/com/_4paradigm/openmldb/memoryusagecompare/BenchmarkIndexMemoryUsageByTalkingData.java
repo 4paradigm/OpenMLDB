@@ -29,7 +29,7 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
     private static String talkingDataPath = "";
-    private final CSVReader csvReader;
+    private static CSVReader csvReader = null;
     private static int readBatchSize;
     private static int readDataLimit = 1000000; // 最多读取数据量
     private final String[] colNames = new String[]{"ip", "app", "device", "os", "channel", "click_time", "is_attributed"};
@@ -47,6 +47,9 @@ public class BenchmarkIndexMemoryUsageByTalkingData {
 
             summary.printIndexMemUsageSummary();
             m.closeConn();
+            if (csvReader != null) {
+                csvReader.close();
+            }
             logger.info("Done.");
         } catch (Exception e) {
             logger.error("Exception: ", e);

@@ -79,7 +79,7 @@ public class BenchmarkMemoryUsage {
     }
 
     private void insertData(int keyNum) {
-        logger.info("start test: key size: " + keyNum + ", values per key: " + valuePerKey);
+        logger.info("start test: key size: {}, values per key: {}", keyNum, valuePerKey);
         int count = 0;
         HashMap<String, ArrayList<String>> keyValues = new HashMap<>();
         for (int keyIdx = 0; keyIdx <= keyNum; keyIdx++) {

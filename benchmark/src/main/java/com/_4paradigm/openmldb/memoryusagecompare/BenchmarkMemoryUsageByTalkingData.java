@@ -19,7 +19,7 @@ public class BenchmarkMemoryUsageByTalkingData {
     private static final Properties config = new Properties();
     private static final Summary summary = new Summary();
     private static String talkingDataPath = "";
-    private final CSVReader csvReader;
+    private static CSVReader csvReader = null;
     private static int readBatchSize;
     private static int readDataLimit = 10000000; // 最多读取数据量
 
@@ -34,6 +34,9 @@ public class BenchmarkMemoryUsageByTalkingData {
             summary.printMemUsageSummary();
 
             m.closeConn();
+            if (csvReader != null) {
+                csvReader.close();
+            }
             summary.printMemUsageSummary();
             logger.info("Done.");
         } catch (Exception e) {
