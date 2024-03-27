@@ -115,6 +115,8 @@ cursor.close()
 
 This section demonstrates the use of the Python SDK through OpenMLDB SQLAlchemy. Similarly, if any of the DBAPI interfaces fail, they will raise a `DatabaseError` exception. Users can catch and handle this exception as needed. The handling of return values should follow the SQLAlchemy standard.
 
+The integrated SQLAlchemy defaults to version 2.0 while remaining compatible with the old version 1.4. If a user's SQLAlchemy version is 1.4, they can adjust the interface names according to the [version differences](python_sdk.md#sqlalchemy-version-differences). OpenMLDB SDK only supports version 1.4 in version 0.8.5 and before. Starting from version 0.8.5 (excluding 0.8.5), it begins to support version 2.0.
+
 ### Create Connection
 
 ```python

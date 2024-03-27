@@ -116,6 +116,8 @@ cursor.close()
 
 本节演示通过 OpenMLDB SQLAlchemy 使用 Python SDK。同样的，所有dbapi接口如果执行失败，会抛出异常`DatabaseError`，用户可自行捕获异常并处理。返回值处理参考SQLAlchemy标准。
 
+集成的SQLAlchemy默认版本为2.0，同时兼容旧版本1.4。若用户的SQLAlchemy版本为1.4，可以根据[版本差异](python_sdk.md#sqlalchemy-版本差异)调整接口名称。OpenMLDB SDK在0.8.5版本及之前仅支持1.4版本，从0.8.5版本之后（不包括0.8.5）才开始支持2.0版本。
+
 ### 创建连接
 
 ```python
