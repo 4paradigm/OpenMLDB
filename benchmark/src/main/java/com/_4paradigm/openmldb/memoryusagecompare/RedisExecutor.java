@@ -5,12 +5,11 @@ import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.jedis.Pipeline;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -30,13 +29,15 @@ public class RedisExecutor {
     }
 
     void insert(HashMap<String, ArrayList<String>> keyValues) {
+        Pipeline pipeline = jedis.pipelined();
         for (String key : keyValues.keySet()) {
             HashMap<String, Double> valScores = new HashMap<>();
             for (int i = 0; i < keyValues.get(key).size(); i++) {
                 valScores.put(keyValues.get(key).get(i), (double) i);
             }
-            jedis.zadd(key, valScores);
+            pipeline.zadd(key, valScores);
         }
+        pipeline.sync();
     }
 
     void insertTalkingData(HashMap<String, ArrayList<TalkingData>> keyValues) {
@@ -102,10 +103,7 @@ public class RedisExecutor {
                 infoMap.put(parts[0], parts[1].trim());
             }
         }
-        logger.info("Redis info: \n" +
-                "\tused memory: " + infoMap.get("used_memory") + "\n" +
-                "\tkeys number: " + infoMap.get("db0")
-        );
+        logger.info("Redis info: \n\tused memory: {}\n\tkeys number: {}", infoMap.get("used_memory"), infoMap.get("db0"));
         return infoMap;
     }
 }
