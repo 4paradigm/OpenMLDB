@@ -14,17 +14,36 @@
  * limitations under the License.
  */
 #include "testing/engine_test_base.h"
+
+#include <utility>
+
+#include "base/texttable.h"
+#include "plan/plan_api.h"
+#include "boost/algorithm/string.hpp"
 #include "vm/sql_compiler.h"
+#include "google/protobuf/util/message_differencer.h"
 namespace hybridse {
 namespace vm {
 
 bool IsNaN(float x) { return x != x; }
 bool IsNaN(double x) { return x != x; }
 
-void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
+void CheckSchema(const codec::Schema& schema, const codec::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
+    ::google::protobuf::util::MessageDifferencer differ;
+    // approximate equal for float values
+    differ.set_float_comparison(::google::protobuf::util::MessageDifferencer::FloatComparison::APPROXIMATE);
+    // equivalent avoid the issue that some optional bool fields that may contains a default value
+    differ.set_message_field_comparison(
+        ::google::protobuf::util::MessageDifferencer::MessageFieldComparison::EQUIVALENT);
     for (int i = 0; i < schema.size(); i++) {
-        ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString()) << "Fail column type at " << i;
+        std::string diff_str;
+        differ.ReportDifferencesToString(&diff_str);
+        ASSERT_TRUE(differ.Compare(schema.Get(i), exp_schema.Get(i)))
+            << "Fail column type at " << i
+            << "\ngot: " << schema.Get(i).ShortDebugString()
+            << "\nbut expect: " << exp_schema.Get(i).ShortDebugString()
+            << "\ndifference: " << diff_str;
     }
 }
 

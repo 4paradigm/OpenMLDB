@@ -452,9 +452,9 @@ base::Status Planner::CreateSetPlanNode(const node::SetNode *root, node::PlanNod
 base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "fail to create table plan with null node")
     auto create_tree = dynamic_cast<const node::CreateStmt *>(root);
-    auto* out = node_manager_->MakeCreateTablePlanNode(create_tree->GetDbName(), create_tree->GetTableName(),
-                                                     create_tree->GetColumnDefList(), create_tree->GetTableOptionList(),
-                                                     create_tree->GetOpIfNotExist());
+    auto *out = node_manager_->MakeCreateTablePlanNode(
+        create_tree->GetDbName(), create_tree->GetTableName(), create_tree->GetTableElementList(),
+        create_tree->GetTableOptionList(), create_tree->GetOpIfNotExist());
     out->like_clause_ = create_tree->like_clause_;
     *output = out;
     return base::Status::OK();

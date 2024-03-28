@@ -15,6 +15,8 @@
  */
 #include "plan/plan_api.h"
 
+#include "absl/strings/substitute.h"
+#include "planv2/ast_node_converter.h"
 #include "planv2/planner_v2.h"
 #include "zetasql/parser/parser.h"
 #include "zetasql/public/error_helpers.h"
@@ -85,6 +87,30 @@ const std::string PlanAPI::GenerateName(const std::string prefix, int id) {
     time(&t);
     std::string name = prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
+}
+
+absl::StatusOr<codec::Schema> ParseTableColumSchema(absl::string_view str) {
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    std::unique_ptr<zetasql::ParserOutput> parser_output;
+    auto sql = absl::Substitute("CREATE TABLE t1 ($0)", str);
+    auto zetasql_status = zetasql::ParseStatement(sql, parser_opts, &parser_output);
+    if (!zetasql_status.ok()) {
+        return zetasql_status;
+    }
+
+    node::SqlNode *sql_node = nullptr;
+    node::NodeManager nm;
+    CHECK_STATUS_TO_ABSL(ConvertStatement(parser_output->statement(), &nm, &sql_node));
+
+    auto* create = sql_node->GetAsOrNull<node::CreateStmt>();
+    if (create == nullptr) {
+        return absl::FailedPreconditionError("not a create table statement");
+    }
+
+    return create->GetColumnDefListAsSchema();
 }
 
 }  // namespace plan

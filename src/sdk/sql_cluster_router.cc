@@ -43,6 +43,7 @@
 #include "brpc/channel.h"
 #include "cmd/display.h"
 #include "codec/encrypt.h"
+#include "codegen/insert_row_builder.h"
 #include "common/timer.h"
 #include "glog/logging.h"
 #include "nameserver/system_table.h"
@@ -62,7 +63,6 @@
 #include "sdk/split.h"
 #include "udf/udf.h"
 #include "vm/catalog.h"
-#include "codegen/insert_row_builder.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);

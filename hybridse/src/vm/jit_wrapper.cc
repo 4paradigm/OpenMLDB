@@ -99,6 +99,9 @@ HybridSeJitWrapper* HybridSeJitWrapper::CreateWithDefaultSymbols(udf::UdfLibrary
     }
     return jit;
 }
+HybridSeJitWrapper* HybridSeJitWrapper::CreateWithDefaultSymbols(base::Status* status, const JitOptions& options) {
+    return CreateWithDefaultSymbols(udf::DefaultUdfLibrary::get(), status, options);
+}
 
 HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
     if (jit_options.IsEnableMcjit()) {

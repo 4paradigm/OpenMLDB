@@ -19,12 +19,12 @@
 #include <string>
 #include <utility>
 
+#include "absl/strings/str_join.h"
 #include "codec/type_codec.h"
 #include "gflags/gflags.h"
 #include "codegen/insert_row_builder.h"
 #include "glog/logging.h"
 #include "proto/fe_common.pb.h"
-#include "vm/engine.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -1103,7 +1103,11 @@ base::Status RowBuilder2::Build(const std::vector<node::ExprNode*>& values, code
     auto expect_cols =
         std::accumulate(schemas_.begin(), schemas_.end(), 0, [](int val, const auto& e) { return val + e.size(); });
     CHECK_TRUE(values.size() == expect_cols, common::kCodegenEncodeError, "pass in expr number do not match, expect ",
-               expect_cols, " but got ", values.size());
+               expect_cols, " but got ", values.size(), ": (",
+               absl::StrJoin(
+                   values, ", ",
+                   [](std::string* out, const node::ExprNode* expr) { absl::StrAppend(out, expr->GetExprString()); }),
+               ")");
 
     int col_idx = 0;
     Row row;

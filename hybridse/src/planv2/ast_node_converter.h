@@ -29,6 +29,8 @@ namespace plan {
 // ======================================================================================= //
 base::Status ConvertASTScript(const zetasql::ASTScript* body, node::NodeManager* node_manager,
                               node::SqlNodeList** output);
+base::Status ConvertStatement(const zetasql::ASTStatement* stmt, node::NodeManager* node_manager,
+                              node::SqlNode** output);
 
 // ======================================================================================= //
 // all interfaces below not consider public, which might moved later
@@ -36,8 +38,6 @@ base::Status ConvertASTScript(const zetasql::ASTScript* body, node::NodeManager*
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output);
 
-base::Status ConvertStatement(const zetasql::ASTStatement* stmt, node::NodeManager* node_manager,
-                              node::SqlNode** output);
 
 base::Status ConvertOrderBy(const zetasql::ASTOrderBy* order_by, node::NodeManager* node_manager,
                             node::OrderByNode** output);

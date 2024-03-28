@@ -538,10 +538,10 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
     // Check Data
     {
         type::TableDef output_table;
+        ASSERT_TRUE(sql_case.ExtractInputTableDef(output_table));
         std::vector<hybridse::codec::Row> rows;
-        ASSERT_TRUE(sql_case.ExtractInputData(rows));
+        ASSERT_TRUE(sql_case.ExtractInputData(rows, 0, output_table.columns()));
         ASSERT_EQ(5u, rows.size());
-        sql_case.ExtractInputTableDef(output_table);
         hybridse::codec::RowView row_view(output_table.columns());
 
         {

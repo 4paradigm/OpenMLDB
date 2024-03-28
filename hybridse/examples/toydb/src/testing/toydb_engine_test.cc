@@ -15,7 +15,7 @@
  */
 
 #include "gtest/gtest.h"
-#include "gtest/internal/gtest-param-util.h"
+#include "vm/engine.h"
 #include "testing/toydb_engine_test_base.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
@@ -126,8 +126,7 @@ TEST_P(BatchRequestEngineTest, TestClusterBatchRequestEngine) {
 }  // namespace hybridse
 
 int main(int argc, char** argv) {
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     // ::hybridse::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();

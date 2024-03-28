@@ -55,6 +55,7 @@ class HybridSeJitWrapper {
     // create the JIT wrapper with default builtin symbols imported already
     static HybridSeJitWrapper* CreateWithDefaultSymbols(udf::UdfLibrary*, base::Status*,
                                                         const JitOptions& jit_options = {});
+    static HybridSeJitWrapper* CreateWithDefaultSymbols(base::Status*, const JitOptions& jit_options = {});
 
     static HybridSeJitWrapper* Create(const JitOptions& jit_options);
     static HybridSeJitWrapper* Create();

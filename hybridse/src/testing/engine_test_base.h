@@ -19,36 +19,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <utility>
 #include <vector>
-#include "base/texttable.h"
-#include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
 #include "codec/fe_row_selector.h"
-#include "codec/list_iterator_codec.h"
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "gtest/internal/gtest-param-util.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
-#include "plan/plan_api.h"
-#include "sys/time.h"
 #include "vm/engine.h"
 #include "testing/test_base.h"
 #define MAX_DEBUG_LINES_CNT 20
@@ -134,6 +113,8 @@ class EngineTestRunner {
     int return_code() const { return return_code_; }
     const SqlCase& sql_case() const { return sql_case_; }
 
+    virtual const type::TableDef* GetTableDef(absl::string_view, absl::string_view) = 0;
+
     void RunCheck();
     void RunBenchmark(size_t iters);
 
@@ -157,8 +138,15 @@ class BatchEngineTestRunner : public EngineTestRunner {
     Status PrepareData() override {
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             auto input = sql_case_.inputs()[i];
+            std::string table_name = sql_case_.inputs_[i].name_;
+            std::string table_db_name = sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
+            auto table_def = GetTableDef(table_db_name, table_name);
+            if (!table_def) {
+                CHECK_TRUE(false, common::kTableNotFound, "table ", table_name, " not exist");
+            }
+
             std::vector<Row> rows;
-            sql_case_.ExtractInputData(rows, i);
+            sql_case_.ExtractInputData(rows, i, table_def->columns());
             size_t repeat = sql_case_.inputs()[i].repeat_;
             if (repeat > 1) {
                 size_t row_num = rows.size();
@@ -171,9 +159,6 @@ class BatchEngineTestRunner : public EngineTestRunner {
                 }
             }
             if (!rows.empty()) {
-                std::string table_name = sql_case_.inputs_[i].name_;
-                std::string table_db_name =
-                    sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
                 CHECK_TRUE(AddRowsIntoTable(table_db_name, table_name, rows),
                            common::kTablePutFailed, "Fail to add rows into table ",
                            table_name);
@@ -211,31 +196,40 @@ class RequestEngineTestRunner : public EngineTestRunner {
         auto request_session =
             std::dynamic_pointer_cast<RequestRunSession>(session_);
         CHECK_TRUE(request_session != nullptr, common::kNullPointer);
-        std::string request_name = request_session->GetRequestName();
+        std::string request_table = request_session->GetRequestName();
         std::string request_db_name =
             request_session->GetRequestDbName().empty() ? sql_case_.db() : request_session->GetRequestDbName();
+        auto request_table_def = GetTableDef(request_db_name, request_table);
+        if (!request_table.empty() && !request_table_def) {
+            CHECK_TRUE(false, common::kTableNotFound, "table ", request_table, " not exist");
+        }
 
         if (has_batch_request) {
             CHECK_TRUE(1 <= sql_case_.batch_request_.rows_.size(), common::kSqlCaseError,
                        "RequestEngine can't handler emtpy rows batch requests");
-            CHECK_TRUE(sql_case_.ExtractInputData(sql_case_.batch_request_,
-                                                  request_rows_),
-                       common::kSqlCaseError, "Extract case request rows failed");
+            CHECK_TRUE(
+                sql_case_.ExtractInputData(sql_case_.batch_request_, request_rows_, request_table_def->columns()),
+                common::kSqlCaseError, "Extract case request rows failed");
         }
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
-            std::string input_name = sql_case_.inputs_[i].name_;
+            std::string table_name = sql_case_.inputs_[i].name_;
             std::string table_db_name =
                 sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
 
-            if ((table_db_name == request_db_name) && (input_name == request_name) && !has_batch_request) {
-                CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
+            auto table_def = GetTableDef(table_db_name, table_name);
+            if (!table_def) {
+                CHECK_TRUE(false, common::kTableNotFound, "table ", table_name, " not exist");
+            }
+
+            if ((table_db_name == request_db_name) && (table_name == request_table) && !has_batch_request) {
+                CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i, table_def->columns()),
                            common::kSqlCaseError, "Extract case request rows failed");
                 continue;
             } else {
                 std::vector<Row> rows;
                 if (!sql_case_.inputs_[i].rows_.empty() ||
                     !sql_case_.inputs_[i].data_.empty()) {
-                    CHECK_TRUE(sql_case_.ExtractInputData(rows, i), common::kSqlCaseError,
+                    CHECK_TRUE(sql_case_.ExtractInputData(rows, i, table_def->columns()), common::kSqlCaseError,
                                "Extract case request rows failed");
                 }
 
@@ -247,14 +241,14 @@ class RequestEngineTestRunner : public EngineTestRunner {
                             store_rows.push_back(row);
                         }
                     }
-                    CHECK_TRUE(AddRowsIntoTable(table_db_name, input_name, store_rows),
+                    CHECK_TRUE(AddRowsIntoTable(table_db_name, table_name, store_rows),
                                common::kTablePutFailed,
-                               "Fail to add rows into table ", input_name);
+                               "Fail to add rows into table ", table_name);
 
                 } else {
-                    CHECK_TRUE(AddRowsIntoTable(table_db_name, input_name, rows),
+                    CHECK_TRUE(AddRowsIntoTable(table_db_name, table_name, rows),
                                common::kTablePutFailed,
-                               "Fail to add rows into table ", input_name);
+                               "Fail to add rows into table ", table_name);
                 }
             }
         }
@@ -329,11 +323,14 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
         for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
             auto input = sql_case_.inputs()[i];
             std::vector<Row> rows;
-            sql_case_.ExtractInputData(rows, i);
+            std::string table_name = sql_case_.inputs_[i].name_;
+            std::string table_db_name = sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
+            auto table_def = GetTableDef(table_db_name, table_name);
+            if (!table_def) {
+                CHECK_TRUE(false, common::kTableNotFound, "table ", table_name, " not exist");
+            }
+            sql_case_.ExtractInputData(rows, i, table_def->columns());
             if (!rows.empty()) {
-                std::string table_name = sql_case_.inputs_[i].name_;
-                std::string table_db_name =
-                    sql_case_.inputs_[i].db_.empty() ? sql_case_.db() : sql_case_.inputs_[i].db_;
                 if ((table_db_name == request_db_name && table_name == request_name) &&
                     !has_batch_request) {
                     original_request_data.push_back(rows.back());
