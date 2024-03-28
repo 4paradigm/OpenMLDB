@@ -196,6 +196,7 @@ using hybridse::node::DataType;
 %include "node/node_enum.h"
 %include "node/plan_node.h"
 %include "node/sql_node.h"
+%include "node/node_manager.h"
 %include "vm/catalog.h"
 %include "vm/simple_catalog.h"
 %include "vm/schemas_context.h"
@@ -208,3 +209,4 @@ using hybridse::node::DataType;
 %include "vm/mem_catalog.h"
 
 %template(VectorDataType) std::vector<hybridse::node::DataType>;
+%template(ExprNodeVector) std::vector<hybridse::node::ExprNode*>;

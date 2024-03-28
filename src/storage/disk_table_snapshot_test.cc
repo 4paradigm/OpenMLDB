@@ -112,7 +112,6 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_hdd_root_path = tmp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("disk_table_snapshot_test");
     return RUN_ALL_TESTS();
 }

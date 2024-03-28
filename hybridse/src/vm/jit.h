@@ -17,10 +17,8 @@
 #ifndef HYBRIDSE_SRC_VM_JIT_H_
 #define HYBRIDSE_SRC_VM_JIT_H_
 
-#include <map>
 #include <memory>
 #include <string>
-#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "vm/jit_wrapper.h"
 
@@ -99,10 +97,6 @@ class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
     hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
-
-    // llvm::Module* GetModule() {
-    // }
-    // llvm::LLVMContext* GetLlvmContext();
 
  private:
     std::unique_ptr<HybridSeJit> jit_;

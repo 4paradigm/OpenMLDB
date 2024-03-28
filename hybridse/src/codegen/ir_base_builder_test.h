@@ -197,14 +197,12 @@ class ModuleTestFunction {
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
-        jit = std::unique_ptr<vm::HybridSeJitWrapper>(
-            vm::HybridSeJitWrapper::Create());
-        jit->Init();
-        InitBuiltinJitSymbols(jit.get());
-        if (library != nullptr) {
-            library->InitJITSymbols(jit.get());
-        } else {
-            udf::DefaultUdfLibrary::get()->InitJITSymbols(jit.get());
+        base::Status s;
+        jit =
+            std::unique_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::CreateWithDefaultSymbols(library, &s, {}));
+        if (jit == nullptr || !s.isOK()) {
+            LOG(WARNING) << "create jit failed" << s;
+            return;
         }
 
         llvm::errs() << *(module.get()) << "\n";
