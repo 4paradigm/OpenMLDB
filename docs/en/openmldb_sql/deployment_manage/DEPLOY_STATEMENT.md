@@ -154,7 +154,7 @@ The current long window optimization has the following limitations:
 
 ```sql
 DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM demo_table1
-    WINDOW w1 AS (PARTITION BY c1 ORDER BY c2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
+    WINDOW w1 AS (PARTITION BY c1 ORDER BY c6 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
 -- SUCCEED
 ```
 
