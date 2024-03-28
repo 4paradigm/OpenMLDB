@@ -399,9 +399,6 @@ INSTANTIATE_TEST_SUITE_P(TabletMemAndHDD, TabletFuncTest,
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
-    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
-    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_func_test");
     return RUN_ALL_TESTS();
 }

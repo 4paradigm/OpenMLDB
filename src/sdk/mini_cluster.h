@@ -38,6 +38,7 @@
 #include "rpc/rpc_client.h"
 #include "sdk/db_sdk.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(tablet);
@@ -75,7 +76,6 @@ class MiniCluster {
         if (ns_client_) {
             delete ns_client_;
         }
-        base::RemoveDirRecursive(db_root_path_);
     }
 
     bool SetUp(int tablet_num = 2) {
@@ -88,8 +88,6 @@ class MiniCluster {
         FLAGS_get_table_diskused_interval = 2000;
         FLAGS_sync_deploy_stats_timeout = 2000;
         srand(time(NULL));
-        db_root_path_ = "/tmp/mini_cluster" + GenRand();
-        FLAGS_db_root_path = db_root_path_;
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
         FLAGS_zk_cluster = zk_cluster_;
         std::string ns_endpoint = "127.0.0.1:" + GenRand();
@@ -220,7 +218,6 @@ class MiniCluster {
     ::openmldb::client::NsClient* ns_client_;
     std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
     std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
-    std::string db_root_path_;
 };
 
 class StandaloneEnv {
@@ -233,13 +230,13 @@ class StandaloneEnv {
         if (ns_client_) {
             delete ns_client_;
         }
-        base::RemoveDirRecursive(db_root_path_);
     }
 
     bool SetUp() {
         srand(time(nullptr));
-        db_root_path_ = "/tmp/standalone_env" + std::to_string(GenRand());
-        FLAGS_db_root_path = db_root_path_;
+        // shit happens, cluster & standalone require distinct db_root_path
+        test::TempPath tmp;
+        FLAGS_db_root_path = tmp.GetTempPath();
         if (!StartTablet(&tb_server_)) {
             LOG(WARNING) << "fail to start tablet";
             return false;
@@ -333,7 +330,6 @@ class StandaloneEnv {
     uint64_t ns_port_ = 0;
     ::openmldb::client::NsClient* ns_client_;
     ::openmldb::client::TabletClient* tb_client_;
-    std::string db_root_path_;
 };
 
 }  // namespace sdk

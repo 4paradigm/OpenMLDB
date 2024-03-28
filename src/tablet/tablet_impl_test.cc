@@ -89,15 +89,6 @@ void RemoveData(const std::string& path) {
     ::openmldb::base::RemoveDir(FLAGS_ssd_root_path);
 }
 
-class DiskTestEnvironment : public ::testing::Environment{
-    virtual void SetUp() {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-    }
-    virtual void TearDown() {
-        ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-    }
-};
-
 class TabletImplTest : public ::testing::TestWithParam<::openmldb::common::StorageMode> {
  public:
     TabletImplTest() {}
@@ -6319,19 +6310,12 @@ TEST_F(TabletImplTest, DeleteRange) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(new ::openmldb::tablet::DiskTestEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
-    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
-    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
-    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath("recycle");
-    FLAGS_recycle_bin_ssd_root_path = tmp_path.GetTempPath("recycle");
-    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath("recycle");
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_test");
     FLAGS_recycle_bin_enabled = true;
     return RUN_ALL_TESTS();
 }

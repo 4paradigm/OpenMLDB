@@ -35,7 +35,6 @@
 
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
-DECLARE_string(db_root_path);
 DECLARE_int32(zk_session_timeout);
 
 namespace openmldb {
@@ -107,7 +106,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("system_table_test");
     return RUN_ALL_TESTS();
 }

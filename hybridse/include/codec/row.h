@@ -18,14 +18,9 @@
 #define HYBRIDSE_INCLUDE_CODEC_ROW_H_
 
 #include <cstdint>
-#include <map>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 #include "base/fe_slice.h"
-#include "base/raw_buffer.h"
-#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace codec {

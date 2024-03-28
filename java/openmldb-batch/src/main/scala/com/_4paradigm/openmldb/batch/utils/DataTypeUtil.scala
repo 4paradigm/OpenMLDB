@@ -16,27 +16,50 @@
 
 package com._4paradigm.openmldb.batch.utils
 
-import com._4paradigm.hybridse.`type`.TypeOuterClass.{Type => HybridseProtoType}
+import com._4paradigm.hybridse.`type`.TypeOuterClass.{Type => HybridseProtoType, ColumnSchema}
 import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, TimestampType}
+  ShortType, StringType, TimestampType, MapType, ArrayType, StructField}
 import com._4paradigm.hybridse.node.{DataType => OpenmldbDataType}
+import com._4paradigm.hybridse.`type`.TypeOuterClass.ColumnSchema.TypeCase.BASE_TYPE
+import com._4paradigm.hybridse.`type`.TypeOuterClass.ColumnSchema.TypeCase.ARRAY_TYPE
+import com._4paradigm.hybridse.`type`.TypeOuterClass.ColumnSchema.TypeCase.MAP_TYPE
+import com._4paradigm.hybridse.`type`.TypeOuterClass.{ArrayType => HSArrayType, MapType => HSMapType}
 
 object DataTypeUtil {
 
-  def sparkTypeToHybridseProtoType(dtype: DataType): HybridseProtoType = {
+  def sparkTypeToHybridseProtoType(dtype: DataType): ColumnSchema = {
+    var builder = ColumnSchema.newBuilder()
     dtype match {
-      case ShortType => HybridseProtoType.kInt16
-      case IntegerType => HybridseProtoType.kInt32
-      case LongType => HybridseProtoType.kInt64
-      case FloatType => HybridseProtoType.kFloat
-      case DoubleType => HybridseProtoType.kDouble
-      case BooleanType => HybridseProtoType.kBool
-      case StringType => HybridseProtoType.kVarchar
-      case DateType => HybridseProtoType.kDate
-      case TimestampType => HybridseProtoType.kTimestamp
+      case ShortType => builder.setBaseType(HybridseProtoType.kInt16)
+      case IntegerType => builder.setBaseType(HybridseProtoType.kInt32)
+      case LongType => builder.setBaseType(HybridseProtoType.kInt64)
+      case FloatType => builder.setBaseType(HybridseProtoType.kFloat)
+      case DoubleType => builder.setBaseType(HybridseProtoType.kDouble)
+      case BooleanType => builder.setBaseType(HybridseProtoType.kBool)
+      case StringType => builder.setBaseType(HybridseProtoType.kVarchar)
+      case DateType => builder.setBaseType(HybridseProtoType.kDate)
+      case TimestampType => builder.setBaseType(HybridseProtoType.kTimestamp)
+      case ArrayType(eleType, containsNull) => {
+        var hsArrType = HSArrayType.newBuilder()
+          .setEleType(sparkTypeToHybridseProtoType(eleType)
+            .toBuilder().setIsNotNull(!containsNull))
+          .build()
+        builder.setArrayType(hsArrType)
+      }
+      case MapType(keyType, valueType, valContainsNull) => {
+        var hsKeyType = sparkTypeToHybridseProtoType(keyType)
+        var hsValType = sparkTypeToHybridseProtoType(valueType)
+          .toBuilder().setIsNotNull(!valContainsNull)
+        builder.setMapType(HSMapType.newBuilder()
+          .setKeyType(hsKeyType)
+          .setValueType(hsValType)
+          .build())
+      }
       case _ => throw new IllegalArgumentException(
         s"Spark type $dtype not supported")
     }
+
+    builder.build()
   }
 
   def openmldbTypeToProtoType(dtype: OpenmldbDataType): HybridseProtoType = {
@@ -55,17 +78,33 @@ object DataTypeUtil {
     }
   }
 
-  def hybridseProtoTypeToSparkType(dtype: HybridseProtoType): DataType = {
-    dtype match {
-      case HybridseProtoType.kInt16 => ShortType
-      case HybridseProtoType.kInt32 => IntegerType
-      case HybridseProtoType.kInt64 => LongType
-      case HybridseProtoType.kFloat => FloatType
-      case HybridseProtoType.kDouble => DoubleType
-      case HybridseProtoType.kBool => BooleanType
-      case HybridseProtoType.kVarchar => StringType
-      case HybridseProtoType.kDate => DateType
-      case HybridseProtoType.kTimestamp => TimestampType
+  def hybridseProtoTypeToSparkType(dtype: ColumnSchema): DataType = {
+    dtype.getTypeCase() match {
+      case BASE_TYPE => {
+        dtype.getBaseType() match {
+          case HybridseProtoType.kInt16 => ShortType
+          case HybridseProtoType.kInt32 => IntegerType
+          case HybridseProtoType.kInt64 => LongType
+          case HybridseProtoType.kFloat => FloatType
+          case HybridseProtoType.kDouble => DoubleType
+          case HybridseProtoType.kBool => BooleanType
+          case HybridseProtoType.kVarchar => StringType
+          case HybridseProtoType.kDate => DateType
+          case HybridseProtoType.kTimestamp => TimestampType
+          case _ => throw new IllegalArgumentException(
+            s"HybridSE type $dtype not supported")
+        }
+      }
+      case ARRAY_TYPE => {
+        var ele = hybridseProtoTypeToSparkType(dtype.getArrayType().getEleType())
+        ArrayType(ele, !dtype.getIsNotNull())
+      }
+      case MAP_TYPE => {
+        var keyType = hybridseProtoTypeToSparkType(dtype.getMapType().getKeyType())
+        var valueType = hybridseProtoTypeToSparkType(dtype.getMapType().getValueType())
+        var valNull = !dtype.getMapType().getValueType().getIsNotNull()
+        MapType(keyType, valueType, valNull)
+      }
       case _ => throw new IllegalArgumentException(
         s"HybridSE type $dtype not supported")
     }
@@ -148,6 +187,10 @@ object DataTypeUtil {
       case StringType => "string"
       case DateType => "date"
       case TimestampType => "timestamp"
+      case MapType(keyType, valueType, valueContainsNull) => {
+        var valueAttr = if (valueContainsNull) { "" } else { "NOT NULL" }
+        s"MAP<${sparkTypeToString(keyType)}, ${sparkTypeToString(valueType)} $valueAttr>"
+      }
       case _ => throw new IllegalArgumentException(
         s"Spark type $dataType not supported")
     }

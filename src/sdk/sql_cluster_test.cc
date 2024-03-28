@@ -15,6 +15,7 @@
  */
 
 #include <unistd.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
 #include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
@@ -31,8 +33,8 @@
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
-
 
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_uint32(traverse_cnt_limit);
@@ -446,7 +448,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) options(partitionnum=8);";
+                      "index(key=col1, ts=col2)) options(partitionnum=8, replicanum = 2);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -459,6 +461,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
         uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
+    absl::SleepFor(absl::Seconds(5));
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = mc_->GetNsClient();
     auto ret = ns->ShowDBTable(db, &tables);
@@ -482,7 +485,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
             }
         }
     }
-    ASSERT_EQ(100u, count);
+    ASSERT_EQ(2* 100u, count);
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -1398,6 +1401,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("sql_cluster_test");
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::base::SetupGlog(true);
 

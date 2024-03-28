@@ -34,9 +34,9 @@ class TestSelectInto extends SparkTestSuite {
     sess.sql(sqlText)
 
     val csvDf = spark.read.option("header", true).csv(csvFilePath)
-    assert(csvDf.isEmpty)
     assert(csvDf.schema.size == 1)
     assert(csvDf.schema.fields(0).name.equals("1"))
+    assert(csvDf.count() == 1)
   }
 
 }

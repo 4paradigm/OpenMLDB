@@ -36,11 +36,14 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
     ~BufNativeEncoderIRBuilder() override;
 
+    ABSL_MUST_USE_RESULT
     base::Status Init() noexcept;
 
     // the output_ptr like int8_t**
+    ABSL_MUST_USE_RESULT
     base::Status BuildEncode(::llvm::Value* output_ptr) override;
 
+    ABSL_MUST_USE_RESULT
     base::Status BuildEncodePrimaryField(::llvm::Value* buf, size_t idx, const NativeValue& val);
 
  private:
