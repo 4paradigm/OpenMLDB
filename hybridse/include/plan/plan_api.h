@@ -29,6 +29,8 @@ using hybridse::base::Status;
 using hybridse::node::NodeManager;
 using hybridse::node::NodePointVector;
 using hybridse::node::PlanNodeList;
+
+// TODO(someone): rm class PlanAPI
 class PlanAPI {
  public:
     // parse SQL string to logic plan. ASTNode and LogicNode saved in SqlContext
@@ -47,6 +49,22 @@ class PlanAPI {
     static const std::string GenerateName(const std::string prefix, int id);
 };
 
+// Parse the input str and SQL type and convert to TypeNode representation
+//
+// unimplemnted, reserved for later usage
+absl::StatusOr<node::TypeNode*> ParseType(absl::string_view, NodeManager*);
+
+// parse the input string as table elements and extract those element that is table_column_definition,
+// then returns the corresponding proto representation.
+//
+// it expect input `str` joined every element by comma(,), then a CREATE TABLE SQL is created with the
+// format of 'CREATE TABLE t1 ( {str} )'.
+// SQL parse allows three kind of table element, which is:
+// - table_column_definition
+// - table_index_definition
+// - table_constraint_definition
+// while this method extract table_column_definition only
+absl::StatusOr<codec::Schema> ParseTableColumSchema(absl::string_view str);
 }  // namespace plan
 }  // namespace hybridse
 #endif  // HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_

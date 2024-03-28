@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <utility>
 
 #include "absl/strings/match.h"
 #include "testing/toydb_engine_test_base.h"
@@ -104,8 +103,7 @@ int RunSingle(const std::string& yaml_path) {
 
 int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, false);
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     if (FLAGS_yaml_path != "") {
         return ::hybridse::vm::RunSingle(FLAGS_yaml_path);
     } else {
