@@ -9,13 +9,15 @@ import java.util.List;
 import java.util.Map;
 
 public class MockResult {
+  public static final String DEFAULT_STORAGE_ENGINE = "InnoDB";
+  public static final String VARIABLE_VALUE_SQL_MODE =
+      "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION";
+  public static final String VARIABLE_VALUE_SSL_CIPHER = "TLS_AES_256_GCM_SHA384";
   public static Map<String, Pair<List<QueryResultColumn>, List<List<String>>>> mockResults =
       new HashMap<>();
   public static Map<String, Pair<List<QueryResultColumn>, List<List<String>>>> mockPatternResults =
       new HashMap<>();
-
   public static Map<String, String> mockVariables = new HashMap<>();
-
   public static Map<String, String> mockSessionStatusVariables = new HashMap<>();
   public static Map<String, String> mockSessionVariablesVariables = new HashMap<>();
 
@@ -25,12 +27,13 @@ public class MockResult {
     List<List<String>> rows;
     List<String> row;
 
-    mockVariables.put("character_set_database", "utf8mb4");
-    mockVariables.put("collation_database", "utf8mb4_0900_ai_ci");
-    mockVariables.put("default_storage_engine", "InnoDB");
+    mockVariables.put("character_set_database", MySqlListener.CHARACTER_SET_UTF8MB4);
+    mockVariables.put("collation_database", MySqlListener.COLLATION_UTF8MB4_0900_AI_CI);
+    mockVariables.put("default_storage_engine", DEFAULT_STORAGE_ENGINE);
     mockVariables.put("skip_show_database", "OFF");
     mockVariables.put("version", MySqlListener.VERSION);
     mockVariables.put("version_comment", MySqlListener.VERSION_COMMENT);
+    mockVariables.put("lower_case_table_names", MySqlListener.SETTINGS_LOWER_CASE_TABLE_NAMES);
     for (String variable : MockResult.mockVariables.keySet()) {
       query = "show variables like '" + variable.toLowerCase() + "'";
       columns = new ArrayList<>();
@@ -44,63 +47,57 @@ public class MockResult {
       mockResults.put(query, new Pair<>(columns, rows));
     }
 
+    List<QueryResultColumn> characterSetUtf8mb4Columns = new ArrayList<>();
+    characterSetUtf8mb4Columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
+    characterSetUtf8mb4Columns.add(new QueryResultColumn("Description", "VARCHAR(255)"));
+    characterSetUtf8mb4Columns.add(new QueryResultColumn("Default collation", "VARCHAR(255)"));
+    characterSetUtf8mb4Columns.add(new QueryResultColumn("Maxlen", "VARCHAR(255)"));
+
+    List<List<String>> characterSetUtf8mb4Rows = new ArrayList<>();
+    List<String> characterSetUtf8mb4Row = new ArrayList<>();
+    characterSetUtf8mb4Row.add(MySqlListener.CHARACTER_SET_UTF8MB4);
+    characterSetUtf8mb4Row.add("UTF-8 Unicode");
+    characterSetUtf8mb4Row.add(MySqlListener.COLLATION_UTF8MB4_0900_AI_CI);
+    characterSetUtf8mb4Row.add("4");
+    characterSetUtf8mb4Rows.add(characterSetUtf8mb4Row);
+
     query = "show character set";
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Description", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Default collation", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Maxlen", "VARCHAR(255)"));
-    rows = new ArrayList<>();
-    row = new ArrayList<>();
-    row.add("utf8mb4");
-    row.add("UTF-8 Unicode");
-    row.add("utf8mb4_0900_ai_ci");
-    row.add("4");
-    rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
+    mockResults.put(query, new Pair<>(characterSetUtf8mb4Columns, characterSetUtf8mb4Rows));
 
     query = "show charset";
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Description", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Default collation", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Maxlen", "VARCHAR(255)"));
-    rows = new ArrayList<>();
-    row = new ArrayList<>();
-    row.add("utf8mb4");
-    row.add("UTF-8 Unicode");
-    row.add("utf8mb4_0900_ai_ci");
-    row.add("4");
-    rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
-
-    query = "show variables like 'lower_case_table_names'";
-    // Variable_name	Value
-    // lower_case_table_names	2
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
-    rows = new ArrayList<>();
-    row = new ArrayList<>();
-    row.add("lower_case_table_names");
-    row.add("2");
-    rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
+    mockResults.put(query, new Pair<>(characterSetUtf8mb4Columns, characterSetUtf8mb4Rows));
 
     query = "show character set where charset = 'utf8mb4'";
+    mockResults.put(query, new Pair<>(characterSetUtf8mb4Columns, characterSetUtf8mb4Rows));
+
+    query = "select * from `information_schema`.`character_sets` order by `character_set_name` asc";
     columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("Charset", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Description", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Default collation", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Maxlen", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("CHARACTER_SET_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("DEFAULT_COLLATE_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("DESCRIPTION", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("MAXLEN", "VARCHAR(255)"));
     rows = new ArrayList<>();
+    // # CHARACTER_SET_NAME, DEFAULT_COLLATE_NAME, DESCRIPTION, MAXLEN
+    // latin1, latin1_swedish_ci, cp1252 West European, 1
     row = new ArrayList<>();
-    row.add("utf8mb4");
-    row.add("UTF-8 Unicode");
-    row.add("utf8mb4_0900_ai_ci");
-    row.add("4");
+    row.add("latin1");
+    row.add("latin1_swedish_ci");
+    row.add("cp1252 West European");
+    row.add("1");
     rows.add(row);
+    // # CHARACTER_SET_NAME, DEFAULT_COLLATE_NAME, DESCRIPTION, MAXLEN
+    // utf8mb4, utf8mb4_0900_ai_ci, UTF-8 Unicode, 4
+    rows.add(characterSetUtf8mb4Row);
     mockResults.put(query, new Pair<>(columns, rows));
+
+    List<String> collationUtf8mb4Row = new ArrayList<>();
+    row.add(MySqlListener.COLLATION_UTF8MB4_0900_AI_CI);
+    row.add(MySqlListener.CHARACTER_SET_UTF8MB4);
+    row.add("255");
+    row.add("Yes");
+    row.add("Yes");
+    row.add("0");
+    row.add("NO PAD");
 
     query = "show collation";
     // Collation	Charset	Id	Default	Compiled	Sortlen	Pad_attribute
@@ -114,15 +111,48 @@ public class MockResult {
     columns.add(new QueryResultColumn("Sortlen", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("Pad_attribute", "VARCHAR(255)"));
     rows = new ArrayList<>();
+    rows.add(collationUtf8mb4Row);
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query =
+        "select * from `information_schema`.`collations` where character_set_name = 'latin1' order by `collation_name` asc";
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("COLLATION_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("CHARACTER_SET_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("ID", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("IS_DEFAULT", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("IS_COMPILED", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("SORTLEN", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("PAD_ATTRIBUTE", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    // # COLLATION_NAME, CHARACTER_SET_NAME, ID, IS_DEFAULT, IS_COMPILED, SORTLEN, PAD_ATTRIBUTE
+    // latin1_swedish_ci, latin1, 8, Yes, Yes, 1, PAD SPACE
     row = new ArrayList<>();
-    row.add("utf8mb4_0900_ai_ci");
-    row.add("utf8mb4");
-    row.add("255");
+    row.add("latin1_swedish_ci");
+    row.add("latin1");
+    row.add("8");
     row.add("Yes");
     row.add("Yes");
-    row.add("0");
-    row.add("NO PAD");
+    row.add("1");
+    row.add("PAD SPACE");
     rows.add(row);
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    // COLLATION_NAME, CHARACTER_SET_NAME, ID, IS_DEFAULT, IS_COMPILED, SORTLEN, PAD_ATTRIBUTE
+    query =
+        "select * from `information_schema`.`collations` where character_set_name = 'utf8mb4' order by `collation_name` asc";
+    // # COLLATION_NAME, CHARACTER_SET_NAME, ID, IS_DEFAULT, IS_COMPILED, SORTLEN, PAD_ATTRIBUTE
+    // utf8mb4_0900_ai_ci, utf8mb4, 255, Yes, Yes, 0, NO PAD
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("COLLATION_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("CHARACTER_SET_NAME", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("ID", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("IS_DEFAULT", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("IS_COMPILED", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("SORTLEN", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("PAD_ATTRIBUTE", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    rows.add(collationUtf8mb4Row);
     mockResults.put(query, new Pair<>(columns, rows));
 
     query = "show engines";
@@ -137,7 +167,7 @@ public class MockResult {
     columns.add(new QueryResultColumn("Savepoints", "VARCHAR(255)"));
     rows = new ArrayList<>();
     row = new ArrayList<>();
-    row.add("InnoDB");
+    row.add(DEFAULT_STORAGE_ENGINE);
     row.add("DEFAULT");
     row.add("Supports transactions, row-level locking, and foreign keys");
     row.add("YES");
@@ -147,6 +177,14 @@ public class MockResult {
     mockResults.put(query, new Pair<>(columns, rows));
 
     query = "show global status";
+    columns = new ArrayList<>();
+    columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
+    columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
+    rows = new ArrayList<>();
+    mockResults.put(query, new Pair<>(columns, rows));
+
+    query = "show status";
+    // Variable_name	Value
     columns = new ArrayList<>();
     columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
     columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
@@ -165,10 +203,8 @@ public class MockResult {
     rows.add(row);
     mockResults.put(query, new Pair<>(columns, rows));
 
-    mockSessionStatusVariables.put(
-        "sql_mode",
-        "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION");
-    mockSessionStatusVariables.put("Ssl_cipher", "TLS_AES_256_GCM_SHA384");
+    mockSessionStatusVariables.put("sql_mode", VARIABLE_VALUE_SQL_MODE);
+    mockSessionStatusVariables.put("Ssl_cipher", VARIABLE_VALUE_SSL_CIPHER);
     mockSessionStatusVariables.put("version_comment", MySqlListener.VERSION_COMMENT);
     mockSessionStatusVariables.put("version", MySqlListener.VERSION);
     for (String sessionVariable : MockResult.mockSessionStatusVariables.keySet()) {
@@ -184,18 +220,18 @@ public class MockResult {
       mockResults.put(query, new Pair<>(columns, rows));
     }
 
-    mockSessionVariablesVariables.put(
-        "sql_mode",
-        "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION");
+    mockSessionVariablesVariables.put("sql_mode", VARIABLE_VALUE_SQL_MODE);
     mockSessionVariablesVariables.put("version_comment", MySqlListener.VERSION_COMMENT);
     mockSessionVariablesVariables.put("version", MySqlListener.VERSION);
     // Variable_name	Value
     // version_compile_os	macos12
     mockSessionVariablesVariables.put("version_compile_os", "");
     mockSessionVariablesVariables.put("offline_mode", "OFF");
-    mockSessionVariablesVariables.put("wait_timeout", "28800");
-    mockSessionVariablesVariables.put("interactive_timeout", "28800");
-    mockSessionVariablesVariables.put("lower_case_table_names", "2");
+    mockSessionVariablesVariables.put("wait_timeout", MySqlListener.SETTINGS_WAIT_TIMEOUT);
+    mockSessionVariablesVariables.put(
+        "interactive_timeout", MySqlListener.SETTINGS_INTERACTIVE_TIMEOUT);
+    mockSessionVariablesVariables.put(
+        "lower_case_table_names", MySqlListener.SETTINGS_LOWER_CASE_TABLE_NAMES);
     for (String sessionVariable : MockResult.mockSessionVariablesVariables.keySet()) {
       query = "show session variables like '" + sessionVariable.toLowerCase() + "'";
       columns = new ArrayList<>();
@@ -228,14 +264,6 @@ public class MockResult {
     row.add("");
     row.add("GPL");
     rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
-
-    query = "show status";
-    // Variable_name	Value
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("Variable_name", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("Value", "VARCHAR(255)"));
-    rows = new ArrayList<>();
     mockResults.put(query, new Pair<>(columns, rows));
 
     query =
@@ -312,7 +340,7 @@ public class MockResult {
     //    row.add("YES");
     //    rows.add(row);
     row = new ArrayList<>();
-    row.add("InnoDB");
+    row.add(DEFAULT_STORAGE_ENGINE);
     row.add("DEFAULT");
     rows.add(row);
     //    row = new ArrayList<>();
@@ -323,80 +351,6 @@ public class MockResult {
     //    row.add("CSV");
     //    row.add("YES");
     //    rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
-
-    query = "select * from `information_schema`.`character_sets` order by `character_set_name` asc";
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("CHARACTER_SET_NAME", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("DEFAULT_COLLATE_NAME", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("DESCRIPTION", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("MAXLEN", "VARCHAR(255)"));
-    rows = new ArrayList<>();
-    // # CHARACTER_SET_NAME, DEFAULT_COLLATE_NAME, DESCRIPTION, MAXLEN
-    // latin1, latin1_swedish_ci, cp1252 West European, 1
-    row = new ArrayList<>();
-    row.add("latin1");
-    row.add("latin1_swedish_ci");
-    row.add("cp1252 West European");
-    row.add("1");
-    rows.add(row);
-    // # CHARACTER_SET_NAME, DEFAULT_COLLATE_NAME, DESCRIPTION, MAXLEN
-    // utf8mb4, utf8mb4_0900_ai_ci, UTF-8 Unicode, 4
-    row = new ArrayList<>();
-    row.add("utf8mb4");
-    row.add("utf8mb4_0900_ai_ci");
-    row.add("UTF-8 Unicode");
-    row.add("4");
-    rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
-
-    query =
-        "select * from `information_schema`.`collations` where character_set_name = 'latin1' order by `collation_name` asc";
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("COLLATION_NAME", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("CHARACTER_SET_NAME", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("ID", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("IS_DEFAULT", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("IS_COMPILED", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("SORTLEN", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("PAD_ATTRIBUTE", "VARCHAR(255)"));
-    rows = new ArrayList<>();
-    // # COLLATION_NAME, CHARACTER_SET_NAME, ID, IS_DEFAULT, IS_COMPILED, SORTLEN, PAD_ATTRIBUTE
-    // latin1_swedish_ci, latin1, 8, Yes, Yes, 1, PAD SPACE
-    row = new ArrayList<>();
-    row.add("latin1_swedish_ci");
-    row.add("latin1");
-    row.add("8");
-    row.add("Yes");
-    row.add("Yes");
-    row.add("1");
-    row.add("PAD SPACE");
-    rows.add(row);
-    mockResults.put(query, new Pair<>(columns, rows));
-
-    // COLLATION_NAME, CHARACTER_SET_NAME, ID, IS_DEFAULT, IS_COMPILED, SORTLEN, PAD_ATTRIBUTE
-    query =
-        "select * from `information_schema`.`collations` where character_set_name = 'utf8mb4' order by `collation_name` asc";
-    // # COLLATION_NAME, CHARACTER_SET_NAME, ID, IS_DEFAULT, IS_COMPILED, SORTLEN, PAD_ATTRIBUTE
-    // utf8mb4_0900_ai_ci, utf8mb4, 255, Yes, Yes, 0, NO PAD
-    columns = new ArrayList<>();
-    columns.add(new QueryResultColumn("COLLATION_NAME", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("CHARACTER_SET_NAME", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("ID", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("IS_DEFAULT", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("IS_COMPILED", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("SORTLEN", "VARCHAR(255)"));
-    columns.add(new QueryResultColumn("PAD_ATTRIBUTE", "VARCHAR(255)"));
-    rows = new ArrayList<>();
-    row = new ArrayList<>();
-    row.add("utf8mb4_0900_ai_ci");
-    row.add("utf8mb4");
-    row.add("255");
-    row.add("Yes");
-    row.add("Yes");
-    row.add("0");
-    row.add("NO PAD");
-    rows.add(row);
     mockResults.put(query, new Pair<>(columns, rows));
 
     query = "select word from information_schema.keywords where reserved=1 order by word";

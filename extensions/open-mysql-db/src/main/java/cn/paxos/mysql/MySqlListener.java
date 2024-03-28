@@ -41,18 +41,21 @@ public class MySqlListener implements AutoCloseable {
 
   public static final String VERSION = "8.0.29";
   public static final String VERSION_COMMENT = "";
+  public static final String CHARACTER_SET_UTF8MB4 = "utf8mb4";
+  public static final String COLLATION_UTF8MB4_0900_AI_CI = "utf8mb4_0900_ai_ci";
+  public static final String SETTINGS_LOWER_CASE_TABLE_NAMES = "2";
+  public static final String SETTINGS_INTERACTIVE_TIMEOUT = "28800";
+  public static final String SETTINGS_WAIT_TIMEOUT = "28800";
   private static final Pattern SETTINGS_PATTERN =
       Pattern.compile("@@([\\w.]+)(?:\\sAS\\s)?(\\w+)?");
   private static final Pattern USE_DB_PATTERN = Pattern.compile("(?i)use (.+)");
   private final SqlEngine sqlEngine;
-  private final int port;
   private final Channel channel;
   private final io.netty.channel.EventLoopGroup parentGroup;
   private final EventLoopGroup childGroup;
   private final EventExecutorGroup eventExecutorGroup;
 
   public MySqlListener(int port, int executorGroupSize, SqlEngine sqlEngine) {
-    this.port = port;
     this.sqlEngine = sqlEngine;
 
     parentGroup = new NioEventLoopGroup();
@@ -87,7 +90,7 @@ public class MySqlListener implements AutoCloseable {
             .childHandler(
                 new ChannelInitializer<NioSocketChannel>() {
                   @Override
-                  protected void initChannel(NioSocketChannel ch) throws Exception {
+                  protected void initChannel(NioSocketChannel ch) {
                     System.out.println("[mysql-protocol] Initializing child channel");
                     final ChannelPipeline pipeline = ch.pipeline();
                     pipeline.addLast(new MysqlServerPacketEncoder());
@@ -160,14 +163,21 @@ public class MySqlListener implements AutoCloseable {
       Throwable cause = e.getCause();
       int errorCode;
       byte[] sqlState;
-      String errMsg =
-          Utils.getLocalDateTimeNow()
-              + " "
-              + Objects.requireNonNullElse(cause.getMessage(), e.getMessage());
-      if (cause instanceof IllegalAccessException) {
-        errorCode = 1045;
-        sqlState = "#28000".getBytes(StandardCharsets.US_ASCII);
+      String errMsg;
+      if (cause != null) {
+        errMsg =
+            Utils.getLocalDateTimeNow()
+                + " "
+                + Objects.requireNonNullElse(cause.getMessage(), e.getMessage());
+        if (cause instanceof IllegalAccessException) {
+          errorCode = 1045;
+          sqlState = "#28000".getBytes(StandardCharsets.US_ASCII);
+        } else {
+          errorCode = 1105;
+          sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
+        }
       } else {
+        errMsg = Utils.getLocalDateTimeNow() + " " + Objects.requireNonNullElse(e.getMessage(), "");
         errorCode = 1105;
         sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
       }
@@ -197,17 +207,14 @@ public class MySqlListener implements AutoCloseable {
             + userName
             + ", scramble411: "
             + scramble411.length);
-    Matcher useDbMatcher =
-        USE_DB_PATTERN.matcher(queryString.replaceAll("/\\*.*\\*/", "").toLowerCase().trim());
+    String queryStringWithoutComment =
+        queryString.replaceAll("/\\*.*\\*/", "").toLowerCase().trim();
+    Matcher useDbMatcher = USE_DB_PATTERN.matcher(queryStringWithoutComment);
 
     if (isServerSettingsQuery(queryString)) {
       sendSettingsResponse(ctx, query, remoteAddr);
-    } else if (queryString.replaceAll("/\\*.*\\*/", "").toLowerCase().trim().startsWith("set ")
-        && !queryString
-            .replaceAll("/\\*.*\\*/", "")
-            .toLowerCase()
-            .trim()
-            .startsWith("set @@execute_mode=")) {
+    } else if (queryStringWithoutComment.startsWith("set ")
+        && !queryStringWithoutComment.startsWith("set @@execute_mode=")) {
       // ignore SET command
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
     } else if (useDbMatcher.matches()) {
@@ -218,12 +225,9 @@ public class MySqlListener implements AutoCloseable {
     } else {
       // Generic response
       int[] sequenceId = new int[] {query.getSequenceId()};
-
       boolean[] columnsWritten = new boolean[1];
-
       ResultSetWriter resultSetWriter =
           new ResultSetWriter() {
-
             @Override
             public void writeColumns(List<QueryResultColumn> columns) {
               ctx.write(new ColumnCount(++sequenceId[0], columns.size()));
@@ -272,9 +276,7 @@ public class MySqlListener implements AutoCloseable {
                         .build());
               }
               ctx.write(new EofResponse(++sequenceId[0], 0));
-
               System.out.println("[mysql-protocol] Columns done");
-
               columnsWritten[0] = !columns.isEmpty();
             }
 
@@ -290,7 +292,6 @@ public class MySqlListener implements AutoCloseable {
             @Override
             public void finish() {
               ctx.writeAndFlush(new EofResponse(++sequenceId[0], 0));
-
               System.out.println("[mysql-protocol] All done");
             }
           };
@@ -311,22 +312,29 @@ public class MySqlListener implements AutoCloseable {
         Throwable cause = e.getCause();
         int errorCode;
         byte[] sqlState;
-        String errMsg =
-            Utils.getLocalDateTimeNow()
-                + " "
-                + Objects.requireNonNullElse(cause.getMessage(), e.getMessage());
-        if (cause instanceof IllegalAccessException) {
-          errorCode = 1045;
-          sqlState = "#28000".getBytes(StandardCharsets.US_ASCII);
-        } else if (cause instanceof IllegalArgumentException) {
-          errorCode = 1064;
-          sqlState = "#42000".getBytes(StandardCharsets.US_ASCII);
-        } else if (e.getMessage()
-            .equalsIgnoreCase(
-                "java.sql.SQLException: executeSQL fail: [2000] please enter database first")) {
-          errorCode = 1046;
-          sqlState = "#3D000".getBytes(StandardCharsets.US_ASCII);
+        String errMsg;
+        if (cause != null) {
+          errMsg =
+              Utils.getLocalDateTimeNow()
+                  + " "
+                  + Objects.requireNonNullElse(cause.getMessage(), e.getMessage());
+          if (cause instanceof IllegalAccessException) {
+            errorCode = 1045;
+            sqlState = "#28000".getBytes(StandardCharsets.US_ASCII);
+          } else if (cause instanceof IllegalArgumentException) {
+            errorCode = 1064;
+            sqlState = "#42000".getBytes(StandardCharsets.US_ASCII);
+          } else if (e.getMessage()
+              .equalsIgnoreCase(
+                  "java.sql.SQLException: executeSQL fail: [2000] please enter database first")) {
+            errorCode = 1046;
+            sqlState = "#3D000".getBytes(StandardCharsets.US_ASCII);
+          } else {
+            errorCode = 1105;
+            sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
+          }
         } else {
+          errMsg = Utils.getLocalDateTimeNow() + " " + e.getMessage();
           errorCode = 1105;
           sqlState = "#HY000".getBytes(StandardCharsets.US_ASCII);
         }
@@ -435,16 +443,18 @@ public class MySqlListener implements AutoCloseable {
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 12));
-          values.add("utf8mb4");
+          values.add(CHARACTER_SET_UTF8MB4);
           break;
         case "collation_server":
         case "GLOBAL.collation_server":
+        case "collation_connection":
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 63));
-          values.add("utf8mb4_0900_ai_ci");
+          values.add(COLLATION_UTF8MB4_0900_AI_CI);
           break;
         case "init_connect":
+        case "language":
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 0));
@@ -454,13 +464,7 @@ public class MySqlListener implements AutoCloseable {
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 21));
-          values.add("28800");
-          break;
-        case "language":
-          columnDefinitions.add(
-              newColumnDefinition(
-                  ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 0));
-          values.add("");
+          values.add(SETTINGS_INTERACTIVE_TIMEOUT);
           break;
         case "license":
           columnDefinitions.add(
@@ -472,7 +476,7 @@ public class MySqlListener implements AutoCloseable {
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_LONGLONG, 63));
-          values.add("2");
+          values.add(SETTINGS_LOWER_CASE_TABLE_NAMES);
           break;
         case "max_allowed_packet":
         case "global.max_allowed_packet":
@@ -528,7 +532,7 @@ public class MySqlListener implements AutoCloseable {
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_LONGLONG, 12));
-          values.add("28800");
+          values.add(SETTINGS_WAIT_TIMEOUT);
           break;
         case "query_cache_type":
           columnDefinitions.add(
@@ -541,12 +545,6 @@ public class MySqlListener implements AutoCloseable {
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 0));
           values.add(VERSION_COMMENT);
-          break;
-        case "collation_connection":
-          columnDefinitions.add(
-              newColumnDefinition(
-                  ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 63));
-          values.add("utf8mb4_0900_ai_ci");
           break;
         case "query_cache_size":
           columnDefinitions.add(
@@ -578,14 +576,12 @@ public class MySqlListener implements AutoCloseable {
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 63));
           values.add("REPEATABLE-READ");
-          //          values.add("READ-UNCOMMITTED");
           break;
         case "session.transaction_read_only":
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_TINY, 1));
           values.add("0");
-          //          values.add("READ-UNCOMMITTED");
           break;
         default:
           System.err.println("[mysql-protocol] Unknown system variable: " + systemVariable);
@@ -632,7 +628,7 @@ public class MySqlListener implements AutoCloseable {
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(ChannelHandlerContext ctx) {
       // todo may java.lang.NullPointerException
       this.remoteAddr =
           ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress();
@@ -650,7 +646,7 @@ public class MySqlListener implements AutoCloseable {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) {
       System.out.println("[mysql-protocol] Server channel inactive: " + new Date());
       sqlEngine.close(getConnectionId(ctx));
     }
@@ -682,6 +678,8 @@ public class MySqlListener implements AutoCloseable {
           } else if (command.equals(Command.COM_PING)) {
             ctx.writeAndFlush(OkResponse.builder().sequenceId(sequenceId + 1).build());
           } else if (command.equals(Command.COM_FIELD_LIST)) {
+            // ToDo:
+            // https://dev.mysql.com/doc/dev/mysql-server/8.0.34/page_protocol_com_field_list.html
             ctx.writeAndFlush(new EofResponse(sequenceId + 1, 0));
           } else if (command.equals(Command.COM_STATISTICS)) {
             String statString =
@@ -696,10 +694,10 @@ public class MySqlListener implements AutoCloseable {
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
       cause.printStackTrace();
-      ctx.close();
       sqlEngine.close(getConnectionId(ctx));
+      ctx.close();
     }
   }
 }

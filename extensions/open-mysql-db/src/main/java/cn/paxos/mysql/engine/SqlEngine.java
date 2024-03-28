@@ -21,11 +21,22 @@ import java.io.IOException;
 
 /** An interface to callback events received from the MySQL server. */
 public interface SqlEngine {
+  /**
+   * Execute query use database
+   *
+   * @param connectionId Connection id
+   * @param database Database name
+   * @throws IOException Thrown with SQLTimeoutException as the inner cause if when the driver has
+   *     determined that the timeout value that was specified by the setQueryTimeout method has been
+   *     exceeded and has at least attempted to cancel the currently running Statement, or
+   *     SQLException as the inner cause if a database access error occurs.
+   */
   void useDatabase(int connectionId, String database) throws IOException;
 
   /**
    * Authenticating the user and password.
    *
+   * @param connectionId Connection id
    * @param database Database name
    * @param userName User name
    * @param scramble411 Encoded password
@@ -40,6 +51,7 @@ public interface SqlEngine {
   /**
    * Querying the SQL.
    *
+   * @param connectionId Connection id
    * @param resultSetWriter Response writer
    * @param database Database name
    * @param userName User name
@@ -59,5 +71,10 @@ public interface SqlEngine {
       String sql)
       throws IOException;
 
-  void close(int connectionId) throws IOException;
+  /**
+   * Close resources of connection
+   *
+   * @param connectionId Connection id
+   */
+  void close(int connectionId);
 }
