@@ -421,6 +421,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::test::InitRandomDiskFlags("sql_cluster_availability_test");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

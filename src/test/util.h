@@ -107,7 +107,12 @@ api::TableMeta CreateTableMeta(const std::string& name, uint32_t tid, uint32_t p
             ::openmldb::type::CompressType compress_type,
             common::StorageMode storage_mode = ::openmldb::common::kMemory);
 
-
+// generate a set of disk flags we used for any disk storage in a temporary directory,
+// those directories are ensured to be deleted gracefully, regardless of normal or abnormal exit
+//
+// Since glfags are global, the function does take effect only once
+[[maybe_unused]]
+bool InitRandomDiskFlags(std::string_view tag = "test");
 }  // namespace test
 }  // namespace openmldb
 #endif  // SRC_TEST_UTIL_H_

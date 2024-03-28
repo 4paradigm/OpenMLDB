@@ -1145,5 +1145,6 @@ TEST_F(AggregatorTest, FlushAll) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::openmldb::test::InitRandomDiskFlags("aggregator_test");
     return RUN_ALL_TESTS();
 }

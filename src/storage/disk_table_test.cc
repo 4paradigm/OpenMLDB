@@ -1341,8 +1341,6 @@ TEST_F(DiskTableTest, CheckPoint) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::openmldb::base::SetLogLevel(INFO);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_hdd_root_path = tmp_path.GetTempPath();
-    FLAGS_ssd_root_path = tmp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("disk_table_test");
     return RUN_ALL_TESTS();
 }

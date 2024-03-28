@@ -1847,6 +1847,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetLogLevel(DEBUG);
+    ::openmldb::test::InitRandomDiskFlags("snapshot_test");
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
     ::openmldb::test::TempPath tmp_path;
