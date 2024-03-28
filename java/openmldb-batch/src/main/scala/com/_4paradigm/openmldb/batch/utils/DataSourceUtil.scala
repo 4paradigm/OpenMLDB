@@ -64,7 +64,11 @@ object DataSourceUtil {
     actual.zip(expect).forall { case (a, b) => (a.name, a.dataType) == (b.name, b.dataType) }
   }
 
-  private def getSchemaConvertedColumnsForTidb(actual: StructType, expect: StructType):
+  private def checkSchemaColumnsName(actual: StructType, expect: StructType): Boolean = {
+    actual.zip(expect).forall { case (a, b) => (a.name) == (b.name) }
+  }
+
+  private def getMappingSchemaColumnsForTidb(actual: StructType, expect: StructType):
   Seq[Column] = {
     actual.zip(expect).flatMap { case (a, b) =>
       if (a.name == b.name) {
@@ -100,7 +104,7 @@ object DataSourceUtil {
     val isCataLog = isCatalog(fmt)
     val isCheckSchema = options.getOrElse("is_check_schema", "true").toBoolean
     if (isCataLog) {
-      logger.info(s"load data from catalog table, format $fmt, paths: $file $symbolPaths")
+      logger.info("load data from catalog table {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
     } else {
       logger.info("load data from file {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
     }
@@ -114,7 +118,7 @@ object DataSourceUtil {
         val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
         if (isCheckSchema) {
           require(checkSchemaIgnoreNullable(df.schema, oriSchema),
-            s"schema mismatch(ignore nullable), loaded data ${df.schema}!= table $oriSchema, check $file")
+            s"schema mismatch(name and dataType), loaded data ${df.schema}!= table $oriSchema, check $file")
           if (!df.schema.equals(oriSchema)) {
             logger.info(s"df schema: ${df.schema}, reset schema")
             df.sqlContext.createDataFrame(df.rdd, oriSchema)
@@ -122,6 +126,8 @@ object DataSourceUtil {
             df
           }
         } else {
+          require(checkSchemaColumnsName(df.schema, oriSchema),
+            s"schema mismatch(name), loaded data ${df.schema}!= table $oriSchema, check $file")
           df
         }
       } else {
@@ -233,9 +239,9 @@ object DataSourceUtil {
     if (isCheckSchema && format == "tidb") {
       val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
       if (!checkSchemaIgnoreNullable(df.schema, oriSchema)) {
-        val convertedColumns = getSchemaConvertedColumnsForTidb(df.schema, oriSchema)
+        val convertedColumns = getMappingSchemaColumnsForTidb(df.schema, oriSchema)
         if (convertedColumns.length != oriSchema.length) {
-          throw new IllegalArgumentException(s"schema mismatch(name or dataType), " +
+          throw new IllegalArgumentException(s"tidb schema mapping failed, " +
             s"loaded tidb ${df.schema}!= table $oriSchema, check $file")
         }
         logger.info(s"convert tidb data columns, convert select: ${convertedColumns}, table: $oriSchema")

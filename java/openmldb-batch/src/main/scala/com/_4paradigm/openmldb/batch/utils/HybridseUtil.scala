@@ -22,12 +22,15 @@ import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
+import com._4paradigm.openmldb.batch.{PlanContext}
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.functions.{col, first}
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{
+  BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
+  ShortType, StringType, StructField, StructType, TimestampType
+}
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -128,7 +131,7 @@ object HybridseUtil {
   }
 
   def createUnsafeGroupKeyComparator(keyIdxs: Array[Int], dataTypes: Array[DataType]):
-    (UnsafeRow, UnsafeRow) => Boolean = {
+  (UnsafeRow, UnsafeRow) => Boolean = {
     // TODO(tobe): check for different data types
 
     if (keyIdxs.length == 1) {
@@ -210,7 +213,8 @@ object HybridseUtil {
   // If file starts with 'openmldb', format is openmldb, not the detail format in openmldb
   // Others, format is the origin format option
   // **Result**: format, options(spark write/read options), mode is common, if more options, set them to extra map
-  def parseOptions[T](file: String, node: T): (String, Map[String, String], String, Map[String, String]) = {
+  def parseOptions[T](ctx: PlanContext, file: String, node: T):
+  (String, Map[String, String], String, Map[String, String]) = {
     // load data: read format, select into: write format
     // parse hive/iceberg to avoid user forget to set format
     val format = if (file.toLowerCase().startsWith("hive://")) {
@@ -228,7 +232,7 @@ object HybridseUtil {
     // load data: read options, select into: write options
     // parquet/hive format doesn't support any option now, consistent with write options(empty) when deep copy
     val options: mutable.Map[String, String] = mutable.Map()
-    if (format.equals("csv")){
+    if (format.equals("csv")) {
       // default values: https://spark.apache.org/docs/3.2.1/sql-data-sources-csv.html
       // delimiter -> sep: ,(the same with spark3 default sep)
       // header: true(different with spark)
@@ -241,7 +245,10 @@ object HybridseUtil {
       updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
       updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
     }
-
+    val storage = ctx.getConf.loadDataMode
+    if (storage == "online") {
+      options += ("is_check_schema" -> "false")
+    }
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
     val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase

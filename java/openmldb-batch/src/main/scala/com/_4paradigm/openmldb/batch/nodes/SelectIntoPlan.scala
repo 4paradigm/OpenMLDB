@@ -34,7 +34,7 @@ object SelectIntoPlan {
     }
 
     // write options don't need deepCopy, may have coalesce
-    val (format, options, mode, extra) = HybridseUtil.parseOptions(outPath, node)
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(ctx, outPath, node)
     if (input.getSchema.size == 0 && input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
     }
@@ -66,10 +66,10 @@ object SelectIntoPlan {
 
     } else {
       logger.info("offline select into: format[{}], options[{}], write mode[{}], out path {}", format, options,
-          mode, outPath)
+        mode, outPath)
       var ds = input.getDf()
       val coalesce = extra.get("coalesce").map(_.toInt)
-      if (coalesce.nonEmpty && coalesce.get > 0){
+      if (coalesce.nonEmpty && coalesce.get > 0) {
         ds = ds.coalesce(coalesce.get)
         logger.info("coalesce to {} part", coalesce.get)
       }

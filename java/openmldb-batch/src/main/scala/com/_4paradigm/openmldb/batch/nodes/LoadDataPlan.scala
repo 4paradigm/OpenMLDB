@@ -37,7 +37,7 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-    val (format, options, mode, extra) = HybridseUtil.parseOptions(inputFile, node)
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(ctx, inputFile, node)
     // load have the option deep_copy
     val deepCopy = extra.get("deep_copy").get.toBoolean
 
