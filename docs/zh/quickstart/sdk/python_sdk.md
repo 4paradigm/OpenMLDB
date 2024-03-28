@@ -117,6 +117,8 @@ cursor.close()
 
 本节演示通过 OpenMLDB SQLAlchemy 使用 Python SDK。同样的，所有dbapi接口如果执行失败，会抛出异常`DatabaseError`，用户可自行捕获异常并处理。返回值处理参考SQLAlchemy标准。
 
+集成的SQLAlchemy默认版本为2.0，同时兼容旧版本1.4。若用户的SQLAlchemy版本为1.4，可以根据[版本差异](python_sdk.md#sqlalchemy-版本差异)调整接口名称。OpenMLDB SDK在0.8.5版本及之前仅支持1.4版本，从0.8.5版本之后（不包括0.8.5）才开始支持2.0版本。
+
 ### 创建连接
 
 ```python
@@ -135,96 +137,133 @@ connection = engine.connect()
 
 ### 创建数据库
 
-使用 `connection.execute()` 接口创建数据库 `db1`：
+使用 `connection.exec_driver_sql()` 接口创建数据库 `db1`：
 
 ```python
 try:
-    connection.execute("CREATE DATABASE db1")
+    connection.exec_driver_sql("CREATE DATABASE db1")
 except Exception as e:
     print(e)
 
-connection.execute("USE db1")
+connection.exec_driver_sql("USE db1")
 ```
 
 ### 创建表
 
-使用 `connection.execute()` 接口创建表 `t1`：
+使用 `connection.exec_driver_sql()` 接口创建表 `t1`：
 
 ```python
 try:
-    connection.execute("CREATE TABLE t1 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
+    connection.exec_driver_sql("CREATE TABLE t1 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 except Exception as e:
     print(e)
 ```
 
 ### 插入数据到表中
 
-使用 `connection.execute(ddl)` 接口执行 SQL 的插入语句，可以向表中插入数据：
+使用 `connection.exec_driver_sql(ddl)` 接口执行 SQL 的插入语句，可以向表中插入数据：
 
 ```python
 try:
-    connection.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1);")
+    connection.exec_driver_sql("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1);")
 except Exception as e:
     print(e)
 ```
 
-使用 `connection.execute(ddl, data)` 接口执行带 planceholder 的 SQL 的插入语句，可以动态指定插入数据，也可插入多行：
+使用 `connection.exec_driver_sql(ddl, data)` 接口执行带 planceholder 的 SQL 的插入语句，可以动态指定插入数据，也可插入多行：
 
 ```python
 try:
     insert = "INSERT INTO t1 VALUES(1002, '2020-12-27', ?, ?, 3);"
-    connection.execute(insert, ({"col3":"fujian", "col4":"fuzhou"}))
-    connection.execute(insert, [{"col3":"jiangsu", "col4":"nanjing"}, {"col3":"zhejiang", "col4":"hangzhou"}])
+    connection.exec_driver_sql(insert, ({"col3":"fujian", "col4":"fuzhou"}))
+    connection.exec_driver_sql(insert, [{"col3":"jiangsu", "col4":"nanjing"}, {"col3":"zhejiang", "col4":"hangzhou"}])
 except Exception as e:
     print(e)
 ```
 
 ### 执行 SQL 批式查询
 
-使用 `connection.execute(sql)` 接口执行 SQL 批式查询语句:
+使用 `connection.exec_driver_sql(sql)` 接口执行 SQL 批式查询语句:
 
 ```python
 try:
-    rs = connection.execute("SELECT * FROM t1")
+    rs = connection.exec_driver_sql("SELECT * FROM t1")
     for row in rs:
         print(row)
-    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
-    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", [('hefei'), ('shanghai')])
+    rs = connection.exec_driver_sql("SELECT * FROM t1 WHERE col3 = ?;", tuple(['hefei']))
 except Exception as e:
     print(e)
 ```
 
 ### 执行 SQL 请求式查询
 
-使用 `connection.execute(sql, request)` 接口执行 SQL 请求式查询，可以把输入数据放到 execute 函数的第二个参数中：
+使用 `connection.exec_driver_sql(sql, request)` 接口执行 SQL 请求式查询，可以把输入数据放到 execute 函数的第二个参数中：
 
 ```python
 try:
-    rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', "col5":100}))
+    rs = connection.exec_driver_sql("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', "col5":100}))
 except Exception as e:
     print(e)
 ```
 
 ### 删除表
 
-使用 `connection.execute(ddl)` 接口删除表 `t1`：
+使用 `connection.exec_driver_sql(ddl)` 接口删除表 `t1`：
 
 ```python
 try:
-    connection.execute("DROP TABLE t1")
+    connection.exec_driver_sql("DROP TABLE t1")
 except Exception as e:
     print(e)
 ```
 
 ### 删除数据库
 
-使用 `connection.execute(ddl)` 接口删除数据库 `db1`：
+使用 `connection.exec_driver_sql(ddl)` 接口删除数据库 `db1`：
 
 ```python
 try:
-    connection.execute("DROP DATABASE db1")
+    connection.exec_driver_sql("DROP DATABASE db1")
 except Exception as e:
     print(e)
+```
+
+### SQLAlchemy 版本差异
+
+原生SQL使用差异，SQLAlchemy 1.4 版本使用`connection.execute()`方法，SQLAlchemy 2.0 版本使用`connection.exec_driver_sql()`方法，两个方法的常规差异如下，详细可参考官方文档。
+
+```python
+# DDL案例1-[SQLAlchemy 1.4]
+connection.execute("CREATE TABLE t1 (col1 bigint, col2 date)")
+# DDL案例1-[SQLAlchemy 2.0]
+connection.exec_driver_sql("CREATE TABLE t1 (col1 bigint, col2 date)")
+
+# 插入案例1-[SQLAlchemy 1.4]
+connection.execute("INSERT INTO t1 VALUES(1000, '2020-12-25');")
+connection.execute("INSERT INTO t1 VALUES(?, ?);", ({"col1":1001, "col2":"2020-12-26"}))
+connection.execute("INSERT INTO t1 VALUES(?, ?);", [{"col1":1002, "col2":"2020-12-27"}])
+# 插入案例1-[SQLAlchemy 2.0]
+connection.exec_driver_sql("INSERT INTO t1 VALUES(1000, '2020-12-25');")
+connection.exec_driver_sql("INSERT INTO t1 VALUES(?, ?);", ({"col1":1001, "col2":"2020-12-26"}))
+connection.exec_driver_sql("INSERT INTO t1 VALUES(?, ?);", [{"col1":1002, "col2":"2020-12-27"}])
+
+# 查询案例1-[SQLAlchemy 1.4]-原生SQL查询
+connection.execute("select * from t1 where col3 = ?;", 'hefei') 
+connection.execute("select * from t1 where col3 = ?;", ['hefei'])
+connection.execute("select * from t1 where col3 = ?;", [('hefei')])
+# 查询案例1-[SQLAlchemy 2.0]-原生SQL查询
+connection.exec_driver_sql("select * from t1 where col3 = ?;", tuple(['hefei']))
+
+# 查询案例2-[SQLAlchemy 1.4]-ORM查询
+connection.execute(select([self.test_table]))
+# 查询案例2-[SQLAlchemy 2.0]-ORM查询
+connection.execute(select(self.test_table))
+
+# 查询案例3-[SQLAlchemy 1.4]-请求式查询
+connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-28'}))
+# 查询案例3-[SQLAlchemy 2.0]-请求式查询
+connection.exec_driver_sql("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-28'}))
+
 ```
 
 ## 使用 Notebook Magic Function
