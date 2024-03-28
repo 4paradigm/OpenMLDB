@@ -8,7 +8,7 @@
 
 ### 安装
 
-[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md) v0.8.5 及以上版本使用了TiSpark工具来操作TiDB数据库， 当前版本已包含 TiSpark 3.1.x 依赖（tispark-assembly-3.2_2.12-3.1.5.jarh、mysql-connector-java-8.0.29.jar）。如果TiSpark版本不兼容现有的TiDB版本，你可以从[TiSpark文档](https://docs.pingcap.com/zh/tidb/stable/tispark-overview)查找下载对应的TiSpark依赖，并将其添加到Spark的classpath/jars中。
+当前版本使用TiSpark来操作TiDB数据库， 需要先下载 TiSpark 3.1.x 的相关依赖（`tispark-assembly-3.2_2.12-3.1.5.jar`、`mysql-connector-java-8.0.29.jar`）。如果TiSpark版本不兼容现有的TiDB版本，可以在[TiSpark文档](https://docs.pingcap.com/zh/tidb/stable/tispark-overview)查找下载对应的TiSpark依赖，然后将其添加到Spark的classpath/jars中。
 
 
 ### 配置
