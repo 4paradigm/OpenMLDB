@@ -91,13 +91,13 @@ Read data from the `data.csv` file into the `t1` table in online storage. Use `,
 
 ```sql
 set @@execute_mode='online';
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',' );
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', mode = 'append');
 ```
 
 Read data from the `data.csv` file into the `t1` table. Use `,` as the column delimiter, and replace the string "NA" with NULL.
 
 ```sql
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', null_value='NA');
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', mode = 'append', null_value='NA');
 ```
 
 Copy the `data_path` into the `t1` table as offline data.
