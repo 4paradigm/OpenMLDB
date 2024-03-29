@@ -251,10 +251,7 @@ object HybridseUtil {
       updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
       updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
     }
-    val storage = ctx.getConf.loadDataMode
-    if (storage == "online") {
-      options += ("is_check_schema" -> "false")
-    }
+
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
     val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase
@@ -279,7 +276,15 @@ object HybridseUtil {
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
     extraOptions += ("create_if_not_exists" -> parseOption(getOptionFromNode(node, "create_if_not_exists"),
       "true", getBoolOrDefault))
+    extraOptions += ("is_check_schema" -> parseOption(getOptionFromNode(node, "is_check_schema"),
+      "true", getBoolOrDefault))
 
+    val storage = ctx.getConf.loadDataMode
+    if (storage == "online") {
+      options += ("is_check_schema" -> "false")
+    } else {
+      options += ("is_check_schema" -> extraOptions.getOrElse("is_check_schema", "true"))
+    }
     (format, options.toMap, mode, extraOptions.toMap)
   }
 
