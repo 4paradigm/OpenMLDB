@@ -217,8 +217,6 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
 
         auto builder = ctx->GetBuilder();
 
-        PrintLog(&ctx->GetLLVMContext(), ctx->GetModule(), ctx->GetBuilder(), "enter extract map element");
-
         builder->CreateStore(builder->getInt1(true), out_null_alloca_param);
         ::llvm::Value* idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
         builder->CreateStore(builder->getInt32(0), idx_alloc);
@@ -305,10 +303,12 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
     }
 
     auto builder = ctx->GetBuilder();
+    auto s = CreateSafeNull(ctx->GetCurrentBlock(), value_type_);
+    CHECK_ABSL_STATUSOR(s);
     auto* out_val_alloca = builder->CreateAlloca(value_type_);
-    builder->CreateStore(::llvm::UndefValue::get(value_type_), out_val_alloca);
+    builder->CreateStore(s->GetValue(ctx), out_val_alloca);
     auto* out_null_alloca = builder->CreateAlloca(builder->getInt1Ty());
-    builder->CreateStore(builder->getInt1(true), out_null_alloca);
+    builder->CreateStore(s->GetIsNull(ctx), out_null_alloca);
 
     builder->CreateCall(fn, {arr.GetValue(builder), arr.GetIsNull(builder), key.GetValue(builder),
                              key.GetIsNull(builder), out_val_alloca, out_null_alloca});
