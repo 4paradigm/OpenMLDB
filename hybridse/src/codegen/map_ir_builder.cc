@@ -198,7 +198,7 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
                                     {
                                         struct_type_->getPointerTo(),                   // arr ptr
                                         ctx->GetBuilder()->getInt1Ty(),                 // arr is null
-                                        key_type_,                                      // key type
+                                        key_type_,                                      // key value
                                         ctx->GetBuilder()->getInt1Ty(),                 // key is null
                                         value_type_->getPointerTo(),                    // output value ptr
                                         ctx->GetBuilder()->getInt1Ty()->getPointerTo()  // output is null ptr
@@ -217,13 +217,23 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
 
         auto builder = ctx->GetBuilder();
 
+        PrintLog(&ctx->GetLLVMContext(), ctx->GetModule(), ctx->GetBuilder(), "enter extract map element");
+
         builder->CreateStore(builder->getInt1(true), out_null_alloca_param);
+        ::llvm::Value* idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
+        builder->CreateStore(builder->getInt32(0), idx_alloc);
+        ::llvm::Value* found_idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
+        builder->CreateStore(builder->getInt32(-1), found_idx_alloc);
+
+        llvm::Value* sz_alloca = builder->CreateAlloca(builder->getInt32Ty());
+        llvm::Value* keys_alloca = builder->CreateAlloca(key_type_->getPointerTo());
 
         auto s = ctx->CreateBranchNot(
             builder->CreateOr(arr_is_null_param, key_is_null_param),
             [&]() -> base::Status {
                 ::llvm::Value* sz = nullptr;
                 CHECK_TRUE(Load(ctx->GetCurrentBlock(), map_ptr_param, SZ_IDX, &sz), common::kCodegenError);
+                ctx->GetBuilder()->CreateStore(sz, sz_alloca);
 
                 CHECK_STATUS(ctx->CreateBranch(builder->CreateICmpSLE(sz, builder->getInt32(0)), [&]() -> base::Status {
                     builder->CreateRetVoid();
@@ -232,25 +242,21 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
 
                 ::llvm::Value* keys = nullptr;
                 CHECK_TRUE(Load(ctx->GetCurrentBlock(), map_ptr_param, KEY_VEC_IDX, &keys), common::kCodegenError);
-
-                ::llvm::Value* idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
-                builder->CreateStore(builder->getInt32(0), idx_alloc);
-                ::llvm::Value* found_idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
-                builder->CreateStore(builder->getInt32(-1), found_idx_alloc);
+                ctx->GetBuilder()->CreateStore(keys, keys_alloca);
 
                 CHECK_STATUS(
                     ctx->CreateWhile(
                         [&](::llvm::Value** cond) -> base::Status {
                             ::llvm::Value* idx = builder->CreateLoad(idx_alloc);
                             ::llvm::Value* found = builder->CreateLoad(found_idx_alloc);
-                            *cond = builder->CreateAnd(builder->CreateICmpSLT(idx, sz),
+                            *cond = builder->CreateAnd(builder->CreateICmpSLT(idx, builder->CreateLoad(sz_alloca)),
                                                        builder->CreateICmpSLT(found, builder->getInt32(0)));
                             return {};
                         },
                         [&]() -> base::Status {
                             ::llvm::Value* idx = builder->CreateLoad(idx_alloc);
                             // key never null
-                            auto* ele = builder->CreateLoad(builder->CreateGEP(keys, idx));
+                            auto* ele = builder->CreateLoad(builder->CreateGEP(builder->CreateLoad(keys_alloca), idx));
                             ::llvm::Value* eq = nullptr;
                             base::Status s;
                             PredicateIRBuilder::BuildEqExpr(ctx->GetCurrentBlock(), ele, key_val_param, &eq, s);
@@ -267,7 +273,7 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
                 auto* found_idx = builder->CreateLoad(found_idx_alloc);
 
                 CHECK_STATUS(ctx->CreateBranch(
-                    builder->CreateAnd(builder->CreateICmpSLT(found_idx, sz),
+                    builder->CreateAnd(builder->CreateICmpSLT(found_idx, builder->CreateLoad(sz_alloca)),
                                        builder->CreateICmpSGE(found_idx, builder->getInt32(0))),
                     [&]() -> base::Status {
                         ::llvm::Value* values = nullptr;
