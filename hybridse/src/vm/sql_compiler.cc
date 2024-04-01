@@ -108,17 +108,12 @@ bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT
         m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
-    // ::llvm::errs() << *(m.get());
     auto jit = std::shared_ptr<HybridSeJitWrapper>(
-        HybridSeJitWrapper::Create(ctx.jit_options));
-    if (jit == nullptr || !jit->Init()) {
-        status.msg = "fail to init jit let";
-        status.code = common::kJitError;
+        HybridSeJitWrapper::CreateWithDefaultSymbols(ctx.udf_library, &status, ctx.jit_options));
+    if (!status.isOK()) {
         LOG(WARNING) << status;
         return false;
     }
-    InitBuiltinJitSymbols(jit.get());
-    ctx.udf_library->InitJITSymbols(jit.get());
     if (!jit->OptModule(m.get())) {
         LOG(WARNING) << "fail to opt ir module for sql " << ctx.sql;
         return false;

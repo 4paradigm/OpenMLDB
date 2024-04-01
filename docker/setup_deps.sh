@@ -88,11 +88,10 @@ if [[ "$ARCH" = "x86_64" ]]; then
     curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
         echo "downloaed zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
 elif [[ "$ARCH" = "aarch64" ]]; then
-    # NOTE(aceforeverd): thirdparty for arm is out-of-date
-    curl -Lo thirdparty.tar.gz https://github.com/4paradigm/hybridsql-asserts/releases/download/v0.4.0/thirdparty-2021-08-03-linux-gnu-aarch64.tar.gz && \
-        echo "downloaded thirdparty.tar.gz version 0.4.0 for $ARCH"
-    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v0.2.6/libzetasql-0.2.6-linux-gnu-aarch64-centos.tar.gz" && \
-        echo "downloaed zetasql.tar.gz for version 0.2.6 $ARCH"
+    curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-${ARCH}.tar.gz" && \
+        echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
+    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}.tar.gz" && \
+        echo "downloaed zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
 else
     echo "no pre-compiled deps for arch=$ARCH"
     exit 1

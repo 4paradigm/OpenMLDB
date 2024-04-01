@@ -358,6 +358,22 @@ class SqlNode : public NodeBase<SqlNode> {
 
     bool Equals(const SqlNode *node) const override;
 
+    // Return this node cast as a NodeType.
+    // Use only when this node is known to be that type, otherwise, behavior is undefined.
+    template <typename NodeType>
+    const NodeType *GetAsOrNull() const {
+        static_assert(std::is_base_of<SqlNode, NodeType>::value,
+                      "NodeType must be a member of the SqlNode class hierarchy");
+        return dynamic_cast<const NodeType *>(this);
+    }
+
+    template <typename NodeType>
+    NodeType *GetAsOrNull() {
+        static_assert(std::is_base_of<SqlNode, NodeType>::value,
+                      "NodeType must be a member of the SqlNode class hierarchy");
+        return dynamic_cast<NodeType *>(this);
+    }
+
     SqlNodeType type_;
 
  private:
@@ -1883,6 +1899,8 @@ class ColumnSchemaNode : public SqlNode {
     bool not_null() const { return not_null_; }
     const ExprNode *default_value() const { return default_value_; }
 
+    absl::Status GetProtoColumnSchema(type::ColumnSchema *) const;
+
     std::string DebugString() const;
 
  private:
@@ -1901,6 +1919,8 @@ class ColumnDefNode : public SqlNode {
     std::string GetColumnName() const { return column_name_; }
 
     const ColumnSchemaNode *schema() const { return schema_; }
+
+    absl::Status GetProtoColumnDef(type::ColumnDef *) const;
 
     // deprecated, use ColumnDefNode::schema instead
     DataType GetColumnType() const { return schema_->type(); }
@@ -2025,8 +2045,11 @@ class CreateStmt : public SqlNode {
 
     ~CreateStmt() {}
 
-    NodePointVector* MutableColumnDefList() { return &column_desc_list_; }
-    const NodePointVector &GetColumnDefList() const { return column_desc_list_; }
+    NodePointVector* MutableTableElementList() { return &column_desc_list_; }
+    const NodePointVector &GetTableElementList() const { return column_desc_list_; }
+
+    // collect the column definitions in column_desc_list_, and convert to the proto representation type::ColumnDef
+    absl::StatusOr<codec::Schema> GetColumnDefListAsSchema() const;
 
     std::string GetTableName() const { return table_name_; }
     std::string GetDbName() const { return db_name_; }

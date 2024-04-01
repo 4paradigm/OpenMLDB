@@ -82,6 +82,17 @@ The pre-compiled thirdparty for Linux is built on Centos7 with gcc8, and macOS i
 - make, autoreconf
 - pkg-config
 
+
+For Debian:
+```sh
+sudo apt-get install bison python3-dev libcppunit-dev build-essential cmake autoconf tcl pkg-config git curl patch libtool-bin unzip 
+# ensure python3 is the default, you may skip if it already is
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 100
+
+curl --create-dirs -SLo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64
+chmod +x /usr/local/bin/bazel
+```
+
 ### Build thirdparty
 
 ```bash

@@ -713,8 +713,7 @@ TEST_F(EngineCompileTest, ExternalFunctionTest) {
 }  // namespace hybridse
 
 int main(int argc, char** argv) {
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     // ::hybridse::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();

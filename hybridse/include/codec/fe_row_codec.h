@@ -18,15 +18,30 @@
 #define HYBRIDSE_INCLUDE_CODEC_FE_ROW_CODEC_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "base/fe_status.h"
+#include "base/fe_slice.h"
 #include "base/raw_buffer.h"
+#include "codec/row.h"
 #include "proto/fe_type.pb.h"
 
 namespace hybridse {
+
+namespace node {
+class ExprNode;
+}
+namespace codegen {
+class InsertRowBuilder;
+}
+namespace vm {
+class HybridSeJitWrapper;
+}
+
 namespace codec {
 
 const uint32_t BitMapSize(uint32_t size);
@@ -74,6 +89,54 @@ inline uint32_t GetStartOffset(int32_t column_count) {
 void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
                           uint32_t str_idx, uint32_t str_offset);
 
+
+// single slice builder from pure codegen
+class SliceBuilder {
+ public:
+    SliceBuilder(vm::HybridSeJitWrapper*, const hybridse::codec::Schema* schema);
+    virtual ~SliceBuilder() {}
+
+    base::Status Build(const std::vector<node::ExprNode*>&, base::RefCountedSlice*);
+
+    base::Status Build(absl::Span<node::ExprNode* const>, base::RefCountedSlice*);
+
+ private:
+    void EnsureInitialized() {
+        assert(row_builder_ != nullptr && "must initialize the row builder before encoding");
+    }
+
+    const Schema* schema_;
+    std::shared_ptr<codegen::InsertRowBuilder> row_builder_ = nullptr;
+};
+
+// new row builder from pure codegen
+class RowBuilder2 {
+ public:
+    RowBuilder2(vm::HybridSeJitWrapper*, int sliceSize);
+    RowBuilder2(vm::HybridSeJitWrapper*, const std::vector<codec::Schema>& schemas);
+    RowBuilder2(vm::HybridSeJitWrapper*, const std::vector<std::vector<hybridse::type::ColumnDef>>& schemas);
+    ~RowBuilder2() {}
+
+    base::Status Init();
+
+    base::Status InitSchema(int idx, const codec::Schema& sc);
+
+    base::Status Build(const std::vector<node::ExprNode*>&, codec::Row*);
+
+ private:
+    void EnsureInitialized() {
+        assert(initialized_ && "RowBuild not initialized");
+    }
+
+    vm::HybridSeJitWrapper* jit_ = nullptr;
+    std::vector<codec::Schema> schemas_;
+    std::vector<std::shared_ptr<SliceBuilder>> builders_;
+
+    bool initialized_ = false;
+};
+
+// Old row builder in C
+// limited data type support, no map, no array. U should upgrade to RowBuilder2
 class RowBuilder {
  public:
     explicit RowBuilder(const hybridse::codec::Schema& schema);
