@@ -152,7 +152,6 @@ void StartNameServer() {
         exit(1);
     }
     openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
-    user_access_manager.SyncWithDB();
     brpc::ServerOptions options;
     openmldb::authn::BRPCAuthenticator server_authenticator(
         [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {

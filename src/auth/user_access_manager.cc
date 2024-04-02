@@ -8,7 +8,9 @@
 namespace openmldb::auth {
 UserAccessManager::UserAccessManager(IteratorFactory iterator_factory,
                                      std::shared_ptr<nameserver::TableInfo> user_table_info)
-    : user_table_iterator_factory_(std::move(iterator_factory)), user_table_info_(user_table_info) {}
+    : user_table_iterator_factory_(std::move(iterator_factory)), user_table_info_(user_table_info) {
+    SyncWithDB();
+}
 
 void UserAccessManager::SyncWithDB() {
     auto new_user_map = std::make_unique<std::unordered_map<std::string, std::string>>();

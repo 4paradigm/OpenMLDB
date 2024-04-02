@@ -16,14 +16,13 @@ class UserAccessManager {
 
     UserAccessManager(IteratorFactory iterator_factory, std::shared_ptr<nameserver::TableInfo> user_table_info);
 
-    void SyncWithDB();
-
     bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
 
  private:
     IteratorFactory user_table_iterator_factory_;
     std::shared_ptr<nameserver::TableInfo> user_table_info_;
     RefreshableMap<std::string, std::string> user_map_;
+    void SyncWithDB();
 };
 }  // namespace openmldb::auth
 
