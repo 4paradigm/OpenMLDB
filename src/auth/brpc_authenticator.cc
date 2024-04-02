@@ -1,7 +1,6 @@
 #include "brpc_authenticator.h"
 
 #include "auth_utils.h"
-#include "base/glog_wrapper.h"
 #include "butil/endpoint.h"
 
 namespace openmldb::authn {
@@ -23,7 +22,6 @@ int BRPCAuthenticator::GenerateCredential(std::string* auth_str) const {
 int BRPCAuthenticator::VerifyCredential(const std::string& auth_str, const butil::EndPoint& client_addr,
                                         brpc::AuthContext* out_ctx) const {
     if (auth_str.length() < 2) {
-        PDLOG(INFO, "Failed authentication: %s", auth_str);
         return -1;
     }
 
@@ -32,7 +30,6 @@ int BRPCAuthenticator::VerifyCredential(const std::string& auth_str, const butil
     if (auth_type == 'u') {
         size_t pos = credential.find(':');
         if (pos == std::string::npos) {
-            PDLOG(INFO, "Failed authentication: %s", auth_str);
             return -1;
         }
         auto host = butil::ip2str(client_addr.ip).c_str();
@@ -49,7 +46,6 @@ int BRPCAuthenticator::VerifyCredential(const std::string& auth_str, const butil
             return 0;
         }
     }
-    PDLOG(INFO, "Failed authentication: %s", auth_str);
     return -1;
 }
 

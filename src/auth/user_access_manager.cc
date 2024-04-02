@@ -28,7 +28,6 @@ void UserAccessManager::SyncWithDB() {
 }
 
 bool UserAccessManager::IsAuthenticated(const std::string& host, const std::string& user, const std::string& password) {
-    PDLOG(INFO, "host: %s, user: %s, password: %s", host, user, password);
     if (auto stored_password = user_map_.Get(FormUserHost(user, host)); stored_password.has_value()) {
         return stored_password.value() == password;
     }

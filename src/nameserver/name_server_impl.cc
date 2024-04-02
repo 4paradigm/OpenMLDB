@@ -1381,7 +1381,6 @@ base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std
                                               const std::string& password) {
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
-        PDLOG(INFO, "User table not exist InsertUserRecord");
         return {ReturnCode::kTableIsNotExist, "user table does not exist"};
     }
 
@@ -1411,19 +1410,16 @@ base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std
             std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
             auto table_ptr = GetTablet(endpoint);
             if (!table_ptr->client_->Put(tid, 0, cur_ts, encoded_row, dimensions).OK()) {
-                PDLOG(INFO, "Failed InsertUserRecord");
                 return {ReturnCode::kPutFailed, "failed to create initial user entry"};
             }
             break;
         }
     }
-    PDLOG(INFO, "Success InsertUserRecord");
     return {};
 }
 
 bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
                           const std::string& real_endpoint) {
-    PDLOG(INFO, "Begin init");
     if (zk_cluster.empty() && FLAGS_tablet.empty()) {
         PDLOG(WARNING, "zk cluster disabled and tablet is empty");
         return false;
