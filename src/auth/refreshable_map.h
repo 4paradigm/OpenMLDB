@@ -6,7 +6,7 @@
 #include <optional>
 #include <shared_mutex>
 #include <unordered_map>
-#include <utility> 
+#include <utility>
 
 namespace openmldb::auth {
 

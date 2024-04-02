@@ -1,9 +1,9 @@
 #include "user_access_manager.h"
 
-#include "auth_utils.h"
-#include "nameserver/system_table.h"
 #include <unordered_map>
 #include <utility>
+#include "auth_utils.h"
+#include "nameserver/system_table.h"
 
 namespace openmldb::auth {
 UserAccessManager::UserAccessManager(IteratorFactory iterator_factory,
