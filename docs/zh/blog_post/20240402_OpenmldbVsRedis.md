@@ -48,10 +48,10 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
   1. 部署 OpenMLDB 和 Redis；
     部署可以使用容器化部署或者使用软件包在物理机上直接部署，经过对比，两者无明显差异。下边以容器化部署为例进行举例描述。
     - OpenMLDB：
-      - 镜像：docker pull 4pdosc/openmldb:0.8.5;
+      - 镜像：`docker pull 4pdosc/openmldb:0.8.5;`
       - 文档：https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html；
     - Redis：
-      - 镜像：docker pull redis：7.2.4；
+      - 镜像：`docker pull redis:7.2.4；`
       - 文档：https://hub.docker.com/_/redis
   2. 拉取[测试代码](https://github.com/4paradigm/OpenMLDB/tree/main/benchmark);
   3. 修改配置
