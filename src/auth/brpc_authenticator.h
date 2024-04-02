@@ -4,7 +4,7 @@
 #include <functional>  // Include for std::function
 #include <string>
 #include <variant>
-#include <utility> 
+#include <utility>
 #include "brpc/authenticator.h"
 
 namespace openmldb::authn {

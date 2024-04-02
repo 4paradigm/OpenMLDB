@@ -6,14 +6,25 @@
 #include <optional>
 #include <shared_mutex>
 #include <unordered_map>
+#include <utility> 
 
 namespace openmldb::auth {
 
 template <typename Key, typename Value>
 class RefreshableMap {
  public:
-    std::optional<Value> Get(const Key& key) const;
-    void Refresh(std::unique_ptr<std::unordered_map<Key, Value>> new_map);
+    std::optional<Value> Get(const Key& key) const {
+        std::shared_lock<std::shared_mutex> lock(mutex_);
+        if (auto it = map_->find(key); it != map_->end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
+
+    void Refresh(std::unique_ptr<std::unordered_map<Key, Value>> new_map) {
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+        map_ = std::move(new_map);
+    }
 
  private:
     mutable std::shared_mutex mutex_;

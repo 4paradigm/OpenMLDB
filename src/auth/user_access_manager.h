@@ -1,5 +1,5 @@
-#ifndef SRC_USER_ACCESS_MANAGER_H_
-#define SRC_USER_ACCESS_MANAGER_H_
+#ifndef SRC_AUTH_USER_ACCESS_MANAGER_H_
+#define SRC_AUTH_USER_ACCESS_MANAGER_H_
 
 #include <functional>
 #include <memory>
@@ -27,4 +27,4 @@ class UserAccessManager {
 };
 }  // namespace openmldb::auth
 
-#endif  // SRC_USER_ACCESS_MANAGER_H_
+#endif  // SRC_AUTH_USER_ACCESS_MANAGER_H_
