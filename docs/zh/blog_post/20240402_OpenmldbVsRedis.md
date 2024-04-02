@@ -51,14 +51,17 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
     - OpenMLDB：
       - 镜像：`docker pull 4pdosc/openmldb:0.8.5`
       - 文档：https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html
-      
+
     - Redis：
       - 镜像：`docker pull redis:7.2.4`
       - 文档：https://hub.docker.com/_/redis
   2. 拉取[测试代码](https://github.com/4paradigm/OpenMLDB/tree/main/benchmark)
   3. 修改配置
+
     - 配置文件：src/main/resources/memory.properties -- [link](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/resources/memory.properties)
+
     - 配置说明：必须确认REDIS_HOST_PORT和ZK_CLUSTER配置与实际测试环境一致， 其它配置为测试数据量相关配置，请按需配置。注意：如果数据量过大，测试耗时会比较长。
+
   4. 运行测试：【github benchmark Readme 中相关路径】
   5. 查看输出结果
 
@@ -101,10 +104,13 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
     同 3.1.3，这里不再重复。
   2. 拉取[测试代码](https://github.com/4paradigm/OpenMLDB/tree/main/benchmark)
   3. 修改配置
+
     - 配置文件：src/main/resources/memory.properties -- [link](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/resources/memory.properties)
+
     - 配置说明：
       - 确认REDIS_HOST_PORT和ZK_CLUSTER配置与实际测试环境一致;
       - 修改TALKING_DATASET_PATH(默认使用 resources/data/talking_data_sample.csv)
+      
   4. 获取测试数据文件并放到resources/data目录下，和TALKING_DATASET_PATH配置路径一致
   5. 运行测试：【github benchmark Readme 中相关路径】
   6. 查看输出结果
