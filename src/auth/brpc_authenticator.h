@@ -1,10 +1,10 @@
-#ifndef SRC_AUTH_AUTHENTICATOR_H_
-#define SRC_AUTH_AUTHENTICATOR_H_
+#ifndef SRC_AUTH_BRPC_AUTHENTICATOR_H_
+#define SRC_AUTH_BRPC_AUTHENTICATOR_H_
 
 #include <functional>  // Include for std::function
 #include <string>
 #include <variant>
-
+#include <utility> 
 #include "brpc/authenticator.h"
 
 namespace openmldb::authn {
@@ -46,4 +46,4 @@ class BRPCAuthenticator : public brpc::Authenticator {
 };
 
 }  // namespace openmldb::authn
-#endif  // SRC_AUTH_AUTHENTICATOR_H_
+#endif  // SRC_AUTH_BRPC_AUTHENTICATOR_H_

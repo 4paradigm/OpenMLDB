@@ -1,6 +1,7 @@
 #include "refreshable_map.h"
 
 #include <utility>  // For std::move
+#include <string> 
 
 namespace openmldb::auth {
 // Get method implementation

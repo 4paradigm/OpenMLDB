@@ -1,5 +1,5 @@
-#ifndef SRC_REFRESHABLE_MAP_H_
-#define SRC_REFRESHABLE_MAP_H_
+#ifndef SRC_AUTH_REFRESHABLE_MAP_H_
+#define SRC_AUTH_REFRESHABLE_MAP_H_
 
 #include <memory>
 #include <mutex>
@@ -22,4 +22,4 @@ class RefreshableMap {
 
 }  // namespace openmldb::auth
 
-#endif  // SRC_REFRESHABLE_MAP_H_
+#endif  // SRC_AUTH_REFRESHABLE_MAP_H_
