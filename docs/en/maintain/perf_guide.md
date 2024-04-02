@@ -1,6 +1,6 @@
 # Performance Tuning Guide
 
-The cluster's read and write operations may encounter performance issues. This document will introduce how to monitor and tune performance. First, it is necessary to identify the performance bottleneck of the cluster through monitoring, and then optimize based on the bottleneck.
+The cluster's read-and-write operations may encounter performance issues. This document will introduce how to monitor and tune performance. First, it is necessary to identify the performance bottleneck of the cluster through monitoring, and then optimize based on the bottleneck.
 
 ## Metric Collection
 
@@ -45,7 +45,7 @@ In the second case, data is written to OpenMLDB through HTTP requests using the 
 
 Pay attention to the metrics in the above image. The left graph represents latency, and the right graph represents QPS. These two metrics measure the complete time of Put (inserting a single piece of data) in the TabletServer.
 
-Generally speaking, even with the default configuration, TabletServer can support high write QPS. If the TabletServer load is low and the hardware resources can support the default configuration, the write latency P99 is around 0.1ms, and the QPS reaches 100k per node with a P99 of around 1ms. The write latency P9999 may reach the level of 100ms due to high QPS, but the proportion is not high. If you are not sensitive to occasional high latency, you can focus on P99. In simple terms, a QPS of around 100k is generally not a performance concern.
+Generally speaking, even with the default configuration, TabletServer can support a high write QPS. If the TabletServer load is low and the hardware resources can support the default configuration, the write latency P99 is around 0.1ms, and the QPS reaches 100k per node with a P99 of around 1ms. The write latency P9999 may reach the level of 100ms due to high QPS, but the proportion is not high. If you are not sensitive to occasional high latency, you can focus on P99. In simple terms, a QPS of around 100k is generally not a performance concern.
 
 If not affected by other factors, these two metrics of TabletServer reflect its stable write performance. Let's discuss the following scenarios:
 
@@ -59,7 +59,7 @@ Low latency indicates normal write performance, but the QPS is low. It may be du
 
 - High latency + Low QPS
 
-Low QPS with high latency is highly unreasonable and requires specific analysis. It may be due to the lack of guarantee against other read and write interferences, where resources are occupied by other operations. It could also be due to insufficient hardware resources or improper TabletServer configuration.
+Low QPS with high latency is highly unreasonable and requires specific analysis. It may be due to the lack of guarantee against other read-and-write interferences, where resources are occupied by other operations. It could also be due to insufficient hardware resources or improper TabletServer configuration.
 
 ### APIServer
 
@@ -87,4 +87,4 @@ Each Deployment has a request line, and different request lines will result in d
 
 The ability of TabletServer and APIserver to handle concurrent read and write requests is affected by the size of their thread pool. This can be adjusted through the configuration option `thread_pool_size`, which is equivalent to `brpc::ServerOptions.num_threads`. For a detailed explanation of this configuration, refer to [brpc worker thread number](https://brpc.apache.org/docs/server/basics/#number-of-worker-pthreads). The difference is that it is not automatically set to the number of cores on the machine. TabletServer is configured as 24 in the configuration file by default, while APIServer uses the default value of 16 if not specifically configured in the file.
 
-If it is confirmed that the client concurrency is sufficient and the low QPS is due to insufficient number of threads in the server, you can increase the thread pool size appropriately. However, it is not recommended to set it too large, and it is suggested not to exceed the number of cores on the machine.
+If it is confirmed that the client concurrency is sufficient and the low QPS is due to an insufficient number of threads in the server, you can increase the thread pool size appropriately. However, it is not recommended to set it too large, and it is suggested not to exceed the number of cores on the machine.
