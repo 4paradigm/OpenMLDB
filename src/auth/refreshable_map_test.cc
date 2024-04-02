@@ -24,7 +24,6 @@ TEST_F(RefreshableMapTest, GetExistingKey) {
     EXPECT_EQ(value.value(), 100);
 }
 
-// Test attempting to retrieve a non-existing key
 TEST_F(RefreshableMapTest, GetNonExistingKey) {
     auto initialMap = std::make_unique<std::unordered_map<std::string, int>>();
     (*initialMap)["key1"] = 100;
@@ -35,7 +34,6 @@ TEST_F(RefreshableMapTest, GetNonExistingKey) {
     ASSERT_FALSE(value.has_value());
 }
 
-// Test refreshing the map with new data
 TEST_F(RefreshableMapTest, RefreshMap) {
     auto initialMap = std::make_unique<std::unordered_map<std::string, int>>();
     (*initialMap)["key1"] = 100;
@@ -69,18 +67,17 @@ TEST_F(RefreshableMapTest, ConcurrencySafety) {
     threads.reserve(numReaders);
     for (int i = 0; i < numReaders; ++i) {
         threads.emplace_back([&map]() {
-            for (int j = 0; j < 1000; ++j) {  
-                auto value = map.Get(rand_r() % 100); 
+            for (int j = 0; j < 1000; ++j) {
+                auto value = map.Get(rand_r() % 100);
             }
         });
     }
 
-    // Launch writer thread
     threads.emplace_back([&map]() {
         for (int i = 0; i < numWrites; ++i) {
             auto newMap = std::make_unique<std::unordered_map<int, int>>();
             for (int j = 0; j < 100; ++j) {
-                (*newMap)[j] = j + i + 1; 
+                (*newMap)[j] = j + i + 1;
             }
             map.Refresh(std::move(newMap));
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
