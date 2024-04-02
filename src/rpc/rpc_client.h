@@ -42,7 +42,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 
-#include "auth/authenticator.h"
+#include "auth/brpc_authenticator.h"
 #include "base/glog_wrapper.h"
 #include "base/status.h"
 #include "proto/tablet.pb.h"
@@ -227,7 +227,7 @@ class RpcClient {
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;
-    authn::Authenticator client_authenticator_;
+    authn::BRPCAuthenticator client_authenticator_;
 };
 
 template <class Response>

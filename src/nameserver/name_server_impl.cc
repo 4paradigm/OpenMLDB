@@ -1377,8 +1377,53 @@ void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletReque
     response->set_msg("ok");
 }
 
+base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std::string& user,
+                                              const std::string& password) {
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
+        PDLOG(INFO, "User table not exist InsertUserRecord");
+        return {ReturnCode::kTableIsNotExist, "user table does not exist"};
+    }
+
+    std::vector<std::string> row_values;
+    row_values.push_back(host);
+    row_values.push_back(user);
+    row_values.push_back(password);
+    row_values.push_back("");  // password_last_changed
+    row_values.push_back("");  // password_expired_time
+    row_values.push_back("");  // create_time
+    row_values.push_back("");  // update_time
+    row_values.push_back("");  // account_type
+    row_values.push_back("");  // privileges
+    row_values.push_back("");  // extra_info
+
+    std::string encoded_row;
+    codec::RowCodec::EncodeRow(row_values, table_info->column_desc(), 1, encoded_row);
+    std::vector<std::pair<std::string, uint32_t>> dimensions;
+    dimensions.push_back({host + "|" + user, 0});
+
+    uint32_t tid = table_info->tid();
+    auto table_partition = table_info->table_partition(0);  // only one partition for system table
+    for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
+        if (table_partition.partition_meta(meta_idx).is_leader() &&
+            table_partition.partition_meta(meta_idx).is_alive()) {
+            uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+            std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
+            auto table_ptr = GetTablet(endpoint);
+            if (!table_ptr->client_->Put(tid, 0, cur_ts, encoded_row, dimensions).OK()) {
+                PDLOG(INFO, "Failed InsertUserRecord");
+                return {ReturnCode::kPutFailed, "failed to create initial user entry"};
+            }
+            break;
+        }
+    }
+    PDLOG(INFO, "Success InsertUserRecord");
+    return {};
+}
+
 bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
                           const std::string& real_endpoint) {
+    PDLOG(INFO, "Begin init");
     if (zk_cluster.empty() && FLAGS_tablet.empty()) {
         PDLOG(WARNING, "zk cluster disabled and tablet is empty");
         return false;
@@ -1472,6 +1517,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+    InsertUserRecord("127.0.0.1", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     return true;
 }
 
@@ -9541,6 +9587,29 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>
+NameServerImpl::GetSystemTableIterator() {
+    return [this](const std::string& table_name) -> std::unique_ptr<::openmldb::catalog::FullTableIterator> {
+        std::shared_ptr<TableInfo> table_info;
+        if (!GetTableInfo(table_name, INTERNAL_DB, &table_info)) {
+            return nullptr;
+        }
+        auto tid = table_info->tid();
+        auto table_partition = table_info->table_partition(0);  // only one partition for system table
+        for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
+            if (table_partition.partition_meta(meta_idx).is_leader() &&
+                table_partition.partition_meta(meta_idx).is_alive()) {
+                auto endpoint = table_partition.partition_meta(meta_idx).endpoint();
+                auto table_ptr = GetTablet(endpoint);
+                std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> tablet_clients = {
+                    {0, table_ptr->client_}};
+                return std::make_unique<catalog::FullTableIterator>(tid, nullptr, tablet_clients);
+            }
+        }
+        return nullptr;
+    };
 }
 
 bool NameServerImpl::RecoverProcedureInfo() {

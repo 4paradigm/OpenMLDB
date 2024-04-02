@@ -1,9 +1,12 @@
-#include "authenticator.h"
+#include "brpc_authenticator.h"
 
+#include "auth_utils.h"
 #include "base/glog_wrapper.h"
+#include "butil/endpoint.h"
+
 namespace openmldb::authn {
 
-int Authenticator::GenerateCredential(std::string* auth_str) const {
+int BRPCAuthenticator::GenerateCredential(std::string* auth_str) const {
     std::visit(
         [auth_str](const auto& s) {
             using T = std::decay_t<decltype(s)>;
@@ -17,9 +20,10 @@ int Authenticator::GenerateCredential(std::string* auth_str) const {
     return 0;
 }
 
-int Authenticator::VerifyCredential(const std::string& auth_str, const butil::EndPoint& client_addr,
-                                    brpc::AuthContext* out_ctx) const {
+int BRPCAuthenticator::VerifyCredential(const std::string& auth_str, const butil::EndPoint& client_addr,
+                                        brpc::AuthContext* out_ctx) const {
     if (auth_str.length() < 2) {
+        PDLOG(INFO, "Failed authentication: %s", auth_str);
         return -1;
     }
 
@@ -28,12 +32,14 @@ int Authenticator::VerifyCredential(const std::string& auth_str, const butil::En
     if (auth_type == 'u') {
         size_t pos = credential.find(':');
         if (pos == std::string::npos) {
+            PDLOG(INFO, "Failed authentication: %s", auth_str);
             return -1;
         }
+        auto host = butil::ip2str(client_addr.ip).c_str();
         std::string username = credential.substr(0, pos);
         std::string password = credential.substr(pos + 1);
-        if (VerifyUsernamePassword(username, password)) {
-            out_ctx->set_user(username);
+        if (is_authenticated_(host, username, password)) {
+            out_ctx->set_user(auth::FormUserHost(username, host));
             out_ctx->set_is_service(false);
             return 0;
         }
@@ -43,20 +49,10 @@ int Authenticator::VerifyCredential(const std::string& auth_str, const butil::En
             return 0;
         }
     }
-
+    PDLOG(INFO, "Failed authentication: %s", auth_str);
     return -1;
 }
 
-bool Authenticator::VerifyUsernamePassword(const std::string& username, const std::string& password) const {
-    auto stored_password = getUserPassword(username);
-
-    if (stored_password.has_value()) {
-        return password == stored_password.value();
-    }
-
-    return false;
-}
-
-bool Authenticator::VerifyToken(const std::string& token) const { return token == "default"; }
+bool BRPCAuthenticator::VerifyToken(const std::string& token) const { return token == "default"; }
 
 }  // namespace openmldb::authn

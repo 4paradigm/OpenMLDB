@@ -198,7 +198,7 @@ bool SQLClusterRouter::Init() {
         session_variables_.emplace("insert_memory_usage_limit", "0");
         session_variables_.emplace("spark_config", "");
     }
-    return Auth();
+    return true;
 }
 
 bool SQLClusterRouter::Auth() {

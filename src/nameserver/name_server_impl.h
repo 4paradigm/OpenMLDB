@@ -42,6 +42,7 @@
 #include "sdk/sql_cluster_router.h"
 #include "zk/dist_lock.h"
 #include "zk/zk_client.h"
+#include "catalog/distribute_iterator.h"
 
 DECLARE_uint32(name_server_task_concurrency);
 DECLARE_uint32(name_server_task_concurrency_for_replica_cluster);
@@ -358,7 +359,14 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
+    std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)> GetSystemTableIterator();
+
+    bool GetTableInfo(const std::string& table_name, const std::string& db_name,
+            std::shared_ptr<TableInfo>* table_info);
+
  private:
+    base::Status InsertUserRecord(const std::string& host, const std::string& user, const std::string& password);
+
     base::Status InitGlobalVarTable();
 
     // create the database if not exists, exit on fail
@@ -487,9 +495,6 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateAddIndexToTabletTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
                                                      uint32_t pid, const std::vector<std::string>& endpoints,
                                                      const ::openmldb::common::ColumnKey& column_key);
-
-    bool GetTableInfo(const std::string& table_name, const std::string& db_name,
-            std::shared_ptr<TableInfo>* table_info);
 
     bool GetTableInfoUnlock(const std::string& table_name, const std::string& db_name,
             std::shared_ptr<TableInfo>* table_info);

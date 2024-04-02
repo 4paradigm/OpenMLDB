@@ -37,7 +37,7 @@
 #include "tablet/tablet_impl.h"
 #endif
 #include "apiserver/api_server_impl.h"
-#include "auth/authenticator.h"
+#include "auth/brpc_authenticator.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -54,6 +54,8 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "version.h"  // NOLINT
+#include "auth/brpc_authenticator.h"
+#include "auth/user_access_manager.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 using TabletClient = openmldb::client::TabletClient;
@@ -144,8 +146,19 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to register name");
         exit(1);
     }
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    if (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                   &table_info)) {
+        PDLOG(WARNING, "Fail to get table info for user table");
+        exit(1);
+    }
+    openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
+    user_access_manager.SyncWithDB(); 
     brpc::ServerOptions options;
-    openmldb::authn::Authenticator server_authenticator;
+    openmldb::authn::BRPCAuthenticator server_authenticator(
+        [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
+            return user_access_manager.IsAuthenticated(host, username, password);
+        });
     options.auth = &server_authenticator;
 
     options.num_threads = FLAGS_thread_pool_size;
@@ -245,7 +258,7 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
-    openmldb::authn::Authenticator server_authenticator;
+    openmldb::authn::BRPCAuthenticator server_authenticator;
     options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -3939,7 +3952,7 @@ void StartAPIServer() {
         }
     }
     brpc::ServerOptions options;
-    openmldb::authn::Authenticator server_authenticator;
+    openmldb::authn::BRPCAuthenticator server_authenticator;
     options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
