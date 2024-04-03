@@ -124,7 +124,7 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
 在前述实验条件下，存储同样数量的数据，OpenMLDB（内存表模式）的内存使用量相对于 Redis 少 30% 以上。
 
 
-### 4.2 TalkingData 数据集测试结果
+### TalkingData 数据集测试结果
 
 | Dataset                   | 数据量（条）  | RedisMem (bytes) | OpenMLDBMem (bytes) | Reduction percent |
 |---------------------------| ------------ | ---------------- | ------------------- | ----------------- |

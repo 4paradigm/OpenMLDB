@@ -11,7 +11,7 @@ OpenMLDB 是基于 C++ 和 LLVM 实现的分布式高性能内存时序数据库
 ## MySQL 协议兼容原理
 MySQL（包括后续 MariaDB 版本）的协议都是公开可读的，OpenM(ysq)LDB 在服务端完全实现并兼容了 MySQL  的协议，并且通过 OpenMLDB 的 SDK 来管理后端访问分布式 OpenMLDB 集群的连接，从而实现与各种 MySQL 客户端的兼容访问。
 
-![compatibility.png](./images/compatibility.png)
+![compatibility.png](./images/20240322-compatibility.png)
 
 目前 OpenM(ysql)LDB 通过长连接的维护客户端与 OpenMLDB 的交互，保证每个连接都有唯一的客户端对象访问 OpenMLDB 集群，相同连接的所有 SQL 查询都不需要额外初始化，并且在连接关闭后自动释放资源，服务本身占用的开销几乎可以忽略不计，性能与直连 OpenMLDB 也可以保持一致。
 
