@@ -265,7 +265,6 @@ spark.default.conf=
 spark.eventLog.dir=
 spark.yarn.maxAppAttempts=1
 batchjob.jar.path=
-namenode.uri=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
 hadoop.conf.dir=
 #enable.hive.support=false
@@ -305,9 +304,6 @@ Spark tasks are executed locally on TaskManager deployment machine. Please note 
 - `offline.data.prefix` is set by default as `file:///tmp/openmldb_offline_storage/`, which is on TaskManager deployment machine. This can be set to other locations as required. 
 - **Before starting TaskManager**, HDFS path can be configured by setting environment variable `HADOOP_CONF_DIR` to Hadoop configuration directory (Note: it is the environment variable, not the configuration item). The directory needs to include `core-site.xml`, `hdfs-site.xml` configuration files. For more information, refer to [Spark documentation](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration).
 
-```{note}
-Currently, `namenode.uri` needs to be configured. When deleting an offline table, HDFS FileSystem `namenode.uri` will be connected, and offline table path will be deleted. This item will be discarded in future updates.
-```
 - batchjob path `batchjob.jar.path` can be set automativally. It can be configured to other paths.
 
 ```{seealso}
