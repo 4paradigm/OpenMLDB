@@ -6,7 +6,6 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.resps.Tuple;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,14 +44,13 @@ public class BenchmarkQueryPerf {
     private String key;
     private int assertAllValueNum;
     private String specialTime;
-    private String assertSpecialTimeValue;
+
     private int assertSpecialTimeValueNum;
     private long tsRangeMin;
     private long tsRangeMax;
     private int assertSpecialTsRangeValueNum;
 
-    // todo 区分不同 case 的错误
-    private static AtomicInteger failures = new AtomicInteger(0);
+    private static final AtomicInteger failures = new AtomicInteger(0);
 
 
     // 初始化OpenMLDB和Redis连接,准备测试数据
@@ -104,7 +102,6 @@ public class BenchmarkQueryPerf {
 
         key = config.getProperty("QUERY_KEY");
         specialTime = config.getProperty("QUERY_TIME");
-        assertSpecialTimeValue = config.getProperty("ASSERT_QUERY_TIME_VALUE");
         assertSpecialTimeValueNum = Integer.parseInt(config.getProperty("ASSERT_QUERY_TIME_VALUE_NUM"));
         LocalDate date = LocalDate.parse(config.getProperty("QUERY_DATE"));
         tsRangeMin = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
@@ -207,21 +204,21 @@ public class BenchmarkQueryPerf {
     }
 
     public static void main(String[] args) throws Exception {
-//        BenchmarkQueryPerf ben = new BenchmarkQueryPerf();
-//        ben.initEnv();
-//        ben.testOpenMLDBGetAllValues();
-//        ben.testRedisGetAllValues();
-//
-//        ben.testOpenMLDBGetOneValue();
-//        ben.testRedisGetOneValue();
-//
-//        ben.testOpenMLDBGetDateValues();
-//        ben.testRedisGetDateValues();
-//        for(int i=0; i < 100; i++ ) {
-//            ben.testRedisGetAllValues();
-//            logger.info("{}", i);
-//        }
-//        System.out.println(failures);
+        /*BenchmarkQueryPerf ben = new BenchmarkQueryPerf();
+        ben.initEnv();
+        ben.testOpenMLDBGetAllValues();
+        ben.testRedisGetAllValues();
+
+        ben.testOpenMLDBGetOneValue();
+        ben.testRedisGetOneValue();
+
+        ben.testOpenMLDBGetDateValues();
+        ben.testRedisGetDateValues();
+        for(int i=0; i < 100; i++ ) {
+            ben.testRedisGetAllValues();
+            logger.info("{}", i);
+        }
+        System.out.println(failures);*/
 
         Options opt = new OptionsBuilder()
                 .include(BenchmarkQueryPerf.class.getSimpleName())
