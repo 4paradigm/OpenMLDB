@@ -22,6 +22,10 @@ Generally, ldd version should be >= 2.17, and GLIBC_2.17 should be present in li
 
 If you need to deploy ZooKeeper and TaskManager, you need a Java runtime environment.
 
+Servers needs Java 1.8 or above.
+
+Zookeeper Client 3.4.14 requires `Java 1.7` - `Java 13`. Java SDK depends on it, so it should use the same Java version, don't run in higher version. If you wish to use zkCli, please use `Java 1.8` or `Java 11`.
+
 ### Hardware
 
 Regarding hardware requirements:
