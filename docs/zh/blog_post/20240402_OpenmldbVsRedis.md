@@ -45,21 +45,17 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
 | ZK_PATH            | zk path                                      | /openmldb                         |
 
 #### 3.1.3 操作步骤（复现路径）
-1. 部署 OpenMLDB 和 Redis
-部署可以使用容器化部署或者使用软件包在物理机上直接部署，经过对比，两者无明显差异。下边以容器化部署为例进行举例描述。
-
-- OpenMLDB：
-    - 镜像：`docker pull 4pdosc/openmldb:0.8.5`
-    - 文档：https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html
-- Redis：
-    - 镜像：`docker pull redis:7.2.4`
-    - 文档：https://hub.docker.com/_/redis
+1. 部署 OpenMLDB 和 Redis：部署可以使用容器化部署或者使用软件包在物理机上直接部署，经过对比，两者无明显差异。下边以容器化部署为例进行举例描述。
+    - OpenMLDB：
+        - 镜像：`docker pull 4pdosc/openmldb:0.8.5`
+        - 文档：https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html
+    - Redis：
+        - 镜像：`docker pull redis:7.2.4`
+        - 文档：https://hub.docker.com/_/redis
 2. 拉取[测试代码](https://github.com/4paradigm/OpenMLDB/tree/main/benchmark)
 3. 修改配置
-
-- 配置文件：src/main/resources/memory.properties -- [link](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/resources/memory.properties)
-- 配置说明：必须确认REDIS_HOST_PORT和ZK_CLUSTER配置与实际测试环境一致， 其它配置为测试数据量相关配置，请按需配置。注意：如果数据量过大，测试耗时会比较长。
-
+    - 配置文件：src/main/resources/memory.properties -- [link](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/resources/memory.properties)
+    - 配置说明：必须确认REDIS_HOST_PORT和ZK_CLUSTER配置与实际测试环境一致， 其它配置为测试数据量相关配置，请按需配置。注意：如果数据量过大，测试耗时会比较长。
 4. 运行测试：【github benchmark Readme 中相关路径】
 5. 查看输出结果
 
@@ -68,7 +64,6 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
 为了使结果更具说服力，覆盖更多的数据类型，也便于复现和对比结果，我们也设计使用开源数据集进行测试。数据集为OpenMLDB 典型案例 [TalkingData（广告欺诈检测数据集）](https://openmldb.ai/docs/zh/main/use_case/talkingdata_demo.html)。这里使用 TalkingData 的 train 数据集，其获取方式如下：
   - 采样数据：[OpenMLDB 中的典型案例使用的采样数据](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_sample.csv)
   - 全量数据：[kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/data)
-
 
  方法一略有不同，TalkingData 数据集包含多列数据，包含字符串、数字和时间类型。为了让存储和使用更符合实际应用场景，这里设计使用TalkingData的 ip 列作为 key 进行存储。对应到 OpenMLDB 中，即创建一个和 TalkingData数据集对应的数据表，为 ip 列创建索引（OpenMLDB 默认为第一列创建索引）。对应到 Redis，以 ip 为键，以其他列数据的 JSON 字符串组成 zset 进行存放（TalkingData作为时序数据，存在多行数据具有相同 ip 的情况）。
 
@@ -98,13 +93,10 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
 
 
 #### 3.2.3 操作步骤（复现路径）
-1. 部署 OpenMLDB 和 Redis
-同 3.1.3，这里不再重复。
+1. 部署 OpenMLDB 和 Redis：同 3.1.3，这里不再重复。
 2. 拉取[测试代码](https://github.com/4paradigm/OpenMLDB/tree/main/benchmark)
 3. 修改配置
-
     - 配置文件：src/main/resources/memory.properties -- [link](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/resources/memory.properties)
-
     - 配置说明：
         - 确认REDIS_HOST_PORT和ZK_CLUSTER配置与实际测试环境一致;
         - 修改TALKING_DATASET_PATH(默认使用 resources/data/talking_data_sample.csv)
@@ -136,7 +128,6 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
 ### 4.2 TalkingData 数据集测试结果
 
 #### 4.2.1 结果
-
 
 | Dataset                   | 数据量（条）  | RedisMem (bytes) | OpenMLDBMem (bytes) | Reduction percent |
 |---------------------------| ------------ | ---------------- | ------------------- | ----------------- |
