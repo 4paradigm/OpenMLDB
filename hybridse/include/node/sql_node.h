@@ -1520,22 +1520,28 @@ class FnDefNode : public SqlNode {
 
 class CastExprNode : public ExprNode {
  public:
-    explicit CastExprNode(const node::DataType cast_type, node::ExprNode *expr)
+    explicit CastExprNode(const node::TypeNode *cast_type, node::ExprNode *expr)
         : ExprNode(kExprCast), cast_type_(cast_type) {
         this->AddChild(expr);
     }
-
     ~CastExprNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *that) const override;
     CastExprNode *ShadowCopy(NodeManager *) const override;
     static CastExprNode *CastFrom(ExprNode *node);
 
     ExprNode *expr() const { return GetChild(0); }
-    const DataType cast_type_;
+    const TypeNode *cast_type() const { return cast_type_; }
+
+    // legacy interface, required by offline batch
+    // pls use cast_type() as much as possible
+    node::DataType base_cast_type() const;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    const TypeNode *cast_type_;
 };
 
 class WhenExprNode : public ExprNode {

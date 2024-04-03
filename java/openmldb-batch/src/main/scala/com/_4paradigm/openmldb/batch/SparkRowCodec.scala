@@ -418,8 +418,6 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
           args.AddChild(valToNativeExpr(kv._1, keyType, nm))
           args.AddChild(valToNativeExpr(kv._2, valType, nm))
         })
-        // TODO(someone): support empty map, since 'map()' inferred as map<void, void>
-        // we need construst a extra cast operation to hint the true type from schema
         nm.MakeFuncNode("map", args, null)
       }
       case _ => throw new IllegalArgumentException(

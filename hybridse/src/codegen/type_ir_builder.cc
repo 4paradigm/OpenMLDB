@@ -16,11 +16,8 @@
 
 #include "codegen/type_ir_builder.h"
 
-#include "absl/status/status.h"
-#include "codegen/date_ir_builder.h"
+#include "base/fe_status.h"
 #include "codegen/ir_base_builder.h"
-#include "codegen/string_ir_builder.h"
-#include "codegen/timestamp_ir_builder.h"
 #include "node/node_manager.h"
 
 namespace hybridse {
@@ -54,7 +51,7 @@ bool TypeIRBuilder::IsBool(::llvm::Type* type) {
     return data_type == node::kBool;
 }
 
-bool TypeIRBuilder::IsNull(::llvm::Type* type) { return type->isTokenTy(); }
+bool TypeIRBuilder::IsNull(::llvm::Type* type) { return type->isVoidTy(); }
 
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
@@ -130,38 +127,6 @@ base::Status TypeIRBuilder::BinaryOpTypeInfer(
     const node::TypeNode* output_type = nullptr;
     CHECK_STATUS(func(&tmp_node_manager, left_type, right_type, &output_type))
     return base::Status::OK();
-}
-
-absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Type* type) {
-    node::DataType data_type;
-    if (!GetBaseType(type, &data_type)) {
-        return absl::InvalidArgumentError(absl::StrCat("can't get base type for: ", GetLlvmObjectString(type)));
-    }
-
-    if (TypeIRBuilder::IsStructPtr(type)) {
-        std::unique_ptr<StructTypeIRBuilder> builder = nullptr;
-
-        switch (data_type) {
-            case node::DataType::kTimestamp: {
-                builder.reset(new TimestampIRBuilder(block->getModule()));
-                break;
-            }
-            case node::DataType::kDate: {
-                builder.reset(new DateIRBuilder(block->getModule()));
-                break;
-            }
-            case node::DataType::kVarchar: {
-                builder.reset(new StringIRBuilder(block->getModule()));
-                break;
-            }
-            default:
-                return absl::InvalidArgumentError(absl::StrCat("invalid struct type: ", GetLlvmObjectString(type)));
-        }
-
-        return builder->CreateNull(block);
-    }
-
-    return NativeValue(nullptr, nullptr, type);
 }
 
 }  // namespace codegen

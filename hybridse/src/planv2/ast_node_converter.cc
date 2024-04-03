@@ -399,8 +399,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             node::TypeNode* tp = nullptr;
             CHECK_STATUS(ConvertASTType(cast_expression->type(), node_manager, &tp))
 
-            // TODO(ace): cast from base type is not enough for type like array
-            *output = node_manager->MakeCastNode(tp->base(), expr_node);
+            *output = node_manager->MakeNode<node::CastExprNode>(tp, expr_node);
             return base::Status::OK();
         }
         case zetasql::AST_PARAMETER_EXPR: {

@@ -100,10 +100,8 @@ bool NativeValue::IsNullable() const { return IsConstNull() || HasFlag(); }
 
 // NativeValue is null if:
 // - raw_ is null
-// - type_ is of token type.
-// Currently there is no elsewhere using token type, so assert token type should be safe.
-// token type represents SQL NULL may not appropriate, more work refer #926
-bool NativeValue::IsConstNull() const { return raw_ == nullptr || (type_ != nullptr && type_->isTokenTy()); }
+// - type_ is of void type.
+bool NativeValue::IsConstNull() const { return raw_ == nullptr || (type_ != nullptr && type_->isVoidTy()); }
 
 void NativeValue::SetName(const std::string& name) {
     if (raw_ == nullptr) {
