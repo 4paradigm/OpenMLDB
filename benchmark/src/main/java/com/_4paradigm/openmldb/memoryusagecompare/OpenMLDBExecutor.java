@@ -9,9 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Properties;
+import java.util.*;
 
 public class OpenMLDBExecutor {
     private static final Logger logger = LoggerFactory.getLogger(OpenMLDBExecutor.class);
@@ -39,10 +37,8 @@ public class OpenMLDBExecutor {
         statement.execute("SET @@execute_mode='online';");
         statement.execute("CREATE DATABASE IF NOT EXISTS " + dbName + ";");
         statement.execute("USE " + dbName + ";");
-        statement.execute("CREATE TABLE IF NOT EXISTS `" + tableName + "`( \n`key` string,\n`value` string\n) OPTIONS (replicanum=1); ");
-
         statement.close();
-        logger.info("create db and test table.");
+        logger.info("create db.");
     }
 
     void initOpenMLDBEnvWithDDL(String sql) throws SQLException {
@@ -120,6 +116,67 @@ public class OpenMLDBExecutor {
                     logger.error("Exception: ", e);
                 }
             }
+        }
+    }
+
+    ArrayList<HashMap<String, Object>> queryDataWithSql(String sql) {
+        Statement statement = null;
+        ResultSet res;
+        try {
+            statement = executor.getStatement();
+            statement.execute(sql);
+            res = statement.getResultSet();
+
+            ResultSetMetaData metaData = res.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            ArrayList<HashMap<String, Object>> rows = new ArrayList<>();
+
+            while (res.next()) {
+                HashMap<String, Object> row = new HashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    int columnType = metaData.getColumnType(i);
+                    Object value = getValue(columnType, i, res);
+                    row.put(columnName, value);
+                }
+                rows.add(row);
+            }
+            return rows;
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    logger.error("Exception: ", e);
+                }
+            }
+        }
+        return null;
+    }
+
+    private Object getValue(int tp, int idx, ResultSet rs) throws SQLException {
+        Object val;
+        switch (tp){
+            case Types.VARCHAR:
+                return rs.getString(idx);
+            case Types.INTEGER:
+                return rs.getInt(idx);
+            case Types.FLOAT:
+                return rs.getFloat(idx);
+            case Types.DOUBLE:
+                return rs.getDouble(idx);
+            case Types.DATE:
+                return rs.getDate(idx);
+            case Types.TIMESTAMP:
+                return rs.getTimestamp(idx);
+            case Types.BOOLEAN:
+                return rs.getBoolean(idx);
+            case Types.TIME:
+                return rs.getTime(idx);
+            default:
+                return null;
         }
     }
 
