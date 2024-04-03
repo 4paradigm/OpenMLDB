@@ -21,7 +21,8 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 
 如果需要部署 ZooKeeper 和 TaskManager，则需要有 Java 运行环境。
 
-> Zookeeper Client 3.4.14 需要 `Java 1.7` - `Java 13` 版本，如果希望使用zkCli，推荐使用 `Java 1.8` 或 `Java 11` 版本。
+> 两个Server需要`Java 1.8`及以上版本。
+> Zookeeper Client 3.4.14 需要 `Java 1.7` - `Java 13` 版本。Java SDK也使用这个Client，所以同样要求不能使用较高版本Java。如果希望使用zkCli，推荐使用 `Java 1.8` 或 `Java 11` 版本。
 
 ### 硬件
 
