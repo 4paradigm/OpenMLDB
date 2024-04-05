@@ -34,7 +34,7 @@ Observing the pqs and latency of the report, in the case of a single machine, wi
 
 ## Overview
 
-### Download and Preperation
+### Download and Preparation
 
 - If you need to download Kafka, please click on the [Kafka Official Download](https://kafka.apache.org/downloads) link and download `kafka_2.13-3.1.0.tgz`.
 - If you need to download the connector package and its dependencies, please click on [kafka-connect-jdbc.tgz](http://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz).
@@ -50,7 +50,7 @@ docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.5 bash
 
 ### Note
 
-Timestamp is in ms, value is set to JsonConvertor, only integer is supported. Depends on different messages, other Convertor can be selected. 
+Timestamp is in ms, value is set to JsonConvertor, only integer is supported. Depending on different messages, other Convertor can be selected. 
 
 Connector can be used in earlier versions of Kafka Server, e.g. 1.1.1. However, note that the earlier versions may not have Kafka Broker "auto create topics" on. You will need to [enable it](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable).
 
