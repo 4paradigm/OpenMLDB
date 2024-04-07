@@ -54,10 +54,10 @@ class Connector(metaclass=Singleton):
 
     def execute(self, sql):
         """ddl won't return resultset, can not fetchall"""
-        return self.conn.execute(sql)
+        return self.conn.exec_driver_sql(sql)
 
     def execfetch(self, sql, show=False):
-        cr = self.conn.execute(sql)
+        cr = self.conn.exec_driver_sql(sql)
         res = cr.fetchall()
         if show:
             t = PrettyTable(cr.keys())
