@@ -59,7 +59,7 @@ message ColumnDesc {
 }
 
 message TTLSt {
-    optional openmldb.type.TTLType ttl_type = 1 [default = kAbsoluteTime];
+optional openmldb.type.TTLType ttl_type = 1 [default = kAbsoluteTime];
     optional uint64 abs_ttl = 2 [default = 0]; // unit: min
     optional uint64 lat_ttl = 3 [default = 0];
 }

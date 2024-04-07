@@ -3255,6 +3255,7 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
     // create table
     uint32_t id = counter++;
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 0, 100, 50, kAbsAndLat, storage_mode, &tablet));
+    // NOTE: update ttl, it won't effect in table until one gc(e.g. do `UpdateTTL` in `MemTable::SchedGc`)
     // table not exist
     ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kAbsAndLat, 10, 5, &tablet));
     // bigger than max ttl, tablet side will not check

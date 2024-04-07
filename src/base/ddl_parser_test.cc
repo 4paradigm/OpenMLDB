@@ -15,6 +15,7 @@
  */
 
 #include "base/ddl_parser.h"
+
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
@@ -50,7 +51,7 @@ std::ostream& operator<<(std::ostream& os, const std::map<std::string, std::vect
 
 void CheckEqual(const IndexMap& map1, const IndexMap& map2) {
     ASSERT_EQ(map1.size(), map2.size()) << "map size not equal";
-    for (const auto & [ key, value ] : map1) {
+    for (const auto& [key, value] : map1) {
         auto it = map2.find(key);
         if (it == map2.end()) {
             FAIL() << "can't find key " << key << " in map2";
@@ -121,7 +122,7 @@ void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::stri
     };
 
     ASSERT_EQ(map.size(), readable_map.size()) << "map size not equal" << error_message(map, readable_map);
-    for (const auto & [ key, value ] : map) {
+    for (const auto& [key, value] : map) {
         auto it = readable_map.find(key);
         if (it == readable_map.end()) {
             FAIL() << "can't find key " << key << " in expected map. " << error_message(map, readable_map);
@@ -303,8 +304,6 @@ class DDLParserTest : public ::testing::Test {
 };
 
 TEST_F(DDLParserTest, ttlMerge) {
-    // old ttl miss some fields
-
     // values: {abs ttl, lat ttl}
     auto test_func = [](type::TTLType old_type, std::initializer_list<uint64_t> old_values, type::TTLType new_type,
                         std::initializer_list<uint64_t> new_values, bool should_update, type::TTLType expect_type,
@@ -318,17 +317,14 @@ TEST_F(DDLParserTest, ttlMerge) {
         new_ttl.set_ttl_type(new_type);
         new_ttl.set_abs_ttl(*new_values.begin());
         new_ttl.set_lat_ttl(*(new_values.begin() + 1));
-
-        ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update)
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
-        ASSERT_TRUE(result.ttl_type() == expect_type);
-        ASSERT_EQ(result.abs_ttl(), *expect_values.begin())
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
-        ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1))
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
+        {
+            SCOPED_TRACE(absl::StrCat("old ttl[", old_ttl.ShortDebugString(), "], new ttl[", new_ttl.ShortDebugString(),
+                                      "]"));
+            ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update);
+            ASSERT_TRUE(result.ttl_type() == expect_type) << "expect " << expect_type << ", but got " << result.ttl_type();
+            ASSERT_EQ(result.abs_ttl(), *expect_values.begin());
+            ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1));
+        }
     };
 
     auto test_same_type = [&](type::TTLType type, std::initializer_list<uint64_t> old_values,
@@ -344,23 +340,38 @@ TEST_F(DDLParserTest, ttlMerge) {
     test_same_type(type::TTLType::kAbsAndLat, {10, 20}, {5, 30}, true, {10, 30});
     test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {20, 30}, true, {20, 30});
     test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {5, 30}, true, {10, 30});
+
+    // although just old ttl, but we do std cvt in merge, so result will be changed
+    test_func(type::TTLType::kAbsOrLat, {0, 0}, type::TTLType::kAbsOrLat, {1, 2}, true, type::TTLType::kAbsoluteTime,
+              {0, 0});
     // different type
     // abs + lat
-    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsOrLat,
+    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsAndLat,
               {1, 2});
-    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsOrLat,
+    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsAndLat,
               {4, 3});
 
     // abs + complex type
-    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, false,
-              type::TTLType::kAbsoluteTime, {10, 0});
-    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, true, type::TTLType::kAbsOrLat,
-              {10, 8});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, true,
+              type::TTLType::kAbsAndLat, {10, 6});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, false, type::TTLType::kAbsoluteTime,
+              {10, 0});
+    // swap
+    test_func(type::TTLType::kAbsAndLat, {5, 6}, type::TTLType::kAbsoluteTime, {10, 0},  true,
+              type::TTLType::kAbsAndLat, {10, 6});
+    test_func(type::TTLType::kAbsOrLat, {7, 8}, type::TTLType::kAbsoluteTime, {10, 0},  true, type::TTLType::kAbsoluteTime,
+              {10, 0});
+
     // lat + complex type
-    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, false,
-              type::TTLType::kLatestTime, {0, 11});
-    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kAbsOrLat,
-              {14, 15});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, true,
+              type::TTLType::kAbsAndLat, {12, 11});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kLatestTime,
+              {0, 15});
+    // swap
+    test_func(type::TTLType::kAbsAndLat, {12, 6}, type::TTLType::kLatestTime, {0, 11}, true,
+              type::TTLType::kAbsAndLat, {12, 11});
+    test_func(type::TTLType::kAbsOrLat, {14, 15}, type::TTLType::kLatestTime, {0, 11}, true, type::TTLType::kLatestTime,
+              {0, 15});
 }
 
 // create procedure: only inner plan will be sql compiled.

@@ -567,7 +567,7 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
             pair.second->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
             pair.second->set_lat_ttl(1);
         }
-        auto[db, table, idx_str, column_key] = Decode(pair.first);
+        auto [db, table, idx_str, column_key] = Decode(pair.first);
         DLOG(INFO) << "decode index '" << pair.first << "': " << db << " " << table << " " << idx_str << " "
                    << column_key.ShortDebugString();
         auto& idx_map_of_table = tmp_map[db][table];
@@ -635,7 +635,7 @@ std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBui
         return {};
     }
 
-    const auto[db_name, table_name] = GetTable(index_str);
+    const auto [db_name, table_name] = GetTable(index_str);
 
     common::ColumnKey column_key;
     auto key_sep = index_str.find(KEY_MARK);
@@ -675,69 +675,94 @@ void TTLValueMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, c
     result->set_lat_ttl(tmp_result);
 }
 
-// 4(same type merge): same type and max ttls
-// 12(A(4,2)): see in code
+common::TTLSt stdTTL(const common::TTLSt& ttl) {
+    common::TTLSt result(ttl);
+    DCHECK(result.has_ttl_type() && result.ttl_type() != type::TTLType::kRelativeTime) << "invalid ttl type" << ttl.ShortDebugString();
+    if (result.ttl_type() == type::TTLType::kAbsoluteTime) {
+        // if no lat ttl, set a default 0
+        DCHECK(!result.has_lat_ttl() || result.lat_ttl() == 0);
+        result.set_lat_ttl(0);
+    } else if(result.ttl_type() == type::TTLType::kLatestTime) {
+        // if no abs ttl, set a default 0
+        DCHECK(!result.has_abs_ttl() || result.abs_ttl() == 0);
+        result.set_abs_ttl(0);
+    } else if(result.ttl_type() == type::TTLType::kAbsAndLat) {
+        DCHECK(result.has_abs_ttl() && result.has_lat_ttl());
+        // if any one is 0, won't expire any data, just set abs 0
+        if (result.abs_ttl() == 0 || result.lat_ttl() == 0) {
+            result.set_abs_ttl(0);
+            result.set_lat_ttl(0);
+            result.set_ttl_type(type::TTLType::kAbsoluteTime);
+        }
+    } else if (result.ttl_type() == type::TTLType::kAbsOrLat) {
+        DCHECK(result.has_abs_ttl() && result.has_lat_ttl());
+        // if any one is 0, just use the another one, if both 0, set abs 0
+        if (result.lat_ttl() == 0) {
+            result.set_ttl_type(type::TTLType::kAbsoluteTime);
+        } else if (result.abs_ttl() == 0) {
+            result.set_ttl_type(type::TTLType::kLatestTime);
+        }
+    }
+    return result;
+}
+
 bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result) {
     // TTLSt has type and two values, updated is complex, so we just check result==old_ttl in the end
-    result->CopyFrom(old_ttl);
 
+    // we should shrink type first, absorlat(10,0) -> abs(10)
+    // e.g. merge absorlat(1,0) and absorlat(0,2), we need to check the values, we don't want to get absorlat(0,0), it's too large
+    // and if no abs when type is lat, just set a abs 0, to make compare simple
+    auto old_t = stdTTL(old_ttl);
+    auto new_t = stdTTL(new_ttl);
+
+    // complex ttl(absandlat or absorlat) won't have ttl value 0, it'll be converted to simple ttl
     // merge case 1. same type, just merge values(max ttls)
-    // it's ok to merge both abs and lat ttl value even type is only abs or lat(just unused and default is 0)
     // merge case 2. different type
-    if (old_ttl.ttl_type() == new_ttl.ttl_type()) {
-        TTLValueMerge(old_ttl, new_ttl, result);
+    if (old_t.ttl_type() == new_t.ttl_type()) {
+        // it's ok to merge both abs and lat ttl value even type is only abs or lat, just 0 merge 0
+        result->set_ttl_type(old_t.ttl_type());
+        TTLValueMerge(old_t, new_t, result);
     } else {
-        // type is different
-        if (old_ttl.ttl_type() == type::TTLType::kAbsAndLat) {
-            // 3 cases, abs&lat + ?. ?: abs / lat / abs||lat(new_ttl type != abs&lat). Use new ttl, merge values.
-            // abs&lat + abs -> abs, abs&lat + lat -> lat, abs&lat + abs||lat -> abs||lat. Use the max range, it's ok to
-            // merge two ttl(e.g. abs 10s&lat 1 + abs 10s(lat 0) -> abs 10s), we won't use the another ttl if result is
-            // lat or abs.
-            result->set_ttl_type(new_ttl.ttl_type());
-            TTLValueMerge(old_ttl, new_ttl, result);
-        } else if (new_ttl.ttl_type() == type::TTLType::kAbsAndLat) {
-            // 3 cases, ? + abs&lat. ?: abs / lat / abs||lat
-            result->set_ttl_type(old_ttl.ttl_type());
-            TTLValueMerge(old_ttl, new_ttl, result);
-        } else if (old_ttl.ttl_type() == type::TTLType::kAbsOrLat) {
-            // 2 cases, abs||lat + ? -> abs||lat. Stay old, merge values
-            // ?: abs / lat 2 cases(abs||lat + abs&lat is in 2)
-            TTLValueMerge(old_ttl, new_ttl, result);
-        } else if (new_ttl.ttl_type() == type::TTLType::kAbsOrLat) {
-            // 2 cases, abs + abs||lat -> abs||lat, lat + abs||lat -> abs||lat. Use new, merge can't use lat ttl(0) if
-            // type is abs abs&lat + abs||lat is in 1
-            result->set_ttl_type(type::TTLType::kAbsOrLat);
-            if (old_ttl.ttl_type() == type::TTLType::kAbsoluteTime) {
-                result->set_abs_ttl(TTLValueMerge(old_ttl.abs_ttl(), new_ttl.abs_ttl()));
-                result->set_lat_ttl(new_ttl.lat_ttl());
-            } else {
-                result->set_abs_ttl(new_ttl.abs_ttl());
-                result->set_lat_ttl(TTLValueMerge(old_ttl.lat_ttl(), new_ttl.lat_ttl()));
-            }
+        // old type != new type, and absandlat or absorlat won't have ttl value 0
+        if (old_t.ttl_type() == type::TTLType::kAbsAndLat || new_t.ttl_type() == type::TTLType::kAbsAndLat) {
+            // absandlat + abs/lat/absorlat = absandlat with value merged
+            // swapable, so 6 cases here?
+            // absandlat(2,3) + abs(4,0) = absandlat(4,3), don't consider 0
+            // absandlat(2,3) + abs(1,0) = absandlat(2,3)
+            result->set_ttl_type(type::TTLType::kAbsAndLat);
+            result->set_abs_ttl(std::max(old_t.abs_ttl(), new_t.abs_ttl()));
+            result->set_lat_ttl(std::max(old_t.lat_ttl(), new_t.lat_ttl()));
+        } else if (old_t.ttl_type() == type::TTLType::kAbsOrLat) {
+            // 2 cases: absorlat + abs/lat = lat/abs, leave the simple type, ignore another one
+            // merged result will ignore the new value of ignored type
+            DCHECK(new_t.ttl_type() == type::TTLType::kAbsoluteTime ||
+                   new_t.ttl_type() == type::TTLType::kLatestTime);
+            result->set_ttl_type(new_t.ttl_type());
+            TTLValueMerge(old_t, new_t, result);
+        } else if (new_t.ttl_type() == type::TTLType::kAbsOrLat) {
+            // 2 cases: abs/bat + absorlat, the same with above
+            DCHECK(new_t.ttl_type() == type::TTLType::kAbsoluteTime ||
+                   new_t.ttl_type() == type::TTLType::kLatestTime);
+            result->set_ttl_type(old_t.ttl_type());
+            TTLValueMerge(old_t, new_t, result);
         } else {
-            // 2 cases, abs + lat -> abs||lat, lat + abs -> abs||lat. Set type, merge can't use lat ttl(0) if type is
-            // abs
-            result->set_ttl_type(type::TTLType::kAbsOrLat);
-            if (old_ttl.ttl_type() == type::TTLType::kAbsoluteTime) {
-                DCHECK(new_ttl.ttl_type() == type::TTLType::kLatestTime);
-                result->set_abs_ttl(old_ttl.abs_ttl());
-                result->set_lat_ttl(new_ttl.lat_ttl());
+            // 2 cases, abs + lat -> absandlat
+            // set type, merge can't use lat ttl(0) if type is abs, so custom merge
+            result->set_ttl_type(type::TTLType::kAbsAndLat);
+            if (old_t.ttl_type() == type::TTLType::kAbsoluteTime) {
+                DCHECK(new_t.ttl_type() == type::TTLType::kLatestTime);
+                result->set_abs_ttl(old_t.abs_ttl());
+                result->set_lat_ttl(new_t.lat_ttl());
             } else {
-                DCHECK(old_ttl.ttl_type() == type::TTLType::kLatestTime);
-                result->set_abs_ttl(new_ttl.abs_ttl());
-                result->set_lat_ttl(old_ttl.lat_ttl());
+                DCHECK(old_t.ttl_type() == type::TTLType::kLatestTime);
+                result->set_abs_ttl(new_t.abs_ttl());
+                result->set_lat_ttl(old_t.lat_ttl());
             }
         }
     }
+    // after merge, may get complex ttl with 0
+    result->CopyFrom(stdTTL(*result));
 
-    // old ttl may not have one ttl value, but the result must have, so fix the cmp
-    common::TTLSt old_ttl_fixed(old_ttl);
-    if (!old_ttl_fixed.has_abs_ttl()) {
-        old_ttl_fixed.set_abs_ttl(0);
-    }
-    if (!old_ttl_fixed.has_lat_ttl()) {
-        old_ttl_fixed.set_lat_ttl(0);
-    }
-    return !google::protobuf::util::MessageDifferencer::Equals(old_ttl_fixed, *result);
+    return !google::protobuf::util::MessageDifferencer::Equals(old_ttl, *result);
 }
 }  // namespace openmldb::base
