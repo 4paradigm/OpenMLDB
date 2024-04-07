@@ -8,7 +8,7 @@
 
 ### Installation
 
-The current version utilize TiSpark for interacting with the TiDB database. To get started, download the necessary dependencies for TiSpark 3.1.x (`tispark-assembly-3.2_2.12-3.1.5.jar` and `mysql-connector-java-8.0.29.jar`). If the TiSpark version is not compatible with your current TiDB version, refer to the [TiSpark documentation](https://docs.pingcap.com/tidb/stable/tispark-overview) for downloading the corresponding TiSpark dependencies. Then, add them to the Spark classpath/jars.
+The current version utilizes TiSpark for interacting with the TiDB database. To get started, download the necessary dependencies for TiSpark 3.1.x (`tispark-assembly-3.2_2.12-3.1.5.jar` and `mysql-connector-java-8.0.29.jar`). If the TiSpark version is not compatible with your current TiDB version, refer to the [TiSpark documentation](https://docs.pingcap.com/tidb/stable/tispark-overview) for downloading the corresponding TiSpark dependencies. Then, add them to the Spark classpath/jars.
 
 
 ### Configuration
