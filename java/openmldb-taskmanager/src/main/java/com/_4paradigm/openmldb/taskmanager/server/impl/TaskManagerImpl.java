@@ -464,7 +464,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
         }
         // log if save failed
         if (!jobResultSaver.saveFile(request.getResultId(), request.getJsonData())) {
-            log.error("save job result failed(write to local file) for resultId: {}", request.getResultId());
+            logger.error("save job result failed(write to local file) for resultId: " + request.getResultId());
             return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.FAILED)
                     .setMsg("save job result failed(write to local file)").build();
         }
