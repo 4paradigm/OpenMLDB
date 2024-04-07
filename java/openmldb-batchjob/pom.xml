@@ -69,7 +69,6 @@
       <groupId>com.4paradigm.openmldb</groupId>
       <artifactId>openmldb-native</artifactId>
       <version>${variant.native.version}</version>
-      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -82,7 +81,6 @@
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
-      <scope>provided</scope>
     </dependency>
 
   </dependencies>
