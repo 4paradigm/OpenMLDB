@@ -22,7 +22,6 @@ import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
-import com._4paradigm.openmldb.batch.utils.DataSourceUtil.catalogLoad
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow

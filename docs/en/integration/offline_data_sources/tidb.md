@@ -53,7 +53,8 @@ Importing data from TiDB sources is supported through the [`LOAD DATA INFILE`](.
 
 - Both offline and online engines can import TiDB data sources.
 - TiDB import supports symbolic links, which can reduce hard copying and ensure that OpenMLDB always reads the latest data from TiDB. To enable soft link data import, use the parameter `deep_copy=false`.
-- The `OPTIONS` parameter only supports `deep_copy`, `mode`, and `sql`.
+- Parameter `is_check_schema` : Whether to perform field type matching check, The default is `true`. If set to `true`, it will perform matching checks and automatically convert the types if necessary. If set to `false`, it will not perform field type matching checks, and users will need to make their own judgments.
+- The `OPTIONS` parameter only supports `deep_copy`, `mode`, `sql` , and `is_check_schema` .
 
 For example:
 
@@ -75,7 +76,7 @@ Exporting data from OpenMLDB to TiDB sources is supported through the [`SELECT I
 
 - The offline engine can support exporting TiDB data sources, but the online engine does not yet support it.
 - The database and table must already exist. Currently, automatic creation of non-existent databases or tables is not supported.
-- Only the export mode `mode` is effective in the `OPTIONS='append'` parameter. Other parameters are not effective, and the current parameter is mandatory.
+- The `OPTIONS` parameter is only effective when `mode='append'`. Other parameters are not effective, and the current parameter is mandatory.
 
 For example:
 
