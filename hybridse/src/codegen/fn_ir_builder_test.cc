@@ -82,7 +82,6 @@ void CheckResult(node::FnNodeFnDef *fn_def, R exp, V1 a, V2 b) {
     m->print(::llvm::errs(), NULL, true, true);
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto test_fn = (R(*)(V1, V2))jit->FindFunction(fn_def->header_->GeIRFunctionName());
     R result = test_fn(a, b);

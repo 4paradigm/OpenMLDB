@@ -216,6 +216,34 @@ After forking the OpenMLDB repository, you can trigger the `Other OS Build` work
 
 Please note that this compilation process involves building third-party dependencies from source code, and it may take a while to complete due to limited resources. The approximate time for this process is around 3 hours and 5 minutes (2 hours for third-party dependencies and 1 hour for OpenMLDB). However, the workflow caches the compilation output for third-party dependencies, so the second compilation will be much faster, taking approximately 1 hour and 15 minutes for OpenMLDB.
 
+### Linux for ARM64
+
+It's possible to run OpenMLDB on Linux for ARM64(AArch64), which you may compile the source from scratch. ARM version of compile image `ghcr.io/4paradigm/hybridsql` is recommended:
+
+```sh
+docker run -it ghcr.io/4paradigm/hybridsql:latest
+ 
+# inside docker container
+git clone https://github.com/4paradigm/OpenMLDB
+cd OpenMLDB
+ 
+#  necessary deps for all third-party
+yum install -y flex autoconf automake unzip bc expect libtool \
+    rh-python38-python-devel gettext byacc xz tcl cppunit-devel rh-python38-python-wheel patch java-1.8.0-openjdk-devel
+# bazel
+curl --create-dirs -SLo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-arm64
+chmod +x /usr/local/bin/bazel
+ 
+# third-party
+cmake -S third-party -B .deps -DBUILD_BUNDELD=ON -DMAKEOPTS=-j$(nproc)
+cmake --build .deps
+ 
+# OpenMLDB source
+cmake -S . -B build -DCMKAE_PREFIX_PATH=$(pwd)/.deps/usr -DSQL_JAVASDK_ENABLE=ON -DSQL_PYSDK_ENABLE=ON
+cmake --build build -- -j$(nproc)
+```
+
+
 ### Macos 10.15, 11
 
 MacOS doesn't require compiling third-party dependencies from source code, so compilation is relatively faster, taking about 1 hour and 15 minutes. Local compilation is similar to the steps outlined in the [Detailed Instructions for Build](#detailed-instructions-for-build) and does not require compiling third-party dependencies (`BUILD_BUNDLED=OFF`). For cloud compilation on macOS, trigger the `Other OS Build` workflow in `Actions` with the specified macOS version (`os name` as `macos10` or `macos11`). You can also disable Java or Python SDK compilation if they are not needed, by setting `java sdk enable` or `python sdk enable` to `OFF`.

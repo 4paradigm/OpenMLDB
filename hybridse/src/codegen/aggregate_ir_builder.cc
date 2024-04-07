@@ -736,8 +736,7 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         std::vector<std::pair<size_t, NativeValue>> outputs;
         agg_generator.GenOutputs(&builder, &outputs);
         for (auto pair : outputs) {
-            output_encoder.BuildEncodePrimaryField(output_arg, pair.first,
-                                                   pair.second);
+            CHECK_STATUS(output_encoder.BuildEncodePrimaryField(output_arg, pair.first, pair.second));
         }
     }
     builder.CreateRetVoid();

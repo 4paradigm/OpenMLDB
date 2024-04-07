@@ -16,14 +16,15 @@
 
 #ifndef HYBRIDSE_INCLUDE_BASE_FE_SLICE_H_
 #define HYBRIDSE_INCLUDE_BASE_FE_SLICE_H_
+
 #include <assert.h>
 #include <memory.h>
 #include <stddef.h>
 #include <string.h>
-#include <memory>
+
 #include <string>
+
 #include "base/raw_buffer.h"
-#include "boost/smart_ptr/local_shared_ptr.hpp"
 
 namespace hybridse {
 namespace base {

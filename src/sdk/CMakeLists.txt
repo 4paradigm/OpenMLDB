@@ -130,7 +130,18 @@ if(SQL_PYSDK_ENABLE)
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb/native/
                 COMMAND echo "Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905")
     else()
-        set(PYTHON_PLATFORM manylinux1_x86_64)
+        # ref https://peps.python.org/pep-0600/ 
+        # centos7 is glibc 2.17, so 'manylinux2014' should preferred, 
+        # 'manylinux2014' is just legacy alias 'manylinux_2_17', we keep this legacy name 
+        # since there still installation issue on python 3.8 for new the name.
+        if (CMAKE_SYSTEM_PROCESSOR MATCHES "(amd64)|(x86_64)")
+            set(PYTHON_PLATFORM manylinux1_x86_64)
+        elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+            set(PYTHON_PLATFORM manylinux2014_aarch64)
+        else()
+            message(FATAL_ERROR "unsupported architecture ${CMAKE_SYSTEM_PROCESSOR}")
+        endif()
+
         add_custom_target(strip_python_so ALL DEPENDS sql_router_sdk
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb/native/
             COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb/native/_sql_router_sdk.so)

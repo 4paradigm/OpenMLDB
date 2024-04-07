@@ -115,8 +115,6 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
-    FLAGS_hdd_root_path = tmp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("standalone_test");
     return RUN_ALL_TESTS();
 }

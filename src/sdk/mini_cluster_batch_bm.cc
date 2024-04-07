@@ -27,6 +27,7 @@
 #include "sdk/sql_router.h"
 #include "sdk/table_reader.h"
 #include "test/base_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 DECLARE_bool(enable_distsql);
@@ -895,6 +896,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetupGlog(true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("mini_cluster_batch_bm");
     FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IsCluster();
     FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();
     ::benchmark::Initialize(&argc, argv);

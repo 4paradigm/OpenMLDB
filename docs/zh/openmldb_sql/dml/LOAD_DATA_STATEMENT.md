@@ -91,13 +91,13 @@ OpenMLDB 支持从 Hive 导入数据，但需要额外的设置和功能限制�
 
 ```sql
 set @@execute_mode='online';
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',' );
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', mode = 'append');
 ```
 
 从`data.csv`文件读取数据到表`t1`中。并使用`,`作为列分隔符， 字符串"NA"将被替换为NULL。
 
 ```sql
-LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', null_value='NA');
+LOAD DATA INFILE 'data.csv' INTO TABLE t1 OPTIONS(delimiter = ',', mode = 'append', null_value='NA');
 ```
 
 将`data_path`软拷贝到表`t1`中，作为离线数据。

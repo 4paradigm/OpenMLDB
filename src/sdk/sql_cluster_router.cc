@@ -43,6 +43,7 @@
 #include "brpc/channel.h"
 #include "cmd/display.h"
 #include "codec/encrypt.h"
+#include "codegen/insert_row_builder.h"
 #include "common/timer.h"
 #include "glog/logging.h"
 #include "nameserver/system_table.h"
@@ -62,7 +63,6 @@
 #include "sdk/split.h"
 #include "udf/udf.h"
 #include "vm/catalog.h"
-#include "codegen/insert_row_builder.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
@@ -475,14 +475,12 @@ bool SQLClusterRouter::GetMultiRowInsertInfo(const std::string& db, const std::s
     // TODO(someone):
     // 1. default value from table definition
     // 2. parameters
-    ::hybridse::codegen::InsertRowBuilder insert_builder(&sc);
-    {
-        auto s = insert_builder.Init();
-        if (!s.ok()) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, s.ToString());
-            return false;
-        }
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    auto jit = std::shared_ptr<hybridse::vm::HybridSeJitWrapper>(hybridse::vm::HybridSeJitWrapper::Create());
+    if (!jit->Init()) {
+        return false;
     }
+    ::hybridse::codegen::InsertRowBuilder insert_builder(jit.get(), &sc);
 
     size_t total_rows_size = insert_stmt->values_.size();
     for (size_t i = 0; i < total_rows_size; i++) {

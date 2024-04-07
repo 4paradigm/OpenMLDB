@@ -43,13 +43,13 @@ public class MySqlListener implements AutoCloseable {
   public static final String VERSION_COMMENT = "";
   private static final Pattern SETTINGS_PATTERN =
       Pattern.compile("@@([\\w.]+)(?:\\sAS\\s)?(\\w+)?");
+  private static final Pattern USE_DB_PATTERN = Pattern.compile("(?i)use (.+)");
   private final SqlEngine sqlEngine;
   private final int port;
   private final Channel channel;
   private final io.netty.channel.EventLoopGroup parentGroup;
   private final EventLoopGroup childGroup;
   private final EventExecutorGroup eventExecutorGroup;
-  private int connectionId;
 
   public MySqlListener(int port, int executorGroupSize, SqlEngine sqlEngine) {
     this.port = port;
@@ -151,7 +151,7 @@ public class MySqlListener implements AutoCloseable {
 
     try {
       sqlEngine.authenticate(
-          connectionId, response.getDatabase(), response.getUsername(), scramble411, salt);
+          getConnectionId(ctx), response.getDatabase(), response.getUsername(), scramble411, salt);
     } catch (IOException e) {
       System.out.println(
           "[mysql-protocol] Sql query exception: " + response.getUsername() + ", " + remoteAddr);
@@ -180,7 +180,8 @@ public class MySqlListener implements AutoCloseable {
   }
 
   private void handleQuery(
-      ChannelHandlerContext ctx, QueryCommand query, byte[] salt, String remoteAddr) {
+      ChannelHandlerContext ctx, QueryCommand query, byte[] salt, String remoteAddr)
+      throws IOException {
     final String queryString = query.getQuery();
     final String database = query.getDatabase();
     final String userName = query.getUserName();
@@ -196,6 +197,8 @@ public class MySqlListener implements AutoCloseable {
             + userName
             + ", scramble411: "
             + scramble411.length);
+    Matcher useDbMatcher =
+        USE_DB_PATTERN.matcher(queryString.replaceAll("/\\*.*\\*/", "").toLowerCase().trim());
 
     if (isServerSettingsQuery(queryString)) {
       sendSettingsResponse(ctx, query, remoteAddr);
@@ -206,6 +209,9 @@ public class MySqlListener implements AutoCloseable {
             .trim()
             .startsWith("set @@execute_mode=")) {
       // ignore SET command
+      ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
+    } else if (useDbMatcher.matches()) {
+      sqlEngine.useDatabase(getConnectionId(ctx), useDbMatcher.group(1));
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
     } else if (queryString.equalsIgnoreCase("rollback")) {
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
@@ -289,8 +295,15 @@ public class MySqlListener implements AutoCloseable {
             }
           };
       try {
+        String replacedQuery = queryString.replaceAll("^/\\*.*\\*/\\s*", "");
         sqlEngine.query(
-            connectionId, resultSetWriter, database, userName, scramble411, salt, queryString);
+            getConnectionId(ctx),
+            resultSetWriter,
+            database,
+            userName,
+            scramble411,
+            salt,
+            replacedQuery);
       } catch (IOException e) {
         System.out.println("[mysql-protocol] Sql query exception: " + userName + ", " + remoteAddr);
         e.printStackTrace();
@@ -411,7 +424,7 @@ public class MySqlListener implements AutoCloseable {
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 63));
-          values.add(Integer.toString(connectionId));
+          values.add(Integer.toString(getConnectionId(ctx)));
           break;
         case "character_set_client":
         case "character_set_connection":
@@ -559,11 +572,19 @@ public class MySqlListener implements AutoCloseable {
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_LONGLONG, 12));
           values.add("1");
           break;
+        case "session.transaction_isolation":
         case "transaction_isolation":
           columnDefinitions.add(
               newColumnDefinition(
                   ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_VAR_STRING, 63));
           values.add("REPEATABLE-READ");
+          //          values.add("READ-UNCOMMITTED");
+          break;
+        case "session.transaction_read_only":
+          columnDefinitions.add(
+              newColumnDefinition(
+                  ++sequenceId, fieldName, systemVariable, ColumnType.MYSQL_TYPE_TINY, 1));
+          values.add("0");
           //          values.add("READ-UNCOMMITTED");
           break;
         default:
@@ -597,6 +618,10 @@ public class MySqlListener implements AutoCloseable {
         .build();
   }
 
+  private int getConnectionId(ChannelHandlerContext ctx) {
+    return Integer.parseUnsignedInt(ctx.channel().id().asShortText(), 16);
+  }
+
   private class ServerHandler extends ChannelInboundHandlerAdapter {
     private final byte[] salt;
     private String remoteAddr;
@@ -611,14 +636,13 @@ public class MySqlListener implements AutoCloseable {
       // todo may java.lang.NullPointerException
       this.remoteAddr =
           ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress();
-      connectionId = Integer.parseUnsignedInt(ctx.channel().id().asShortText(), 16);
       System.out.println("[mysql-protocol] Server channel active");
       final EnumSet<CapabilityFlags> capabilities = CapabilityFlags.getImplicitCapabilities();
       CapabilityFlags.setCapabilitiesAttr(ctx.channel(), capabilities);
       ctx.writeAndFlush(
           Handshake.builder()
               .serverVersion(VERSION)
-              .connectionId(connectionId)
+              .connectionId(getConnectionId(ctx))
               .addAuthData(salt)
               .characterSet(MysqlCharacterSet.UTF8MB4_0900_AI_CI)
               .addCapabilities(capabilities)
@@ -628,7 +652,7 @@ public class MySqlListener implements AutoCloseable {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
       System.out.println("[mysql-protocol] Server channel inactive: " + new Date());
-      sqlEngine.close(connectionId);
+      sqlEngine.close(getConnectionId(ctx));
     }
 
     @Override
@@ -640,8 +664,9 @@ public class MySqlListener implements AutoCloseable {
       } else if (msg instanceof InitDbCommand) {
         InitDbCommand initDbCommand = (InitDbCommand) msg;
         System.out.println("[mysql-protocol] Received message: " + initDbCommand);
-        sqlEngine.useDatabase(connectionId, initDbCommand.getDatabase());
-        ctx.writeAndFlush(OkResponse.builder().sequenceId(initDbCommand.getSequenceId() + 1).build());
+        sqlEngine.useDatabase(getConnectionId(ctx), initDbCommand.getDatabase());
+        ctx.writeAndFlush(
+            OkResponse.builder().sequenceId(initDbCommand.getSequenceId() + 1).build());
       } else {
         System.out.println("[mysql-protocol] Received message: " + msg);
 
@@ -674,7 +699,7 @@ public class MySqlListener implements AutoCloseable {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
       cause.printStackTrace();
       ctx.close();
-      sqlEngine.close(connectionId);
+      sqlEngine.close(getConnectionId(ctx));
     }
   }
 }

@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.batch.utils
 
 import java.util
-import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef}
+import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type => HybridseProtoType}
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
@@ -70,10 +70,13 @@ object HybridseUtil {
   def getTableDef(tableName: String, dataFrame: DataFrame): TableDef = {
     val tblBulder = TableDef.newBuilder()
     dataFrame.schema.foreach(field => {
-      tblBulder.addColumns(ColumnDef.newBuilder()
+      var sc = DataTypeUtil.sparkTypeToHybridseProtoType(field.dataType)
+      tblBulder.addColumns(
+        ColumnDef.newBuilder()
         .setName(field.name)
         .setIsNotNull(!field.nullable)
-        .setType(DataTypeUtil.sparkTypeToHybridseProtoType(field.dataType))
+        .setSchema(sc)
+        .setType(if (sc.hasBaseType()) {sc.getBaseType()} else {HybridseProtoType.kNull})
         .build()
       )
     })
@@ -84,17 +87,20 @@ object HybridseUtil {
   def getHybridseSchema(structType: StructType): java.util.List[ColumnDef] = {
     val list = new util.ArrayList[ColumnDef]()
     structType.foreach(field => {
+      var sc = DataTypeUtil.sparkTypeToHybridseProtoType(field.dataType)
       list.add(ColumnDef.newBuilder()
         .setName(field.name)
         .setIsNotNull(!field.nullable)
-        .setType(DataTypeUtil.sparkTypeToHybridseProtoType(field.dataType)).build())
+        .setSchema(sc)
+        .setType(if (sc.hasBaseType()) {sc.getBaseType()} else {HybridseProtoType.kNull})
+        .build())
     })
     list
   }
 
   def getSparkSchema(columns: java.util.List[ColumnDef]): StructType = {
     StructType(columns.asScala.map(col => {
-      StructField(col.getName, DataTypeUtil.hybridseProtoTypeToSparkType(col.getType), !col.getIsNotNull)
+      StructField(col.getName, DataTypeUtil.hybridseProtoTypeToSparkType(col.getSchema), !col.getIsNotNull)
     }))
   }
 
@@ -219,6 +225,8 @@ object HybridseUtil {
       "iceberg"
     } else if (file.toLowerCase().startsWith("openmldb://")) {
       "openmldb" // TODO(hw): no doc for it
+    } else if (file.toLowerCase().startsWith("tidb://")) {
+      "tidb"
     } else {
       parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
     }

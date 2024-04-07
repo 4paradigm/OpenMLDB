@@ -23,6 +23,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
@@ -2783,6 +2784,90 @@ void SetOperationNode::Print(std::ostream &output, const std::string &org_tab) c
         output << "\n";
         PrintSqlNode(output, org_tab + INDENT + INDENT, node, std::to_string(i), i + 1 == inputs().size());
     }
+}
+
+absl::StatusOr<codec::Schema> CreateStmt::GetColumnDefListAsSchema() const {
+    codec::Schema sc;
+
+    for (auto col : GetTableElementList()) {
+        auto *col_def = col->GetAsOrNull<node::ColumnDefNode>();
+        if (col_def == nullptr) {
+            continue;
+        }
+
+        CHECK_ABSL_STATUS(col_def->GetProtoColumnDef(sc.Add()));
+    }
+
+    return sc;
+}
+absl::Status ColumnDefNode::GetProtoColumnDef(type::ColumnDef* def) const {
+    def->set_name(GetColumnName());
+    def->set_is_not_null(GetIsNotNull());
+
+    CHECK_ABSL_STATUS(schema()->GetProtoColumnSchema(def->mutable_schema()));
+
+    if (def->schema().has_base_type()) {
+        def->set_type(def->schema().base_type());
+    }
+
+    return absl::OkStatus();
+}
+
+absl::Status ColumnSchemaNode::GetProtoColumnSchema(type::ColumnSchema* sc_alloca) const {
+    sc_alloca->set_is_not_null(not_null());
+
+    switch (type()) {
+        case hybridse::node::kBool:
+            sc_alloca->set_base_type(type::kBool);
+            break;
+        case hybridse::node::kInt16:
+            sc_alloca->set_base_type(type::kInt16);
+            break;
+        case hybridse::node::kInt32:
+            sc_alloca->set_base_type(type::kInt32);
+            break;
+        case hybridse::node::kInt64:
+            sc_alloca->set_base_type(type::kInt64);
+            break;
+        case hybridse::node::kFloat:
+            sc_alloca->set_base_type(type::kFloat);
+            break;
+        case hybridse::node::kDouble:
+            sc_alloca->set_base_type(type::kDouble);
+            break;
+        case hybridse::node::kDate:
+            sc_alloca->set_base_type(type::kDate);
+            break;
+        case hybridse::node::kTimestamp:
+            sc_alloca->set_base_type(type::kTimestamp);
+            break;
+        case hybridse::node::kVarchar:
+            sc_alloca->set_base_type(type::kVarchar);
+            break;
+        case hybridse::node::kArray: {
+            if (generics().size() != 1) {
+                return absl::FailedPreconditionError(
+                    absl::Substitute("expect generic size = 1 for array type, but got $0", generics().size()));
+            }
+            auto* arr = sc_alloca->mutable_array_type();
+            CHECK_ABSL_STATUS(generics_[0]->GetProtoColumnSchema(arr->mutable_ele_type()));
+            break;
+        }
+        case hybridse::node::kMap: {
+            if (generics().size() != 2) {
+                return absl::FailedPreconditionError(
+                    absl::Substitute("expect generic size = 2 for map type, but got $0", generics().size()));
+            }
+            auto* mp = sc_alloca->mutable_map_type();
+            CHECK_ABSL_STATUS(generics_[0]->GetProtoColumnSchema(mp->mutable_key_type()));
+            CHECK_ABSL_STATUS(generics_[1]->GetProtoColumnSchema(mp->mutable_value_type()));
+            break;
+        }
+        default:
+            return absl::UnimplementedError(absl::StrCat("unsupported type: ", DebugString()));
+    }
+
+    return absl::OkStatus();
 }
 }  // namespace node
 }  // namespace hybridse

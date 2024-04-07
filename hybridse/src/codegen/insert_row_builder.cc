@@ -21,7 +21,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_join.h"
 #include "base/fe_status.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/context.h"
@@ -29,39 +31,36 @@
 #include "node/node_manager.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
-#include "vm/engine.h"
 #include "vm/jit_wrapper.h"
 
 namespace hybridse {
 namespace codegen {
 
-InsertRowBuilder::InsertRowBuilder(const codec::Schema* schema) : schema_(schema) {}
-
-absl::Status InsertRowBuilder::Init() {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
-
-    jit_ = std::unique_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::Create());
-    if (!jit_->Init()) {
-        jit_ = nullptr;
-        return absl::InternalError("fail to init jit");
-    }
-    if (!vm::HybridSeJitWrapper::InitJitSymbols(jit_.get())) {
-        jit_ = nullptr;
-        return absl::InternalError("fail to init jit symbols");
-    }
-    return absl::OkStatus();
-}
+InsertRowBuilder::InsertRowBuilder(vm::HybridSeJitWrapper* jit, const codec::Schema* schema)
+    : schema_(schema), jit_(jit) {}
 
 absl::StatusOr<std::shared_ptr<int8_t>> InsertRowBuilder::ComputeRow(const node::ExprListNode* values) {
-    EnsureInitialized();
     return ComputeRow(values->children_);
 }
 
 absl::StatusOr<std::shared_ptr<int8_t>> InsertRowBuilder::ComputeRow(absl::Span<node::ExprNode* const> values) {
-    EnsureInitialized();
+    auto rs = ComputeRowUnsafe(values);
+    CHECK_ABSL_STATUSOR(rs);
+
+    auto managed_row = std::shared_ptr<int8_t>(rs.value(), std::free);
+    return managed_row;
+}
+
+absl::StatusOr<int8_t*> InsertRowBuilder::ComputeRowUnsafe(absl::Span<node::ExprNode* const> values) {
+    absl::Cleanup clean = [&]() { fn_counter_++; };
+
+    DLOG(INFO) << absl::StrJoin(values, ", ", [](std::string* str, const node::ExprNode* const expr) {
+        absl::StrAppend(str, expr->GetExprString());
+    });
 
     std::unique_ptr<llvm::LLVMContext> llvm_ctx = llvm::make_unique<llvm::LLVMContext>();
-    std::unique_ptr<llvm::Module> llvm_module = llvm::make_unique<llvm::Module>("insert_row_builder", *llvm_ctx);
+    std::unique_ptr<llvm::Module> llvm_module =
+        llvm::make_unique<llvm::Module>(absl::StrCat("insert_row_builder_", fn_counter_.load()), *llvm_ctx);
     vm::SchemasContext empty_sc;
     node::NodeManager nm;
     codec::Schema empty_param_types;
@@ -78,7 +77,7 @@ absl::StatusOr<std::shared_ptr<int8_t>> InsertRowBuilder::ComputeRow(absl::Span<
         transformed.push_back(out);
     }
 
-    std::string fn_name = absl::StrCat("gen_insert_row_", fn_counter_++);
+    std::string fn_name = absl::StrCat("gen_insert_row_", fn_counter_.load());
     auto fs = BuildFn(&dump_ctx, fn_name, transformed);
     CHECK_ABSL_STATUSOR(fs);
 
@@ -98,9 +97,7 @@ absl::StatusOr<std::shared_ptr<int8_t>> InsertRowBuilder::ComputeRow(absl::Span<
     int8_t* insert_row = nullptr;
     encode(&insert_row);
 
-    auto managed_row = std::shared_ptr<int8_t>(insert_row, std::free);
-
-    return managed_row;
+    return insert_row;
 }
 
 absl::StatusOr<llvm::Function*> InsertRowBuilder::BuildFn(CodeGenContext* ctx, llvm::StringRef fn_name,
@@ -135,7 +132,7 @@ absl::StatusOr<llvm::Function*> InsertRowBuilder::BuildFn(CodeGenContext* ctx, l
         BufNativeEncoderIRBuilder encode_builder(ctx, &columns, schema_);
         CHECK_STATUS_TO_ABSL(encode_builder.Init());
 
-        encode_builder.BuildEncode(row_ptr_ptr);
+        CHECK_STATUS_TO_ABSL(encode_builder.BuildEncode(row_ptr_ptr));
 
         builder->CreateRetVoid();
     }
@@ -143,7 +140,5 @@ absl::StatusOr<llvm::Function*> InsertRowBuilder::BuildFn(CodeGenContext* ctx, l
     return fn;
 }
 
-// build the function that transform a single insert row values into encoded row
-absl::StatusOr<llvm::Function*> InsertRowBuilder::BuildEncodeFn() { return absl::OkStatus(); }
 }  // namespace codegen
 }  // namespace hybridse
