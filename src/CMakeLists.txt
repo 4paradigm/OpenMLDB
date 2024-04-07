@@ -60,7 +60,7 @@ endfunction(compile_lib)
 
 set(TEST_LIBS
     openmldb_test_base apiserver nameserver tablet query_response_time openmldb_sdk
-    openmldb_catalog client zk_client storage schema replica openmldb_codec base openmldb_proto log
+    openmldb_catalog client zk_client storage schema replica openmldb_codec base auth openmldb_proto log
     common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
     # GNU implementation prior to 9.1 requires linking with -lstdc++fs
@@ -152,6 +152,7 @@ ${BRPC_LIBS})
 if(TESTING_ENABLE)
     add_subdirectory(test)
     compile_test(cmd)
+    compile_test(auth)
     compile_test(base)
     compile_test(codec)
     compile_test(zk)
@@ -171,7 +172,7 @@ endif()
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
 add_executable(data_exporter tools/data_exporter.cc tools/log_exporter.cc tools/tablemeta_reader.cc $<TARGET_OBJECTS:openmldb_proto>)
 
-set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
+set(LINK_LIBS log openmldb_proto base auth ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND LINK_LIBS unwind)
 endif()
