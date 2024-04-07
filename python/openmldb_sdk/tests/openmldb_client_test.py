@@ -43,9 +43,8 @@ class TestOpenMLDBClient:
     def setup_class(cls):
         cls.engine = db.create_engine('openmldb:///?zk={}&zkPath={}'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         cls.connection = cls.engine.connect()
-        cls.connection.execute("create database if not exists {};".format(
-            cls.db))
-        cls.connection.execute(f"use {cls.db}")
+        cls.connection.exec_driver_sql("create database if not exists {};".format(cls.db))
+        cls.connection.exec_driver_sql(f"use {cls.db}")
 
     @staticmethod
     def has_table(connection, table_name):
@@ -53,12 +52,10 @@ class TestOpenMLDBClient:
 
     def recreate_table(self, table, schema):
         if self.has_table(self.connection, table):
-            self.connection.execute("drop table {}".format(table))
+            self.connection.exec_driver_sql("drop table {}".format(table))
         assert not self.has_table(self.connection, table)
         # key is col3, partitionnum==1
-        self.connection.execute(
-            "create table {}({}) OPTIONS(partitionnum=1);".format(
-                table, schema))
+        self.connection.exec_driver_sql("create table {}({}) OPTIONS(partitionnum=1);".format(table, schema))
         assert self.has_table(self.connection, table)
 
     @staticmethod
@@ -120,21 +117,20 @@ class TestOpenMLDBClient:
         # 1004, ?, 'hubei', 'wuhan', 5 - 2020-11-29
         insert4 = "insert into {} values({});".format(
             table, self.stringify_join(test_rows[4], [1]))
-        self.connection.execute(insert0)
-        self.connection.execute(insert1, ({
+        self.connection.exec_driver_sql(insert0)
+        self.connection.exec_driver_sql(insert1, ({
             "col4": test_rows[1][3],
             "col5": test_rows[1][4]
         }))
-        self.connection.execute(insert2, ({
+        self.connection.exec_driver_sql(insert2, ({
             "col3": test_rows[2][2],
             "col4": test_rows[2][3]
         }))
-        self.connection.execute(
-            insert3, self.convert_to_dicts(column_names, [test_rows[3]]))
-        self.connection.execute(insert4, [{"col2": test_rows[4][1]}])
+        self.connection.exec_driver_sql(insert3, self.convert_to_dicts(column_names, [test_rows[3]]))
+        self.connection.exec_driver_sql(insert4, [{"col2": test_rows[4][1]}])
 
         # order by is not supported now
-        result = self.connection.execute("select * from {};".format(table))
+        result = self.connection.exec_driver_sql("select * from {};".format(table))
         # fetch many times
         result_list = result.fetchmany()
         assert len(result_list) == 1
@@ -148,52 +144,45 @@ class TestOpenMLDBClient:
 
         # insert invalid type
         with pytest.raises(TypeError):
-            self.connection.execute(insert1, (2, 2))
+            self.connection.exec_driver_sql(insert1, (2, 2))
         # insert many
         new_rows = [(1005, "2020-12-29", "shandong", 'jinan', 6),
                     (1006, "2020-12-30", "fujian", 'fuzhou', 7)]
         # insert3 is all ?
-        self.connection.execute(insert3,
-                                self.convert_to_dicts(column_names, new_rows))
+        self.connection.exec_driver_sql(insert3, self.convert_to_dicts(column_names, new_rows))
         test_rows += new_rows
 
         # test fetch all
-        rs = self.connection.execute("select * from {};".format(table))
+        rs = self.connection.exec_driver_sql("select * from {};".format(table))
         result = sorted(rs.fetchall(), key=lambda x: x[0])
         assert result == test_rows
 
         # test convert to list
-        rs = self.connection.execute("select * from {};".format(table))
+        rs = self.connection.exec_driver_sql("select * from {};".format(table))
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows
 
         # test condition select
-        rs = self.connection.execute(
-            "select * from {} where col3 = 'hefei';".format(table))
+        rs = self.connection.exec_driver_sql("select * from {} where col3 = 'hefei';".format(table))
         # hefei row idx == 1
         assert list(rs) == [test_rows[1]]
 
         # test request mode, select sql with dict parameters(one dict or list of dict)
         request_row = (9999, "2020-12-27", "zhejiang", "hangzhou", 100)
-        rs = self.connection.execute(
-            "select * from {};".format(table),
-            self.convert_to_dict(column_names, request_row))
+        rs = self.connection.exec_driver_sql("select * from {};".format(table),
+                                             self.convert_to_dict(column_names, request_row))
         assert list(rs) == [request_row]
-        rs = self.connection.execute(
-            "select * from {};".format(table),
-            self.convert_to_dicts(column_names, [request_row]))
+        rs = self.connection.exec_driver_sql("select * from {};".format(table),
+                                             self.convert_to_dicts(column_names, [request_row]))
         assert list(rs) == [request_row]
 
         # test parameterized query in batch mode, select sql with tuple or tuple list
-        rs = self.connection.execute(
-            "select * from {} where col3 = ?;".format(table), 'hefei')
+        rs = self.connection.exec_driver_sql("select * from {} where col3 = ?;".format(table), tuple(['hefei']))
         assert list(rs) == [test_rows[1]]
-        rs = self.connection.execute(
-            "select * from {} where col3 = ?;".format(table), ['hefei'])
-        assert list(rs) == [test_rows[1]]
-        rs = self.connection.execute(
-            "select * from {} where col3 = ?;".format(table), [('hefei')])
-        assert list(rs) == [test_rows[1]]
+        # rs = self.connection.exec_driver_sql("select * from {} where col3 = ?;".format(table), ['hefei'])
+        # assert list(rs) == [test_rows[1]]
+        # rs = self.connection.exec_driver_sql("select * from {} where col3 = ?;".format(table), [('hefei')])
+        # assert list(rs) == [test_rows[1]]
 
     def test_procedure(self):
         # TODO(hw): creating procedure is not recommended, test deploy
@@ -204,13 +193,13 @@ class TestOpenMLDBClient:
 
         # try to delete sp before recreate, cause table may have associated deployment 'sp'
         try:
-            self.connection.execute("drop procedure sp;")
+            self.connection.exec_driver_sql("drop procedure sp;")
         except DatabaseError as e:
             assert "not found" in str(e)
 
         self.recreate_table(table, schema_str)
 
-        self.connection.execute(
+        self.connection.exec_driver_sql(
             "create procedure sp (col1 bigint, col2 date, col3 string, col4 string, col5 int) "
             "begin select * from {}; end;".format(table))
 
@@ -221,7 +210,7 @@ class TestOpenMLDBClient:
                             self.convert_to_dict(column_names, test_rows[0]))
         assert list(rs.fetchall()) == test_rows
 
-        self.connection.execute("drop procedure sp;")
+        self.connection.exec_driver_sql("drop procedure sp;")
 
         # test batch request mode
         mouse2 = self.engine.raw_connection().cursor()
@@ -248,43 +237,40 @@ class TestOpenMLDBClient:
                       'city' + str(i), i, (1590738990 + i) * 1000)
                      for i in range(1, 10)]
 
-        self.connection.execute(
+        self.connection.exec_driver_sql(
             "insert into {} values (?, ?, ?, ?, ?, ?);".format(table),
             self.convert_to_dicts(schema, test_rows))
 
-        rs = self.connection.execute(
-            "select * from {} where col3 = ?;".format(table), 'province1')
+        rs = self.connection.exec_driver_sql(
+            "select * from {} where col3 = ?;".format(table), tuple(['province1']))
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows[0::4]
 
         # test parameterized query in batch mode case 2
-        rs = self.connection.execute(
-            "select * from {} where col3 = ?;".format(table), 'province2')
+        rs = self.connection.exec_driver_sql(
+            "select * from {} where col3 = ?;".format(table), tuple(['province2']))
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows[1::4]
 
         # test parameterized query in batch mode case 3
-        rs = self.connection.execute(
-            "select * from {} where col3 = ?;".format(table), 'province3')
+        rs = self.connection.exec_driver_sql(
+            "select * from {} where col3 = ?;".format(table), tuple(['province3']))
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows[2::4]
 
         # test parameterized query in batch mode case 3 and col1 < 1004, only one row[2]
-        rs = self.connection.execute(
-            "select * from {} where col3 = ? and col1 < ?;".format(table),
-            ('province3', 1004))
+        rs = self.connection.exec_driver_sql("select * from {} where col3 = ? and col1 < ?;".format(table),
+                                             ('province3', 1004))
         assert list(rs) == [test_rows[2]]
 
         # test parameterized query in batch mode case 4
-        rs = self.connection.execute(
-            "select * from {} where col3 = ? and col1 < ? and col2 < ?;".format(
-                table), ('province3', 2000, date.fromisoformat('2022-05-04')))
+        rs = self.connection.exec_driver_sql("select * from {} where col3 = ? and col1 < ? and col2 < ?;".format(table),
+                                             ('province3', 2000, date.fromisoformat('2022-05-04')))
         assert list(rs) == [test_rows[2]]
 
         # test parameterized query in batch mode case 5
-        rs = self.connection.execute(
-            "select * from {} where col3 = ? and col6 < ?;".format(table),
-            ('province3', datetime.fromtimestamp(1590738997.000)))
+        rs = self.connection.exec_driver_sql("select * from {} where col3 = ? and col6 < ?;".format(table),
+                                             ('province3', datetime.fromtimestamp(1590738997.000)))
         assert list(rs) == [test_rows[2]]
 
 

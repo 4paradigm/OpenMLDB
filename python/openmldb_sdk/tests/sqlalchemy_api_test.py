@@ -38,8 +38,8 @@ class TestSqlalchemyAPI:
             'openmldb:///?zk={}&zkPath={}'.format(
                 OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         self.connection = self.engine.connect()
-        self.connection.execute('create database if not exists db_test')
-        self.connection.execute('use db_test')
+        self.connection.exec_driver_sql('create database if not exists db_test')
+        self.connection.exec_driver_sql('use db_test')
         self.metadata = MetaData()
         self.test_table = Table('test_table', self.metadata,
                                 Column('x', String), Column('y', Integer))
@@ -53,13 +53,13 @@ class TestSqlalchemyAPI:
                                                                 y=100))
 
     def test_select(self):
-        for row in self.connection.execute(select([self.test_table])):
+        for row in self.connection.execute(select(self.test_table)):
             assert 'first' in list(row)
             assert 100 in list(row)
 
     @pytest.mark.skip(reason="test may fail to init")
     def test_request_timeout(self):
-        self.connection.execute(
+        self.connection.exec_driver_sql(
             "insert into test_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
         )
 
@@ -69,7 +69,7 @@ class TestSqlalchemyAPI:
         connection = engine.connect()
 
         with pytest.raises(DatabaseError) as e:
-            connection.execute(
+            connection.exec_driver_sql(
                 "select * from test_table where x='b'").fetchall()
         assert 'select fail' in str(e.value)
 
@@ -79,17 +79,17 @@ class TestSqlalchemyAPI:
             'openmldb:///db_test?zk={}&zkPath={}&zkLogLevel=0'.format(
                 OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         connection = engine.connect()
-        connection.execute("select 1;")
+        connection.exec_driver_sql("select 1;")
 
         # redirect to /tmp/test_openmldb_zk.log, may core dump when client close
         # engine = db.create_engine(
         #     'openmldb:///db_test?zk={}&zkPath={}&zkLogFile=/tmp/test_openmldb_zk.log'.format(
         #         OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         # connection = engine.connect()
-        # connection.execute("select 1;")
+        # connection.exec_driver_sql("select 1;")
 
     def teardown_class(self):
-        self.connection.execute("drop table test_table;")
+        self.connection.exec_driver_sql("drop table test_table;")
         self.connection.close()
 
 
