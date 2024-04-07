@@ -6,7 +6,7 @@
 	"settings": {
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/**",
-            "/deps/usr/include"
+			"/deps/usr/include"
 		],
 		"C_Cpp.default.compilerPath": "/opt/rh/devtoolset-8/root/usr/bin/gcc",
 		"C_Cpp.default.cppStandard": "c++17"
@@ -14,5 +14,10 @@
 	// Visual Studio Code extensions (plugins) to be installed.
 	"extensions": [
 		"ms-vscode.cpptools"
+	],
+	"runArgs": [
+		"--network=host",
+		"--env-file",
+		".devcontainer/devcontainer.env"
 	]
 }
