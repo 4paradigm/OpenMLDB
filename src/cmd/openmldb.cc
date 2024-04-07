@@ -38,6 +38,7 @@
 #endif
 #include "apiserver/api_server_impl.h"
 #include "auth/brpc_authenticator.h"
+#include "auth/user_access_manager.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -54,7 +55,6 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "version.h"  // NOLINT
-#include "auth/user_access_manager.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 using TabletClient = openmldb::client::TabletClient;
@@ -146,10 +146,10 @@ void StartNameServer() {
         exit(1);
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    if (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                   &table_info)) {
-        PDLOG(WARNING, "Fail to get table info for user table");
-        exit(1);
+    while (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                      &table_info)) {
+        PDLOG(INFO, "Fail to get table info for user table, waiting for leader to create it");
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
     brpc::ServerOptions options;
