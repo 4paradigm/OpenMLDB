@@ -186,11 +186,7 @@ ClusterSDK::ClusterSDK(const std::shared_ptr<SQLRouterOptions>& options)
       taskmanager_leader_path_(options->zk_path + "/taskmanager/leader"),
       zk_client_(nullptr),
       pool_(1) {
-    if (options->user.empty()) {
-        authn::g_auth_token = authn::UserToken{"root", codec::Encrypt("")};
-    } else {
-        authn::g_auth_token = authn::UserToken{options->user, codec::Encrypt(options->password)};
-    }
+    authn::g_auth_token = authn::UserToken{options->user, codec::Encrypt(options->password)};
 }
 
 ClusterSDK::~ClusterSDK() {
