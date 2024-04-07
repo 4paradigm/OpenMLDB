@@ -85,7 +85,7 @@ TEST_F(RefreshableMapTest, ConcurrencySafety) {
     for (int i = 0; i < numReaders; ++i) {
         threads.emplace_back([&map]() {
             for (int j = 0; j < 1000; ++j) {
-                auto value = map.Get(rand_r() % 100);
+                auto value = map.Get(rand() % 100);
             }
         });
     }
