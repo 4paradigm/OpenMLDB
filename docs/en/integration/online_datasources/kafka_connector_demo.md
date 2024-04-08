@@ -37,7 +37,7 @@ Observing the pqs and latency of the report, in the case of a single machine, wi
 ### Download and Preparation
 
 - If you need to download Kafka, please click on the [Kafka Official Download](https://kafka.apache.org/downloads) link and download `kafka_2.13-3.1.0.tgz`.
-- If you need to download the connector package and its dependencies, please click on [kafka-connect-jdbc.tgz](http://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz).
+- If you need to download the connector package and its dependencies, please click on [kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz](https://openmldb.ai/download/kafka-connector/kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz).
 - If you need to download the configuration and script files required in this article, please click on [kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz).
 
 This article will use Docker mode to start OpenMLDB, so there is no need to download OpenMLDB separately. Additionally, both Kafka and the connector can be started in the same container.
@@ -138,7 +138,7 @@ First, upzip `/work/kafka` in the connector and kafka_demo_files package.
 
 ```
 cd /work/kafka
-tar zxf kafka-connect-jdbc.tgz
+tar zxf kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz
 tar zxf kafka_demo_files.tgz
 ```
 
