@@ -61,7 +61,7 @@ void UserAccessManager::SyncWithDB() {
         row_view.GetStrValue(0, &host);
         row_view.GetStrValue(1, &user);
         row_view.GetStrValue(2, &password);
-        new_user_map->emplace(FormUserHost(user, host), password);
+        new_user_map->emplace(FormUserHost(user, host == "%" ? "127.0.0.1" : host), password);
         it->Next();
     }
     user_map_.Refresh(std::move(new_user_map));
