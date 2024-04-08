@@ -35,7 +35,7 @@ Observing the pqs and latency of the report, in the case of a single machine, wi
 ## Overview
 
 ```{note}
-如果你已经熟悉Kafka和OpenMLDB，不想按以下步骤操作，可以参考[OpenMLDB Compose With Kafka](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file#kafka)，使用docker-compose快速启动OpenMLDB和Kafka，此项目还包含写入kafka的测试脚本。单独使用Kafka，可以使用镜像`docker pull ghcr.io/vagetablechicken/kafka-connect:latest`，此镜像已包含OpenMLDB Connector，运行参考[compose.yml](https://github.com/vagetablechicken/openmldb-compose/blob/519387e7ad9a8f0467b51886d5b3f07964150753/compose.yml#L288)。
+If you are already familiar with Kafka and OpenMLDB and do not want to follow the steps below, you can refer to [OpenMLDB Compose With Kafka](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file#kafka) for quickly starting OpenMLDB and Kafka using docker-compose. This project also includes test scripts for writing to Kafka. If you only want to use Kafka, you can use the image `docker pull ghcr.io/vagetablechicken/kafka-connect:latest`, which already includes the OpenMLDB Connector. For running instructions, refer to [compose.yml](https://github.com/vagetablechicken/openmldb-compose/blob/519387e7ad9a8f0467b51886d5b3f07964150753/compose.yml#L288).
 ```
 
 ### Download and Preparation
