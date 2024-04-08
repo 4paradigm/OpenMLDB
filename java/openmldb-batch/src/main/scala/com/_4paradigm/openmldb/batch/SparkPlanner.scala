@@ -28,7 +28,8 @@ import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, CreateTablePlan, DataProviderPlan, FilterPlan,
   GroupByAggregationPlan, GroupByPlan, InsertPlan, JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan,
   SelectIntoPlan, SetOperationPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
-import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExternalUdfUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
+import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExternalUdfUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo,
+  NodeIndexType}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.std.VectorDataType
 import org.apache.hadoop.fs.{FileSystem, Path}

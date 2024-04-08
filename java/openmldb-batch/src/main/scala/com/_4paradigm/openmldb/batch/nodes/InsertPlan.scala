@@ -40,7 +40,8 @@ object InsertPlan {
     val db = if (dbInStmt.nonEmpty) dbInStmt else ctx.getConf.defaultDb
     val table = stmt.getTable_name_
     val tableInfo = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
-    require(tableInfo != null && tableInfo.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $tableInfo")
+    require(tableInfo != null && tableInfo.getName.nonEmpty,
+      s"table $db.$table info is not existed(no table name): $tableInfo")
 
     val colDescList = tableInfo.getColumnDescList
     var oriSchema = new StructType
