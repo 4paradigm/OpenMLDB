@@ -61,7 +61,11 @@ void UserAccessManager::SyncWithDB() {
         row_view.GetStrValue(0, &host);
         row_view.GetStrValue(1, &user);
         row_view.GetStrValue(2, &password);
-        new_user_map->emplace(FormUserHost(user, host == "%" ? "127.0.0.1" : host), password);
+        if (host == "%") {
+            new_user_map->emplace(user, password);
+        } else {
+            new_user_map->emplace(FormUserHost(user, host), password);
+        }
         it->Next();
     }
     user_map_.Refresh(std::move(new_user_map));
@@ -69,6 +73,8 @@ void UserAccessManager::SyncWithDB() {
 
 bool UserAccessManager::IsAuthenticated(const std::string& host, const std::string& user, const std::string& password) {
     if (auto stored_password = user_map_.Get(FormUserHost(user, host)); stored_password.has_value()) {
+        return stored_password.value() == password;
+    } else if (auto stored_password = user_map_.Get(user); stored_password.has_value()) {
         return stored_password.value() == password;
     }
     return false;
