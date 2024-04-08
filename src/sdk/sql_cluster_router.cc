@@ -2555,6 +2555,18 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     return taskmanager_client_ptr->ExportOfflineData(sql, config, default_db, sync_job, job_timeout, job_info);
 }
 
+::openmldb::base::Status SQLClusterRouter::InsertOfflineData(const std::string& sql,
+                                                             const std::map<std::string, std::string>& config,
+                                                             const std::string& default_db, bool sync_job,
+                                                             int job_timeout,
+                                                             ::openmldb::taskmanager::JobInfo* job_info) {
+    auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+    if (!taskmanager_client_ptr) {
+        return {base::ReturnCode::kServerConnError, "Fail to get TaskManager client"};
+    }
+    return taskmanager_client_ptr->InsertOfflineData(sql, config, default_db, sync_job, job_timeout, job_info);
+}
+
 ::openmldb::base::Status SQLClusterRouter::CreatePreAggrTable(const std::string& aggr_db, const std::string& aggr_table,
                                                               const ::openmldb::base::LongWindowInfo& window_info,
                                                               const ::openmldb::nameserver::TableInfo& base_table_info,
@@ -2801,14 +2813,21 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             return {};
         }
         case hybridse::node::kPlanTypeInsert: {
-            if (cluster_sdk_->IsClusterMode() && !is_online_mode) {
-                // Not support for inserting into offline storage
-                *status = {StatusCode::kCmdError,
-                           "Can not insert in offline mode, please set @@SESSION.execute_mode='online'"};
-                return {};
+            if (!cluster_sdk_->IsClusterMode() || is_online_mode) {
+                ExecuteInsert(db, sql, status);
+            } else {
+                ::openmldb::taskmanager::JobInfo job_info;
+                std::map<std::string, std::string> config = ParseSparkConfigString(GetSparkConfig());
+                ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
+                AddUserToConfig(&config);
+
+                auto base_status = InsertOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
+                if (base_status.OK()) {
+                    return this->GetJobResultSet(job_info.id(), status);
+                } else {
+                    *status = {StatusCode::kCmdError, base_status.msg};
+                }
             }
-            // if db name has been specified in sql, db parameter will be ignored
-            ExecuteInsert(db, sql, status);
             return {};
         }
         case hybridse::node::kPlanTypeDeploy: {

@@ -72,6 +72,10 @@ class TaskManagerClient : public Client {
                                                const std::string& default_db, bool sync_job, int job_timeout,
                                                ::openmldb::taskmanager::JobInfo* job_info);
 
+    ::openmldb::base::Status InsertOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
+                                               const std::string& default_db, bool sync_job, int job_timeout,
+                                               ::openmldb::taskmanager::JobInfo* job_info);
+
     ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table, int job_timeout);
 
     ::openmldb::base::Status CreateFunction(const std::shared_ptr<::openmldb::common::ExternalFun>& fun,
