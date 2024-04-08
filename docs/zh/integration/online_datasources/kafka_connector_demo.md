@@ -29,7 +29,7 @@ Kafka利用OpenMLDB Kafka Connector导入数据到OpenMLDB集群，其性能将�
 
 假设topic的数据量足够多，Kafka导入效率基本由Kafka topic的分区数和Connector的task数决定，如果这两者不够大，写入到OpenMLDB的并发度就不够高。task数量较大时，单个Kafka Connect服务也会收到单机物理资源限制，此时需要部署分布式的Kafka Connect，将tasks均匀分散到多台机器上，提高并发度。
 
-观察报告的pqs和latency，单机情况下，机器CPU core 40较充足，Kafka Connector可以配置较多的task，OpenMLDB端的写入qps单台50k，总计100k。但OpenMLDB内部的写入延迟并未明显提高，只是单机性能有限，使得写入表现如此。集群性能测试也证明了这一点，我们将OpenMLDB集群化后，单机部署Kafka Connect，Kafka topic分区和tasks数改变，qps不会有明显提高，而分布式部署Kafka Connect后，qps明显提高。两个Kafka Connect均分78个sink task写入，TabletServer QPS可以达到单台90k，总计180k；三个Kafka Connect均分120个sink task写入，TabletServer QPS可以达到单台100k，总计200k。
+观察报告的pqs和latency，单机情况下，机器CPU core 40较充足，Kafka Connector可以配置较多的task，OpenMLDB端的写入QPS单台50k，总计100k。但OpenMLDB内部的写入延迟并未明显提高，只是单机性能有限，使得写入表现如此。集群性能测试也证明了这一点，我们将OpenMLDB集群化后，单机部署Kafka Connect，Kafka topic分区和tasks数改变，QPS不会有明显提高，而分布式部署Kafka Connect后，QPS明显提高。两个Kafka Connect均分78个sink task写入，TabletServer QPS可以达到单台90k，总计180k；三个Kafka Connect均分120个sink task写入，TabletServer QPS可以达到单台100k，总计200k。
 
 ## 概览
 
