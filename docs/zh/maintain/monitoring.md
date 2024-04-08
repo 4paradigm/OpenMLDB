@@ -37,7 +37,7 @@ scrape_configs:
 
 4. 启动Grafana，并使用OpenMLDB Dashboard模版
 
-参考命令：`docker run -d -p 3000:3000 --name=grafana grafana/grafana-enterprise`
+参考命令：`docker run -d -p 3000:3000 --name=grafana grafana/grafana-oss`
 
 使用Dashboard模版创建Dashboard，模版ID：17843，URL：https://grafana.com/grafana/dashboards/17843 。如果是空Dashboard，可以到设置中修改`JSON Model`，将模版内容粘贴进去。
 

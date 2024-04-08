@@ -37,7 +37,7 @@ Command reference: `docker run -d -v <config_file>:/etc/prometheus/prometheus.ym
 
 4. Start Grafana and use the OpenMLDB Dashboard template
 
-Command reference: `docker run -d -p 3000:3000 --name=grafana grafana/grafana-enterprise`
+Command reference: `docker run -d -p 3000:3000 --name=grafana grafana/grafana-oss`
 
 Create a Dashboard using the template, Template ID: 17843, URL: https://grafana.com/grafana/dashboards/17843. If it is an empty Dashboard, you can modify the `JSON Model` in the settings and paste the template content.
 
