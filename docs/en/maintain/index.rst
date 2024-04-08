@@ -10,6 +10,7 @@ Maintenance
     backup
     scale
     monitoring
+    perf_guide
     upgrade
     cli
     status
