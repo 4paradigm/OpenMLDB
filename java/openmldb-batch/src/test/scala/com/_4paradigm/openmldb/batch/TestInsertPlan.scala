@@ -24,6 +24,7 @@ import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType,
   StructField, StructType, TimestampType}
 
 import java.sql.{Date, Timestamp}
+import java.util.Properties
 
 
 class TestInsertPlan extends SparkTestSuite {
@@ -33,7 +34,14 @@ class TestInsertPlan extends SparkTestSuite {
   val db = "offline_insert_test"
 
   override def customizedBefore(): Unit = {
+    val prop = new Properties
+    prop.load(getClass.getResourceAsStream("/test.properties"))
+    val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
+    val path = prop.getProperty("openmldb.zk.root.path", "/onebox")
     sparkSession = getSparkSession()
+    sparkSession.conf.set("openmldb.zk.cluster", cluster)
+    sparkSession.conf.set("openmldb.zk.root.path", path)
+
     openmldbSession = new OpenmldbSession(sparkSession)
     openmldbConnector = openmldbSession.openmldbCatalogService.sqlExecutor
     openmldbConnector.createDB(db)
