@@ -138,8 +138,8 @@ class DDLParser {
 };
 
 // return true if updated, else false and the result is the same as old_index
-// 16 cases: 4(same type merge) + 12(A(4,2), we can get `updated` flag by old==result, and old & new are swapable, but
-// in code, we can only check old & new one by one, so not C(4,2))
+// 10 cases: 4(same type merge) + 6(C(4,2)), we can get `updated` flag by old==result
+// we may update ttl when old_ttl is not standard, e.g. absandlat(0,0)->abs(0)
 bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result);
 
 }  // namespace openmldb::base

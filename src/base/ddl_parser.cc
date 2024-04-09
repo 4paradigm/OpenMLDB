@@ -709,55 +709,60 @@ common::TTLSt stdTTL(const common::TTLSt& ttl) {
 bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result) {
     // TTLSt has type and two values, updated is complex, so we just check result==old_ttl in the end
 
-    // we should shrink type first, absorlat(10,0) -> abs(10)
-    // e.g. merge absorlat(1,0) and absorlat(0,2), we need to check the values, we don't want to get absorlat(0,0), it's too large
-    // and if no abs when type is lat, just set a abs 0, to make compare simple
-    auto old_t = stdTTL(old_ttl);
-    auto new_t = stdTTL(new_ttl);
-
-    // complex ttl(absandlat or absorlat) won't have ttl value 0, it'll be converted to simple ttl
-    // merge case 1. same type, just merge values(max ttls)
+    // we should std type first, absorlat(10,0) -> abs(10)
+    // e.g. merge absorlat(1,0) and absorlat(0,2), we need to check the values, otherwise we'll get absorlat(0,0), it's too large
+    // and if no abs when type is lat, just set a abs 0, to make compare simple(no need to check has_xxx_ttl)
+    auto left = stdTTL(old_ttl);
+    auto right = stdTTL(new_ttl);
+    using type::TTLType;
+    // complex ttl(absandlat or absorlat) won't have ttl value 0, it has been converted to simple ttl
+    // merge case 1. same type, just merge values(0 means max)
     // merge case 2. different type
-    if (old_t.ttl_type() == new_t.ttl_type()) {
+    if (left.ttl_type() == right.ttl_type()) {
         // it's ok to merge both abs and lat ttl value even type is only abs or lat, just 0 merge 0
-        result->set_ttl_type(old_t.ttl_type());
-        TTLValueMerge(old_t, new_t, result);
+        result->set_ttl_type(left.ttl_type());
+        TTLValueMerge(left, right, result);
     } else {
         // old type != new type, and absandlat or absorlat won't have ttl value 0
-        if (old_t.ttl_type() == type::TTLType::kAbsAndLat || new_t.ttl_type() == type::TTLType::kAbsAndLat) {
-            // absandlat + abs/lat/absorlat = absandlat with value merged
-            // swapable, so 6 cases here?
-            // absandlat(2,3) + abs(4,0) = absandlat(4,3), don't consider 0
-            // absandlat(2,3) + abs(1,0) = absandlat(2,3)
-            result->set_ttl_type(type::TTLType::kAbsAndLat);
-            result->set_abs_ttl(std::max(old_t.abs_ttl(), new_t.abs_ttl()));
-            result->set_lat_ttl(std::max(old_t.lat_ttl(), new_t.lat_ttl()));
-        } else if (old_t.ttl_type() == type::TTLType::kAbsOrLat) {
-            // 2 cases: absorlat + abs/lat = lat/abs, leave the simple type, ignore another one
-            // merged result will ignore the new value of ignored type
-            DCHECK(new_t.ttl_type() == type::TTLType::kAbsoluteTime ||
-                   new_t.ttl_type() == type::TTLType::kLatestTime);
-            result->set_ttl_type(new_t.ttl_type());
-            TTLValueMerge(old_t, new_t, result);
-        } else if (new_t.ttl_type() == type::TTLType::kAbsOrLat) {
-            // 2 cases: abs/bat + absorlat, the same with above
-            DCHECK(new_t.ttl_type() == type::TTLType::kAbsoluteTime ||
-                   new_t.ttl_type() == type::TTLType::kLatestTime);
-            result->set_ttl_type(old_t.ttl_type());
-            TTLValueMerge(old_t, new_t, result);
-        } else {
-            // 2 cases, abs + lat -> absandlat
-            // set type, merge can't use lat ttl(0) if type is abs, so custom merge
-            result->set_ttl_type(type::TTLType::kAbsAndLat);
-            if (old_t.ttl_type() == type::TTLType::kAbsoluteTime) {
-                DCHECK(new_t.ttl_type() == type::TTLType::kLatestTime);
-                result->set_abs_ttl(old_t.abs_ttl());
-                result->set_lat_ttl(new_t.lat_ttl());
+        // swap first, try to make left type is complex type or (abs + lat)
+        if (right.ttl_type() == TTLType::kAbsAndLat ||
+            (right.ttl_type() == TTLType::kAbsOrLat && left.ttl_type() != TTLType::kAbsAndLat)) {
+            std::swap(left, right);
+        }
+        if (left.ttl_type() == TTLType::kLatestTime && right.ttl_type() == TTLType::kAbsoluteTime) {
+            std::swap(left, right);
+        }
+
+        if (left.ttl_type() == TTLType::kAbsAndLat) {
+            // 3 cases
+            // absandlat(x,y)+abs(z), absandlat(x,y)+abs(0): don't merge lat(cuz abs type lat is 0), use absandlat's lat.
+            // absandlat(x,y)+lat(z), absandlat(x,y)+lat(0): the same
+            // absandlat(x,y)+absorlat(k,j): we need to store more to avoid delete valid records, merge both. No 0
+            // value, so don't worry about set too large
+            result->CopyFrom(left);
+            if (right.ttl_type() == TTLType::kAbsoluteTime) {
+                result->set_abs_ttl(TTLValueMerge(left.abs_ttl(), right.abs_ttl()));
+            } else if (right.ttl_type() == TTLType::kLatestTime) {
+                result->set_lat_ttl(TTLValueMerge(left.lat_ttl(), right.lat_ttl()));
             } else {
-                DCHECK(old_t.ttl_type() == type::TTLType::kLatestTime);
-                result->set_abs_ttl(new_t.abs_ttl());
-                result->set_lat_ttl(old_t.lat_ttl());
+                DCHECK(right.ttl_type() == TTLType::kAbsOrLat);
+                TTLValueMerge(left, right, result);
             }
+        } else if (left.ttl_type() == TTLType::kAbsOrLat) {
+            // 2 cases
+            // absorlat + abs/lat = lat/abs, leave the simple type, ignore another one
+            // merged result will be std, don't worry about the new value of ignored type
+            DCHECK(right.ttl_type() == TTLType::kAbsoluteTime ||
+                   right.ttl_type() == TTLType::kLatestTime);
+            result->set_ttl_type(right.ttl_type());
+            TTLValueMerge(left, right, result);
+        } else {
+            DCHECK(left.ttl_type() == TTLType::kAbsoluteTime && right.ttl_type() == TTLType::kLatestTime);
+            // 1 case
+            // abs + lat -> absandlat: set type, merge can't use lat ttl(0) if type is abs, so custom merge
+            result->set_ttl_type(TTLType::kAbsAndLat);
+            result->set_abs_ttl(left.abs_ttl());
+            result->set_lat_ttl(right.lat_ttl());
         }
     }
     // after merge, may get complex ttl with 0
