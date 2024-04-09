@@ -5,8 +5,6 @@ execute_process(
   COMMAND patch -p 1 -N -i ${CMAKE_SOURCE_DIR}/contrib/glog-cmake/find-gflags.patch
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/contrib/glog
   RESULT_VARIABLE ret
-  ECHO_OUTPUT_VARIABLE
-  ECHO_ERROR_VARIABLE
   COMMAND_ECHO STDOUT
 )
 if(NOT ret EQUAL "0")
