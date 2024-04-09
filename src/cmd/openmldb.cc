@@ -3950,8 +3950,6 @@ void StartAPIServer() {
         }
     }
     brpc::ServerOptions options;
-    openmldb::authn::BRPCAuthenticator server_authenticator;
-    options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(api_service.get(), brpc::SERVER_DOESNT_OWN_SERVICE, "/* => Process") != 0) {

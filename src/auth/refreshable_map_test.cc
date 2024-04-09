@@ -18,6 +18,7 @@
 
 #include <gtest/gtest.h>
 
+#include <random>
 #include <string>
 #include <thread>
 #include <utility>
@@ -81,11 +82,15 @@ TEST_F(RefreshableMapTest, ConcurrencySafety) {
     constexpr int numWrites = 5;
     std::vector<std::thread> threads;
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, 99);
+
     threads.reserve(numReaders);
     for (int i = 0; i < numReaders; ++i) {
-        threads.emplace_back([&map]() {
+        threads.emplace_back([&map, &gen, &distrib]() {
             for (int j = 0; j < 1000; ++j) {
-                auto value = map.Get(rand() % 100);
+                auto value = map.Get(distrib(gen));
             }
         });
     }
@@ -105,6 +110,7 @@ TEST_F(RefreshableMapTest, ConcurrencySafety) {
         thread.join();
     }
 }
+
 }  // namespace openmldb::auth
 
 int main(int argc, char** argv) {

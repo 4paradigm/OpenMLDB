@@ -45,7 +45,7 @@ class BRPCAuthenticator : public brpc::Authenticator {
         };
     }
 
-    BRPCAuthenticator(const AuthToken auth_token) : auth_token_(auth_token){};
+    explicit BRPCAuthenticator(const AuthToken auth_token) : auth_token_(auth_token) {}
 
     explicit BRPCAuthenticator(IsAuthenticatedFunc is_authenticated) : is_authenticated_(std::move(is_authenticated)) {}
 
