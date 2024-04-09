@@ -24,7 +24,7 @@ If you need to deploy ZooKeeper and TaskManager, you need a Java runtime environ
 
 Servers needs Java 1.8 or above.
 
-Zookeeper Client 3.4.14 requires `Java 1.7` - `Java 13`. Java SDK depends on it, so it should use the same Java version, don't run in higher version. If you wish to use zkCli, please use `Java 1.8` or `Java 11`.
+Zookeeper Client 3.4.14 requires `Java 1.7` - `Java 13`. Java SDK depends on the same client, so it should use the same Java version, not a higher version. If you wish to use zkCli, please use `Java 1.8` or `Java 11`.
 
 ### Hardware
 
@@ -195,7 +195,7 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 | OPENMLDB_VERSION                  | 0.8.5                                                   | OpenMLDB version                                             |
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster                                        |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root directory                                      |
-| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | Spark root directory，If the directory does not exist,  it will be downloaded automatically.|
+| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | Spark root directory, if the directory does not exist,  it will be downloaded automatically.|
 | OPENMLDB_TABLET_PORT              | 10921                                                   | TabletServer default port                                    |
 | OPENMLDB_NAMESERVER_PORT          | 7527                                                    | NameServer default port                                      |
 | OPENMLDB_TASKMANAGER_PORT         | 9902                                                    | taskmanager default port                                     |
@@ -205,7 +205,7 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 | OPENMLDB_ZK_CLUSTER               | auto derived from `[zookeeper]` section in `conf/hosts` | ZooKeeper cluster address                                    |
 | OPENMLDB_ZK_ROOT_PATH             | /openmldb                                               | OpenMLDB root directory in ZooKeeper                         |
 | OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                                                    | ZooKeeper client port, the client port in zoo.cfg            |
-| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | ZooKeeper peer port，the first port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | ZooKeeper peer port, the first port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
 | OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                                                    | ZooKeeper election port, the second port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
 
 ### Node Configuration
@@ -252,7 +252,7 @@ If multiple TaskManager instances are deployed on distinct machines, the configu
 bash sbin/init_env.sh
 ```
 Note:
-- This script requires root execution. Other scripts does not require root privileges.
+- This script requires root execution. Other scripts do not require root privileges.
 - The script only modifies limit configurations, disabling swap and THP.
 
 ### Deployment
@@ -360,7 +360,7 @@ Enter `quit` or `Ctrl+C` to exit the zk client.
 
 ### Deploy TabletServer
 
-Note that at least two TabletServer need to be deployed, otherwise errors may occur.
+Note that at least two TabletServers need to be deployed, otherwise errors may occur.
 
 **1. Download the OpenMLDB deployment package**
 
@@ -439,7 +439,7 @@ mv openmldb-0.8.5-linux openmldb-tablet-0.8.5-2
 cd openmldb-tablet-0.8.5-2
 ```
 
-Modify the configuration again and start the TabletServer. Note that if all TabletServers are on the same machine, use different port numbers to avoid "Fail to listen" error in the log (`logs/tablet.WARNING`).
+Modify the configuration again and start the TabletServer. Note that if all TabletServers are on the same machine, use different port numbers to avoid the "Fail to listen" error in the log (`logs/tablet.WARNING`).
 
 **Note:**
 
