@@ -87,6 +87,10 @@ public class BenchmarkQueryPerf {
             opdb.initOpenMLDBEnv();
             csvReader = new CSVReader(talkingDataPath);
             insertData(false, true);
+        } else if (openmldbNeedInsertData) {
+            opdb.initOpenMLDBEnvWithDDL(sql);
+            csvReader = new CSVReader(talkingDataPath);
+            insertData(true, true);
         } else {
             opdb.initOpenMLDBEnv();
             logger.warn(
