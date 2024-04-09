@@ -38,7 +38,9 @@ public class BenchmarkQueryPerf {
     private static int readBatchSize = 100000;
     private static int readDataLimit = 10000000; // 最多读取数据量
 
-    private boolean needInsertData = false;
+    private boolean openmldbNeedInsertData = false;
+    private boolean redisNeedInsertData = false;
+    private boolean parseDataRow = false;
     private String dbName = "mem";
     private String tableName = "test_query_perf";
     private String key;
@@ -70,15 +72,21 @@ public class BenchmarkQueryPerf {
                 "`os` int, \n" +
                 "`channel` int, \n" +
                 "`click_time` Timestamp, \n" +
-                "`is_attributed` int \n" +
-                ")\n" + "OPTIONS (replicanum=1); ";
+                "`is_attributed` int, \n" +
+                "INDEX (KEY=`ip`, TS=`click_time`) \n" +
+                ") OPTIONS (PARTITIONNUM=8, REPLICANUM=1, STORAGE_MODE='Memory', COMPRESS_TYPE='NoCompress');";
 
 
-        if (needInsertData) {
+        if (openmldbNeedInsertData && redisNeedInsertData) {
             redis.clear();
             opdb.initOpenMLDBEnvWithDDL(sql);
             csvReader = new CSVReader(talkingDataPath);
-            insertData();
+            insertData(true, true);
+        } else if (redisNeedInsertData) {
+            redis.clear();
+            opdb.initOpenMLDBEnv();
+            csvReader = new CSVReader(talkingDataPath);
+            insertData(false, true);
         } else {
             opdb.initOpenMLDBEnv();
             logger.warn(
@@ -94,7 +102,9 @@ public class BenchmarkQueryPerf {
         readBatchSize = Integer.parseInt(config.getProperty("READ_DATA_BATCH_SIZE"));
         readDataLimit = Integer.parseInt(config.getProperty("READ_DATA_LIMIT"));
 
-        needInsertData = Boolean.parseBoolean(config.getProperty("NEED_INSERT_DATA"));
+        openmldbNeedInsertData = Boolean.parseBoolean(config.getProperty("OPENMLDB_NEED_INSERT_DATA"));
+        redisNeedInsertData = Boolean.parseBoolean(config.getProperty("REDIS_NEED_INSERT_DATA"));
+        parseDataRow = Boolean.parseBoolean(config.getProperty("PARSE_DATA_ROW"));
         dbName = config.getProperty("QUERY_PERF_TEST_DB");
         tableName = config.getProperty("QUERY_PERF_TEST_TABLE");
         assertAllValueNum = Integer.parseInt(config.getProperty("ASSERT_ALL_VALUE_NUM"));
@@ -109,13 +119,13 @@ public class BenchmarkQueryPerf {
         assertSpecialTsRangeValueNum = Integer.parseInt(config.getProperty("ASSERT_QUERY_DATE_VALUE_NUM"));
     }
 
-    private void insertData() throws ParseException {
+    private void insertData(boolean opdbInsert, boolean redisInsert) throws ParseException {
         logger.info("Start to insert data into Redis and OpenMLDB.");
         for (int curr = 0; curr < readDataLimit; ) {
             HashMap<String, ArrayList<TalkingData>> testData = csvReader.readCSV(readBatchSize);
             int size = getDataSize(testData);
-            //opdb.insertTalkingData(testData);
-            redis.insertTalkingData(testData);
+            if (opdbInsert) opdb.insertTalkingData(testData);
+            if (redisInsert) redis.insertTalkingData(testData);
             curr += size;
             logger.info("insert data into Redis and OpenMLDB, current size: {}", curr);
             if (size < readBatchSize) {
@@ -123,7 +133,6 @@ public class BenchmarkQueryPerf {
                 break;
             }
         }
-        logger.info(String.valueOf(RedisExecutor.cacheDecimal));
         logger.info("insert data into Redis and OpenMLDB finished.");
     }
 
@@ -146,8 +155,15 @@ public class BenchmarkQueryPerf {
     @Benchmark
     public void testOpenMLDBGetAllValues() {
         String sql = "select * from `" + opdb.tableName + "` where ip='" + key + "';";
-        ArrayList<HashMap<String, Object>> res = opdb.queryDataWithSql(sql);
-        if (res.size() != assertAllValueNum) {
+        int size;
+        if (parseDataRow) {
+            ArrayList<HashMap<String, Object>> res = opdb.queryRowsWithSql(sql);
+            size = res.size();
+        } else {
+            size = opdb.queryRowSizeWithSql(sql);
+        }
+
+        if (size != assertAllValueNum) {
             failures.incrementAndGet();
             System.out.println("testOpenMLDBGetAllValues fail.");
         }
@@ -166,8 +182,15 @@ public class BenchmarkQueryPerf {
     @Benchmark
     public void testOpenMLDBGetOneValue() {
         String sql = "select * from `" + opdb.tableName + "` where ip='" + key + "' and click_time='" + specialTime + "';";
-        ArrayList<HashMap<String, Object>> res = opdb.queryDataWithSql(sql);
-        if (res.size() != assertSpecialTimeValueNum) {
+        int size;
+        if (parseDataRow) {
+            ArrayList<HashMap<String, Object>> res = opdb.queryRowsWithSql(sql);
+            size = res.size();
+
+        } else {
+            size = opdb.queryRowSizeWithSql(sql);
+        }
+        if (size != assertSpecialTimeValueNum) {
             failures.incrementAndGet();
             System.out.println("testOpenMLDBGetOneValue fail.");
         }
@@ -187,8 +210,14 @@ public class BenchmarkQueryPerf {
     @Benchmark
     public void testOpenMLDBGetDateValues() {
         String sql = "select * from `" + opdb.tableName + "` where ip='" + key + "' and click_time>=timestamp(" + tsRangeMin + ") and click_time<timestamp(" + tsRangeMax + ");";
-        ArrayList<HashMap<String, Object>> res = opdb.queryDataWithSql(sql);
-        if (res.size() != assertSpecialTsRangeValueNum) {
+        int size;
+        if (parseDataRow) {
+            ArrayList<HashMap<String, Object>> res = opdb.queryRowsWithSql(sql);
+            size = res.size();
+        } else {
+            size = opdb.queryRowSizeWithSql(sql);
+        }
+        if (size != assertSpecialTsRangeValueNum) {
             failures.incrementAndGet();
             System.out.println("testOpenMLDBGetDateValues fail.");
         }

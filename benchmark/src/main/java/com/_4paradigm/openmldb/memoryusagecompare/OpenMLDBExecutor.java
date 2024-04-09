@@ -119,7 +119,7 @@ public class OpenMLDBExecutor {
         }
     }
 
-    ArrayList<HashMap<String, Object>> queryDataWithSql(String sql) {
+    ArrayList<HashMap<String, Object>> queryRowsWithSql(String sql) {
         Statement statement = null;
         ResultSet res;
         try {
@@ -154,6 +154,28 @@ public class OpenMLDBExecutor {
             }
         }
         return null;
+    }
+
+    int queryRowSizeWithSql(String sql) {
+        Statement statement = null;
+        ResultSet res;
+        try {
+            statement = executor.getStatement();
+            statement.execute(sql);
+            res = statement.getResultSet();
+            return res.getFetchSize();
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    logger.error("Exception: ", e);
+                }
+            }
+        }
+        return 0;
     }
 
     private Object getValue(int tp, int idx, ResultSet rs) throws SQLException {
