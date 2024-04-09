@@ -195,7 +195,7 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 | OPENMLDB_VERSION                  | 0.8.5                                                   | OpenMLDB version                                             |
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster                                        |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root directory                                      |
-| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | openmldb spark root directory，If the directory does not exist,  it will be downloaded automatically.|
+| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | Spark root directory，If the directory does not exist,  it will be downloaded automatically.|
 | OPENMLDB_TABLET_PORT              | 10921                                                   | TabletServer default port                                    |
 | OPENMLDB_NAMESERVER_PORT          | 7527                                                    | NameServer default port                                      |
 | OPENMLDB_TASKMANAGER_PORT         | 9902                                                    | taskmanager default port                                     |
@@ -608,9 +608,11 @@ The results should include information about all TabletServer and NameServer tha
 
 You can have only one TaskManager, but if you require high availability, you can deploy multiple TaskManagers, taking care to avoid IP and port conflicts. If the TaskManager master node experiences a failure, a slave node will automatically recover and replace the master node. Clients can continue accessing the TaskManager service without any modifications.
 
-**1. Download the OpenMLDB deployment package and Spark distribution for feature engineering optimization**
+**1. Download the OpenMLDB deployment package and Spark distribution **
 
-Spark distribution：
+Download the Spark distribution from the [Spark official website](https://spark.apache.org/downloads.html)。 Then unzip it and set the `SPARK_HOME` environment variable.
+
+Alternatively, use the OpenMLDB Spark distribution.
 
 ```shell
 wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.5/spark-3.2.1-bin-openmldbspark.tgz
