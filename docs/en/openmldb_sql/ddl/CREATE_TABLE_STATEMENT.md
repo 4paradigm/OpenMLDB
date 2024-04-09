@@ -206,7 +206,7 @@ CREATE TABLE t1 LIKE PARQUET 'file://t1.parquet';
 -- SUCCEED
 ```
 
-### ColumnIndex (optional）
+### ColumnIndex (optional)
 
 ```sql
 ColumnIndex ::= 
@@ -237,12 +237,10 @@ The index key must be configured, and other configuration items are optional. Th
 | ----------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ABSOLUTE`  | The value of TTL represents the expiration time. The configuration value is a time period such as `100m, 12h, 1d, 365d`. The maximum configurable expiration time is `15768000m` (ie 30 years)    | When a record expires, it is eliminated.                                                               | `INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=100m)`<br />OpenMLDB will delete data older than 100 minutes.                                            |
 | `LATEST`    | The value of TTL represents the maximum number of surviving entries. That is, under the same index, the maximum number of data items allowed exists. Up to 1000 can be configured                 | When the record exceeds the maximum number, it will be eliminated.                                     | `INDEX(KEY=col1, TS=std_time, TTL_TYPE=LATEST, TTL=10)`. OpenMLDB will only keep the last 10 records and delete the previous records.                         |
-| `ABSORLAT`  | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`. | Eliminates if and only if the record expires** or if the record exceeds the maximum number of records. | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`. When the record exceeds 100, **OR** when the record expires, it will be eliminated              |
-| `ABSANDLAT` | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`.  | When records expire **OR** records exceed the maximum number of records, records will be eliminated.   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`. When there are more than 100 records, **OR** the records expire, they will also be eliminated. |
-
+| `ABSORLAT`  | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`. | Records will be eliminated if either the time expires **or** the number of records exceeds the maximum limit. | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`. Records will be eliminated when either the number of records exceeds 100 **or** the records expire.          |
+| `ABSANDLAT` | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`.  | Records will only be eliminated when both the time expires **and** the number of records exceeds the maximum limit.   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`. Records will only be eliminated when the number of records exceeds 100 **and** the records expire. |
 
 #### Example
-
 
 **Example 1**
 
