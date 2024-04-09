@@ -29,6 +29,8 @@
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "node/node_manager.h"
 #include "proto/fe_type.pb.h"
 
@@ -1076,5 +1078,30 @@ std::string GetIRTypeName(llvm::Type* type)  {
     type->print(ss, false, true);
     return ss.str();
 }
+
+void PrintLog(llvm::LLVMContext* context, llvm::Module* module, llvm::IRBuilder<>* builder, absl::string_view toPrint,
+              bool useGlobal) {
+    llvm::FunctionCallee printFunct =
+        module->getOrInsertFunction("printLog", builder->getVoidTy(), builder->getInt8PtrTy());
+
+    llvm::Value* stringVar;
+    llvm::Constant* stringConstant =
+        llvm::ConstantDataArray::getString(*context, llvm::StringRef(toPrint.data(), toPrint.size()));
+
+    // array[i8] type
+    if (useGlobal) {
+        stringVar = builder->CreateGlobalString(llvm::StringRef(toPrint.data(), toPrint.size()));
+        // Note: Does not work without allocation
+        // stringVar = new llvm::GlobalVariable(*module, stringConstant->getType(), true,
+        //                                      llvm::GlobalValue::PrivateLinkage, stringConstant, "");
+    } else {
+        stringVar = builder->CreateAlloca(stringConstant->getType());
+        builder->CreateStore(stringConstant, stringVar);
+    }
+
+    llvm::Value* cast = builder->CreatePointerCast(stringVar, builder->getInt8PtrTy());
+    builder->CreateCall(printFunct, cast);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
