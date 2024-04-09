@@ -311,7 +311,7 @@ if Hadoop/Yarm requires Kerberos authentication, refer to [FAQ](../faq.md).
 ```
 ##### `yarn/yarn-cluster` Mode
 
-`yarn` and `yarn-cluster` is the same mode, where Spark tasks execute on the Yarn cluster. The configuration items are:
+`yarn` and `yarn-cluster` are the same mode, where Spark tasks execute on the Yarn cluster. The configuration items are:
 
 - **Before starting TaskManager**, configure environment variable `HADOOP_CONF_DIR` to Hadoop and Yarn configuration directory. The directory should include `core-site.xml` and `hdfs-site.xml` for hadoop, and `yarn-site.xml` for Yarn. For more details, refer to [Spark documentation](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn).
 
