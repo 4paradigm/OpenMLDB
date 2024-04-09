@@ -67,9 +67,16 @@ class AbstractIterator {
     virtual void Next() = 0;
     /// Return the key of current element pair.
     virtual const K& GetKey() const = 0;
-    /// Return the value of current element pari
+    /// Return the value of current element pair
     /// when Valid() return `true`.
     virtual Ref GetValue() = 0;
+
+    /// Check whether current value is NULL.
+    /// Column values in a table can be NULL, `GetValue()` to a NULL column
+    /// lead to unspecific behavior.
+    /// Implemente this if iterator values may be NULL.
+    virtual bool IsValueNull() { return false; }
+
     /// Return whether the dataset is seekable or
     /// not. A dataset is seekable if it allows access to data with Seek()
     /// method
