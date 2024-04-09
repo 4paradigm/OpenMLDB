@@ -24,11 +24,11 @@
 #--request_max_retry=3
 # Configure the request timeout in milliseconds, the default is 12 seconds
 #--request_timeout_ms=12000
-# Configure the retry interval when the request is unreachable, generally do not need to be modified, in milliseconds
+# Configure the retry interval when the request is unreachable, generally does not need to be modified, in milliseconds
 #--request_sleep_time=1000
 # Configure the zookeeper session timeout in milliseconds
 --zk_session_timeout=10000
-# Configure the zookeeper health check interval, the unit is milliseconds, generally do not need to be modified
+# Configure the zookeeper health check interval, the unit is milliseconds, generally does not need to be modified
 #--zk_keep_alive_check_interval=15000
 # Configure the timeout period for tablet heartbeat detection in milliseconds, the default is 1 minute. If the tablet is still unreachable after this time, the nameserver considers that the tablet is unavailable and will perform the operation of offline the node
 --tablet_heartbeat_timeout=60000
@@ -304,7 +304,7 @@ Spark tasks are executed locally on TaskManager deployment machine. Please note 
 - `offline.data.prefix` is set by default as `file:///tmp/openmldb_offline_storage/`, which is on TaskManager deployment machine. This can be set to other locations as required. 
 - **Before starting TaskManager**, HDFS path can be configured by setting environment variable `HADOOP_CONF_DIR` to Hadoop configuration directory (Note: it is the environment variable, not the configuration item). The directory needs to include `core-site.xml`, `hdfs-site.xml` configuration files. For more information, refer to [Spark documentation](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration).
 
-- batchjob path `batchjob.jar.path` can be set automativally. It can be configured to other paths.
+- batchjob path `batchjob.jar.path` can be set automatically. It can be configured to other paths.
 
 ```{seealso}
 if Hadoop/Yarm requires Kerberos authentication, refer to [FAQ](../faq.md).
@@ -317,21 +317,21 @@ if Hadoop/Yarm requires Kerberos authentication, refer to [FAQ](../faq.md).
 
 - `spark.yarn.jars` Configure Spark jar for Yarn. It has to be a `hdfs://` path. You can update the `jars` directory from [OpenMLDB Spark distribution](../../tutorial/openmldbspark_distribution.md) to HDFS, and set it as `hdfs://<hdfs_path>/jars/*`. If not set, Yarn will package and distribute `$SPARK_HOME/jars`, and will do so [for each offline task](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#preparations). Therefore, we recommend it to be set.
 
-- `batchjob.jar.path` It has to be a HDFS path. Upload batchjob jar to HDFS and configure the respective path. Make sure that all Workers in Yarn cluster have access to the batchjob jar.
+- `batchjob.jar.path` It has to be an HDFS path. Upload batchjob jar to HDFS and configure the respective path. Make sure that all Workers in Yarn cluster have access to the batchjob jar.
 
-- `offline.data.prefix` It has to be a HDFS path. Make sure that all Workers in Yarn cluster have access. Use the environment variable `HADOOP_CONF_DIR`.
+- `offline.data.prefix` It has to be an HDFS path. Make sure that all Workers in Yarn cluster have access. Use the environment variable `HADOOP_CONF_DIR`.
 
 
 ##### `yarn-client` Mode
 
-[Driver executes locally](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)，and executor execute on the Yarn cluster. Configurations are the same as `yarn-cluster`.
+[Driver executes locally](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn), and the executor executes on the Yarn cluster. Configurations are the same as `yarn-cluster`.
 
 #### `spark.default.conf`
 
-Format is `key=value`, use `;` to separate. For example:
+The format is `key=value`, use `;` to separate. For example:
 
 ```
 spark.default.conf=spark.executor.instances=2;spark.executor.memory=2g;spark.executor.cores=2
 ```
-Same affect as `--conf`. For more configurations, refer to [Spark documentation](https://spark.apache.org/docs/3.1.2/configuration.html).
+Same effect as `--conf`. For more configurations, refer to [Spark documentation](https://spark.apache.org/docs/3.1.2/configuration.html).
 
