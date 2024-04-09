@@ -18,6 +18,7 @@
 #include <random>
 
 #include "apiserver/api_server_impl.h"
+#include "auth/brpc_authenticator.h"
 #include "brpc/channel.h"
 #include "brpc/restful.h"
 #include "brpc/server.h"
@@ -48,7 +49,8 @@ class APIServerTestEnv : public testing::Environment {
         mc = std::make_shared<sdk::MiniCluster>(FLAGS_zk_port);
         ASSERT_TRUE(mc->SetUp()) << "Fail to set up mini cluster";
 
-        auto cluster_options = std::make_shared<sdk::SQLRouterOptions>();;
+        auto cluster_options = std::make_shared<sdk::SQLRouterOptions>();
+        ;
         cluster_options->zk_cluster = mc->GetZkCluster();
         cluster_options->zk_path = mc->GetZkPath();
         // Owned by server_process
@@ -73,6 +75,7 @@ class APIServerTestEnv : public testing::Environment {
         api_server_url = "http://127.0.0.1:" + FLAGS_api_server_port;
         int api_server_port = std::stoi(FLAGS_api_server_port);
         brpc::ServerOptions server_options;
+        server_options.auth = &server_authenticator_;
         // options.idle_timeout_sec = FLAGS_idle_timeout_s;
         ASSERT_TRUE(server.Start(api_server_port, &server_options) == 0) << "Fail to start HttpServer";
 
@@ -87,6 +90,7 @@ class APIServerTestEnv : public testing::Environment {
         ASSERT_TRUE(std::find(dbs.begin(), dbs.end(), db) != dbs.end()) << "Fail to create db";
 
         brpc::ChannelOptions options;
+        options.auth = &client_authenticator_;
         options.protocol = "http";
         options.timeout_ms = 2000 /*milliseconds*/;
         options.max_retry = 3;
@@ -116,6 +120,8 @@ class APIServerTestEnv : public testing::Environment {
     std::shared_ptr<sdk::SQLRouter> cluster_remote;
 
  private:
+    openmldb::authn::BRPCAuthenticator client_authenticator_;
+    openmldb::authn::BRPCAuthenticator server_authenticator_;
     APIServerTestEnv() = default;
     GTEST_DISALLOW_COPY_AND_ASSIGN_(APIServerTestEnv);
 };

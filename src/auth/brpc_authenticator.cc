@@ -31,7 +31,7 @@ int BRPCAuthenticator::GenerateCredential(std::string* auth_str) const {
                 *auth_str = "s" + s.token;
             }
         },
-        g_auth_token);
+        auth_token_);
     return 0;
 }
 

@@ -45,7 +45,12 @@ std::shared_ptr<::openmldb::client::NsClient> DBSDK::GetNsClient() {
         DLOG(ERROR) << "fail to get ns address";
         return {};
     }
-    ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
+    if (auto options = GetOptions(); !options->user.empty()) {
+        ns_client = std::make_shared<::openmldb::client::NsClient>(
+            endpoint, real_endpoint, authn::UserToken{options->user, codec::Encrypt(options->password)});
+    } else {
+        ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
+    }
     int ret = ns_client->Init();
     if (ret != 0) {
         // We GetNsClient and use it without checking not null. It's intolerable.
@@ -185,9 +190,7 @@ ClusterSDK::ClusterSDK(const std::shared_ptr<SQLRouterOptions>& options)
       leader_path_(options->zk_path + "/leader"),
       taskmanager_leader_path_(options->zk_path + "/taskmanager/leader"),
       zk_client_(nullptr),
-      pool_(1) {
-    authn::g_auth_token = authn::UserToken{options->user, codec::Encrypt(options->password)};
-}
+      pool_(1) {}
 
 ClusterSDK::~ClusterSDK() {
     pool_.Stop(false);

@@ -35,8 +35,6 @@ struct UserToken {
 
 using AuthToken = std::variant<ServiceToken, UserToken>;
 
-inline AuthToken g_auth_token;
-
 class BRPCAuthenticator : public brpc::Authenticator {
  public:
     using IsAuthenticatedFunc = std::function<bool(const std::string&, const std::string&, const std::string&)>;
@@ -47,6 +45,8 @@ class BRPCAuthenticator : public brpc::Authenticator {
         };
     }
 
+    BRPCAuthenticator(const AuthToken auth_token) : auth_token_(auth_token){};
+
     explicit BRPCAuthenticator(IsAuthenticatedFunc is_authenticated) : is_authenticated_(std::move(is_authenticated)) {}
 
     int GenerateCredential(std::string* auth_str) const override;
@@ -54,6 +54,7 @@ class BRPCAuthenticator : public brpc::Authenticator {
                          brpc::AuthContext* out_ctx) const override;
 
  private:
+    AuthToken auth_token_ = openmldb::authn::ServiceToken{"default"};
     IsAuthenticatedFunc is_authenticated_;
     bool VerifyToken(const std::string& token) const;
 };

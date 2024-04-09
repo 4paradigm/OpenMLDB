@@ -22,6 +22,7 @@
 #include <string>
 
 #include "proto/tablet.pb.h"
+#include "auth/brpc_authenticator.h"
 
 namespace openmldb {
 namespace tablet {
@@ -50,6 +51,7 @@ class FileSender {
     uint64_t limit_time_;
     brpc::Channel* channel_;
     ::openmldb::api::TabletServer_Stub* stub_;
+    openmldb::authn::BRPCAuthenticator client_authenticator_;
 };
 
 }  // namespace tablet

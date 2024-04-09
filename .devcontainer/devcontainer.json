@@ -14,10 +14,5 @@
 	// Visual Studio Code extensions (plugins) to be installed.
 	"extensions": [
 		"ms-vscode.cpptools"
-	],
-	"runArgs": [
-		"--network=host",
-		"--env-file",
-		".devcontainer/devcontainer.env"
 	]
 }

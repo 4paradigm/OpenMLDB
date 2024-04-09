@@ -24,8 +24,9 @@ DECLARE_int32(request_timeout_ms);
 namespace openmldb {
 namespace client {
 
-NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint)
-    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
+NsClient::NsClient(const std::string& endpoint, const std::string& real_endpoint,
+                   const openmldb::authn::AuthToken auth_token)
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint, auth_token) {}
 
 int NsClient::Init() { return client_.Init(); }
 
@@ -484,7 +485,7 @@ base::Status NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::
     }
     request.set_db(GetDb());
     auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::ChangeLeader, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                    FLAGS_request_timeout_ms, 1);
     if (st.OK()) {
         return {response.code(), response.msg()};
     }
@@ -519,7 +520,7 @@ base::Status NsClient::Migrate(const std::string& src_endpoint, const std::strin
         request.add_pid(pid);
     }
     auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::Migrate, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                    FLAGS_request_timeout_ms, 1);
     if (st.OK()) {
         return {response.code(), response.msg()};
     }
@@ -551,7 +552,7 @@ base::Status NsClient::RecoverTable(const std::string& name, uint32_t pid, const
     request.set_endpoint(endpoint);
     request.set_db(GetDb());
     auto st = client_.SendRequestSt(&::openmldb::nameserver::NameServer_Stub::RecoverTable, &request, &response,
-                                  FLAGS_request_timeout_ms, 1);
+                                    FLAGS_request_timeout_ms, 1);
     if (st.OK()) {
         return {response.code(), response.msg()};
     }
@@ -641,7 +642,7 @@ bool NsClient::UpdateTTL(const std::string& name, const ::openmldb::type::TTLTyp
 }
 
 bool NsClient::UpdateTTL(const std::string& db, const std::string& name, const ::openmldb::type::TTLType& type,
-        uint64_t abs_ttl, uint64_t lat_ttl, const std::string& index_name, std::string& msg) {
+                         uint64_t abs_ttl, uint64_t lat_ttl, const std::string& index_name, std::string& msg) {
     ::openmldb::nameserver::UpdateTTLRequest request;
     ::openmldb::nameserver::UpdateTTLResponse response;
     request.set_name(name);

@@ -3969,7 +3969,6 @@ void StartAPIServer() {
 }
 
 int main(int argc, char* argv[]) {
-    openmldb::authn::g_auth_token = openmldb::authn::ServiceToken{"default"};
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role.empty()) {
