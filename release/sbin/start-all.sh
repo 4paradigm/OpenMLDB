@@ -52,9 +52,6 @@ if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   fi
 fi
 
-# Sleep for 5 seconds allowing nameserver to pick up auth data
-sleep 5
-
 # Start Apiservers
 "$sbin"/start-apiservers.sh "$@"
 
