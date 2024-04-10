@@ -191,7 +191,7 @@ bool SQLClusterRouter::Init() {
         }
     } else {
         // if not allowed to get system table or system table is empty, init session here
-        session_variables_.emplace("execute_mode", "offline");
+        session_variables_.emplace("execute_mode", "online");
         session_variables_.emplace("enable_trace", "false");
         session_variables_.emplace("sync_job", "false");
         session_variables_.emplace("job_timeout", "60000");  // rpc request timeout for taskmanager
