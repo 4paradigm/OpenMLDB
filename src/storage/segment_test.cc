@@ -78,19 +78,23 @@ TEST_F(SegmentTest, PutAndScan) {
 
 // report result, don't need to print args in here, just print the failure
 ::testing::AssertionResult CheckStatisticsInfo(const StatisticsInfo& expect, const StatisticsInfo& value) {
-    if (expect.idx_cnt_vec.size()!= value.idx_cnt_vec.size()){
-        return ::testing::AssertionFailure() << "idx_cnt_vec size expect " << expect.idx_cnt_vec.size() << " but got " << value.idx_cnt_vec.size();
+    if (expect.idx_cnt_vec.size() != value.idx_cnt_vec.size()) {
+        return ::testing::AssertionFailure()
+               << "idx_cnt_vec size expect " << expect.idx_cnt_vec.size() << " but got " << value.idx_cnt_vec.size();
     }
     for (size_t idx = 0; idx < expect.idx_cnt_vec.size(); idx++) {
-        if (expect.idx_cnt_vec[idx]!= value.idx_cnt_vec[idx]){
-            return ::testing::AssertionFailure() << "idx_cnt_vec[" << idx << "] expect " << expect.idx_cnt_vec[idx] << " but got " << value.idx_cnt_vec[idx];
+        if (expect.idx_cnt_vec[idx] != value.idx_cnt_vec[idx]) {
+            return ::testing::AssertionFailure() << "idx_cnt_vec[" << idx << "] expect " << expect.idx_cnt_vec[idx]
+                                                 << " but got " << value.idx_cnt_vec[idx];
         }
     }
-    if( expect.record_byte_size!= value.record_byte_size) {
-        return ::testing::AssertionFailure() << "record_byte_size expect " << expect.record_byte_size << " but got " << value.record_byte_size;
+    if (expect.record_byte_size != value.record_byte_size) {
+        return ::testing::AssertionFailure()
+               << "record_byte_size expect " << expect.record_byte_size << " but got " << value.record_byte_size;
     }
-    if (expect.idx_byte_size!= value.idx_byte_size){
-        return ::testing::AssertionFailure() << "idx_byte_size expect " << expect.idx_byte_size << " but got " << value.idx_byte_size;
+    if (expect.idx_byte_size != value.idx_byte_size) {
+        return ::testing::AssertionFailure()
+               << "idx_byte_size expect " << expect.idx_byte_size << " but got " << value.idx_byte_size;
     }
     return ::testing::AssertionSuccess();
 }

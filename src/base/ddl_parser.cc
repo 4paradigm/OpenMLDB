@@ -677,16 +677,17 @@ void TTLValueMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, c
 
 common::TTLSt stdTTL(const common::TTLSt& ttl) {
     common::TTLSt result(ttl);
-    DCHECK(result.has_ttl_type() && result.ttl_type() != type::TTLType::kRelativeTime) << "invalid ttl type" << ttl.ShortDebugString();
+    DCHECK(result.has_ttl_type() && result.ttl_type() != type::TTLType::kRelativeTime)
+        << "invalid ttl type" << ttl.ShortDebugString();
     if (result.ttl_type() == type::TTLType::kAbsoluteTime) {
         // if no lat ttl, set a default 0
         DCHECK(!result.has_lat_ttl() || result.lat_ttl() == 0);
         result.set_lat_ttl(0);
-    } else if(result.ttl_type() == type::TTLType::kLatestTime) {
+    } else if (result.ttl_type() == type::TTLType::kLatestTime) {
         // if no abs ttl, set a default 0
         DCHECK(!result.has_abs_ttl() || result.abs_ttl() == 0);
         result.set_abs_ttl(0);
-    } else if(result.ttl_type() == type::TTLType::kAbsAndLat) {
+    } else if (result.ttl_type() == type::TTLType::kAbsAndLat) {
         DCHECK(result.has_abs_ttl() && result.has_lat_ttl());
         // if any one is 0, won't expire any data, just set abs 0
         if (result.abs_ttl() == 0 || result.lat_ttl() == 0) {
@@ -710,8 +711,8 @@ bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common
     // TTLSt has type and two values, updated is complex, so we just check result==old_ttl in the end
 
     // we should std type first, absorlat(10,0) -> abs(10)
-    // e.g. merge absorlat(1,0) and absorlat(0,2), we need to check the values, otherwise we'll get absorlat(0,0), it's too large
-    // and if no abs when type is lat, just set a abs 0, to make compare simple(no need to check has_xxx_ttl)
+    // e.g. merge absorlat(1,0) and absorlat(0,2), we need to check the values, otherwise we'll get absorlat(0,0), it's
+    // too large and if no abs when type is lat, just set a abs 0, to make compare simple(no need to check has_xxx_ttl)
     auto left = stdTTL(old_ttl);
     auto right = stdTTL(new_ttl);
     using type::TTLType;
@@ -735,10 +736,9 @@ bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common
 
         if (left.ttl_type() == TTLType::kAbsAndLat) {
             // 3 cases
-            // absandlat(x,y)+abs(z), absandlat(x,y)+abs(0): don't merge lat(cuz abs type lat is 0), use absandlat's lat.
-            // absandlat(x,y)+lat(z), absandlat(x,y)+lat(0): the same
-            // absandlat(x,y)+absorlat(k,j): we need to store more to avoid delete valid records, merge both. No 0
-            // value, so don't worry about set too large
+            // absandlat(x,y)+abs(z), absandlat(x,y)+abs(0): don't merge lat(cuz abs type lat is 0), use absandlat's
+            // lat. absandlat(x,y)+lat(z), absandlat(x,y)+lat(0): the same absandlat(x,y)+absorlat(k,j): we need to
+            // store more to avoid delete valid records, merge both. No 0 value, so don't worry about set too large
             result->CopyFrom(left);
             if (right.ttl_type() == TTLType::kAbsoluteTime) {
                 result->set_abs_ttl(TTLValueMerge(left.abs_ttl(), right.abs_ttl()));
@@ -752,8 +752,7 @@ bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common
             // 2 cases
             // absorlat + abs/lat = lat/abs, leave the simple type, ignore another one
             // merged result will be std, don't worry about the new value of ignored type
-            DCHECK(right.ttl_type() == TTLType::kAbsoluteTime ||
-                   right.ttl_type() == TTLType::kLatestTime);
+            DCHECK(right.ttl_type() == TTLType::kAbsoluteTime || right.ttl_type() == TTLType::kLatestTime);
             result->set_ttl_type(right.ttl_type());
             TTLValueMerge(left, right, result);
         } else {
