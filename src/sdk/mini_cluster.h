@@ -86,6 +86,10 @@ class MiniCluster {
         if (ns_authenticator_) {
             delete ns_authenticator_;
         }
+
+        if (ts_authenticator_) {
+            delete ts_authenticator_;
+        }
     }
 
     bool SetUp(int tablet_num = 2) {
@@ -203,7 +207,9 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
-        ts_opt_.auth = &tablet_authenticator_;
+        ts_authenticator_ = new openmldb::authn::BRPCAuthenticator(
+            [](const std::string& host, const std::string& username, const std::string& password) { return false; });
+        ts_opt_.auth = ts_authenticator_;
 
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
@@ -240,8 +246,8 @@ class MiniCluster {
     ::openmldb::client::NsClient* ns_client_;
     std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
     std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
-    openmldb::authn::BRPCAuthenticator tablet_authenticator_;
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
+    openmldb::authn::BRPCAuthenticator* ts_authenticator_;
     openmldb::auth::UserAccessManager* user_access_manager_;
     std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
     brpc::ServerOptions options_;
@@ -263,6 +269,9 @@ class StandaloneEnv {
         }
         if (ns_authenticator_) {
             delete ns_authenticator_;
+        }
+        if (ts_authenticator_) {
+            delete ts_authenticator_;
         }
     }
 
@@ -349,7 +358,10 @@ class StandaloneEnv {
         if (!ok) {
             return false;
         }
-        ts_opt_.auth = &tablet_authenticator_;
+
+        ts_authenticator_ = new openmldb::authn::BRPCAuthenticator(
+            [](const std::string& host, const std::string& username, const std::string& password) { return false; });
+        ts_opt_.auth = ts_authenticator_;
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
@@ -375,8 +387,8 @@ class StandaloneEnv {
     uint64_t ns_port_ = 0;
     ::openmldb::client::NsClient* ns_client_;
     ::openmldb::client::TabletClient* tb_client_;
-    openmldb::authn::BRPCAuthenticator tablet_authenticator_;
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
+    openmldb::authn::BRPCAuthenticator* ts_authenticator_;
     openmldb::auth::UserAccessManager* user_access_manager_;
     std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
     brpc::ServerOptions options_;
