@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.batch.nodes
 
+import com._4paradigm.hybridse.node.ExprNode
 import com._4paradigm.hybridse.vm.PhysicalInsertNode
 import com._4paradigm.openmldb.batch.utils.SparkRowUtil
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
@@ -32,6 +33,8 @@ import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 object InsertPlan {
+  case class ColInfo(colDesc: ColumnDesc, field: StructField)
+
   def gen(ctx: PlanContext, node: PhysicalInsertNode): SparkInstance = {
     val stmt = node.GetInsertStmt()
     require(stmt != null, "Fail to get insert statement")
@@ -45,16 +48,16 @@ object InsertPlan {
 
     val colDescList = tableInfo.getColumnDescList
     var oriSchema = new StructType
-    val fieldMap = mutable.Map[String, StructField]()
+    val colInfoMap = mutable.Map[String, ColInfo]()
     colDescList.foreach(col => {
       val colName = col.getName
       val field = StructField(colName, SparkRowUtil.protoTypeToScalaType(col.getDataType), !col.getNotNull)
       oriSchema = oriSchema.add(field)
-      fieldMap.put(colName, field)
+      colInfoMap.put(colName, ColInfo(col, field))
     })
 
-    val (insertSchema, insertDataTypes) = parseInsertCols(stmt.getColumns_, oriSchema, fieldMap, colDescList)
-    val insertRows = parseInsertRows(stmt.getValues_, insertDataTypes)
+    val (insertSchema, insertColInfos, stmtColNum) = parseInsertCols(stmt.getColumns_, oriSchema, colInfoMap)
+    val insertRows = parseInsertRows(stmt.getValues_, insertColInfos, stmtColNum)
 
     val spark = ctx.getSparkSession
     var insertDf = spark.createDataFrame(spark.sparkContext.parallelize(insertRows), insertSchema)
@@ -68,7 +71,7 @@ object InsertPlan {
       val newOfflineInfo = OfflineTableInfo
         .newBuilder()
         .setPath(offlineDataPath)
-        .setFormat("csv")
+        .setFormat("parquet")
         .build()
       newTableInfoBuilder.setOfflineTableInfo(newOfflineInfo)
     }
@@ -82,56 +85,99 @@ object InsertPlan {
     SparkInstance.fromDataFrame(spark.emptyDataFrame)
   }
 
-  def parseInsertCols(cols: VectorString, oriSchema: StructType, fieldMap:mutable.Map[String, StructField],
-                      colDescList: java.util.List[ColumnDesc]): (StructType, ArrayBuffer[DataType]) = {
+  def parseInsertCols(cols: VectorString, oriSchema: StructType, colInfoMap: mutable.Map[String, ColInfo]):
+  (StructType, ArrayBuffer[ColInfo], Int) = {
     var insertSchema = new StructType
-    val insertDataTypes = ArrayBuffer[DataType]()
+    val insertColInfos = ArrayBuffer[ColInfo]()
+    var stmtColNum = 0
     if (cols == null || cols.size() == 0) {
       insertSchema = oriSchema
-      insertSchema.foreach(field => insertDataTypes += field.dataType)
+      insertSchema.foreach(field => insertColInfos += colInfoMap(field.name))
+      stmtColNum = oriSchema.size
     } else {
+      stmtColNum = cols.size()
       val insertColSet = mutable.Set[String]()
-      for (i <- 0 until cols.size()) {
+      for (i <- 0 until stmtColNum) {
         val colName = cols.get(i)
-        require(fieldMap.contains(colName), s"Fail to get insert info--can't find column $colName")
+        require(colInfoMap.contains(colName), s"Fail to get insert info--can't recognize column $colName")
 
-        val structField = fieldMap(colName)
-        insertSchema = insertSchema.add(structField)
-        insertDataTypes += structField.dataType
+        val colInfo = colInfoMap(colName)
+        insertColInfos += colInfo
+        insertSchema = insertSchema.add(colInfo.field)
         insertColSet.add(colName)
       }
 
-      colDescList.foreach(col => require(!col.getNotNull || insertColSet.contains(col.getName),
-        s"Fail to get insert info--require not null column ${col.getName}"))
+      for ((colName, colInfo) <- colInfoMap) {
+        val colDesc = colInfo.colDesc
+        if (colDesc.hasDefaultValue && !insertColSet.contains(colName)) {
+          val colInfo = colInfoMap(colName)
+          insertColInfos += colInfo
+          insertSchema = insertSchema.add(colInfo.field)
+          insertColSet.add(colName)
+        }
+        require(!colDesc.getNotNull || insertColSet.contains(colName),
+          s"Fail to get insert info--require not null column ${colName}")
+      }
     }
-    (insertSchema, insertDataTypes)
+
+    (insertSchema, insertColInfos, stmtColNum)
   }
 
-  def parseInsertRows(valuesExpr: ExprNodeVector, insertDataTypes: ArrayBuffer[DataType]): ListBuffer[Row] = {
+  def parseInsertRows(valuesExpr: ExprNodeVector, insertColInfos: ArrayBuffer[ColInfo], stmtColNum: Int):
+  ListBuffer[Row] = {
+    val defaultValues = getDefaultColValues(insertColInfos, stmtColNum)
+
     val insertRows = ListBuffer[Row]()
     for (i <- 0 until valuesExpr.size()) {
       val rowExpr = valuesExpr.get(i)
-      val valNum = rowExpr.GetChildNum()
-      require(valNum == insertDataTypes.size,
-        s"Fail to get insert info--fail to parse row[$i]: ${rowExpr.GetExprString()}")
-      val rowValues = ListBuffer[Any]()
-      for (j <- 0 until valNum) {
-        val valueExpr = rowExpr.GetChild(j)
-        try {
-          rowValues += castVal(valueExpr.GetExprString(), insertDataTypes(j))
-        } catch {
-          case _: IllegalArgumentException | _: NumberFormatException =>
-            throw new IllegalArgumentException(
-              s"Fail to get insert info--fail to parse row[$i]: ${rowExpr.GetExprString()}"
-            )
-        }
+      var rowValues = ListBuffer[Any]()
+      try {
+        rowValues = parseRowExpr(rowExpr, insertColInfos, stmtColNum)
+      } catch {
+        case _: IllegalArgumentException | _: NumberFormatException =>
+          throw new IllegalArgumentException(
+            s"Fail to get insert info--fail to parse row[$i]: ${rowExpr.GetExprString()}"
+          )
       }
+
+      rowValues = rowValues ++ defaultValues
       insertRows += Row.fromSeq(rowValues)
     }
     insertRows
   }
 
+  def getDefaultColValues(insertColInfos: ArrayBuffer[ColInfo], stmtColNum: Int): ListBuffer[Any] = {
+    val defaultValues = ListBuffer[Any]()
+    for (i <- stmtColNum until insertColInfos.size) {
+      val colInfo = insertColInfos(i)
+      defaultValues += castVal(colInfo.colDesc.getDefaultValue, colInfo.field.dataType)
+    }
+    defaultValues
+  }
+
+  def parseRowExpr(rowExpr: ExprNode, insertColInfos: ArrayBuffer[ColInfo], stmtColNum: Int): ListBuffer[Any] = {
+    val valNum = rowExpr.GetChildNum()
+    require(valNum == stmtColNum)
+
+    val rowValues = ListBuffer[Any]()
+    for (i <- 0 until valNum) {
+      val valueExpr = rowExpr.GetChild(i)
+      val colInfo = insertColInfos(i)
+      val value = castVal(valueExpr.GetExprString(), colInfo.field.dataType)
+      require(value != null || !colInfo.colDesc.getNotNull)
+
+      rowValues += value
+    }
+    rowValues
+  }
+
   def castVal(oriStr: String, dataType: DataType): Any = {
+    if (dataType == StringType) {
+      return oriStr
+    }
+    if ("null".equals(oriStr.toLowerCase)) {
+      return null
+    }
     dataType match {
       case BooleanType => oriStr.toBoolean
       case ShortType => oriStr.toShort

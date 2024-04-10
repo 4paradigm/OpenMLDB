@@ -38,7 +38,7 @@ class TestInsertPlan extends SparkTestSuite {
     prop.load(getClass.getResourceAsStream("/test.properties"))
     val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
     val path = prop.getProperty("openmldb.zk.root.path", "/onebox")
-    sparkSession = getSparkSession()
+    sparkSession = getSparkSession
     sparkSession.conf.set("openmldb.zk.cluster", cluster)
     sparkSession.conf.set("openmldb.zk.root.path", path)
 
@@ -52,16 +52,6 @@ class TestInsertPlan extends SparkTestSuite {
     val tables = openmldbConnector.getTableNames(db)
     tables.forEach(table => openmldbConnector.executeDDL(db, s"drop table $table;"))
     openmldbConnector.dropDB(db)
-  }
-
-  override def getSparkSession(): SparkSession = {
-    val zkHost = "localhost:2181"
-    val zkPath = "/openmldb"
-    SparkSession.builder()
-      .master("local")
-      .config("openmldb.zk.cluster", zkHost)
-      .config("openmldb.zk.root.path", zkPath)
-      .getOrCreate()
   }
 
   test("Test multi data type") {
@@ -165,5 +155,38 @@ class TestInsertPlan extends SparkTestSuite {
 
     val sql6 = s"insert into $db.$table (c1) values (1, 1)"
     assertThrows[IllegalArgumentException](openmldbSession.sql(sql6))
+  }
+
+  test("Test column with default value") {
+    val table = "t5"
+    openmldbConnector.executeDDL(db, s"create table $table(c1 int default 1, c2 int, c3 string, c4 string);")
+    openmldbConnector.refreshCatalog()
+    assert(openmldbConnector.getTableInfo(db, table).getName.nonEmpty)
+
+    val sql1 = s"insert into $db.$table (c3) values ('a')"
+    openmldbSession.sql(sql1)
+    val sql2 = s"insert into $db.$table values (5, NuLl, 'NuLl', NuLl)"
+    openmldbSession.sql(sql2)
+    val sql3 = s"insert into $db.$table (c1) values (NULL)"
+    openmldbSession.sql(sql3)
+
+    val querySess = new OpenmldbSession(sparkSession)
+    val queryResult = querySess.sql(s"select * from $db.$table")
+
+    val schema = StructType(Seq(
+      StructField("c1", IntegerType, nullable = true),
+      StructField("c2", IntegerType, nullable = true),
+      StructField("c3", StringType, nullable = true),
+      StructField("c4", StringType, nullable = true)
+    ))
+    // Now if a column's type is string, and insert value is null, InsertPlan can't judge whether the value is null
+    // itself or null string
+    val expectDf = sparkSession.createDataFrame(
+      sparkSession.sparkContext.parallelize(Seq(
+        Row(1, null, "a", null),
+        Row(5, null, "NuLl", "null"),
+        Row(null, null, null, null))),
+      schema)
+    assert(SparkUtil.approximateDfEqual(expectDf, queryResult.getSparkDf()))
   }
 }
