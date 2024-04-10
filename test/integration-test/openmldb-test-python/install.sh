@@ -25,6 +25,7 @@ sed -i"" -e "s/OPENMLDB_VERSION=.*/OPENMLDB_VERSION=${SPARK_VERSION}/g" openmldb
 sed -i"" -e "s/.*make_snapshot_threshold_offset.*/--make_snapshot_threshold_offset=1/g" openmldb/conf/tablet.flags.template
 rm -rf /tmp/openmldb
 python3 genhost.py
+cat openmldb/conf/hosts
 bash openmldb/sbin/deploy-all.sh
 bash openmldb/sbin/start-all.sh
 popd
