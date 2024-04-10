@@ -6,15 +6,41 @@ Apache Kafka是一个事件流平台。它可以作为OpenMLDB的在线数据源
 注意，为了使演示更简单，本文中将使用Kafka Connect standalone模式来启动connector。该connector是完全可以用distributed模式来启动。
 
 ```{seealso}
-OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc)。
+OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc)。关于特性、配置和开发等说明，见[开发指南](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md)。
 ```
 
+## 功能增强
+
+- Auto Schema
+
+OpenMLDB Kafka Connector 支持在无schema registry的情况下，自动使用OpenMLDB的表schema来解析message，因此，message可以是简单的json格式的数据map。详细配置和格式见[Auto Schema](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md#auto-schema)。
+
+Auto Schema开启后，0.8.5以前的版本要求message包含schema中的所有列，timestamp和date列仅支持整型。0.8.5及之后的版本支持message仅导入部分列，其他列将填入default值，timestamp和date列也可支持字符串年月日时分秒格式。
+
+- Topic Table Mapping
+
+OpenMLDB Kafka Connector 支持topic到table的mapping，比`table.name.format`配置更灵活，配置方式见[Topic Table Mapping](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md#topic-table-mapping)。
+
+此功能可独立使用，如果此项为空，则使用`table.name.format`规则。`table.name.format`的规则是，将`${topic}`替换为topic名字，默认配置为`${topic}`，即表和topic同名。更复杂的例子是，format配置为`kafka_${topic}`，topic名为t1的话，表名将为`kafka_t1`。因此，format配置只适用于表名固定或包含topic名的情况。
+
+## 性能
+
+Kafka利用OpenMLDB Kafka Connector导入数据到OpenMLDB集群，其性能将受Kafka发送端和OpenMLDB接收端共同影响。我们提供单机和集群两种情况下的性能测试报告，见[Kafka Perf Test](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file#performance-test)。
+
+假设topic的数据量足够多，Kafka导入效率基本由Kafka topic的分区数和Connector的task数决定，如果这两者不够大，写入到OpenMLDB的并发度就不够高。task数量较大时，单个Kafka Connect服务也会收到单机物理资源限制，此时需要部署分布式的Kafka Connect，将tasks均匀分散到多台机器上，提高并发度。
+
+观察报告的pqs和latency，单机情况下，机器CPU core 40较充足，Kafka Connector可以配置较多的task，OpenMLDB端的写入QPS单台50k，总计100k。但OpenMLDB内部的写入延迟并未明显提高，只是单机性能有限，使得写入表现如此。集群性能测试也证明了这一点，我们将OpenMLDB集群化后，单机部署Kafka Connect，Kafka topic分区和tasks数改变，QPS不会有明显提高，而分布式部署Kafka Connect后，QPS明显提高。两个Kafka Connect均分78个sink task写入，TabletServer QPS可以达到单台90k，总计180k；三个Kafka Connect均分120个sink task写入，TabletServer QPS可以达到单台100k，总计200k。
+
 ## 概览
+
+```{note}
+如果你已经熟悉Kafka和OpenMLDB，不想按以下步骤操作，可以参考[OpenMLDB Compose With Kafka](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file#kafka)，使用docker-compose快速启动OpenMLDB和Kafka，此项目还包含写入kafka的测试脚本。单独使用Kafka，可以使用镜像`docker pull ghcr.io/vagetablechicken/kafka-connect:latest`，此镜像已包含OpenMLDB Connector，运行参考[compose.yml](https://github.com/vagetablechicken/openmldb-compose/blob/519387e7ad9a8f0467b51886d5b3f07964150753/compose.yml#L288)。
+```
 
 ### 下载与准备
 
 - 你需要下载kafka，请点击[kafka官网下载](https://kafka.apache.org/downloads)下载kafka_2.13-3.1.0.tgz。
-- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](https://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz)。
+- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz](https://openmldb.ai/download/kafka-connector/kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz)。
 - 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](https://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
 
 本文将使用docker方式启动OpenMLDB，所以无需单独下载OpenMLDB。并且，kafka与connector的启动，都可以在同一个容器中进行。
@@ -97,7 +123,7 @@ ps axu|grep kafka
 首先，解压`/work/kafka`中的connector和kafka_demo_files包。
 ```
 cd /work/kafka
-tar zxf kafka-connect-jdbc.tgz
+tar zxf kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz
 tar zxf kafka_demo_files.tgz
 ```
 启动connector，需要kafka_demo_files中的两个配置文件，并将connector插件放入正确位置。

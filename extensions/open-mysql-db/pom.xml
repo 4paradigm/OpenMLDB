@@ -15,7 +15,7 @@
         <maven.compiler.target>1.7</maven.compiler.target>
 
         <java.version>11</java.version>
-        <netty.version>4.1.30.Final</netty.version>
+        <netty.version>4.1.68.Final</netty.version>
         <mysql.version>8.0.23</mysql.version>
     </properties>
 
@@ -36,7 +36,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
+            <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
 
