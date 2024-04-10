@@ -8,6 +8,6 @@ execute_process(
   COMMAND_ECHO STDOUT
 )
 if(NOT ret EQUAL "0")
-    message(STATUS  "Bad exit status '${ret}', be careful")
+    message(WARNING "Bad exit status '${ret}', be careful")
 endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/contrib/glog ${CMAKE_BINARY_DIR}/contrib/glog)
