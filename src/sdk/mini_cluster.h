@@ -129,12 +129,13 @@ class MiniCluster {
             [this](const std::string& host, const std::string& username, const std::string& password) {
                 return user_access_manager_->IsAuthenticated(host, username, password);
             });
-        options_.auth = ns_authenticator_;
+        brpc::ServerOptions options;
+        options.auth = ns_authenticator_;
         if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add ns";
             return false;
         }
-        if (ns_.Start(ns_endpoint.c_str(), &options_) != 0) {
+        if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
             LOG(WARNING) << "fail to start ns";
             return false;
         }
@@ -203,13 +204,14 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
-        ts_opt_.auth = &tablet_authenticator_;
+        brpc::ServerOptions ts_opt;
+        ts_opt.auth = &tablet_authenticator_;
 
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
         }
-        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt_) != 0) {
+        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
             LOG(WARNING) << "fail to start tablet";
             return false;
         }
@@ -244,8 +246,6 @@ class MiniCluster {
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
     openmldb::auth::UserAccessManager* user_access_manager_;
     std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
-    brpc::ServerOptions options_;
-    brpc::ServerOptions ts_opt_;
 };
 
 class StandaloneEnv {
@@ -298,12 +298,13 @@ class StandaloneEnv {
             [this](const std::string& host, const std::string& username, const std::string& password) {
                 return user_access_manager_->IsAuthenticated(host, username, password);
             });
-        options_.auth = ns_authenticator_;
+        brpc::ServerOptions options;
+        options.auth = ns_authenticator_;
         if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add ns";
             return false;
         }
-        if (ns_.Start(ns_endpoint.c_str(), &options_) != 0) {
+        if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
             LOG(WARNING) << "fail to start ns";
             return false;
         }
@@ -349,12 +350,13 @@ class StandaloneEnv {
         if (!ok) {
             return false;
         }
-        ts_opt_.auth = &tablet_authenticator_;
+        brpc::ServerOptions ts_opt;
+        ts_opt.auth = &tablet_authenticator_;
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
         }
-        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt_) != 0) {
+        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
             LOG(WARNING) << "fail to start tablet";
             return false;
         }
@@ -379,8 +381,6 @@ class StandaloneEnv {
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
     openmldb::auth::UserAccessManager* user_access_manager_;
     std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
-    brpc::ServerOptions options_;
-    brpc::ServerOptions ts_opt_;
 };
 
 }  // namespace sdk
