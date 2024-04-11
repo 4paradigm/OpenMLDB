@@ -5579,6 +5579,10 @@ int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
 }
 
 void NameServerImpl::OnLocked() {
+    if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
+        CreateSystemTableOrExit(SystemTableType::kUser);
+        InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
     if (!Recover()) {
         PDLOG(WARNING, "recover failed");
     }
@@ -5593,10 +5597,6 @@ void NameServerImpl::OnLocked() {
         if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
             CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
-    }
-    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
-        CreateSystemTableOrExit(SystemTableType::kUser);
-        InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
 
     if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
