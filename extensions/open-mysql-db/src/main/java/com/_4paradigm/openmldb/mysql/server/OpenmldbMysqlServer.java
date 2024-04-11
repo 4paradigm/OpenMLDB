@@ -10,6 +10,7 @@ import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.mysql.mock.MockResult;
 import com._4paradigm.openmldb.mysql.util.TypeUtil;
+import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
@@ -55,6 +56,12 @@ public class OpenmldbMysqlServer {
   private final Pattern selectCountTablesPattern =
       Pattern.compile(
           "(?i)SELECT COUNT\\(\\*\\) FROM information_schema\\.TABLES WHERE TABLE_SCHEMA = '(.+)'");
+
+  // SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'xzs' AND table_name =
+  // 't_exam_paper'
+  private final Pattern selectCountSchemaTablesPattern =
+      Pattern.compile(
+          "(?i)SELECT COUNT\\(\\*\\) FROM information_schema\\.TABLES WHERE TABLE_SCHEMA = '(.+)' AND table_name = '(.+)'");
 
   // SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = 'xzs'
   private final Pattern selectCountColumnsPattern =
@@ -182,6 +189,10 @@ public class OpenmldbMysqlServer {
                 return;
               }
 
+              if (mockSelectSchemaTableCount(connectionId, resultSetWriter, sql)) {
+                return;
+              }
+
               // This mock must execute before mockPatternQuery
               // SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'demo_db'
               // UNION SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA =
@@ -240,6 +251,7 @@ public class OpenmldbMysqlServer {
                 return;
               }
 
+              String originalSql = sql;
               if (sql.startsWith("SHOW FULL TABLES")) {
                 // SHOW FULL TABLES WHERE Table_type != 'VIEW'
                 Matcher showTablesFromDbMatcher = showTablesFromDbPattern.matcher(sql);
@@ -264,7 +276,7 @@ public class OpenmldbMysqlServer {
 
               if (sql.toLowerCase().startsWith("select") || sql.toLowerCase().startsWith("show")) {
                 SQLResultSet resultSet = (SQLResultSet) stmt.getResultSet();
-                outputResultSet(resultSetWriter, resultSet, sql);
+                outputResultSet(resultSetWriter, resultSet, originalSql);
               }
 
               System.out.println("Success to execute OpenMLDB SQL: " + sql);
@@ -622,6 +634,36 @@ public class OpenmldbMysqlServer {
             return false;
           }
 
+          private boolean mockSelectSchemaTableCount(
+              int connectionId, ResultSetWriter resultSetWriter, String sql) throws SQLException {
+            // SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'xzs' AND
+            // table_name = 't_exam_paper'
+            Matcher selectCountSchemaTablesMatcher = selectCountSchemaTablesPattern.matcher(sql);
+            if (selectCountSchemaTablesMatcher.matches()) {
+              // COUNT(*)
+              List<QueryResultColumn> columns = new ArrayList<>();
+              columns.add(new QueryResultColumn("COUNT(*)", "VARCHAR(255)"));
+              resultSetWriter.writeColumns(columns);
+
+              List<String> row;
+              String dbName = selectCountSchemaTablesMatcher.group(1);
+              String tableName = selectCountSchemaTablesMatcher.group(2);
+              row = new ArrayList<>();
+              NS.TableInfo tableInfo =
+                  sqlClusterExecutorMap.get(connectionId).getTableInfo(dbName, tableName);
+              if (tableInfo == null || tableInfo.getName().equals("")) {
+                row.add("0");
+              } else {
+                row.add("1");
+              }
+              resultSetWriter.writeRow(row);
+
+              resultSetWriter.finish();
+              return true;
+            }
+            return false;
+          }
+
           private boolean mockSelectCountUnion(
               int connectionId, ResultSetWriter resultSetWriter, String sql) throws SQLException {
             // SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'demo_db'
@@ -713,13 +755,17 @@ public class OpenmldbMysqlServer {
     // Add schema
     for (int i = 0; i < columnCount; i++) {
       String columnName = schema.getColumnName(i);
-      if (sql.equalsIgnoreCase("show table status") && columnName.equalsIgnoreCase("table_id")) {
+      if ((sql.startsWith("SHOW FULL TABLES") || sql.equalsIgnoreCase("show table status"))
+          && columnName.equalsIgnoreCase("table_id")) {
         tableIdColumnIndex = i;
         continue;
       }
       int columnType = schema.getColumnType(i);
       columns.add(
           new QueryResultColumn(columnName, TypeUtil.openmldbTypeToMysqlTypeString(columnType)));
+    }
+    if (sql.startsWith("SHOW FULL TABLES")) {
+      columns.add(new QueryResultColumn("Table_type", "VARCHAR(255)"));
     }
 
     resultSetWriter.writeColumns(columns);
@@ -738,6 +784,9 @@ public class OpenmldbMysqlServer {
         int type = schema.getColumnType(i);
         String columnValue = TypeUtil.getResultSetStringColumn(resultSet, i + 1, type);
         row.add(columnValue);
+      }
+      if (sql.startsWith("SHOW FULL TABLES")) {
+        row.add("BASE TABLE");
       }
 
       resultSetWriter.writeRow(row);
