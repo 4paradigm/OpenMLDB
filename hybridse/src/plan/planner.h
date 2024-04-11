@@ -68,7 +68,7 @@ class Planner {
     ABSL_MUST_USE_RESULT base::Status ConvertGuard(const node::SqlNode *node, OutputType **output, ConvertFn &&func) {
         auto specific_node = dynamic_cast<std::add_pointer_t<std::add_const_t<NodeType>>>(node);
         CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "unable to cast");
-        return func(specific_node, output);
+        return func(specific_node, node_manager_, output);
     }
 
     static absl::StatusOr<node::TablePlanNode *> IsTable(node::PlanNode *node);

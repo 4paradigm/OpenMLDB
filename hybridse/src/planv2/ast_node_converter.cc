@@ -63,6 +63,9 @@ static base::Status ConvertSchemaNode(const zetasql::ASTColumnSchema* stmt, node
                                       node::ColumnSchemaNode** out);
 static base::Status ConvertArrayElement(const zetasql::ASTArrayElement* expr, node::NodeManager* nm,
                                         node::ArrayElementExpr** out);
+static base::Status ConvertCallStmt(const zetasql::ASTCallStatement*, node::NodeManager*, node::CallStmt**);
+static base::Status ConvertStructCtor(const zetasql::ASTStructConstructorWithParens*, node::NodeManager*,
+                                      node::StructCtorWithParens**);
 
 /// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
@@ -543,6 +546,14 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                                                                               ConvertArrayExpr);
         }
 
+        case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
+            node::StructCtorWithParens* expr = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTStructConstructorWithParens>(ast_expression, node_manager, &expr,
+                                                                               ConvertStructCtor));
+            *output = expr;
+            return base::Status::OK();
+        }
+
         default: {
             FAIL_STATUS(common::kUnsupportSql, "Unsupport ASTExpression ", ast_expression->GetNodeKindString())
         }
@@ -888,6 +899,13 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_ALTER_TABLE_STATEMENT: {
             CHECK_STATUS(
                 ConvertGuard<zetasql::ASTAlterTableStatement>(statement, node_manager, output, ConvertAlterTableStmt));
+            break;
+        }
+        case zetasql::AST_CALL_STATEMENT: {
+            node::CallStmt* call = nullptr;
+            CHECK_STATUS(
+                ConvertGuard<zetasql::ASTCallStatement>(statement, node_manager, &call, ConvertCallStmt));
+            *output = call;
             break;
         }
         default: {
@@ -2179,9 +2197,7 @@ base::Status ConvertAstOptionsListToMap(const zetasql::ASTOptionsList* options, 
         auto entry_value = entry->value();
         node::ExprNode* value = nullptr;
         CHECK_STATUS(ConvertExprNode(entry_value, node_manager, &value));
-        CHECK_TRUE(value->GetExprType() == node::kExprPrimary, common::kSqlAstError,
-                   "Unsupported value other than const type: ", entry_value->DebugString());
-        options_map->emplace(key, dynamic_cast<const node::ConstNode*>(value));
+        options_map->emplace(key, value);
     }
     return base::Status::OK();
 }
@@ -2554,6 +2570,39 @@ base::Status ConvertArrayElement(const zetasql::ASTArrayElement* expr, node::Nod
     CHECK_STATUS(ConvertExprNode(expr->position(), nm, &pos));
 
     *out = nm->MakeNode<node::ArrayElementExpr>(array, pos);
+    return {};
+}
+
+base::Status ConvertCallStmt(const zetasql::ASTCallStatement* call, node::NodeManager* nm, node::CallStmt** out) {
+    std::vector<std::string> names;
+    CHECK_STATUS(AstPathExpressionToStringList(call->procedure_name(), names));
+
+    std::vector<node::ExprNode*> args;
+    for (auto arg : call->arguments()) {
+        if (arg->expr()) {
+            node::ExprNode* e;
+            CHECK_STATUS(ConvertExprNode(arg->expr(), nm, &e));
+            args.push_back(e);
+        } else {
+            CHECK_TRUE(false, common::kSqlAstError,
+                       "unsupported argument type for call statement: ", arg->DebugString());
+        }
+    }
+
+    *out = nm->MakeNode<node::CallStmt>(names, args);
+
+    return {};
+}
+
+base::Status ConvertStructCtor(const zetasql::ASTStructConstructorWithParens* expr, node::NodeManager* nm,
+                               node::StructCtorWithParens** out) {
+    std::vector<node::ExprNode*> converted;
+    for (auto e : expr->field_expressions()) {
+        node::ExprNode* ce;
+        CHECK_STATUS(ConvertExprNode(e, nm, &ce));
+        converted.push_back(ce);
+    }
+    *out = nm->MakeNode<node::StructCtorWithParens>(converted);
     return {};
 }
 

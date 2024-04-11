@@ -39,6 +39,8 @@ inline bool IsCurRowRelativeWinFun(absl::string_view fn_name) {
            absl::EqualsIgnoreCase("lead", fn_name);
 }
 
+base::Status ConvertCall(const node::CallStmt* call, node::NodeManager* nm, node::CallStmtPlan** out);
+
 Planner::Planner(node::NodeManager *manager, const bool is_batch_mode, const bool is_cluster_optimized,
         const bool enable_batch_window_parallelization,
         const std::unordered_map<std::string, std::string>* extra_options)
@@ -805,9 +807,19 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
             case ::hybridse::node::kAlterTableStmt: {
                 node::AlterTableStmtPlanNode* out = nullptr;
                 CHECK_STATUS(ConvertGuard<node::AlterTableStmt>(
-                    parser_tree, &out, [this](const node::AlterTableStmt *from, node::AlterTableStmtPlanNode **out) {
-                        *out = node_manager_->MakeNode<node::AlterTableStmtPlanNode>(from->db_, from->table_,
-                                                                                     from->actions_);
+                    parser_tree, &out,
+                    [](const node::AlterTableStmt *from, node::NodeManager *nm, node::AlterTableStmtPlanNode **out) {
+                        *out = nm->MakeNode<node::AlterTableStmtPlanNode>(from->db_, from->table_, from->actions_);
+                        return base::Status::OK();
+                    }));
+                plan_trees.push_back(out);
+                break;
+            }
+            case ::hybridse::node::kCallStmt: {
+                node::CallStmtPlan *out = nullptr;
+                CHECK_STATUS(ConvertGuard<node::CallStmt>(
+                    parser_tree, &out, [](const node::CallStmt *from, node::NodeManager *nm, node::CallStmtPlan **out) {
+                        *out = nm->MakeNode<node::CallStmtPlan>(from->procedure_name(), from->arguments());
                         return base::Status::OK();
                     }));
                 plan_trees.push_back(out);

@@ -145,9 +145,10 @@ static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap()
       {kExprEscaped, "escape"},
       {kExprArray, "array"},
       {kExprArrayElement, "array element"},
+      {kExprStructCtorParens, "struct with parens"},
   };
   for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
-        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+      DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
   }
   return map;
 }
@@ -1191,6 +1192,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kWithClauseEntry, "kWithClauseEntry"},
         {kAlterTableStmt, "kAlterTableStmt"},
         {kColumnSchema, "kColumnSchema"},
+        {kCallStmt, "kCallStmt"},
     };
     for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
         DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
