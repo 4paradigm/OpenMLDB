@@ -25,8 +25,6 @@ cd "$home" || exit 1
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   bin/start.sh start standalone_nameserver "$@"
-  # Sleep for 5 seconds allowing nameserver to pick up auth data
-  sleep 5 
 else
   old_IFS="$IFS"
   IFS=$'\n'
@@ -39,8 +37,6 @@ else
     echo "start nameserver in $dir with endpoint $host:$port "
     cmd="cd $dir && bin/start.sh start nameserver $*"
     run_auto "$host" "$cmd"
-    # Sleep for 5 seconds allowing nameserver to pick up auth data
-    sleep 5 
   done
   IFS="$old_IFS"
 fi

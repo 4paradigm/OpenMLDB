@@ -146,10 +146,10 @@ void StartNameServer() {
         exit(1);
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    while (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                      &table_info)) {
-        PDLOG(INFO, "Fail to get table info for user table, waiting for leader to create it");
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                   &table_info)) {
+        PDLOG(WARNING, "Failed to get table info for user table");
+        exit(1);
     }
     openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
     brpc::ServerOptions options;
@@ -1609,8 +1609,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 }
                 it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
             } catch (std::exception const& e) {
-                std::cout << "Invalid args. st and et should be uint64_t, limit should"
-                          << "be uint32_t" << std::endl;
+                std::cout << "Invalid args. st and et should be uint64_t, limit should" << "be uint32_t" << std::endl;
                 return;
             }
         }

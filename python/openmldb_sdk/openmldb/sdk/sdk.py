@@ -73,8 +73,6 @@ class OpenMLDBSdk(object):
                 self.options_map['maxSqlCacheSize'])
         if 'user' in self.options_map:
             options.user = self.options_map['user']
-        else:
-            options.user = 'root'
         if 'password' in self.options_map:
             options.password = self.options_map['password']
 

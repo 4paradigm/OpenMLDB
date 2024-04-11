@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -118,10 +119,10 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
-        while (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                         &user_table_info_)) {
-            PDLOG(INFO, "Fail to get table info for user table, waiting for leader to create it");
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                      &user_table_info_)) {
+            PDLOG(WARNING, "Failed to get table info for user table");
+            return false;
         }
         user_access_manager_ =
             new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator(), user_table_info_);
@@ -287,10 +288,10 @@ class StandaloneEnv {
         if (!ok) {
             return false;
         }
-        while (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                         &user_table_info_)) {
-            PDLOG(INFO, "Fail to get table info for user table, waiting for leader to create it");
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                      &user_table_info_)) {
+            PDLOG(WARNING, "Failed to get table info for user table");
+            return false;
         }
         user_access_manager_ =
             new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator(), user_table_info_);

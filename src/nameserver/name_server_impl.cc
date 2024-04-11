@@ -1513,6 +1513,10 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     return true;
 }
 
@@ -9474,8 +9478,8 @@ base::Status NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::Crea
                                  ", endpoint: ", tb_client->GetEndpoint(), ", msg: ", status.GetMsg())};
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
-                   << "sp_name: " << sp_info.sp_name() << ", "
-                   << "sql: " << sp_info.sql() << "endpoint: " << tb_client->GetEndpoint();
+                   << "sp_name: " << sp_info.sp_name() << ", " << "sql: " << sp_info.sql()
+                   << "endpoint: " << tb_client->GetEndpoint();
     }
     return {};
 }
