@@ -46,7 +46,7 @@ object DataSourceUtil {
 
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
                columns: util.List[Common.ColumnDesc], loadDataSql: String,
-               skipCvt: Boolean = false): DataFrame = {
+               skipCvt: Boolean): DataFrame = {
     autoLoad(openmldbSession, file, List.empty[String], format, options, columns, loadDataSql, skipCvt)
   }
 
@@ -103,11 +103,8 @@ object DataSourceUtil {
   : DataFrame = {
     val fmt = format.toLowerCase
     val isCataLog = isCatalog(fmt)
-    if (isCataLog) {
-      logger.info("load data from catalog table {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
-    } else {
-      logger.info("load data from file {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
-    }
+    logger.info("load data from {} {} & {} reader[format {}, options {}, skipCvt {}]",
+      if (isCataLog) "catalog table" else "file", file, symbolPaths, fmt, options, skipCvt)
     val getDataLoad = (path: String) => {
       val df: DataFrame = if (isCataLog) {
         catalogLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
@@ -156,11 +153,11 @@ object DataSourceUtil {
     var resultDf = df
     val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
     // tidb schema mapping
-    if (format == "tidb" && !checkSchemaIgnoreNullable(df.schema, oriSchema)) {
-      val convertedColumns = getMappingSchemaColumnsForTidb(df.schema, oriSchema)
+    if (format == "tidb" && !checkSchemaIgnoreNullable(resultDf.schema, oriSchema)) {
+      val convertedColumns = getMappingSchemaColumnsForTidb(resultDf.schema, oriSchema)
       if (convertedColumns.length != oriSchema.length) {
         throw new IllegalArgumentException(s"tidb schema mapping failed, " +
-          s"loaded tidb ${df.schema}!= table $oriSchema, check $file")
+          s"loaded tidb ${resultDf.schema}!= table $oriSchema, check $file")
       }
       logger.info(s"convert tidb data columns, convert select: ${convertedColumns}, table: $oriSchema")
       resultDf = resultDf.select(convertedColumns: _*)
@@ -168,14 +165,16 @@ object DataSourceUtil {
     // check schema
     (isCatalog(format), format) match {
       case (true, "tidb") | (false, "parquet") =>
-        require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
-          s"schema mismatch(name and dataType), loaded data ${df.schema}!= table $oriSchema, check $file")
-        if (!df.schema.equals(oriSchema)) {
-          logger.info(s"df schema: ${df.schema}, reset schema")
-          resultDf = resultDf.sqlContext.createDataFrame(df.rdd, oriSchema)
+        //df.schema == oriSchema, hive table always nullable?
+        require(checkSchemaIgnoreNullable(resultDf.schema, oriSchema),
+          s"schema mismatch(name and dataType), loaded data ${resultDf.schema}!= table $oriSchema, check $file")
+        if (!resultDf.schema.equals(oriSchema)) {
+          logger.info(s"df schema: ${resultDf.schema}, reset schema")
+          resultDf = resultDf.sqlContext.createDataFrame(resultDf.rdd, oriSchema)
         }
       case _ =>
-        require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
+        require(resultDf.schema == oriSchema, s"schema mismatch, " +
+          s"loaded ${resultDf.schema} != table $oriSchema, check $file")
     }
     resultDf
   }
