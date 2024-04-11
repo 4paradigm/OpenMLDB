@@ -68,6 +68,9 @@ const std::unordered_map<::hybridse::type::Type, uint8_t>& GetTypeSizeMap();
 bool IsCodecBaseType(const type::ColumnSchema& sc);
 bool IsCodecStrLikeType(const type::ColumnSchema& sc);
 
+// returns the corresponding SQL string representation for input ColumnSchema
+absl::StatusOr<std::string> ColumnSchemaStr(const type::ColumnSchema&);
+
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
         return 1;

@@ -70,7 +70,6 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         if (sql_case.BuildCreateSqlFromInput(i, &create, partition_num) && !create.empty()) {
             std::string placeholder = "{" + std::to_string(i) + "}";
             absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &create);
-            LOG(INFO) << create;
             router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
             ASSERT_TRUE(status.code == 0) << status.msg;
