@@ -235,4 +235,14 @@ class TestInsertPlan extends SparkTestSuite {
       "options(format='csv', deep_copy=false);")
     assertThrows[IllegalArgumentException](openmldbSession.sql(s"insert into $db.$table values (1, 1, 1)"))
   }
+
+  test("Test random columns and empty column") {
+    val table = "t8"
+    openmldbConnector.executeDDL(db, s"create table $table(c1 string, c2 int);")
+    openmldbConnector.refreshCatalog()
+    assert(openmldbConnector.getTableInfo(db, table).getName.nonEmpty)
+
+    val sql = s"insert or ignore into $db.$table values ('a', 1)"
+    assertThrows[IllegalArgumentException](openmldbSession.sql(sql))
+  }
 }

@@ -42,6 +42,9 @@ object InsertPlan {
     val stmt = node.GetInsertStmt()
     require(stmt != null, "Fail to get insert statement")
 
+    val insertMode = stmt.getInsert_mode_
+    require("DEFAULT_MODE".equals(insertMode.toString), s"insert mode: $insertMode is unsupported in offline mode")
+
     val dbInStmt = stmt.getDb_name_
     val db = if (dbInStmt.nonEmpty) dbInStmt else ctx.getConf.defaultDb
     val table = stmt.getTable_name_
