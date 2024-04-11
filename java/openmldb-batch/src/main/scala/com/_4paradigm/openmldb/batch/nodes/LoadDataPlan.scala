@@ -41,6 +41,10 @@ object LoadDataPlan {
     // load have the option deep_copy
     val deepCopy = extra.get("deep_copy").get.toBoolean
     // auto schema conversion option skip_cvt
+    val skipCvt = (storage, format) match {
+      case ("online", "tidb") => extra.getOrElse("skip_cvt", "false").toBoolean
+      case _ => false
+    }
     val skipCvt = extra.getOrElse("skip_cvt", "false").toBoolean
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")

@@ -103,8 +103,9 @@ object DataSourceUtil {
   : DataFrame = {
     val fmt = format.toLowerCase
     val isCataLog = isCatalog(fmt)
-    logger.info("load data from {} {} & {} reader[format {}, options {}, skipCvt {}]",
-      if (isCataLog) "catalog table" else "file", file, symbolPaths, fmt, options, skipCvt)
+    val fileTypeDesc = if (isCataLog) "catalog table" else "file"
+    logger.info(s"load data from ${fileTypeDesc} ${file} & ${symbolPaths} " +
+      s"reader[format ${fmt}, options ${options}, skipCvt ${skipCvt}]")
     val getDataLoad = (path: String) => {
       val df: DataFrame = if (isCataLog) {
         catalogLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
@@ -112,7 +113,7 @@ object DataSourceUtil {
         autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
       }
       if (columns != null) {
-        if (isSkipSchemaMappingAndCheck(format, skipCvt)) {
+        if (skipCvt) {
           val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
           require(checkSchemaColumnsName(df.schema, oriSchema),
             s"schema mismatch(name), loaded data ${df.schema}!= table $oriSchema, check $file")
@@ -142,10 +143,6 @@ object DataSourceUtil {
       }
       outputDf
     }
-  }
-
-  private def isSkipSchemaMappingAndCheck(format: String, skipCvt: Boolean): Boolean = {
-    format == "tidb" && skipCvt
   }
 
   private def autoSchemaMappingAndCheck(df: DataFrame, file: String, format: String,
