@@ -25,7 +25,6 @@ import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType,
   StructField, StructType, TimestampType}
 
 import java.sql.{Date, Timestamp}
-import java.util.Properties
 
 
 class TestInsertPlan extends SparkTestSuite {
@@ -35,18 +34,21 @@ class TestInsertPlan extends SparkTestSuite {
   val db = "offline_insert_test"
 
   override def customizedBefore(): Unit = {
-    val prop = new Properties
-    prop.load(getClass.getResourceAsStream("/test.properties"))
-    val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
-    val path = prop.getProperty("openmldb.zk.root.path", "/onebox")
-    sparkSession = getSparkSession
-    sparkSession.conf.set("openmldb.zk.cluster", cluster)
-    sparkSession.conf.set("openmldb.zk.root.path", path)
-
+    sparkSession = getSparkSession()
     openmldbSession = new OpenmldbSession(sparkSession)
     openmldbConnector = openmldbSession.openmldbCatalogService.sqlExecutor
     openmldbConnector.createDB(db)
     openmldbConnector.refreshCatalog()
+  }
+
+  override def getSparkSession(): SparkSession = {
+    val zkHost = "localhost:2181"
+    val zkPath = "/openmldb"
+    SparkSession.builder()
+      .master("local")
+      .config("openmldb.zk.cluster", zkHost)
+      .config("openmldb.zk.root.path", zkPath)
+      .getOrCreate()
   }
 
   override def customizedAfter(): Unit = {
@@ -197,7 +199,7 @@ class TestInsertPlan extends SparkTestSuite {
     openmldbConnector.refreshCatalog()
     assert(openmldbConnector.getTableInfo(db, table).getName.nonEmpty)
 
-    val testFileWithHeader = "file://" + getClass.getResource("/load_data_test_src/test_with_any_header.csv")
+    val testFileWithHeader = "file://" + getClass.getResource("/insert_test_src/test.csv")
       .getPath
     openmldbSession.sql(s"load data infile '$testFileWithHeader' into table $db.$table " +
       s"options(format='csv', deep_copy=true);")
@@ -229,11 +231,12 @@ class TestInsertPlan extends SparkTestSuite {
     openmldbConnector.refreshCatalog()
     assert(openmldbConnector.getTableInfo(db, table).getName.nonEmpty)
 
-    val testFileWithHeader = "file://" + getClass.getResource("/load_data_test_src/test_with_any_header.csv")
+    val testFileWithHeader = "file://" + getClass.getResource("/insert_test_src/test.csv")
       .getPath
     openmldbSession.sql(s"load data infile '$testFileWithHeader' into table $db.$table " +
       "options(format='csv', deep_copy=false);")
-    assertThrows[IllegalArgumentException](openmldbSession.sql(s"insert into $db.$table values (1, 1, 1)"))
+    val newSess = new OpenmldbSession(sparkSession)
+    assertThrows[IllegalArgumentException](newSess.sql(s"insert into $db.$table values (1, 1, 1)"))
   }
 
   test("Test insert mode") {
