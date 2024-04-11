@@ -29,7 +29,16 @@ function(add_contrib cmake_folder)
 endfunction()
 
 add_contrib(simdjson)
+CMAKE_POLICY(GET CMP0077 var)
+if (POLICY CMP0077)
+    cmake_policy(SET CMP0077 NEW)
+endif ()
+set(RAPIDJSON_BUILD_DOC OFF)
+set(RAPIDJSON_BUILD_EXAMPLES OFF)
+set(RAPIDJSON_BUILD_TESTS OFF)
 add_contrib(rapidjson)
+cmake_policy(SET CMP0077 ${var} )
+
 add_contrib(farmhash)
 
 if (BUILD_SHARED_LIBS)

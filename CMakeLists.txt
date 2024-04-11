@@ -36,7 +36,7 @@ if (NOT DEFINED CMAKE_PREFIX_PATH)
         set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
     endif()
 endif()
-
+message(STATUS "why trigger again?")
 message (STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
@@ -116,7 +116,6 @@ if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
 
-set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 
