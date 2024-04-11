@@ -15,8 +15,8 @@ value_list:
 ```
 
 **说明**
-- `INSERT` 只能用在在线模式
 - 默认`INSERT`不会去重，`INSERT OR IGNORE` 则可以忽略已存在于表中的数据，可以反复重试。
+- 离线模式仅支持`INSERT`，不支持`INSERT OR IGNORE`
 
 ## Examples
 

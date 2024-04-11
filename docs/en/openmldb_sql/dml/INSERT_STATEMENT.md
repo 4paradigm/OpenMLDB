@@ -5,7 +5,7 @@ OpenMLDB supports single-row and multi-row insert statements.
 ## Syntax
 
 ```
-INSERT INFO tbl_name (column_list) VALUES (value_list) [, value_list ...]
+INSERT [[OR] IGNORE] INFO tbl_name (column_list) VALUES (value_list) [, value_list ...]
 
 column_list:
     col_name [, col_name] ...
@@ -15,7 +15,8 @@ value_list:
 ```
 
 **Description**
-- `INSERT` statement only works in online execute mode
+- By default, `INSERT` does not deduplicate records, whereas `INSERT OR IGNORE` allows ignoring data that already exists in the table, making it suitable for repeated attempts.
+- Offline execute mode only supports `INSERT`, not `INSERT OR IGNORE`
 
 ## Examples
 
