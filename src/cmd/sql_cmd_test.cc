@@ -1044,7 +1044,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
         "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
     ProcessSQLs(sr, {
                         "set @@execute_mode = 'online';",
-                        "create database " + db ,
+                        "create database " + db,
                         "use " + db,
                         ddl1,
                         ddl2,
@@ -1087,6 +1087,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
     // range bias won't work cuz no new abs index in deploy
     index_res = rows_test("rows_bias=20, range_bias='inf'");
     ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    // invalid bias format
     rows_test("rows_bias=20s", false);
     i--;  // last one is failed, reset the num
 
@@ -1101,19 +1102,32 @@ TEST_P(DBSDKTest, DeployWithBias) {
         auto info = sr->GetTableInfo(db, "t1");
         return info.column_key().Get(1);
     };
+    // test index is lat now, add range, it will be absanlat
     index_res = range_test("range_bias=0");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);  // ref d1 deploy
     index_res = range_test("range_bias=20");
     ASSERT_EQ(index_res.ttl().abs_ttl(), 2);
     // rows bias won't work cuz no **new** lat index in deploy, just new abs index + the old index
     index_res = range_test("range_bias=1d, rows_bias=100");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);  // ref d1 deploy
 
     // set inf in the end, if not, all bias + inf = inf
+    // bias won't work cuz no **new** abs index in deploy
     index_res = rows_test("range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    index_res = range_test("range_bias='inf'");
+    // never expired, it'll be std to abs 0
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsoluteTime);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
     index_res = rows_test("rows_bias='inf'");
-    ASSERT_EQ(index_res.ttl().lat_ttl(), 0);
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsoluteTime);
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
 
     // sp in tablet may be stored a bit late, wait
     sleep(3);
@@ -1263,12 +1277,15 @@ TEST_P(DBSDKTest, DeletetSameTsCol) {
                         ddl,
                     });
     hybridse::sdk::Status status;
-    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                " values (1,\"aa\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"), &status);
-    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                " values (2,\"bb\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"), &status);
-    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                " values (3,\"aa\",1,2,3,1.1,2.1,1590738990000,\"2020-05-01\",true);"), &status);
+    sr->ExecuteSQL(
+        absl::StrCat("insert into ", table_name, " values (1,\"aa\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"),
+        &status);
+    sr->ExecuteSQL(
+        absl::StrCat("insert into ", table_name, " values (2,\"bb\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"),
+        &status);
+    sr->ExecuteSQL(
+        absl::StrCat("insert into ", table_name, " values (3,\"aa\",1,2,3,1.1,2.1,1590738990000,\"2020-05-01\",true);"),
+        &status);
 
     auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 3);
@@ -1294,8 +1311,8 @@ TEST_P(DBSDKTest, TestDelete) {
     sr->ExecuteSQL(db, "set @@execute_mode = 'online';", &status);
     sr->ExecuteSQL(db, "use " + db + " ;", &status);
     ddl = absl::StrCat("create table ", name,
-          "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
-          "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
+                       "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
+                       "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
     ASSERT_TRUE(sr->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ASSERT_TRUE(sr->RefreshCatalog());
     for (int i = 0; i < 10; i++) {
@@ -1303,8 +1320,8 @@ TEST_P(DBSDKTest, TestDelete) {
         std::string key2 = absl::StrCat("key2_", i);
         std::string key3 = absl::StrCat("key3_", i);
         for (int j = 0; j < 10; j++) {
-            sr->ExecuteSQL(absl::StrCat("insert into ", name,
-                        " values ('", key1, "', '", key2, "', '", key3, "', ", 100 + j, ",", 1000 + j, ", 1, 'v');"),
+            sr->ExecuteSQL(absl::StrCat("insert into ", name, " values ('", key1, "', '", key2, "', '", key3, "', ",
+                                        100 + j, ",", 1000 + j, ", 1, 'v');"),
                            &status);
         }
     }
@@ -1341,7 +1358,6 @@ TEST_P(DBSDKTest, TestDelete) {
     ASSERT_TRUE(sr->DropDB(db, &status));
 }
 
-
 TEST_P(DBSDKTest, DeletetMulIndex) {
     auto cli = GetParam();
     sr = cli->sr;
@@ -1362,9 +1378,9 @@ TEST_P(DBSDKTest, DeletetMulIndex) {
         std::string key2 = absl::StrCat("key2_", i);
         for (int j = 0; j < 10; j++) {
             uint64_t ts = 1000 + j;
-            sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                        " values ('", key1, "', '", key2, "', ", ts, ",", ts, ");"),
-                           &status);
+            sr->ExecuteSQL(
+                absl::StrCat("insert into ", table_name, " values ('", key1, "', '", key2, "', ", ts, ",", ts, ");"),
+                &status);
         }
     }
 

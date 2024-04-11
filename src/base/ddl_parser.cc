@@ -495,7 +495,7 @@ void IndexMapBuilder::Report(absl::string_view db, absl::string_view table, absl
 
     index_map_[index] = ttl;
 
-    LOG(INFO) << "suggest creating index for " << db << "." << table << ": " << index << ", " << ttl->DebugString();
+    LOG(INFO) << "suggest creating index for " << db << "." << table << ": " << index << ", " << ttl->ShortDebugString();
 }
 
 int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded) {
