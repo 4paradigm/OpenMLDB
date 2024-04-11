@@ -32,10 +32,8 @@ object SelectIntoPlan {
       logger.debug("select {} rows", input.getDf().count())
       input.getDf().show(10)
     }
-    val storage = ctx.getConf.loadDataMode
-    require(storage == "offline" || storage == "online")
     // write options don't need deepCopy, may have coalesce
-    val (format, options, mode, extra) = HybridseUtil.parseOptions(storage, outPath, node)
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(outPath, node)
     if (input.getSchema.size == 0 && input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
     }

@@ -41,12 +41,13 @@ object DataSourceUtil {
 
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
                columns: util.List[Common.ColumnDesc]): DataFrame = {
-    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, "")
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, "", skipCvt = false)
   }
 
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
-               columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
-    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, loadDataSql)
+               columns: util.List[Common.ColumnDesc], loadDataSql: String,
+               skipCvt: Boolean = false): DataFrame = {
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, loadDataSql, skipCvt)
   }
 
   // otherwise isCatalog
@@ -97,11 +98,11 @@ object DataSourceUtil {
   // We use OpenmldbSession for running sparksql in hiveLoad. If in 4pd Spark distribution, SparkSession.sql
   // will do openmldbSql first, and if DISABLE_OPENMLDB_FALLBACK, we can't use sparksql.
   def autoLoad(openmldbSession: OpenmldbSession, file: String, symbolPaths: List[String], format: String,
-               options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String = "")
+               options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String = ""
+               , skipCvt: Boolean = false)
   : DataFrame = {
     val fmt = format.toLowerCase
     val isCataLog = isCatalog(fmt)
-    val isCheckSchema = options.getOrElse("is_check_schema", "true").toBoolean
     if (isCataLog) {
       logger.info("load data from catalog table {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
     } else {
@@ -114,20 +115,13 @@ object DataSourceUtil {
         autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
       }
       if (columns != null) {
-        val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
-        if (isCheckSchema) {
-          require(checkSchemaIgnoreNullable(df.schema, oriSchema),
-            s"schema mismatch(name and dataType), loaded data ${df.schema}!= table $oriSchema, check $file")
-          if (!df.schema.equals(oriSchema)) {
-            logger.info(s"df schema: ${df.schema}, reset schema")
-            df.sqlContext.createDataFrame(df.rdd, oriSchema)
-          } else {
-            df
-          }
-        } else {
+        if (isSkipSchemaMappingAndCheck(format, skipCvt)) {
+          val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
           require(checkSchemaColumnsName(df.schema, oriSchema),
             s"schema mismatch(name), loaded data ${df.schema}!= table $oriSchema, check $file")
           df
+        } else {
+          autoSchemaMappingAndCheck(df, file, format, columns)
         }
       } else {
         df
@@ -151,6 +145,39 @@ object DataSourceUtil {
       }
       outputDf
     }
+  }
+
+  private def isSkipSchemaMappingAndCheck(format: String, skipCvt: Boolean): Boolean = {
+    format == "tidb" && skipCvt
+  }
+
+  private def autoSchemaMappingAndCheck(df: DataFrame, file: String, format: String,
+                                        columns: util.List[Common.ColumnDesc]): DataFrame = {
+    var resultDf = df
+    val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
+    // tidb schema mapping
+    if (format == "tidb" && !checkSchemaIgnoreNullable(df.schema, oriSchema)) {
+      val convertedColumns = getMappingSchemaColumnsForTidb(df.schema, oriSchema)
+      if (convertedColumns.length != oriSchema.length) {
+        throw new IllegalArgumentException(s"tidb schema mapping failed, " +
+          s"loaded tidb ${df.schema}!= table $oriSchema, check $file")
+      }
+      logger.info(s"convert tidb data columns, convert select: ${convertedColumns}, table: $oriSchema")
+      resultDf = resultDf.select(convertedColumns: _*)
+    }
+    // check schema
+    (isCatalog(format), format) match {
+      case (true, "tidb") | (false, "parquet") =>
+        require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
+          s"schema mismatch(name and dataType), loaded data ${df.schema}!= table $oriSchema, check $file")
+        if (!df.schema.equals(oriSchema)) {
+          logger.info(s"df schema: ${df.schema}, reset schema")
+          resultDf = resultDf.sqlContext.createDataFrame(df.rdd, oriSchema)
+        }
+      case _ =>
+        require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
+    }
+    resultDf
   }
 
   // We want df with oriSchema, but if the file format is csv:
@@ -232,20 +259,6 @@ object DataSourceUtil {
     if (logger.isDebugEnabled()) {
       logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
       df.show(10)
-    }
-    val isCheckSchema = options.getOrElse("is_check_schema", "true").toBoolean
-    // tidb schema check and mapping
-    if (isCheckSchema && format == "tidb") {
-      val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
-      if (!checkSchemaIgnoreNullable(df.schema, oriSchema)) {
-        val convertedColumns = getMappingSchemaColumnsForTidb(df.schema, oriSchema)
-        if (convertedColumns.length != oriSchema.length) {
-          throw new IllegalArgumentException(s"tidb schema mapping failed, " +
-            s"loaded tidb ${df.schema}!= table $oriSchema, check $file")
-        }
-        logger.info(s"convert tidb data columns, convert select: ${convertedColumns}, table: $oriSchema")
-        return df.select(convertedColumns: _*)
-      }
     }
     df
   }

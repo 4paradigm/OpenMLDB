@@ -219,7 +219,7 @@ object HybridseUtil {
   // If file starts with 'openmldb', format is openmldb, not the detail format in openmldb
   // Others, format is the origin format option
   // **Result**: format, options(spark write/read options), mode is common, if more options, set them to extra map
-  def parseOptions[T](loadDataMode: String, file: String, node: T):
+  def parseOptions[T](file: String, node: T):
   (String, Map[String, String], String, Map[String, String]) = {
     // load data: read format, select into: write format
     // parse hive/iceberg to avoid user forget to set format
@@ -276,14 +276,8 @@ object HybridseUtil {
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
     extraOptions += ("create_if_not_exists" -> parseOption(getOptionFromNode(node, "create_if_not_exists"),
       "true", getBoolOrDefault))
-    extraOptions += ("is_check_schema" -> parseOption(getOptionFromNode(node, "is_check_schema"),
-      "true", getBoolOrDefault))
-
-    if (loadDataMode == "online") {
-      options += ("is_check_schema" -> "false")
-    } else {
-      options += ("is_check_schema" -> extraOptions.getOrElse("is_check_schema", "true"))
-    }
+    extraOptions += ("skip_cvt" -> parseOption(getOptionFromNode(node, "skip_cvt"),
+      "false", getBoolOrDefault))
     (format, options.toMap, mode, extraOptions.toMap)
   }
 

@@ -37,9 +37,11 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-    val (format, options, mode, extra) = HybridseUtil.parseOptions(storage, inputFile, node)
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(inputFile, node)
     // load have the option deep_copy
     val deepCopy = extra.get("deep_copy").get.toBoolean
+    // auto schema conversion option skip_cvt
+    val skipCvt = extra.getOrElse("skip_cvt", "false").toBoolean
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
@@ -52,7 +54,7 @@ object LoadDataPlan {
     // we read input file even in soft copy,
     // cause we want to check if "the input file schema == openmldb table schema"
     val df = DataSourceUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList,
-      loadDataSql)
+      loadDataSql, skipCvt)
 
     // write
     logger.info("write data to storage {}, writer mode {}, is deep {}", storage, mode, deepCopy.toString)
