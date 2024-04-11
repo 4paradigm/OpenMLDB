@@ -26,6 +26,7 @@ import com._4paradigm.std.{ExprNodeVector, VectorString}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
   ShortType, StringType, StructField, StructType, TimestampType}
+import org.slf4j.LoggerFactory
 
 import java.sql.{Date, Timestamp}
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
@@ -34,6 +35,8 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 object InsertPlan {
   case class ColInfo(colDesc: ColumnDesc, field: StructField)
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalInsertNode): SparkInstance = {
     val stmt = node.GetInsertStmt()
@@ -45,6 +48,13 @@ object InsertPlan {
     val tableInfo = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
     require(tableInfo != null && tableInfo.getName.nonEmpty,
       s"table $db.$table info is not existed(no table name): $tableInfo")
+
+    val hasOfflineTableInfo = tableInfo.hasOfflineTableInfo
+    logger.info(s"hasOfflineTableInfo: $hasOfflineTableInfo")
+    if (hasOfflineTableInfo) {
+      val symbolicPaths = tableInfo.getOfflineTableInfo.getSymbolicPathsList
+      require(symbolicPaths == null || symbolicPaths.isEmpty, "can't insert into table with soft copied data")
+    }
 
     val colDescList = tableInfo.getColumnDescList
     var oriSchema = new StructType
@@ -66,7 +76,6 @@ object InsertPlan {
 
     val offlineDataPath = getOfflineDataPath(ctx, db, table)
     val newTableInfoBuilder = tableInfo.toBuilder
-    val hasOfflineTableInfo = tableInfo.hasOfflineTableInfo
     if (!hasOfflineTableInfo) {
       val newOfflineInfo = OfflineTableInfo
         .newBuilder()
