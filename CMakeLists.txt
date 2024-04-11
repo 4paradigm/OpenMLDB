@@ -36,7 +36,7 @@ if (NOT DEFINED CMAKE_PREFIX_PATH)
         set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
     endif()
 endif()
-message(STATUS "why trigger again?")
+
 message (STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)

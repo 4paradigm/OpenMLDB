@@ -37,7 +37,7 @@ set(RAPIDJSON_BUILD_DOC OFF)
 set(RAPIDJSON_BUILD_EXAMPLES OFF)
 set(RAPIDJSON_BUILD_TESTS OFF)
 add_contrib(rapidjson)
-cmake_policy(SET CMP0077 ${var} )
+cmake_policy(SET CMP0077 ${var})
 
 add_contrib(farmhash)
 
