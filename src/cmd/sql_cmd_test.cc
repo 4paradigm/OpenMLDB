@@ -43,10 +43,6 @@
 DECLARE_string(host);
 DECLARE_int32(port);
 DECLARE_uint32(traverse_cnt_limit);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
-DECLARE_string(recycle_bin_ssd_root_path);
-DECLARE_string(recycle_bin_hdd_root_path);
 DECLARE_uint32(get_table_status_interval);
 
 ::openmldb::sdk::StandaloneEnv env;
@@ -1143,15 +1139,25 @@ TEST_P(DBSDKTest, DeployWithBias) {
 TEST_P(DBSDKTest, Truncate) {
     auto cli = GetParam();
     sr = cli->sr;
-    std::string db_name = "test2";
-    std::string table_name = "test1";
-    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, INDEX(KEY=c1, ts=c3));";
+    std::string db_name = absl::StrCat("db_", GenRand());
+    std::string table_name = absl::StrCat("tb_", GenRand());
+    std::string ddl =
+        absl::Substitute("create table $0 (c1 string, c2 int, c3 bigint, INDEX(KEY=c1, ts=c3))", table_name);
     ProcessSQLs(sr, {
                         "set @@execute_mode = 'online'",
                         absl::StrCat("create database ", db_name, ";"),
                         absl::StrCat("use ", db_name, ";"),
                         ddl,
                     });
+    absl::Cleanup c = [&]() {
+        ProcessSQLs(sr, {
+                            absl::StrCat("use ", db_name, ";"),
+                            absl::StrCat("drop table ", table_name),
+                            absl::StrCat("drop database ", db_name),
+                        });
+    };
+
+    absl::SleepFor(absl::Seconds(5));
     hybridse::sdk::Status status;
     sr->ExecuteSQL(absl::StrCat("truncate table ", table_name, ";"), &status);
     ASSERT_TRUE(status.IsOK()) << status.ToString();
@@ -1164,6 +1170,7 @@ TEST_P(DBSDKTest, Truncate) {
             sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
         }
     }
+    absl::SleepFor(absl::Seconds(5));
 
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 100);
@@ -1174,11 +1181,6 @@ TEST_P(DBSDKTest, Truncate) {
     sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('aa', 11, 100);"), &status);
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 1);
-    ProcessSQLs(sr, {
-                        absl::StrCat("use ", db_name, ";"),
-                        absl::StrCat("drop table ", table_name),
-                        absl::StrCat("drop database ", db_name),
-                    });
 }
 
 TEST_P(DBSDKTest, DeletetRange) {
@@ -3474,6 +3476,7 @@ TEST_P(DBSDKTest, MapTypeTable) {
                     });
     absl::Cleanup clean = [&]() {
         ProcessSQLs(sr, {
+                            absl::StrCat("use ", db),
                             absl::Substitute("drop table $0", table),
                             absl::Substitute("drop database $0", db),
                         });
@@ -3652,6 +3655,11 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
                 });
     // reset to empty db
     sr->SetDatabase("");
+    absl::Cleanup c = [&]() {
+        ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
+                         absl::StrCat("drop database ", db_name)});
+        sr->SetDatabase("");
+    };
 
     // sleep for 4s, name server should updated TableInfo in schedule
     absl::SleepFor(absl::Seconds(4));
@@ -3672,11 +3680,6 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     }
     // runs HandleSQL only for the purpose of pretty print result in console
     HandleSQL("show table status");
-
-    // teardown
-    ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
-                     absl::StrCat("drop database ", db_name)});
-    sr->SetDatabase("");
 }
 
 // show table status with patterns when no database is selected
@@ -3699,6 +3702,11 @@ TEST_P(DBSDKTest, ShowTableStatusLike) {
                 });
     // reset to empty db
     sr->SetDatabase("");
+    absl::Cleanup c = [&]() {
+        ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
+                         absl::StrCat("drop database ", db_name)});
+        sr->SetDatabase("");
+    };
 
     // sleep for 4s, name server should updated TableInfo in schedule
     absl::SleepFor(absl::Seconds(4));
@@ -3769,11 +3777,6 @@ TEST_P(DBSDKTest, ShowTableStatusLike) {
             {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
             rs.get(), true, false);
     }
-
-    // teardown
-    ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
-                     absl::StrCat("drop database ", db_name)});
-    sr->SetDatabase("");
 }
 
 TEST_P(DBSDKTest, ShowTableStatusForHddTable) {
@@ -4019,6 +4022,17 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
                         absl::StrCat("CREATE INDEX index1 ON ", db1_name, ".", tb1_name,
                                      " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
                     });
+    absl::Cleanup clean = [&]() {
+        ProcessSQLs(sr, {
+                            absl::StrCat("use ", db1_name, ";"),
+                            absl::StrCat("drop table ", tb1_name),
+                            absl::StrCat("drop database ", db1_name),
+                            absl::StrCat("drop database ", db2_name),
+                        });
+
+        sr->SetDatabase("");
+    };
+
     absl::SleepFor(absl::Seconds(10));
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
@@ -4032,14 +4046,6 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     absl::SleepFor(absl::Seconds(2));
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
     ASSERT_EQ(res->Size(), 3);
-
-    ProcessSQLs(sr, {
-                        absl::StrCat("use ", db1_name, ";"),
-                        absl::StrCat("drop table ", tb1_name),
-                        absl::StrCat("drop database ", db1_name),
-                    });
-
-    sr->SetDatabase("");
 }
 
 // --------------------------------------------------------------------------------------
@@ -4221,17 +4227,8 @@ int main(int argc, char** argv) {
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
     FLAGS_get_table_status_interval = 1000;
-    // enable disk table flags
-    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "openmldb";
-    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
 
-    const std::string& tmp_path_str = tmp_path.string();
-    FLAGS_ssd_root_path = absl::StrCat(tmp_path_str, "/ssd_root_random_", ::openmldb::test::GenRand());
-    FLAGS_hdd_root_path = absl::StrCat(tmp_path_str, "/hdd_root_random_", ::openmldb::test::GenRand());
-    FLAGS_recycle_bin_hdd_root_path =
-        absl::StrCat(tmp_path_str, "/recycle_hdd_root_random_", ::openmldb::test::GenRand());
-    FLAGS_recycle_bin_ssd_root_path =
-        absl::StrCat(tmp_path_str, "/recycle_ssd_root_random_", ::openmldb::test::GenRand());
+    ::openmldb::test::InitRandomDiskFlags("sql_cmd_test");
 
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::cmd::mc_ = &mc;

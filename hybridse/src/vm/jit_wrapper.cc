@@ -99,6 +99,9 @@ HybridSeJitWrapper* HybridSeJitWrapper::CreateWithDefaultSymbols(udf::UdfLibrary
     }
     return jit;
 }
+HybridSeJitWrapper* HybridSeJitWrapper::CreateWithDefaultSymbols(base::Status* status, const JitOptions& options) {
+    return CreateWithDefaultSymbols(udf::DefaultUdfLibrary::get(), status, options);
+}
 
 HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
     if (jit_options.IsEnableMcjit()) {
@@ -110,11 +113,10 @@ HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
         return new HybridSeLlvmJitWrapper();
 #endif
     } else {
-        if (jit_options.IsEnableVtune() || jit_options.IsEnablePerf() ||
-            jit_options.IsEnableGdb()) {
+        if (jit_options.IsEnableVtune() || jit_options.IsEnablePerf()) {
             LOG(WARNING) << "LLJIT do not support jit events";
         }
-        return new HybridSeLlvmJitWrapper();
+        return new HybridSeLlvmJitWrapper(jit_options);
     }
 }
 
@@ -129,6 +131,7 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
     jit->AddExternalFunction("memset", (reinterpret_cast<void*>(&memset)));
     jit->AddExternalFunction("memcpy", (reinterpret_cast<void*>(&memcpy)));
     jit->AddExternalFunction("__bzero", (reinterpret_cast<void*>(&bzero)));
+    jit->AddExternalFunction("printLog", (reinterpret_cast<void*>(&udf::v1::printLog)));
 
     jit->AddExternalFunction(
         "hybridse_storage_get_bool_field",

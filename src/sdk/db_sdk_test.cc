@@ -29,6 +29,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "sdk/mini_cluster.h"
+#include "test/util.h"
 
 namespace openmldb::sdk {
 
@@ -148,5 +149,6 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     srand(time(nullptr));
     ::openmldb::base::SetupGlog(true);
+    ::openmldb::test::InitRandomDiskFlags("db_sdk_test");
     return RUN_ALL_TESTS();
 }

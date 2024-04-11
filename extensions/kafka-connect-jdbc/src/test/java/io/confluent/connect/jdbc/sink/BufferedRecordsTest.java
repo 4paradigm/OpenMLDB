@@ -22,7 +22,9 @@ import io.confluent.connect.jdbc.util.TableDefinition;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -39,6 +41,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +58,8 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import org.apache.commons.lang3.time.DateUtils;
 
 public class BufferedRecordsTest {
 
@@ -794,5 +799,111 @@ public class BufferedRecordsTest {
 
     List<SinkRecord> flushed = buffer.add(record);
     assertEquals(Collections.emptyList(), flushed);
+  }
+
+  @Test
+  public void testAutoSchemaCvt() throws SQLException, java.text.ParseException {
+    {
+      final Schema schema = SchemaBuilder.struct()
+          .field("name", Schema.STRING_SCHEMA)
+          .build();
+      assertThrows(NullPointerException.class, () -> BufferedRecords.convertToStruct(schema, null));
+      final Map<String, Object> map = new HashMap<>();
+      // empty map, can't get value of table columns, so the struct will be empty
+      // assertThrows(DataException.class, () -> BufferedRecords.convertToStruct(schema, map));
+      Struct res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(0, res.schema().fields().size());
+      map.put("name", "a");
+      res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(map.size(), res.schema().fields().size());
+      assertEquals("a", res.get("name"));
+    }
+    {
+      final Map<String, Object> map = new HashMap<>();
+      // timestamp
+      final Schema schema = SchemaBuilder.struct().field("ts", Timestamp.SCHEMA).build();
+      // it's ok to have some redundant fields in value map
+      map.put("ts", "2024-03-13 00:00:00.1");
+      Struct res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(map.size(), res.schema().fields().size());
+      // java Date type, can get millis
+      assertEquals(1710259200001L, ((Date)res.get("ts")).getTime());
+      map.put("ts", "2024-03-13 00:00:02");
+      res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      // no millis is ok
+      assertEquals(1710259202000L, ((Date)res.get("ts")).getTime());
+      map.put("ts", "2012-04-23T18:25:43.511+08:00");
+      res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(1335176743511L, ((Date)res.get("ts")).getTime());
+      map.put("ts", "2012-04-23T18:25:43.511Z");
+      res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(1335205543511L, ((Date)res.get("ts")).getTime());
+      map.put("ts", "2012-04-23T18:25:43.511+07:00");
+      res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(1335180343511L, ((Date)res.get("ts")).getTime());
+    }
+
+    // full test
+    // "c1_int16":1,"c2_int32":2,"c3_int64":3,"c4_float":4.4,"c5_double":5.555,"c6_boolean":true,"c7_string":"c77777","c8_date":19109,"c9_timestamp":1651051906000
+    {
+      final Map<String, Object> map = new HashMap<>();
+      final Schema schema = SchemaBuilder.struct().field("c1_int16", Schema.INT16_SCHEMA)
+          .field("c2_int32", Schema.INT32_SCHEMA)
+          .field("c3_int64", Schema.INT64_SCHEMA)
+          .field("c4_float", Schema.FLOAT32_SCHEMA)
+          .field("c5_double", Schema.FLOAT64_SCHEMA)
+          .field("c6_boolean", Schema.BOOLEAN_SCHEMA)
+          .field("c7_string", Schema.STRING_SCHEMA)
+          .field("c8_date", org.apache.kafka.connect.data.Date.SCHEMA)
+          .field("c9_timestamp", Timestamp.SCHEMA)
+          .build();
+      // json will convert all ints to long
+      map.put("c1_int16", 1L);
+      map.put("c2_int32", 2);
+      map.put("c3_int64", 3L);
+      map.put("c4_float", 4.4);
+      map.put("c5_double", 5.555);
+      map.put("c6_boolean", true);
+      map.put("c7_string", "c77777");
+      map.put("c8_date", "2022-04-26");
+      map.put("c9_timestamp", "2022-04-26T18:25:06.000Z");
+      Struct res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(map.size(), res.schema().fields().size());
+      assertEquals((short)1, res.get("c1_int16"));
+      assertEquals(2, res.get("c2_int32"));
+      assertEquals(3L, res.get("c3_int64"));
+      assertEquals(4.4f, res.get("c4_float"));
+      assertEquals(5.555, res.get("c5_double"));
+      assertEquals(true, res.get("c6_boolean"));
+      assertEquals("c77777", res.get("c7_string"));
+      assertEquals(DateUtils.parseDate("2022-04-26", "yyyy-MM-dd"), (Date)res.get("c8_date"));
+      // set to zulu 26 18:xx:xx, so it should be 27 in CST(our timezone)
+      assertEquals(DateUtils.parseDate("2022-04-27 02:25:06", "yyyy-MM-dd HH:mm:ss"), 
+        (Date)res.get("c9_timestamp"));
+
+      map.put("c8_date", 19107L);
+      res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      assertEquals(19107L*24*3600*1000, ((Date)res.get("c8_date")).getTime());
+    }
+
+    // partitial column insert test
+    {
+      final Map<String, Object> map = new HashMap<>();
+      final Schema schema = SchemaBuilder.struct().field("c1_int16", Schema.INT16_SCHEMA)
+          .field("c2_int32", Schema.INT32_SCHEMA)
+          .field("c3_int64", Schema.INT64_SCHEMA)
+          .field("c4_float", Schema.FLOAT32_SCHEMA)
+          .field("c5_double", Schema.FLOAT64_SCHEMA)
+          .field("c6_boolean", Schema.BOOLEAN_SCHEMA)
+          .field("c7_string", Schema.STRING_SCHEMA)
+          .field("c8_date", org.apache.kafka.connect.data.Date.SCHEMA)
+          .field("c9_timestamp", Timestamp.SCHEMA)
+          .build();
+      // just one column
+      map.put("c1_int16", 1L);
+      Struct res = (Struct) BufferedRecords.convertToStruct(schema, map);
+      // res values size must be schema size
+      assertEquals(map.size(), res.schema().fields().size());
+    }
   }
 }

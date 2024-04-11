@@ -85,8 +85,8 @@ std::string LlvmToString(const T& value) {
 
 class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
  public:
-    HybridSeLlvmJitWrapper() {}
-    ~HybridSeLlvmJitWrapper() {}
+    explicit HybridSeLlvmJitWrapper(const JitOptions& options = {});
+    ~HybridSeLlvmJitWrapper() override {}
 
     bool Init() override;
 
@@ -99,6 +99,7 @@ class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
     hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
 
  private:
+    const JitOptions jit_options_;
     std::unique_ptr<HybridSeJit> jit_;
     std::unique_ptr<::llvm::orc::MangleAndInterner> mi_;
 };

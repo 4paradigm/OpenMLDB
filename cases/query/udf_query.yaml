@@ -572,12 +572,11 @@ cases:
         map('1', 2, '3', 4, '5', 6, '7', 8, '9', 10, '11', 12)['10'] as e8,
         # first match on duplicate keys
         map('1', 2, '1', 4, '1', 6, '7', 8, '9', 10, '11', 12)['1'] as e9,
-        # map("c", 99, "d", NULL)["d"] as e10,
+        map("c", 99, "d", NULL)["d"] as e10,
     expect:
-      # FIXME(someone): add e10 result core dump occasionally on centOS
-      columns: ["e1 string", "e2 int", "e3 string", "e4 int", "e5 string", "e6 timestamp", "e7 int", "e8 int", "e9 int"]
+      columns: ["e1 string", "e2 int", "e3 string", "e4 int", "e5 string", "e6 timestamp", "e7 int", "e8 int", "e9 int", "e10 int"]
       data: |
-        2, 100, NULL, 101, f, 2000, 10, NULL, 2
+        2, 100, NULL, 101, f, 2000, 10, NULL, 2, NULL
   - id: 14
     mode: request-unsupport
     sql: |
@@ -618,4 +617,23 @@ cases:
     mode: request-unsupport
     sql: |
       select c1 + 8 from (select 9 as c1)
+
+  - id: 18
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["col1 int32", "std_ts timestamp", "col2 map<int,string>"]
+        indexs: ["index1:col1:std_ts"]
+        # insert map values by insert stmts only
+        inserts:
+          - "insert into t1 values (1, timestamp(1000), map(12, 'abc'))"
+          - "insert into t1 values (2, timestamp(1000), map(13, 'abc'))"
+    sql: |
+      select col1, col2[12] as out from t1;
+    expect:
+      order: col1
+      columns: ["col1 int", "out string"]
+      data: |
+        1, abc
+        2, null
 

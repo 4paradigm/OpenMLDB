@@ -1291,10 +1291,7 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath("memory");
-    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
-    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
+    ::openmldb::test::InitRandomDiskFlags("name_server_test");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

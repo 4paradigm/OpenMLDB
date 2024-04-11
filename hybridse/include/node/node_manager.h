@@ -81,7 +81,6 @@ class NodeManager {
     PlanNode *MakeUnaryPlanNode(const PlanType &type);
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
-    PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
     ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w, const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,

@@ -32,6 +32,8 @@ extern "C" {
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -51,6 +53,8 @@ using ::llvm::orc::LLJIT;
 HybridSeJit::HybridSeJit(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
     : LLJIT(s, e) {}
 HybridSeJit::~HybridSeJit() {}
+
+HybridSeLlvmJitWrapper::HybridSeLlvmJitWrapper(const JitOptions& options) : jit_options_(options) {}
 
 static void RunDefaultOptPasses(::llvm::Module* m) {
     ::llvm::legacy::FunctionPassManager fpm(m);
@@ -156,8 +160,36 @@ bool HybridSeLlvmJitWrapper::Init() {
         return true;
     }
 
-    auto jit = ::llvm::Expected<std::unique_ptr<HybridSeJit>>(
-        HybridSeJitBuilder().create());
+    HybridSeJitBuilder builder;
+    if (jit_options_.IsEnableGdb()) {
+        auto JTMB = llvm::orc::JITTargetMachineBuilder::detectHost();
+        auto e = JTMB.takeError();
+        if (e) {
+            LOG(WARNING) << "fail to init lljit";;
+            ::llvm::errs() << e;
+            return false;
+        }
+        if (!JTMB.get().getTargetTriple().isOSLinux()) {
+            LOG(WARNING) << "GDB listener not enabled for non-Linux";;
+        }
+        // require higher LLVM
+        // builder
+        //     .setJITTargetMachineBuilder(std::move(JTMB.get()))
+        //     .setObjectLinkingLayerCreator(
+        //         [&](llvm::orc::ExecutionSession& ES) {
+        //         auto GetMemMgr = []() { return std::make_unique<llvm::SectionMemoryManager>(); };
+        //         auto ObjLinkingLayer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(ES, std::move(GetMemMgr));
+        //
+        //         // Register the event listener.
+        //         ObjLinkingLayer->registerJITEventListener(*JITEventListener::createGDBRegistrationListener());
+        //
+        //         // Make sure the debug info sections aren't stripped.
+        //         ObjLinkingLayer->setProcessAllSections(true);
+        //
+        //         return ObjLinkingLayer;
+        //     });
+    }
+    auto jit = builder.create();
     {
         ::llvm::Error e = jit.takeError();
         if (e) {

@@ -58,31 +58,6 @@ class MockClosure : public ::google::protobuf::Closure {
 
 using ::openmldb::api::TableStatus;
 
-class DiskTestEnvironment : public ::testing::Environment{
-    virtual void SetUp() {
-        std::vector<std::string> file_path;
-        ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-        ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-    }
-    virtual void TearDown() {
-        std::vector<std::string> file_path;
-        ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-        ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-    }
-};
-
 void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
                       const ::openmldb::type::TTLType& ttl_type, uint64_t ttl, uint64_t start_ts, uint32_t tid,
                       uint32_t pid, openmldb::common::StorageMode storage_mode) {
@@ -295,15 +270,8 @@ TEST_F(TabletMultiPathTest, SSDTestReadWriteAbsolute) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(new ::openmldb::tablet::DiskTestEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
-    FLAGS_ssd_root_path = absl::StrCat(tmp_path.GetTempPath("ssd"), ",", tmp_path.GetTempPath("ssd"));
-    FLAGS_hdd_root_path = absl::StrCat(tmp_path.GetTempPath("hdd"), ",", tmp_path.GetTempPath("hdd"));
-    FLAGS_recycle_bin_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
-    FLAGS_recycle_bin_ssd_root_path = absl::StrCat(tmp_path.GetTempPath("ssd"), ",", tmp_path.GetTempPath("ssd"));
-    FLAGS_recycle_bin_hdd_root_path = absl::StrCat(tmp_path.GetTempPath("hdd"), ",", tmp_path.GetTempPath("hdd"));
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_multi_path_test");
     return RUN_ALL_TESTS();
 }

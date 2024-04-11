@@ -2,13 +2,46 @@
 
 ## Overview
 
-
 The monitoring scheme of OpenMLDB is outlined as follows：
 
 - Use [Prometheus](https://prometheus.io) to collect monitoring metrics, [Grafana](https://grafana.com/oss/grafana/) to visualize metrics
 - OpenMLDB exporter exposes database-level metrics
 - Each component as a server itself expose component-level metrics
 - Uses [node_exporter](https://github.com/prometheus/node_exporter) to expose machine and operating system related metrics
+
+## Quick Deployment
+
+1. [Optional] Deploy node_exporter on each machine of OpenMLDB. If not deployed, it will not affect the display of Grafana OpenMLDB Dashboard.
+2. [Optional] Deploy an OpenMLDB exporter. If not deployed, it will only result in a few missing data in the Grafana OpenMLDB Dashboard, without affecting the monitoring of read and write operations.
+3. Start Prometheus with the following minimal configuration file. Fill in the corresponding IP addresses, but do not fill in the IP address of TaskManager (which does not support metrics):
+```yaml
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: openmldb_components
+    metrics_path: /brpc_metrics
+    static_configs:
+      - targets:
+        - nameserver_ip
+        - tablet_ip
+        - tablet_ip
+        - apiserver_ip
+```
+For complete configuration, refer to [openmldb_mixin/prometheus_example.yml](https://github.com/4paradigm/openmldb-exporter/blob/main/openmldb_mixin/prometheus_example.yml).
+
+Command reference: `docker run -d -v <config_file>:/etc/prometheus/prometheus.yml -p 9090:9090 -name promethues prom/prometheus`
+
+4. Start Grafana and use the OpenMLDB Dashboard template
+
+Command reference: `docker run -d -p 3000:3000 --name=grafana grafana/grafana-oss`
+
+Create a Dashboard using the template, Template ID: 17843, URL: https://grafana.com/grafana/dashboards/17843. If it is an empty Dashboard, you can modify the `JSON Model` in the settings and paste the template content.
+
+5. To track Deployment execution, you also need to configure the OpenMLDB global variable `SET GLOBAL deploy_stats = 'on';`.
 
 ## Install and Run OpenMLDB Exporter
 
@@ -18,7 +51,6 @@ The monitoring scheme of OpenMLDB is outlined as follows：
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/openmldb-exporter?style=flat-square)
 
 The OpenMLDB exporter is a Prometheus exporter implemented in Python. The core connects the OpenMLDB instance through the database SDK and will query the exposed monitoring indicators through SQL statements. Exporter publish into PyPI. You can install the latest `openmldb-exporter` through pip. For development instructions, please refer to the code directory [README](https://github.com/4paradigm/openmldb-exporter).
-
 
 ### Environmental Requirements
 
@@ -47,7 +79,6 @@ The OpenMLDB exporter is a Prometheus exporter implemented in Python. The core c
    The startup script `bin/start.sh` should enable server status by default.
    
 3. Note: Make sure to select the binding IP addresses of OpenMLDB components OpenMLDB exporter as well as Prometheus and Grafana to ensure that Grafana can access Prometheus, and that Prometheus, OpenMLDB exporter, and OpenMLDB components can access each other.
-
 
 ### Deploy the OpenMLDB exporter
 
@@ -142,7 +173,7 @@ optional arguments:
 
 ## Deploy Node Exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of Prometheus that exposes system metrics, read their README about setup.
+[node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of Prometheus that exposes system metrics, read their README about setup. To display these metrics in Grafana, use the official Dashboard 1860 provided by Prometheus.
 
 ## Deploy Prometheus and Grafana
 
