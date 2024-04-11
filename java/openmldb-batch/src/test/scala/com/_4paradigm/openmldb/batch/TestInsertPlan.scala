@@ -236,7 +236,7 @@ class TestInsertPlan extends SparkTestSuite {
     assertThrows[IllegalArgumentException](openmldbSession.sql(s"insert into $db.$table values (1, 1, 1)"))
   }
 
-  test("Test random columns and empty column") {
+  test("Test insert mode") {
     val table = "t8"
     openmldbConnector.executeDDL(db, s"create table $table(c1 string, c2 int);")
     openmldbConnector.refreshCatalog()
