@@ -125,7 +125,7 @@ void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
     ::openmldb::nameserver::ShowTableRequest request;
     ::openmldb::nameserver::ShowTableResponse response;
     request.set_db(db);
-    request.set_show_all(true);
+    request.set_show_all(false);
     bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
                                              FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
@@ -137,13 +137,6 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
-    // ns1
-    FLAGS_endpoint = "127.0.0.1:9631";
-    brpc::Server ns_server;
-    StartNameServer(ns_server);
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
-    name_server_client.Init();
-
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
     ::openmldb::test::TempPath tmp_path;
@@ -152,7 +145,15 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);
 
+    // ns1
+    FLAGS_endpoint = "127.0.0.1:9631";
+    brpc::Server ns_server;
+    StartNameServer(ns_server);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    name_server_client.Init();
+
     {
+        FLAGS_endpoint = "127.0.0.1:9831";
         // showtablet
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
@@ -263,13 +264,6 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
-    // ns1
-    FLAGS_endpoint = "127.0.0.1:9632";
-    brpc::Server ns_server;
-    StartNameServer(ns_server);
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
-    name_server_client.Init();
-
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9832";
     ::openmldb::test::TempPath tmp_path;
@@ -278,8 +272,16 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);
 
+    // ns1
+    FLAGS_endpoint = "127.0.0.1:9632";
+    brpc::Server ns_server;
+    StartNameServer(ns_server);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    name_server_client.Init();
+
     {
         // showtablet
+        FLAGS_endpoint = "127.0.0.1:9832";
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
         bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
