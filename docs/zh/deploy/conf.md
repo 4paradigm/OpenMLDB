@@ -349,7 +349,7 @@ spark.default.conf=spark.executor.instances=2;spark.executor.memory=2g;spark.exe
 
 本质是在配置环境变量，生效范围参考 <a href="#about-config-env">理解配置项与环境变量的关系</a>。如果有特殊需求，可以绕过在TaskManager中配置，用其他方式进行环境变量配置。但建议不要混合使用，只用一种方式更容易调试。
 
-请注意，sbin部署不能传递非指定的变量，目前TaskManager只会传递环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用TaskManager配置方法。
+请注意，sbin部署不能传递非指定的变量，目前TaskManager只会接收到环境变量 `SPARK_HOME` 和 `RUNNER_JAVA_HOME`。所以如果是sbin部署，尽量使用TaskManager配置文件。
 
 其他配置方法：
 - 拷贝Hadoop和Yarn配置文件（`core-site.xml`、`hdfs-site.xml`等）到 `{spark.home}/conf` 目录中。
