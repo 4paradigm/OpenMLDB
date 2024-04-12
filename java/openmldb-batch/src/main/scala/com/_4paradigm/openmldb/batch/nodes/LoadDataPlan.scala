@@ -45,8 +45,6 @@ object LoadDataPlan {
       case ("online", "tidb") => extra.getOrElse("skip_cvt", "false").toBoolean
       case _ => false
     }
-    val skipCvt = extra.getOrElse("skip_cvt", "false").toBoolean
-
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
 
