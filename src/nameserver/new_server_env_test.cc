@@ -65,6 +65,7 @@ class NewServerEnvTest : public ::testing::Test {
 void StartNameServer(brpc::Server& server, const std::string& real_ep) {  // NOLINT
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init(real_ep);
+    sleep(5);
     ASSERT_EQ(true, nameserver->RegisterName());
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
