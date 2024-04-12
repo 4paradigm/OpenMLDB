@@ -146,8 +146,8 @@ cases:
     desc: feature signature select const
     db: db1
     sql: |
-      select variadic_concat("a", 1, 3.5) as col1;
+      select variadic_concat("a", test_double_it(1), 3.5) as col1;
     expect:
       schema: col1:string
       data: |
-        a 1 3.500000
+        a (1, 1) 3.500000

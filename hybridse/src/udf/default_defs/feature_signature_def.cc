@@ -24,6 +24,31 @@ namespace udf {
 
 namespace v1 {
 
+enum FeatureSignatureType {
+    kFeatureSignatureNumeric=100,
+    kFeatureSignatureCategory=101,
+    kFeatureSignatureBinaryLabel=200,
+    kFeatureSignatureMulticlassLabel=201,
+    kFeatureSignatureRegressionLabel=202,
+};
+
+template <typename T>
+struct Numeric {
+    using Ret = Tuple<int32_t, T>;
+    using Args = std::tuple<T>;
+    void operator()(T v, int32_t* feature_signature, T* ret) {
+        *feature_signature = kFeatureSignatureNumeric;
+        *ret = v;
+    }
+};
+
+
+void TestDoubleIt(int32_t a, int32_t* ret1, bool* nullflag, int32_t* ret2) {
+    *ret1 = a;
+    *ret2 = a;
+    *nullflag = false;
+}
+
 struct VariadicConcat {
     static void Init(StringRef* value, std::string* addr) {
         new (addr) std::string(value->data_);
@@ -32,6 +57,11 @@ struct VariadicConcat {
     template<typename V>
     static std::string* Update(std::string* state, V value) {
         state->append(" ").append(std::to_string(value));
+        return state;
+    }
+
+    static std::string* Update2(std::string* state, int32_t value1, int32_t value2) {
+        state->append(" ").append("(" + std::to_string(value1) + ", " + std::to_string(value2) + ")");
         return state;
     }
 
@@ -48,11 +78,15 @@ struct VariadicConcat {
 } // namespace v1
 
 void DefaultUdfLibrary::InitFeatureSignature() {
-    RegisterVariadicUdf<StringRef>("variadic_concat").init(v1::VariadicConcat::Init)
-        .update<Opaque<std::string>, int32_t>(v1::VariadicConcat::Update<int32_t>)
-        .update<Opaque<std::string>, float>(v1::VariadicConcat::Update<float>)
-        .update<Opaque<std::string>, double>(v1::VariadicConcat::Update<double>)
-        .output<Opaque<std::string>>(v1::VariadicConcat::Output);
+    RegisterExternal("test_double_it")
+        .return_and_args<Tuple<Nullable<int32_t>, int32_t>, int32_t>(v1::TestDoubleIt);
+    RegisterVariadicUdf<Opaque<std::string>, StringRef>("variadic_concat")
+        .init(v1::VariadicConcat::Init)
+        .update<int32_t>(v1::VariadicConcat::Update<int32_t>)
+        .update<float>(v1::VariadicConcat::Update<float>)
+        .update<double>(v1::VariadicConcat::Update<double>)
+        .update<Tuple<int32_t, int32_t>>(v1::VariadicConcat::Update2)
+        .output(v1::VariadicConcat::Output);
 }
 
 } // namespace udf

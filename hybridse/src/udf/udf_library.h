@@ -65,7 +65,7 @@ class UdafTemplateRegistryHelper;
 template <template <typename> typename FTemplate>
 class ExprUdfTemplateRegistryHelper;
 
-template<typename... Args>
+template<typename ST, typename... Args>
 class VariadicUdfRegistryHelper;
 
 struct UdfLibraryEntry;
@@ -148,9 +148,9 @@ class UdfLibrary {
         return ExprUdfTemplateRegistryHelper<FTemplate>(name, this);
     }
 
-    template <typename... Args>
-    VariadicUdfRegistryHelper<Args...> RegisterVariadicUdf(const std::string& name) {
-        return VariadicUdfRegistryHelper<Args...>(name, this);
+    template <typename ST, typename... Args>
+    VariadicUdfRegistryHelper<ST, Args...> RegisterVariadicUdf(const std::string& name) {
+        return VariadicUdfRegistryHelper<ST, Args...>(name, this);
     }
 
     void AddExternalFunction(const std::string& name, void* addr);
