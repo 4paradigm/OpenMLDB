@@ -53,8 +53,8 @@ TiDB schema参考[TiDB Schema](https://docs.pingcap.com/zh/tidb/stable/data-type
 
 - 离线和在线引擎均可以导入 TiDB 数据源
 - TiDB 导入支持软连接，可以减少硬拷贝并且保证 OpenMLDB 随时读取到 TiDB 的最新数据。启用软链接方式进行数据导入：使用参数 `deep_copy=false`
-- 参数 `is_check_schema`：是否进行字段类型匹配检查，默认为`true`，如果`true`则会进行匹配检查并进行自动匹配类型转换，如果`false`则不做字段类型的匹配检查，需要使用人员自行判断
-- `OPTIONS` 参数仅有 `deep_copy` 、`mode` 、`sql` 和 `is_check_schema` 有效
+- TiDB 在`@@execute_mode='online'`模式下支持参数`skip_cvt`：是否跳过字段类型转换，默认为`false`，如果为`true`则会进行字段类型转换以及严格的schema检查，如果为`false`则没有转换以及schema检查动作，性能更好一些，但可能存在类型溢出等错误，需要人工检查。
+- `OPTIONS` 参数仅有 `deep_copy` 、`mode` 、`sql` 和 `skip_cvt` 有效
 
 举例：
 
