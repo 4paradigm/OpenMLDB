@@ -15,6 +15,7 @@
  */
 
 #include "base/ddl_parser.h"
+
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
@@ -50,7 +51,7 @@ std::ostream& operator<<(std::ostream& os, const std::map<std::string, std::vect
 
 void CheckEqual(const IndexMap& map1, const IndexMap& map2) {
     ASSERT_EQ(map1.size(), map2.size()) << "map size not equal";
-    for (const auto & [ key, value ] : map1) {
+    for (const auto& [key, value] : map1) {
         auto it = map2.find(key);
         if (it == map2.end()) {
             FAIL() << "can't find key " << key << " in map2";
@@ -69,9 +70,9 @@ void StrToTTLType(const std::string& ttl_type, type::TTLType* type) {
         *type = type::TTLType::kAbsoluteTime;
     } else if (ttl_type == "lat") {
         *type = type::TTLType::kLatestTime;
-    } else if (ttl_type == "abs&lat") {
+    } else if (ttl_type == "absandlat") {
         *type = type::TTLType::kAbsAndLat;
-    } else if (ttl_type == "abs||lat") {
+    } else if (ttl_type == "absorlat") {
         *type = type::TTLType::kAbsOrLat;
     } else {
         FAIL() << "unknown ttl type " << ttl_type;
@@ -112,7 +113,7 @@ common::ColumnKey ParseIndex(const std::string& index_str) {
 
 // <table, [index1, index2, ...]>
 // a human readable string for one index: key1,key2,...;ts;<ttl>. (ts is optional and only one, if no ts, it should be
-// key;;<ttl>) <ttl>: type,abs_value,lat_value, e.g. abs,10,0 lat,0,20 abs&lat,10,20 abs||lat,10,20
+// key;;<ttl>) <ttl>: type,abs_value,lat_value, e.g. abs,10,0 lat,0,20 absandlat,10,20 absorlat,10,20
 void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::string>>&& readable_map) {
     auto error_message = [](const IndexMap& map, const std::map<std::string, std::vector<std::string>>& readable) {
         std::stringstream ss;
@@ -121,7 +122,7 @@ void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::stri
     };
 
     ASSERT_EQ(map.size(), readable_map.size()) << "map size not equal" << error_message(map, readable_map);
-    for (const auto & [ key, value ] : map) {
+    for (const auto& [key, value] : map) {
         auto it = readable_map.find(key);
         if (it == readable_map.end()) {
             FAIL() << "can't find key " << key << " in expected map. " << error_message(map, readable_map);
@@ -741,7 +742,7 @@ TEST_F(DDLParserTest, mergeNode) {
         "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     auto index_map = ExtractIndexesWithSingleDB(sql, db);
     // {t1[col_name: "pk1" ts_name: "std_ts" ttl { ttl_type: kAbsAndLat abs_ttl: 1 lat_ttl: 2 }, ]}
-    CheckEqual(index_map, {{"t1", {"pk1;std_ts;abs&lat,1,2"}}});
+    CheckEqual(index_map, {{"t1", {"pk1;std_ts;absandlat,1,2"}}});
 }
 
 TEST_F(DDLParserTest, twoTable) {
@@ -759,6 +760,32 @@ TEST_F(DDLParserTest, twoTable) {
     // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
     // {t2[col_name: "col1" col_name: "col5" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
     CheckEqual(index_map, {{"t1", {"col2;col5;abs,1,0"}}, {"t2", {"col1,col5;col5;lat,0,1"}}});
+}
+
+TEST_F(DDLParserTest, joinOnMulti) {
+    {
+        // dup join condition
+        auto sql = "SELECT * FROM t1 last join t2 on t1.col1=t2.col1 and t1.col1=t2.col1";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        CheckEqual(index_map, {{"t2", {"col1;;lat,0,1"}}});
+    }
+    {
+        // multi cols, they should be sorted
+        auto sql =
+            "SELECT * FROM t1 last join t2 on t1.col3=t2.col3 and t1.col5=t2.col5 and t1.col2=t2.col2 and "
+            "t1.col3=t1.col3";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        CheckEqual(index_map, {{"t2", {"col2,col3,col5;;lat,0,1"}}});
+    }
+    {
+        // when join on t3, conditions have both t1 and t2
+        auto sql =
+            "SELECT * FROM t1 last join t2 on t1.col1=t2.col1 last join t3 on t1.col1=t3.col1 and t2.col1=t3.col1";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
+        // {t2[col_name: "col1" col_name: "col5" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
+        CheckEqual(index_map, {{"t2", {"col1;;lat,0,1"}}, {"t3", {"col1;;lat,0,1"}}});
+    }
 }
 
 TEST_F(DDLParserTest, multiDBExtractIndexes) {
