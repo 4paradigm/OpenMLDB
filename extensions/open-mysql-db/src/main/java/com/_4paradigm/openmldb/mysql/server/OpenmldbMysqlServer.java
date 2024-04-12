@@ -264,7 +264,12 @@ public class OpenmldbMysqlServer {
                 }
               } else if (sql.matches("(?i)(?s)^\\s*CREATE TABLE.*$")) {
                 // convert data type TEXT to STRING
-                sql = sql.replaceAll(" TEXT", " STRING");
+                sql = sql.replaceAll("(?i) TEXT", " STRING");
+                // sql = sql.replaceAll("(?i) DATETIME", " DATE");
+                if (!sql.toLowerCase().contains(" not null")
+                    && sql.toLowerCase().contains(" null")) {
+                  sql = sql.replaceAll("(?i) null", "");
+                }
               } else {
                 Matcher crateDatabaseMatcher = createDatabasePattern.matcher(sql);
                 Matcher selectLimitMatcher = selectLimitPattern.matcher(sql);

@@ -6,7 +6,11 @@ if __name__ == '__main__':
     data = {'id': [1, 2, 3],
             'name': ['Alice', 'Bob', 'Charlie'],
             'age': [25, 30, 35],
-            'score': [1.1, 2.2, 3.3]
+            'score': [1.1, 2.2, 3.3],
+            'ts': [pd.Timestamp.utcnow().timestamp(), pd.Timestamp.utcnow().timestamp(),
+                   pd.Timestamp.utcnow().timestamp()],
+            'dt': [pd.to_datetime('20240101', format='%Y%m%d'), pd.to_datetime('20240201', format='%Y%m%d'),
+                   pd.to_datetime('20240301', format='%Y%m%d')],
             }
     df = pd.DataFrame(data)
 
