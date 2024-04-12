@@ -228,15 +228,26 @@ bool ZkClient::RegisterName() {
             sname_vec.push_back(*it);
         }
     }
-    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end() &&
-        IsExistNode(names_root_path_ + "/" + sname) == 0) {
-        std::string ep;
-        if (GetNodeValue(names_root_path_ + "/" + sname, ep) && ep == real_endpoint_) {
-            LOG(INFO) << "node:" << sname << "value:" << ep << " exist";
-            return true;
+
+    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end()) {
+        auto node_path = names_root_path_ + "/" + sname;
+        if (auto code = IsExistNode(node_path); code == 0) {
+            std::string ep;
+            if (GetNodeValue(node_path, ep)) {
+                if (ep == real_endpoint_) {
+                    LOG(INFO) << "node:" << sname << "value:" << ep << " exist";
+                    return true;
+                } else {
+                    LOG(WARNING) << "server name:" << sname << " duplicate";
+                    return false;
+                }
+            } else {
+                LOG(WARNING) << "server name:" << sname << " GetNodeValue failed";
+                return false;
+            }
+        } else {
+            LOG(INFO) << "node:" << sname << "does not exist";
         }
-        LOG(WARNING) << "server name:" << sname << " duplicate";
-        return false;
     }
 
     std::string name = names_root_path_ + "/" + sname;
