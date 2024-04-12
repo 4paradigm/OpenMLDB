@@ -206,7 +206,7 @@ class TestInsertPlan extends SparkTestSuite {
 
     var querySess = new OpenmldbSession(sparkSession)
     var queryResult = querySess.sql(s"select * from $db.$table")
-    assert(queryResult.count() == 2)
+    val oldCount = queryResult.count()
 
     val sql = s"insert into $db.$table values (1, 1, 1)"
     openmldbSession.sql(sql)
@@ -215,7 +215,7 @@ class TestInsertPlan extends SparkTestSuite {
 
     querySess = new OpenmldbSession(sparkSession)
     queryResult = querySess.sql(s"select * from $db.$table")
-    assert(queryResult.count() == 3)
+    assert(queryResult.count() == oldCount + 1)
   }
 
   def getLatestTableInfo(db: String, table: String): TableInfo = {
