@@ -635,7 +635,7 @@ public class OpenmldbMysqlServer {
           }
 
           private boolean mockSelectSchemaTableCount(
-              int connectionId, ResultSetWriter resultSetWriter, String sql) throws SQLException {
+                  int connectionId, ResultSetWriter resultSetWriter, String sql) throws SQLException {
             // SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'xzs' AND
             // table_name = 't_exam_paper'
             Matcher selectCountSchemaTablesMatcher = selectCountSchemaTablesPattern.matcher(sql);
@@ -650,7 +650,7 @@ public class OpenmldbMysqlServer {
               String tableName = selectCountSchemaTablesMatcher.group(2);
               row = new ArrayList<>();
               NS.TableInfo tableInfo =
-                  sqlClusterExecutorMap.get(connectionId).getTableInfo(dbName, tableName);
+                      sqlClusterExecutorMap.get(connectionId).getTableInfo(dbName, tableName);
               if (tableInfo == null || tableInfo.getName().equals("")) {
                 row.add("0");
               } else {
@@ -756,7 +756,7 @@ public class OpenmldbMysqlServer {
     for (int i = 0; i < columnCount; i++) {
       String columnName = schema.getColumnName(i);
       if ((sql.startsWith("SHOW FULL TABLES") || sql.equalsIgnoreCase("show table status"))
-          && columnName.equalsIgnoreCase("table_id")) {
+              && columnName.equalsIgnoreCase("table_id")) {
         tableIdColumnIndex = i;
         continue;
       }
