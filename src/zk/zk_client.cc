@@ -228,7 +228,8 @@ bool ZkClient::RegisterName() {
             sname_vec.push_back(*it);
         }
     }
-    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end()) {
+    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end() &&
+        IsExistNode(names_root_path_ + "/" + sname) == 0) {
         std::string ep;
         if (GetNodeValue(names_root_path_ + "/" + sname, ep) && ep == real_endpoint_) {
             LOG(INFO) << "node:" << sname << "value:" << ep << " exist";
