@@ -200,7 +200,7 @@ class TestInsertPlan extends SparkTestSuite {
     val testFileWithHeader = "file://" + getClass.getResource("/insert_test_src/test.csv")
       .getPath
     openmldbSession.sql(s"load data infile '$testFileWithHeader' into table $db.$table " +
-      s"options(format='csv', deep_copy=true);")
+      s"options(format='csv', mode='append', deep_copy=true);")
     val loadInfo = getLatestTableInfo(db, table)
     val oldFormat = loadInfo.getOfflineTableInfo.getFormat
 
@@ -232,7 +232,7 @@ class TestInsertPlan extends SparkTestSuite {
     val testFileWithHeader = "file://" + getClass.getResource("/insert_test_src/test.csv")
       .getPath
     openmldbSession.sql(s"load data infile '$testFileWithHeader' into table $db.$table " +
-      "options(format='csv', deep_copy=false);")
+      "options(format='csv', mode='append', deep_copy=false);")
     val newSess = new OpenmldbSession(sparkSession)
     assertThrows[IllegalArgumentException](newSess.sql(s"insert into $db.$table values (1, 1, 1)"))
   }
