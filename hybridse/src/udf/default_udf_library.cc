@@ -662,6 +662,7 @@ void DefaultUdfLibrary::Init() {
 
     InitWindowFunctions();
     InitUdaf();
+    InitFeatureSignature();
     InitFeatureZero();
 
     InitArrayUdfs();

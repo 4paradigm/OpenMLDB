@@ -76,6 +76,7 @@ enum SqlNodeType {
     kUdfByCodeGenDef,
     kUdafDef,
     kLambdaDef,
+    kVariadicUdfDef,
     kPartitionMeta,
     kReplicaNum,
     kDistributions,

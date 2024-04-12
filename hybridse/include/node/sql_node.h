@@ -2868,6 +2868,64 @@ class UdafDefNode : public FnDefNode {
     FnDefNode *output_;
 };
 
+class VariadicUdfDefNode : public FnDefNode {
+ public:
+    VariadicUdfDefNode(const std::string &name, 
+                       FnDefNode *init_func,
+                       const std::vector<FnDefNode *>& update_func,
+                       FnDefNode *output_func)
+        : FnDefNode(kVariadicUdfDef),
+          name_(name),
+          init_(init_func),
+          update_(update_func),
+          output_(output_func) {}
+
+    const std::string GetName() const override { return name_; }
+    const TypeNode *GetReturnType() const override { return output_->GetReturnType(); }
+    bool IsReturnNullable() const override { return output_->IsReturnNullable(); }
+    size_t GetArgSize() const override {
+        return init_->GetArgSize() + update_.size();
+    }
+    const TypeNode *GetArgType(size_t i) const override {
+        if (i < init_->GetArgSize()) {
+            return init_->GetArgType(i);
+        } else {
+            return update_[i - init_->GetArgSize()]->GetArgType(1);
+        }
+    }
+    bool IsArgNullable(size_t i) const override {
+        if (i < init_->GetArgSize()) {
+            return init_->IsArgNullable(i);
+        } else {
+            return update_[i - init_->GetArgSize()]->IsArgNullable(1);
+        }
+    }
+
+    base::Status Validate(const std::vector<const TypeNode *> &arg_types) const override {
+        return Status::OK();
+    }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SqlNode *node) const override;
+
+    VariadicUdfDefNode *ShadowCopy(NodeManager *) const override;
+    VariadicUdfDefNode *DeepCopy(NodeManager *) const override;
+
+    FnDefNode *init_func() const { return init_; }
+    const std::vector<FnDefNode *> &update_func() const { return update_; }
+    FnDefNode *output_func() const { return output_; }
+
+ private:
+    std::string name_;
+    std::vector<const node::TypeNode *> arg_types_;
+    std::vector<int> arg_nullable_;
+    const node::TypeNode *ret_type_;
+    bool ret_nullable_;
+    FnDefNode *init_;
+    std::vector<FnDefNode *> update_;
+    FnDefNode *output_;
+};
+
 class PartitionMetaNode : public SqlNode {
  public:
     PartitionMetaNode() : SqlNode(kPartitionMeta, 0, 0), endpoint_(""), role_type_() {}

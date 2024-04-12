@@ -528,6 +528,8 @@ INSTANTIATE_TEST_SUITE_P(EngineParameterizedQuery, EngineTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/query/parameterized_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdafQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/udaf_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineFeatureSignatureQuery, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/query/feature_signature_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/extream_query.yaml")));
 

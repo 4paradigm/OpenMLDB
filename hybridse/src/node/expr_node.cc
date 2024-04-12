@@ -1149,6 +1149,20 @@ UdafDefNode* UdafDefNode::DeepCopy(NodeManager* nm) const {
                                new_merge, new_output);
 }
 
+VariadicUdfDefNode* VariadicUdfDefNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeVariadicUdfDefNode(name_, init_, update_, output_);
+}
+
+VariadicUdfDefNode* VariadicUdfDefNode::DeepCopy(NodeManager* nm) const {
+    FnDefNode* new_init = init_ ? init_->DeepCopy(nm) : nullptr;
+    std::vector<FnDefNode*> new_update;
+    for (FnDefNode* update_func: update_) {
+        new_update.push_back(update_func ? update_func->DeepCopy(nm): nullptr);
+    }
+    FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
+    return nm->MakeVariadicUdfDefNode(name_, new_init, new_update, new_output);
+}
+
 // Default expr deep copy: shadow copy self and deep copy children
 ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
     auto root = this->ShadowCopy(nm);

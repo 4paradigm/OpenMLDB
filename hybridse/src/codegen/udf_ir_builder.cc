@@ -77,6 +77,10 @@ Status UdfIRBuilder::BuildCall(
             auto node = dynamic_cast<const node::LambdaNode*>(fn);
             return BuildLambdaCall(node, args, output);
         }
+        case node::kVariadicUdfDef: {
+            auto node = dynamic_cast<const node::VariadicUdfDefNode*>(fn);
+            return BuildVariadicUdfCall(node, arg_types, args, output);
+        }
         default:
             return Status(common::kCodegenError, "Unknown function def type");
     }
@@ -465,7 +469,7 @@ Status UdfIRBuilder::BuildExternCall(
     // set i16 signext attr for extern call
     // https://releases.llvm.org/9.0.0/docs/LangRef.html#parameter-attributes
     auto function = ctx_->GetModule()->getFunction(fn->function_name());
-    CHECK_TRUE(function != nullptr, kCodegenError);
+    CHECK_TRUE(function != nullptr, kCodegenError, "wyldebug" + fn->function_name());
     auto int16_ty = ::llvm::Type::getInt16Ty(function->getContext());
     auto sext_attr = ::llvm::Attribute::AttrKind::SExt;
     for (size_t i = 0; i < func_ty->getNumParams(); ++i) {
@@ -744,6 +748,48 @@ Status UdfIRBuilder::BuildUdafCall(
         CHECK_STATUS(iter_delete_builder.BuildIteratorDelete(
             iterators[i], elem_types[i], &delete_iter_res));
     }
+    *output = local_output;
+    return Status::OK();
+}
+
+Status UdfIRBuilder::BuildVariadicUdfCall(const node::VariadicUdfDefNode* fn,
+                                          const std::vector<const node::TypeNode*>& arg_types,
+                                          const std::vector<NativeValue>& args,
+                                          NativeValue* output) {
+    CHECK_TRUE(arg_types.size() == args.size(), kCodegenError);
+    CHECK_TRUE(fn->GetArgSize() == args.size(), kCodegenError);
+    std::vector<NativeValue> cur_state_values(1 + fn->update_func().size());
+    std::vector<const node::TypeNode*> init_arg_types;
+    std::vector<NativeValue> init_args;
+    for (size_t i = 0; i < fn->init_func()->GetArgSize(); ++i) {
+        CHECK_TRUE(i <= args.size(), kCodegenError);
+        init_arg_types.push_back(arg_types[i]);
+        init_args.push_back(args[i]);
+    }
+    UdfIRBuilder sub_udf_builder_init(ctx_, frame_arg_, frame_);
+    CHECK_STATUS(sub_udf_builder_init.BuildCall(fn->init_func(),
+          init_arg_types, init_args, &cur_state_values[0]));
+
+    const node::TypeNode* cur_state_value_type = fn->init_func()->GetReturnType();
+    for (size_t i = 0; i < fn->update_func().size(); ++i) {
+        std::vector<const node::TypeNode*> update_arg_types = {
+            cur_state_value_type, arg_types[fn->init_func()->GetArgSize() + i]
+        };
+        std::vector<NativeValue> update_args = {
+            cur_state_values[i], args[fn->init_func()->GetArgSize() + i]
+        };
+        UdfIRBuilder sub_udf_builder_update(ctx_, frame_arg_, frame_);
+        CHECK_STATUS(sub_udf_builder_update.BuildCall(fn->update_func()[i],
+            update_arg_types, update_args, &cur_state_values[i + 1]));
+        cur_state_value_type = fn->update_func()[i]->GetReturnType();
+    }
+
+    NativeValue local_output;
+    std::vector<const node::TypeNode*> output_arg_types = {cur_state_value_type};
+    std::vector<NativeValue> output_args = {cur_state_values.back()};
+    UdfIRBuilder sub_udf_builder_output(ctx_, frame_arg_, frame_);
+    CHECK_STATUS(sub_udf_builder_output.BuildCall(fn->output_func(),
+        output_arg_types, output_args, &local_output));
     *output = local_output;
     return Status::OK();
 }

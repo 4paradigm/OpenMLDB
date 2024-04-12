@@ -1857,6 +1857,192 @@ class UdafTemplateRegistryHelper : public UdfRegistryHelper {
     std::vector<int> results_;
 };
 
+class VariadicUdfDefGenBase {
+public:
+    explicit VariadicUdfDefGenBase() {}
+    virtual Status infer(UdfResolveContext* ctx,
+                         const std::vector<ExprAttrNode>& args,
+                         ExprAttrNode* out) = 0;
+    
+    std::shared_ptr<UdfRegistry> init_gen;
+    ArgSignatureTable update_gen;
+    std::unordered_map<std::string, ArgSignatureTable> output_gen;
+    int variadic_pos;
+};
+
+template <typename... Args>
+class VariadicUdfDefGen: public VariadicUdfDefGenBase {
+public:
+    using InferFType = typename VariadicLLVMUdfGen<Args...>::InferFType;
+    template <std::size_t... I>
+    Status infer_internal(UdfResolveContext* ctx,
+                                 const std::vector<ExprAttrNode>& args,
+                                 ExprAttrNode* out, const std::index_sequence<I...>&) {
+        std::vector<ExprAttrNode> variadic_args;
+        for (size_t i = sizeof...(I); i < args.size(); ++i) {
+            variadic_args.emplace_back(args[i]);
+        }
+        return infer_func(ctx, args[I]..., variadic_args, out);
+    }
+
+    explicit VariadicUdfDefGen() {}
+    virtual Status infer(UdfResolveContext* ctx,
+                         const std::vector<ExprAttrNode>& args,
+                         ExprAttrNode* out) override {
+        if (infer_func == nullptr) {
+            CHECK_TRUE(output_type != nullptr, common::kCodegenError, "No output type");
+            out->SetType(output_type);
+            out->SetNullable(output_nullable);
+            return Status::OK();
+        }
+        return infer_internal(ctx, args, out, std::index_sequence_for<Args...>());
+    }
+
+    InferFType infer_func = nullptr;
+    node::TypeNode* output_type = nullptr;
+    bool output_nullable = false;
+};
+
+class VariadicUdfRegistry : public UdfRegistry {
+ public:
+    explicit VariadicUdfRegistry(const std::string& name,
+                             std::shared_ptr<VariadicUdfDefGenBase> cur_def,
+                             size_t fixed_arg_size,
+                             const std::vector<size_t>& nullable_arg_indices)
+        : UdfRegistry(name),
+          cur_def_(cur_def),
+          fixed_arg_size_(fixed_arg_size),
+          nullable_arg_indices_(nullable_arg_indices) {}
+
+    Status ResolveFunction(UdfResolveContext* ctx,
+                           node::FnDefNode** result) override;
+
+ private:
+    std::shared_ptr<VariadicUdfDefGenBase> cur_def_;
+    size_t fixed_arg_size_;
+    std::vector<size_t> nullable_arg_indices_;
+};
+
+template<typename... Args>
+class VariadicUdfRegistryHelper : public UdfRegistryHelper {
+    using InferFType = typename VariadicLLVMUdfGen<Args...>::InferFType;
+
+ public:
+    VariadicUdfRegistryHelper(const std::string& name, UdfLibrary* library, InferFType infer = nullptr)
+        : UdfRegistryHelper(name, library),
+          arg_tys_({DataTypeTrait<Args>::to_type_node(library->node_manager())...}),
+          arg_nullable_({IsNullableTrait<Args>::value...}),
+          cur_def_(std::make_shared<VariadicUdfDefGen<Args...>>()) {
+        cur_def_->infer_func = infer;
+        for (const node::TypeNode* arg_type: arg_tys_) {
+            name_prefix_.append(".").append(arg_type->GetName());
+        }
+    }
+
+    ~VariadicUdfRegistryHelper() { finalize(); }
+
+    VariadicUdfRegistryHelper& init(const typename TypeAnnotatedFuncPtr<Args...>::type& fn_ptr) {
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_ret_type_func(library()->node_manager(), &ret_type);
+        if (ret_type == nullptr) {
+            LOG(WARNING) << "Fail to get return type of function ptr";
+            return *this;
+        }
+    
+        std::string fname = name_prefix_;
+        fname.append("@init");
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
+                ret_type, fn_ptr.return_nullable, arg_tys_, arg_nullable_, -1, fn_ptr.return_by_arg));
+        cur_def_->init_gen = std::make_shared<ExternalFuncRegistry>(fname, fn);
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
+        return *this;
+    }
+
+    template<typename ST, typename IN>
+    VariadicUdfRegistryHelper& update(const typename TypeAnnotatedFuncPtr<ST, IN>::type& fn_ptr) {
+        std::vector<const node::TypeNode*> update_tys;
+        update_tys.push_back(DataTypeTrait<ST>::to_type_node(library()->node_manager()));
+        update_tys.push_back(DataTypeTrait<IN>::to_type_node(library()->node_manager()));
+        std::vector<int> update_nullable;
+        update_nullable.push_back(IsNullableTrait<ST>::value);
+        update_nullable.push_back(IsNullableTrait<IN>::value);
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_ret_type_func(library()->node_manager(), &ret_type);
+        if (ret_type == nullptr) {
+            LOG(WARNING) << "Fail to get return type of function ptr";
+            return *this;
+        }
+
+        std::string fname = name_prefix_;
+        fname.append("@update");
+        fname.append(".").append(update_tys[0]->GetName());
+        fname.append(".").append(update_tys[1]->GetName());
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
+                ret_type, fn_ptr.return_nullable, update_tys, update_nullable, -1, fn_ptr.return_by_arg));
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
+        cur_def_->update_gen.Register(update_tys, false, registry);
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
+        return *this;
+    }
+
+    template<typename ST>
+    VariadicUdfRegistryHelper& output(const typename TypeAnnotatedFuncPtr<ST>::type& fn_ptr) {
+        node::TypeNode* state_type = DataTypeTrait<ST>::to_type_node(library()->node_manager());
+        bool state_nullable = IsNullableTrait<ST>::value;
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_ret_type_func(library()->node_manager(), &ret_type);
+        if (ret_type == nullptr) {
+            LOG(WARNING) << "Fail to get return type of function ptr";
+            return *this;
+        }
+        if (cur_def_->infer_func == nullptr) {
+            cur_def_->output_type = ret_type;
+            cur_def_->output_nullable = fn_ptr.return_nullable;
+        }
+
+        std::string fname = name_prefix_;
+        fname.append("@output@").append(ret_type->GetName());
+        fname.append(".").append(state_type->GetName());
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
+                ret_type, fn_ptr.return_nullable, {state_type}, {state_nullable}, -1, fn_ptr.return_by_arg));
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
+        cur_def_->output_gen[ret_type->GetName()].Register({state_type}, false, registry);
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
+        return *this;
+    }
+
+    void finalize() {
+        // find nullable arg positions
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<Args>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(i);
+            }
+        }
+        auto registry = std::make_shared<VariadicUdfRegistry>(
+            name(), cur_def_, sizeof...(Args), null_indices);
+        this->InsertRegistry(
+            {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
+            registry);
+    }
+
+    VariadicUdfRegistryHelper& doc(const std::string& doc) {
+        SetDoc(doc);
+        return *this;
+    }
+
+ private:
+    std::string name_prefix_;
+    std::vector<const node::TypeNode*> arg_tys_;
+    std::vector<int> arg_nullable_;
+    std::shared_ptr<VariadicUdfDefGen<Args...>> cur_def_ = nullptr;
+};
+
+
 }  // namespace udf
 }  // namespace hybridse
 

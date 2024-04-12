@@ -19,6 +19,7 @@
 #include <memory>
 #include <sstream>
 
+#include "codegen/udf_ir_builder.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/openmldb_udf.h"
 
@@ -320,6 +321,90 @@ Status UdafRegistry::ResolveFunction(UdfResolveContext* ctx,
                                   merge_func, output_func);
     return Status::OK();
 }
+
+Status VariadicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
+                                            node::FnDefNode** result) {
+    std::vector<const node::TypeNode*> arg_types;
+    std::vector<ExprAttrNode> arg_attrs;
+    for (size_t i = 0; i < ctx->arg_size(); ++i) {
+        auto arg_type = ctx->arg_type(i);
+        bool nullable = ctx->arg_nullable(i);
+        CHECK_TRUE(arg_type != nullptr, kCodegenError, i,
+                   "th argument node type is unknown: ", name());
+        arg_types.push_back(arg_type);
+        arg_attrs.emplace_back(arg_type, nullable);
+    }
+    ExprAttrNode out_attr(nullptr, true);
+    auto status = cur_def_->infer(ctx, arg_attrs, &out_attr);
+    CHECK_STATUS(status, "Infer variadic udf output attr failed: ", status.str());
+
+    auto return_type = out_attr.type();
+    bool return_nullable = out_attr.nullable();
+    CHECK_TRUE(return_type != nullptr && !ctx->HasError(), kCodegenError,
+               "Infer node return type failed: ", ctx->GetError());
+
+    std::vector<int> arg_nullable(arg_types.size(), false);
+    for (size_t pos : nullable_arg_indices_) {
+        arg_nullable[pos] = true;
+    }
+    for (size_t pos = fixed_arg_size_; pos < arg_nullable.size(); ++pos) {
+        arg_nullable[pos] = true;
+    }
+
+    CHECK_TRUE(fixed_arg_size_ <= ctx->arg_size(), kCodegenError);
+    auto nm = ctx->node_manager();
+    std::vector<node::ExprNode*> init_args;
+    for (size_t i = 0; i < fixed_arg_size_; ++i) {
+        init_args.push_back(ctx->args()[i]);
+    }
+    UdfResolveContext init_ctx(init_args, nm, ctx->library());
+    node::FnDefNode* init_func = nullptr;
+    std::vector<node::FnDefNode*> update_funcs;
+    node::FnDefNode* output_func;
+    CHECK_STATUS(cur_def_->init_gen->ResolveFunction(ctx, &init_func));
+    CHECK_TRUE(init_func != nullptr, kCodegenError);
+    
+    std::string signature;
+    int variadic_pos;
+    auto state_arg = nm->MakeExprIdNode("state");
+    state_arg->SetOutputType(init_func->GetReturnType());
+    state_arg->SetNullable(init_func->IsReturnNullable());
+    for (size_t pos = fixed_arg_size_; pos < ctx->arg_size(); ++pos) {
+        std::vector<node::ExprNode*> update_args = {state_arg, ctx->args()[pos]};
+        UdfResolveContext update_ctx(update_args, nm, ctx->library());
+        std::shared_ptr<UdfRegistry> update_registry;
+        CHECK_STATUS(cur_def_->update_gen.Find(&update_ctx, &update_registry, &signature, &variadic_pos));
+        CHECK_TRUE(update_registry != nullptr, kCodegenError);
+        CHECK_TRUE(variadic_pos == -1, kCodegenError);
+        node::FnDefNode* update_func = nullptr;
+        CHECK_STATUS(update_registry->ResolveFunction(ctx, &update_func));
+        CHECK_TRUE(update_func != nullptr, kCodegenError);
+        update_funcs.push_back(update_func);
+        state_arg = nm->MakeExprIdNode("state" + std::to_string(pos));
+        state_arg->SetOutputType(init_func->GetReturnType());
+        state_arg->SetNullable(init_func->IsReturnNullable());
+    }
+
+    auto output_it = cur_def_->output_gen.find(return_type->GetName());
+    CHECK_TRUE(output_it != cur_def_->output_gen.end(), common::kCodegenError,
+               "Resolve output type failure: <" + return_type->GetName() + ">");
+    std::vector<node::ExprNode*> output_args = {state_arg};
+    UdfResolveContext output_ctx(output_args, nm, ctx->library());
+    std::shared_ptr<UdfRegistry> output_registry;
+    CHECK_STATUS(output_it->second.Find(
+        &output_ctx, &output_registry, &signature, &variadic_pos));
+    CHECK_TRUE(output_registry != nullptr, kCodegenError);
+    CHECK_TRUE(variadic_pos == -1, kCodegenError);
+    CHECK_STATUS(output_registry->ResolveFunction(ctx, &output_func));
+    CHECK_TRUE(output_func != nullptr, kCodegenError);
+    CHECK_TRUE(output_func->GetReturnType()->Equals(return_type), kCodegenError);
+    CHECK_TRUE(output_func->IsReturnNullable() == return_nullable, kCodegenError,
+               "Infer variadic udf output type nullable not inconsistent");
+    *result = ctx->node_manager()->MakeVariadicUdfDefNode(
+          name(), init_func, update_funcs, output_func);
+    return Status::OK();
+}
+
 
 DynamicUdfRegistryHelper::DynamicUdfRegistryHelper(const std::string& basename, UdfLibrary* library, void* fn,
         node::DataType return_type, bool return_nullable,
