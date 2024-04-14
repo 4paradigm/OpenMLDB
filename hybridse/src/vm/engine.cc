@@ -615,7 +615,6 @@ EngineMode Engine::TryDetermineMode(absl::string_view sql, EngineMode default_mo
     std::unique_ptr<zetasql::ParserOutput> ast;
     auto s = hybridse::plan::ParseStatement(sql, &ast);
     if (!s.ok()) {
-        LOG(WARNING) << s;
         return default_mode;
     }
 

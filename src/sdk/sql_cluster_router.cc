@@ -3064,6 +3064,43 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             return {};
         }
+        case hybridse::node::kPlanTypeCallStmt: {
+            auto* call = dynamic_cast<hybridse::node::CallStmtPlan*>(node);
+            std::string db = db_;
+            std::string procedure_name;
+            if (call->procedure_name().size() == 1) {
+                procedure_name = call->procedure_name().at(0);
+            } else if (call->procedure_name().size() == 2) {
+                db = call->procedure_name().at(0);
+                procedure_name = call->procedure_name().at(1);
+            } else {
+                *status = {StatusCode::kCmdError,
+                           absl::StrCat("invalid procedure name: ", absl::StrJoin(call->procedure_name(), "."))};
+                return {};
+            }
+            auto req = GetRequestRowByProcedure(db, procedure_name, status);
+            if (!status->IsOK()) {
+                return {};
+            }
+            auto sc = std::dynamic_pointer_cast<hybridse::sdk::SchemaImpl>(req->GetSchema());
+            ::hybridse::vm::Engine::InitializeGlobalLLVM();
+            hybridse::base::Status s;
+            auto jit = std::shared_ptr<hybridse::vm::HybridSeJitWrapper>(
+                hybridse::vm::HybridSeJitWrapper::CreateWithDefaultSymbols(&s));
+            if (!s.isOK()) {
+                APPEND_FROM_BASE(status, s, "");
+                return {};
+            }
+            hybridse::codec::SliceBuilder builder(jit.get(), &sc->GetSchema());
+            hybridse::base::RefCountedSlice slice;
+            s = builder.Build(call->arguments(), &slice);
+            if (!s.isOK()) {
+                APPEND_FROM_BASE(status, s, "");
+                return {};
+            }
+            base::Slice sl(slice.data(), slice.size(), false);
+            return CallProcedure(db, procedure_name, sl, "", status);
+        }
         default: {
             *status = {StatusCode::kCmdError, "Unsupported command"};
             return {};

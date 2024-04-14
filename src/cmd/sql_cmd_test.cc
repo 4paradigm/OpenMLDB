@@ -4087,7 +4087,7 @@ struct DeploymentEnv {
         auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>();
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
         ASSERT_TRUE(row_batch->AddRow(rr));
-        sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
+        sr_->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
@@ -4095,15 +4095,37 @@ struct DeploymentEnv {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, dp_name_);
-        sr->CallProcedure(db_, dp_name_, rr, &status);
+        sr_->CallProcedure(db_, dp_name_, rr, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+    void CallDeployProcedureWithCallStmt() {
+        hybridse::sdk::Status ss;
+        auto call = absl::Substitute(
+            // casting is mandatory util #3847
+            "call $0('12', 99, cast(100 as int64), cast(77.7 as float), cast(88.8 as double), timestamp(8000), "
+            "date(null))",
+            dp_name_);
+        auto rs = sr_->ExecuteSQL(call, &ss);
+        ASSERT_TRUE(ss.IsOK()) << ss.ToString();
+        ASSERT_EQ(rs->Size(), 1);
+        rs->Next();
+        std::string col1;
+        ASSERT_TRUE(rs->GetString(0, &col1));
+        EXPECT_EQ("12", col1);
+        int32_t col2 = 0;
+        ASSERT_TRUE(rs->GetInt32(1, &col2));
+        EXPECT_EQ(99, col2);
+        int64_t col3 = 0;
+        ASSERT_TRUE(rs->GetInt64(2, &col3));
+        EXPECT_EQ(100, col3);
+        HandleSQL(call);
     }
 
     void CallProcedure() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, procedure_name_);
-        sr->CallProcedure(db_, procedure_name_, rr, &status);
+        sr_->CallProcedure(db_, procedure_name_, rr, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
@@ -4132,6 +4154,18 @@ struct DeploymentEnv {
         *rs = res;
     }
 };
+
+TEST_P(DBSDKTest, deploymentCall) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    DeploymentEnv env(sr);
+
+    env.SetUp();
+
+    env.CallDeployProcedure();
+    env.CallDeployProcedureWithCallStmt();
+}
 
 class StripSpaceTest : public ::testing::TestWithParam<std::pair<std::string_view, std::string_view>> {};
 
