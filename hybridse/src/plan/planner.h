@@ -25,8 +25,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/fe_status.h"
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"

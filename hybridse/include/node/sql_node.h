@@ -2597,19 +2597,20 @@ class StructExpr : public ExprNode {
 class StructCtorWithParens : public ExprNode {
  public:
     explicit StructCtorWithParens(absl::Span<ExprNode *const> fields)
-        : ExprNode(kExprStructCtorParens), fields_(fields.begin(), fields.end()) {}
+        : ExprNode(kExprStructCtorParens) {
+        for (auto e : fields) {
+            AddChild(e);
+        }
+    }
     ~StructCtorWithParens() override {}
 
-    absl::Span<ExprNode *const> fields() const { return fields_; }
+    absl::Span<ExprNode *const> fields() const { return children_; }
 
     // LOW priority
     // void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const override;
     StructCtorWithParens *ShadowCopy(NodeManager *nm) const override;
     Status InferAttr(ExprAnalysisContext *ctx) override;
-
- private:
-    const std::vector<ExprNode *> fields_;
 };
 
 class ExternalFnDefNode : public FnDefNode {

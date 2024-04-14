@@ -1205,12 +1205,12 @@ ExprNode *ArrayElementExpr::array() const { return GetChild(0); }
 ExprNode *ArrayElementExpr::position() const { return GetChild(1); }
 
 StructCtorWithParens* StructCtorWithParens::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeNode<StructCtorWithParens>(fields_);
+    return nm->MakeNode<StructCtorWithParens>(fields());
 }
 const std::string StructCtorWithParens::GetExprString() const {
     return absl::StrCat(
         "(",
-        absl::StrJoin(fields_, ", ",
+        absl::StrJoin(fields(), ", ",
                       [](std::string* out, const ExprNode* e) { absl::StrAppend(out, e->GetExprString()); }),
         ")");
 }

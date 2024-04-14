@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "absl/strings/match.h"
 #include "testing/toydb_engine_test_base.h"
+
+#include "gflags/gflags.h"
 
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
 DEFINE_string(runner_mode, "batch",
@@ -82,14 +83,15 @@ int RunSingle(const std::string& yaml_path) {
         if (!FLAGS_case_id.empty() && FLAGS_case_id != sql_case.id()) {
             continue;
         }
-        EngineMode mode;
+        EngineMode default_mode;
         if (absl::EqualsIgnoreCase(FLAGS_runner_mode, "batch")) {
-            mode = kBatchMode;
+            default_mode = kBatchMode;
         } else if (absl::EqualsIgnoreCase(FLAGS_runner_mode, "request")) {
-            mode = kRequestMode;
+            default_mode = kRequestMode;
         } else {
-            mode = kBatchRequestMode;
+            default_mode = kBatchRequestMode;
         }
+        auto mode = Engine::TryDetermineMode(sql_case.sql_str_, default_mode);
         int ret = DoRunEngine(sql_case, options, mode);
         if (ret != ENGINE_TEST_RET_SUCCESS) {
             return ret;

@@ -2765,7 +2765,7 @@ std::string SetOptionsAction::DebugString() const {
         }
         absl::StrAppend(&output, kv.first);
         absl::StrAppend(&output, "=");
-        absl::StrAppend(&output, kv.second->GetAsString());
+        absl::StrAppend(&output, kv.second->GetExprString());
     }
     return absl::Substitute("SetOptionsAction ($0)", output);
 }

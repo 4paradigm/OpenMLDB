@@ -776,8 +776,6 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 break;
             }
             case ::hybridse::node::kSetStmt: {
-                CHECK_TRUE(is_batch_mode_, common::kPlanError,
-                           "Non-support SET Op in online serving");
                 node::PlanNode *set_plan_node = nullptr;
                 CHECK_STATUS(CreateSetPlanNode(dynamic_cast<node::SetNode *>(parser_tree), &set_plan_node));
                 plan_trees.push_back(set_plan_node);

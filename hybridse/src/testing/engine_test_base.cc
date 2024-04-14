@@ -17,11 +17,12 @@
 
 #include <utility>
 
+#include "absl/cleanup/cleanup.h"
+#include "absl/time/clock.h"
 #include "base/texttable.h"
-#include "plan/plan_api.h"
-#include "boost/algorithm/string.hpp"
-#include "vm/sql_compiler.h"
 #include "google/protobuf/util/message_differencer.h"
+#include "plan/plan_api.h"
+#include "vm/sql_compiler.h"
 namespace hybridse {
 namespace vm {
 
@@ -406,14 +407,14 @@ Status EngineTestRunner::Compile() {
         CHECK_TRUE(parameter_schema_.empty(), common::kUnSupport,
                    "Request or BatchRequest mode do not support parameterized query currently")
     }
-    struct timeval st;
-    struct timeval et;
-    gettimeofday(&st, nullptr);
-    Status status;
-    bool ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
-    gettimeofday(&et, nullptr);
-    double mill = (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
-    DLOG(INFO) << "SQL Compile take " << mill << " milliseconds";
+
+    base::Status status;
+    bool ok = false;
+    {
+        absl::Time start = absl::Now();
+        absl::Cleanup clean = [&start]() { DLOG(INFO) << "compile takes " << absl::Now() - start; };
+        ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
+    }
 
     if (!ok || !status.isOK()) {
         DLOG(INFO) << status;
