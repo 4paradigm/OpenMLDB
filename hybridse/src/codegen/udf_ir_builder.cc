@@ -469,7 +469,7 @@ Status UdfIRBuilder::BuildExternCall(
     // set i16 signext attr for extern call
     // https://releases.llvm.org/9.0.0/docs/LangRef.html#parameter-attributes
     auto function = ctx_->GetModule()->getFunction(fn->function_name());
-    CHECK_TRUE(function != nullptr, kCodegenError, "wyldebug" + fn->function_name());
+    CHECK_TRUE(function != nullptr, kCodegenError);
     auto int16_ty = ::llvm::Type::getInt16Ty(function->getContext());
     auto sext_attr = ::llvm::Attribute::AttrKind::SExt;
     for (size_t i = 0; i < func_ty->getNumParams(); ++i) {

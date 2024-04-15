@@ -390,6 +390,7 @@ class NodeManager {
                                                FnDefNode *init_func,
                                                const std::vector<FnDefNode *>& update_func,
                                                FnDefNode *output_func);
+
     SqlNode *MakePartitionMetaNode(RoleType role_type,
                                    const std::string &endpoint);
 
