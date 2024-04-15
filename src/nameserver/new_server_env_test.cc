@@ -162,15 +162,6 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
-    // ns1
-    FLAGS_use_name = true;
-    FLAGS_endpoint = "ns1";
-    std::string ns_real_ep = "127.0.0.1:9631";
-    brpc::Server ns_server;
-    StartNameServer(ns_server, ns_real_ep);
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
-    name_server_client.Init();
-
     // tablet1
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
@@ -187,6 +178,15 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
+
+    // ns1
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "ns1";
+    std::string ns_real_ep = "127.0.0.1:9631";
+    brpc::Server ns_server;
+    StartNameServer(ns_server, ns_real_ep);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    name_server_client.Init();
 
     {
         std::map<std::string, std::string> map;
@@ -252,15 +252,6 @@ TEST_F(NewServerEnvTest, ShowRealEndpointDelayNameserverStart) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
-    // ns1
-    FLAGS_use_name = true;
-    FLAGS_endpoint = "ns1";
-    std::string ns_real_ep = "127.0.0.1:9631";
-    brpc::Server ns_server;
-    StartNameServerWithDelay(ns_server, ns_real_ep);
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
-    name_server_client.Init();
-
     // tablet1
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
@@ -277,6 +268,15 @@ TEST_F(NewServerEnvTest, ShowRealEndpointDelayNameserverStart) {
     FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
+
+    // ns1
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "ns1";
+    std::string ns_real_ep = "127.0.0.1:9631";
+    brpc::Server ns_server;
+    StartNameServerWithDelay(ns_server, ns_real_ep);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    name_server_client.Init();
 
     {
         std::map<std::string, std::string> map;
