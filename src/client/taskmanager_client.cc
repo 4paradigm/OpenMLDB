@@ -228,6 +228,35 @@ namespace openmldb::client {
     return st;
 }
 
+::openmldb::base::Status TaskManagerClient::InsertOfflineData(const std::string& sql,
+                                                              const std::map<std::string, std::string>& config,
+                                                              const std::string& default_db, bool sync_job,
+                                                              int job_timeout,
+                                                              ::openmldb::taskmanager::JobInfo* job_info) {
+    ::openmldb::taskmanager::InsertOfflineDataRequest request;
+    ::openmldb::taskmanager::ShowJobResponse response;
+
+    request.set_sql(sql);
+    request.set_default_db(default_db);
+    request.set_sync_job(sync_job);
+    for (const auto& it : config) {
+        (*request.mutable_conf())[it.first] = it.second;
+    }
+
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::InsertOfflineData, &request,
+                                    &response, job_timeout, 1);
+
+    if (st.OK()) {
+        if (response.code() == 0) {
+            if (response.has_job()) {
+                job_info->CopyFrom(response.job());
+            }
+        }
+        return {response.code(), response.msg()};
+    }
+    return st;
+}
+
 ::openmldb::base::Status TaskManagerClient::DropOfflineTable(const std::string& db, const std::string& table,
                                                              int job_timeout) {
     ::openmldb::taskmanager::DropOfflineTableRequest request;
