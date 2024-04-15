@@ -76,7 +76,7 @@ Exporting data from OpenMLDB to TiDB sources is supported through the [`SELECT I
 
 - The offline engine can support exporting TiDB data sources, but the online engine does not yet support it.
 - The database and table must already exist. Currently, automatic creation of non-existent databases or tables is not supported.
-- The `OPTIONS` parameter is only effective when `mode='append'`. Other parameters are not effective, and the current parameter is mandatory.
+- The `OPTIONS` parameter is only valid for `mode='append'`. Other parameters as `overwrite` and `errorifexists` are invalid. This is because the current version of TiSpark does not support them. If TiSpark supports them in future versions, you can upgrade for compatibility.
 
 For example:
 

@@ -76,7 +76,7 @@ LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPT
 
 - 离线引擎可以支持导出 TiDB 数据源，在线引擎还不支持
 - 数据库和数据表必须已经存在，目前不支持对于不存在的数据库或数据表进行自动创建
-- `OPTIONS` 参数仅`mode='append'`有效，其他参数均不生效，且当前参数为必填项
+- `OPTIONS` 参数仅`mode='append'`有效，其他参数`overwrite`、`errorifexists`均无效，这是由于TiSpark当前版本不支持，如果TiSpark后续版本支持可以进行升级兼容。
 
 举例：
 
