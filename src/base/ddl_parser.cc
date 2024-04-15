@@ -606,7 +606,7 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
 std::string IndexMapBuilder::Encode(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
                                     absl::string_view ts) {
     // children are ColumnRefNode
-    // dedup keys
+    // dedup and sort keys
     std::set<std::string> cols(keys.begin(), keys.end());
     if (cols.empty()) {
         return {};
