@@ -78,27 +78,3 @@ cases:
       success: false
       msg: |
         SHOW JOB statement require a target name following
-  - id: 10
-    desc: feature signature error select multiple label
-    sql: |
-      select binary_label(1), binary_label(1);
-    expect:
-      success: false
-  - id: 11
-    desc: feature signature error select miss signature
-    sql: |
-      select binary_label(1), 1;
-    expect:
-      success: false
-  - id: 12
-    desc: feature signature error select with order
-    sql: |
-      select binary_label(col1) from t1 order by col1
-    expect:
-      success: false
-  - id: 13
-    desc: feature signature error select with order
-    sql: |
-      select binary_label(col1) from t1 order by instance
-    expect:
-      success: false

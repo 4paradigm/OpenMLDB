@@ -1157,7 +1157,7 @@ struct TypeAnnotatedFuncPtr {
 
 // used to instantiate tuple type from template param pack
 template <typename Ret, typename... Args>
-struct TypeFullAnnotatedFuncPtr {
+struct WithReturnTypeAnnotatedFuncPtr {
     using type = TypeAnnotatedFuncPtrImpl<Ret(Args...)>;
 };
 
@@ -1266,8 +1266,8 @@ class ExternalFuncRegistryHelper : public UdfRegistryHelper {
     }
 
     template <typename Ret, typename... Args>
-    ExternalFuncRegistryHelper& return_and_args(
-        const typename TypeFullAnnotatedFuncPtr<Ret, Args...>::type& fn_ptr) {
+    ExternalFuncRegistryHelper& with_return_args(
+        const typename WithReturnTypeAnnotatedFuncPtr<Ret, Args...>::type& fn_ptr) {
         args<Args...>(fn_ptr.ptr);
         node::TypeNode* dtype = nullptr;
         fn_ptr.get_ret_type_func(node_manager(), &dtype);
@@ -1438,6 +1438,16 @@ class ExternalTemplateFuncRegistryHelper {
         node::ExternalFnDefNode* operator()(ExternalFuncRegistryHelper& helper,    // NOLINT
                                             CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
             helper.args<Args...>(FTemplateInst<T, CArgs...>::fcompute).finalize();
+            return helper.cur_def();
+        }
+    };
+
+    template <typename T, typename Ret, typename... Args>
+    struct RegisterSingle<T, Ret(Args...)> {
+        template <typename CRet, typename... CArgs>
+        node::ExternalFnDefNode* operator()(ExternalFuncRegistryHelper& helper,    // NOLINT
+                                            CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
+            helper.with_return_args<Ret, Args...>(FTemplateInst<T, CArgs...>::fcompute).finalize();
             return helper.cur_def();
         }
     };
@@ -1988,6 +1998,7 @@ class VariadicUdfRegistryHelper : public UdfRegistryHelper {
           arg_nullable_({IsNullableTrait<Args>::value...}),
           state_ty_(DataTypeTrait<ST>::to_type_node(library->node_manager())),
           state_nullable_(IsNullableTrait<ST>::value),
+          name_prefix_(name),
           cur_def_(std::make_shared<VariadicUdfDefGen<Args...>>()) {
         cur_def_->infer_func = infer;
         for (const node::TypeNode* arg_type: arg_tys_) {

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "absl/strings/str_split.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
@@ -34,59 +33,455 @@ enum FeatureSignatureType {
 
 template <typename T>
 struct Numeric {
-    using Ret = Tuple<int32_t, T>;
-    using Args = std::tuple<T>;
-    void operator()(T v, int32_t* feature_signature, T* ret) {
+    using Args = Tuple<int32_t, Nullable<T>>(Nullable<T>);
+    void operator()(T v, bool is_null, int32_t* feature_signature, T* ret, bool* null_flag) {
         *feature_signature = kFeatureSignatureNumeric;
-        *ret = v;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = v;
+        }
+    }
+};
+
+template <typename T> struct Category;
+template <typename T> struct Category<std::tuple<T>> {
+    using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>);
+    using ParamType = typename DataTypeTrait<T>::CCallArgType;
+
+    void operator()(ParamType v, bool is_null, int32_t* feature_signature, int64_t* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureCategory;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
+        }
+    }
+};
+
+template <typename T> struct Category<std::tuple<T, int32_t>> {
+    using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>, Nullable<int32_t>);
+    using ParamType = typename DataTypeTrait<T>::CCallArgType;
+
+    void operator()(ParamType v, bool is_null, int32_t bucket_size, bool bucket_null,
+            int32_t* feature_signature, int64_t* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureCategory;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
+            if (!bucket_null) {
+                uint64_t mod = static_cast<int64_t>(bucket_size);
+                if (mod) {
+                    *ret %= mod;
+                }
+            }
+        }
+    }
+};
+
+template <typename T> struct Category<std::tuple<T, int64_t>> {
+    using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>, Nullable<int64_t>);
+    using ParamType = typename DataTypeTrait<T>::CCallArgType;
+
+    void operator()(ParamType v, bool is_null, int64_t bucket_size, bool bucket_null,
+            int32_t* feature_signature, int64_t* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureCategory;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
+            if (!bucket_null) {
+                uint64_t mod = static_cast<int64_t>(bucket_size);
+                if (mod) {
+                    *ret %= mod;
+                }
+            }
+        }
+    }
+};
+
+template <typename T>
+struct BinaryLabel {
+    using Args = Tuple<int32_t, Nullable<T>>(Nullable<T>);
+    void operator()(T v, bool is_null, int32_t* feature_signature, T* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureBinaryLabel;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = v;
+        }
     }
 };
 
 
-void TestDoubleIt(int32_t a, int32_t* ret1, bool* nullflag, int32_t* ret2) {
-    *ret1 = a;
-    *ret2 = a;
-    *nullflag = false;
+template <typename T>
+struct MulticlassLabel {
+    using Args = Tuple<int32_t, Nullable<T>>(Nullable<T>);
+    void operator()(T v, bool is_null, int32_t* feature_signature, T* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureMulticlassLabel;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = v;
+        }
+    }
+};
+
+
+template <typename T>
+struct RegressionLabel {
+    using Args = Tuple<int32_t, Nullable<T>>(Nullable<T>);
+    void operator()(T v, bool is_null, int32_t* feature_signature, T* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureRegressionLabel;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = v;
+        }
+    }
+};
+
+template<class InstanceFormat>
+struct InstanceFormatHelper {
+    static void Init(InstanceFormat* formatting) {
+        new (formatting) InstanceFormat();
+    }
+
+    template<typename T>
+    static InstanceFormat* Update(InstanceFormat* formatting, int32_t feature_signature,
+          typename DataTypeTrait<T>::CCallArgType input, bool is_null) {
+        formatting->template Update<T>(feature_signature, input, is_null);
+        return formatting;
+    }
+
+    static void Output(InstanceFormat* formatting, StringRef* output) {
+        std::string instance = formatting->Output();
+        char* buffer = udf::v1::AllocManagedStringBuf(instance.size() + 1);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+        } else {
+            memcpy(buffer, instance.c_str(), instance.size());
+            buffer[instance.size()] = '\0';
+            output->size_ = instance.size();
+            output->data_ = buffer;
+        }
+        formatting->~InstanceFormat();
+    }
+
+    static void Register(UdfLibrary* library, const std::string& name, const std::string& doc) {
+        library->RegisterVariadicUdf<Opaque<InstanceFormat>>(name).doc(doc)
+              .init(Init)
+              .template update<Tuple<int32_t, Nullable<bool>>>(Update<bool>)
+              .template update<Tuple<int32_t, Nullable<int16_t>>>(Update<int16_t>)
+              .template update<Tuple<int32_t, Nullable<int32_t>>>(Update<int32_t>)
+              .template update<Tuple<int32_t, Nullable<int64_t>>>(Update<int64_t>)
+              .template update<Tuple<int32_t, Nullable<float>>>(Update<float>)
+              .template update<Tuple<int32_t, Nullable<double>>>(Update<double>)
+              .output(Output);
+    }
+};
+
+std::string format_numeric(double value) {
+    return std::to_string(value);
 }
 
-struct VariadicConcat {
-    static void Init(StringRef* value, std::string* addr) {
-        new (addr) std::string(value->data_);
+std::string format_category(uint64_t value) {
+    return std::to_string(value);
+}
+
+std::string format_binary_label(bool value) {
+    return std::to_string(value);
+}
+
+std::string format_multiclass_label(int64_t value) {
+    return std::to_string(value);
+}
+
+std::string format_regression_label(double value) {
+    return format_numeric(value);
+}
+
+struct GCFormat {
+    template<class T>
+    void Update(int32_t feature_signature, T input, bool is_null) {
+        switch (feature_signature) {
+            case kFeatureSignatureNumeric: {
+                if (!is_null) {
+                    instance_feature += " " + std::to_string(slot_number) + ":0:" + format_numeric(input);
+                }
+                ++slot_number;
+                break;
+            }
+            case kFeatureSignatureCategory: {
+                if (!is_null) {
+                    instance_feature += " " + std::to_string(slot_number) + ":" + format_category(input);
+                }
+                ++slot_number;
+                break;
+            }
+            case kFeatureSignatureBinaryLabel: {
+                instance_label = "";
+                if (!is_null) {
+                    instance_label = format_binary_label(input);
+                }
+                break;
+            }
+            case kFeatureSignatureMulticlassLabel: {
+                instance_label = "";
+                if (!is_null) {
+                    instance_label = format_multiclass_label(input);
+                }
+                break;
+            }
+            case kFeatureSignatureRegressionLabel: {
+                instance_label = "";
+                if (!is_null) {
+                    instance_label = format_regression_label(input);
+                }
+                break;
+            }
+            default: {
+                ++slot_number;
+                break;
+            }
+        }
     }
 
-    template<typename V>
-    static std::string* Update(std::string* state, V value) {
-        state->append(" ").append(std::to_string(value));
-        return state;
+    std::string Output() {
+        return instance_label + "|" + instance_feature;
     }
 
-    static std::string* Update2(std::string* state, int32_t value1, int32_t value2) {
-        state->append(" ").append("(" + std::to_string(value1) + ", " + std::to_string(value2) + ")");
-        return state;
+    size_t slot_number = 1;
+    std::string instance_label;
+    std::string instance_feature;
+};
+
+struct CSV {
+    template<class T>
+    void Update(int32_t feature_signature, T input, bool is_null) {
+        if (slot_number > 1) {
+            instance += ",";
+        }
+        switch (feature_signature) {
+            case kFeatureSignatureNumeric: {
+                if (!is_null) {
+                    instance += format_numeric(input);
+                }
+                break;
+            }
+            case kFeatureSignatureCategory: {
+                if (!is_null) {
+                    instance += format_category(input);
+                }
+                break;
+            }
+            case kFeatureSignatureBinaryLabel: {
+                if (!is_null) {
+                    instance += format_binary_label(input);
+                }
+                break;
+            }
+            case kFeatureSignatureMulticlassLabel: {
+                if (!is_null) {
+                    instance += format_multiclass_label(input);
+                }
+                break;
+            }
+            case kFeatureSignatureRegressionLabel: {
+                if (!is_null) {
+                    instance += format_regression_label(input);
+                }
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+        ++slot_number;
     }
 
-    static void Output(std::string* state, StringRef* output) {
-        char* buffer = AllocManagedStringBuf(state->size() + 1);
-        memcpy(buffer, state->c_str(), state->size());
-        buffer[state->size()] = 0;
-        output->data_ = buffer;
-        output->size_ = state->size();
-        state->~basic_string();
+    std::string Output() {
+        return instance;
     }
+
+    size_t slot_number = 1;
+    std::string instance = "";
+};
+
+struct LIBSVM {
+    template<class T>
+    void Update(int32_t feature_signature, T input, bool is_null) {
+        switch (feature_signature) {
+            case kFeatureSignatureNumeric: {
+                if (!is_null) {
+                    if (!instance_feature.empty()) {
+                        instance_feature += " ";
+                    }
+                    instance_feature += std::to_string(slot_number) + ":" + format_numeric(input);
+                }
+                ++slot_number;
+                break;
+            }
+            case kFeatureSignatureCategory: {
+                if (!is_null) {
+                    if (!instance_feature.empty()) {
+                        instance_feature += " ";
+                    }
+                    instance_feature += format_category(input) + ":1";
+                }
+                ++slot_number;
+                break;
+            }
+            case kFeatureSignatureBinaryLabel: {
+                instance_label = "";
+                if (!is_null) {
+                    instance_label = format_binary_label(input);
+                }
+                break;
+            }
+            case kFeatureSignatureMulticlassLabel: {
+                instance_label = "";
+                if (!is_null) {
+                    instance_label = format_multiclass_label(input);
+                }
+                break;
+            }
+            case kFeatureSignatureRegressionLabel: {
+                instance_label = "";
+                if (!is_null) {
+                    instance_label = format_regression_label(input);
+                }
+                break;
+            }
+            default: {
+                ++slot_number;
+                break;
+            }
+        }
+    }
+
+    std::string Output() {
+        if (!instance_label.empty()) {
+            if (!instance_feature.empty()) {
+                return instance_label + " " + instance_feature;
+            }
+            return instance_label;
+        } else {
+            return instance_feature;
+        }
+    }
+
+    size_t slot_number = 1;
+    std::string instance_label;
+    std::string instance_feature;
 };
 
 } // namespace v1
 
 void DefaultUdfLibrary::InitFeatureSignature() {
-    RegisterExternal("test_double_it")
-        .return_and_args<Tuple<Nullable<int32_t>, int32_t>, int32_t>(v1::TestDoubleIt);
-    RegisterVariadicUdf<Opaque<std::string>, StringRef>("variadic_concat")
-        .init(v1::VariadicConcat::Init)
-        .update<int32_t>(v1::VariadicConcat::Update<int32_t>)
-        .update<float>(v1::VariadicConcat::Update<float>)
-        .update<double>(v1::VariadicConcat::Update<double>)
-        .update<Tuple<int32_t, int32_t>>(v1::VariadicConcat::Update2)
-        .output(v1::VariadicConcat::Output);
+    RegisterExternalTemplate<v1::Numeric>("numeric")
+        .doc(R"(
+             @brief Set the column signature to numeric feature.
+             Example:
+             @code{.sql}
+                select CSV(numeric(1.5));
+                -- output 1.500000
+             @endcode
+
+             @since 0.9.0
+        )")
+        .args_in<bool, int16_t, int32_t, int64_t, float, double>();
+    
+    RegisterExternalTemplate<v1::Category>("category")
+        .doc(R"(
+             @brief Set the column signature to category feature.
+             @param input Input column
+             @param bucket_size (Optional) The result is within [0, bucket_size)
+             Example:
+             @code{.sql}
+                select CSV(category(3), category(3, 100));
+                -- output 2681491882390849628,28
+             @endcode
+
+             @since 0.9.0
+        )")
+        .args_in<std::tuple<bool>, std::tuple<bool, int32_t>, std::tuple<bool, int64_t>,
+                 std::tuple<int16_t>, std::tuple<int16_t, int32_t>, std::tuple<int16_t, int64_t>,
+                 std::tuple<int32_t>, std::tuple<int32_t, int32_t>, std::tuple<int32_t, int64_t>,
+                 std::tuple<int64_t>, std::tuple<int64_t, int32_t>, std::tuple<int64_t, int64_t>,
+                 std::tuple<StringRef>, std::tuple<StringRef, int32_t>, std::tuple<StringRef, int64_t>,
+                 std::tuple<Timestamp>, std::tuple<Timestamp, int32_t>, std::tuple<Timestamp, int64_t>,
+                 std::tuple<Date>, std::tuple<Date, int32_t>, std::tuple<Date, int64_t> >();
+    
+    RegisterExternalTemplate<v1::BinaryLabel>("binary_label")
+        .doc(R"(
+             @brief Set the column signature to binary label.
+             Example:
+             @code{.sql}
+                select CSV(binary_label(true));
+                -- output 1
+             @endcode
+
+             @since 0.9.0
+        )")
+        .args_in<bool>();
+    
+    RegisterExternalTemplate<v1::MulticlassLabel>("multiclass_label")
+        .doc(R"(
+             @brief Set the column signature to multiclass label.
+             Example:
+             @code{.sql}
+                select CSV(multiclass_label(6));
+                -- output 6
+             @endcode
+
+             @since 0.9.0
+        )")
+        .args_in<bool, int16_t, int32_t, int64_t>();
+    
+    RegisterExternalTemplate<v1::RegressionLabel>("regression_label")
+        .doc(R"(
+             @brief Set the column signature to regression label.
+             Example:
+             @code{.sql}
+                select CSV(regression_label(1.5));
+                -- output 1.500000
+             @endcode
+
+             @since 0.9.0
+        )")
+        .args_in<bool, int16_t, int32_t, int64_t, float, double>();
+
+    RegisterAlias("continuous", "numeric");
+    RegisterAlias("discrete", "category");
+
+    v1::InstanceFormatHelper<v1::GCFormat>::Register(this, "GCFormat", R"(
+        @brief Return instance in GCFormat format.
+             Example:
+             @code{.sql}
+                select GCFormat(multiclass_label(6), numeric(1.5), category(3));
+                -- output 6| 1:0:1.500000 2:2681491882390849628
+             @endcode
+
+             @since 0.9.0
+        )");
+
+    v1::InstanceFormatHelper<v1::CSV>::Register(this, "CSV", R"(
+        @brief Return instance in CSV format.
+             Example:
+             @code{.sql}
+                select CSV(multiclass_label(6), numeric(1.5), category(3));
+                -- output 6,1.500000,2681491882390849628
+             @endcode
+
+             @since 0.9.0
+        )");
+    
+    v1::InstanceFormatHelper<v1::LIBSVM>::Register(this, "LIBSVM", R"(
+        @brief Return instance in LIBSVM format.
+             Example:
+             @code{.sql}
+                select LIBSVM(multiclass_label(6), numeric(1.5), category(3));
+                -- output 6 1:1.500000 2681491882390849628:1
+             @endcode
+
+             @since 0.9.0
+        )");
 }
 
 } // namespace udf
