@@ -548,6 +548,11 @@ PhysicalLimitNode* PhysicalLimitNode::CastFrom(PhysicalOpNode* node) { return dy
 PhysicalRenameNode* PhysicalRenameNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRenameNode*>(node);
 }
+
+PhysicalInsertNode* PhysicalInsertNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalInsertNode*>(node);
+}
+
 void PhysicalConstProjectNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
 }

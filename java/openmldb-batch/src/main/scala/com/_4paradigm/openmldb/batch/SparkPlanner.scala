@@ -20,14 +20,14 @@ import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
 import com._4paradigm.hybridse.node.{DataType, JoinType}
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
 import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalCreateTableNode,
-  PhysicalDataProviderNode, PhysicalFilterNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalJoinNode,
-  PhysicalLimitNode, PhysicalLoadDataNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode, PhysicalRenameNode,
-  PhysicalSelectIntoNode, PhysicalSimpleProjectNode, PhysicalSortNode, PhysicalTableProjectNode,
-  PhysicalWindowAggrerationNode, ProjectType, PhysicalSetOperationNode}
+  PhysicalDataProviderNode, PhysicalFilterNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalInsertNode,
+  PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode,
+  PhysicalRenameNode, PhysicalSelectIntoNode, PhysicalSetOperationNode, PhysicalSimpleProjectNode, PhysicalSortNode,
+  PhysicalTableProjectNode, PhysicalWindowAggrerationNode, ProjectType}
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, CreateTablePlan, DataProviderPlan, FilterPlan,
-  GroupByAggregationPlan, GroupByPlan, JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SelectIntoPlan,
-  SimpleProjectPlan, SortByPlan, WindowAggPlan, SetOperationPlan}
+  GroupByAggregationPlan, GroupByPlan, InsertPlan, JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan,
+  SelectIntoPlan, SetOperationPlan, SimpleProjectPlan, SortByPlan, WindowAggPlan}
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExternalUdfUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo,
   NodeIndexType}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
@@ -35,6 +35,7 @@ import com._4paradigm.std.VectorDataType
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConverters.seqAsJavaList
 import scala.collection.mutable
 import scala.reflect.io.File
@@ -273,6 +274,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
         CreateTablePlan.gen(ctx, PhysicalCreateTableNode.CastFrom(root))
       case PhysicalOpType.kPhysicalOpSetOperation =>
         SetOperationPlan.gen(ctx, PhysicalSetOperationNode.CastFrom(root), children)
+      case PhysicalOpType.kPhysicalOpInsert =>
+        InsertPlan.gen(ctx, PhysicalInsertNode.CastFrom(root))
       case _ =>
         throw new UnsupportedHybridSeException(s"Plan type $opType not supported")
     }
