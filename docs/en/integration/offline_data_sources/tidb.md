@@ -8,7 +8,7 @@
 
 ### Installation
 
-[OpenMLDB Spark Distribution](../../tutorial/openmldbspark_distribution.md) v0.8.5 and later versions utilize the TiSpark tool to interact with TiDB. The current release includes TiSpark 3.1.x dependencies (`tispark-assembly-3.2_2.12-3.1.5.jar`, `mysql-connector-java-8.0.29.jar`). If your TiSpark version doesn't match your TiDB version, refer to the [TiSpark documentation](https://docs.pingcap.com/tidb/stable/tispark-overview) for compatible dependencies to add to Spark's classpath/jars.
+The current version utilizes TiSpark for interacting with the TiDB database. To get started, download the necessary dependencies for TiSpark 3.1.x (`tispark-assembly-3.2_2.12-3.1.5.jar` and `mysql-connector-java-8.0.29.jar`). If the TiSpark version is not compatible with your current TiDB version, refer to the [TiSpark documentation](https://docs.pingcap.com/tidb/stable/tispark-overview) for downloading the corresponding TiSpark dependencies. Then, add them to the Spark classpath/jars.
 
 
 ### Configuration
@@ -32,17 +32,20 @@ Once either configuration is successful, access TiDB tables using the format `ti
 
 TiDB schema reference can be found at [TiDB Schema](https://docs.pingcap.com/tidb/stable/data-type-overview). Currently, only the following TiDB data formats are supported:
 
-| OpenMLDB Data Format | TiDB Data Format        |
-|----------------------|-------------------------|
-| BOOL                 | BOOL                    |
-| SMALLINT             | Currently not supported |
-| INT                  | Currently not supported |
-| BIGINT               | BIGINT                  |
-| FLOAT                | FLOAT                   |
-| DOUBLE               | DOUBLE                  |
-| DATE                 | DATE                    |
-| TIMESTAMP            | TIMESTAMP               |
-| STRING               | VARCHAR(M)              |
+| OpenMLDB Data Format | TiDB Data Format |
+|----------------------|------------------|
+| BOOL                 | BOOL             |
+| SMALLINT             | SMALLINT         |
+| INT                  | INT              |
+| BIGINT               | BIGINT           |
+| FLOAT                | FLOAT            |
+| DOUBLE               | DOUBLE           |
+| DATE                 | DATE             |
+| TIMESTAMP            | DATETIME         |
+| TIMESTAMP            | TIMESTAMP        |
+| STRING               | VARCHAR(M)       |
+
+Tip: Asymmetric integer conversion will be affected by the value range. Please try to refer to the above data types for mapping.
 
 ## Importing TiDB Data into OpenMLDB
 
@@ -50,7 +53,8 @@ Importing data from TiDB sources is supported through the [`LOAD DATA INFILE`](.
 
 - Both offline and online engines can import TiDB data sources.
 - TiDB import supports symbolic links, which can reduce hard copying and ensure that OpenMLDB always reads the latest data from TiDB. To enable soft link data import, use the parameter `deep_copy=false`.
-- The `OPTIONS` parameter only supports `deep_copy`, `mode`, and `sql`.
+- TiDB supports parameter `skip_cvt` in `@@execute_mode='online'` mode: whether to skip field type conversion, the default is `false`, if it is `true`, field type conversion and strict schema checking will be performed , if it is `false`, there will be no conversion and schema checking actions, and the performance will be better, but there may be errors such as type overflow, which requires manual inspection.
+- The `OPTIONS` parameter only supports `deep_copy`, `mode`, `sql` , and `skip_cvt` .
 
 For example:
 
@@ -70,8 +74,9 @@ LOAD DATA INFILE 'tidb://tidb_catalog.db1.t1' INTO TABLE tidb_catalog.db1.t1 OPT
 
 Exporting data from OpenMLDB to TiDB sources is supported through the [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) API, using the specific URI interface format `tidb://tidb_catalog.[db].[table]` to export data to the TiDB data warehouse. Note:
 
+- The offline engine can support exporting TiDB data sources, but the online engine does not yet support it.
 - The database and table must already exist. Currently, automatic creation of non-existent databases or tables is not supported.
-- Only the export mode `mode` is effective in the `OPTIONS` parameter. Other parameters are not effective, and the current parameter is mandatory.
+- The `OPTIONS` parameter is only valid for `mode='append'`. Other parameters as `overwrite` and `errorifexists` are invalid. This is because the current version of TiSpark does not support them. If TiSpark supports them in future versions, you can upgrade for compatibility.
 
 For example:
 

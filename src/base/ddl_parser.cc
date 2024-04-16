@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <set>
 
 #include "codec/schema_codec.h"
 #include "google/protobuf/util/message_differencer.h"
@@ -441,6 +442,7 @@ std::vector<std::string> DDLParser::ValidateSQLInRequest(const std::string& sql,
 void IndexMapBuilder::Report(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
                              absl::string_view ts, const PhysicalOpNode* expr_node) {
     // we encode table, keys and ts to one string
+    // keys may be dup, dedup in encode
     auto index = Encode(db, table, keys, ts);
     if (index.empty()) {
         LOG(WARNING) << "index encode failed for table " << db << "." << table;
@@ -604,8 +606,8 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
 std::string IndexMapBuilder::Encode(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
                                     absl::string_view ts) {
     // children are ColumnRefNode
-    std::vector<std::string> cols(keys.begin(), keys.end());
-    std::sort(cols.begin(), cols.end());
+    // dedup and sort keys
+    std::set<std::string> cols(keys.begin(), keys.end());
     if (cols.empty()) {
         return {};
     }

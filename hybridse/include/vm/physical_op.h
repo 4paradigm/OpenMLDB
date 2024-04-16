@@ -1945,6 +1945,8 @@ class PhysicalInsertNode : public PhysicalOpNode {
 
     const node::InsertStmt* GetInsertStmt() const { return insert_stmt_; }
 
+    static PhysicalInsertNode *CastFrom(PhysicalOpNode *node);
+
  private:
     const node::InsertStmt* insert_stmt_;
 };

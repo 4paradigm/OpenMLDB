@@ -210,3 +210,4 @@ using hybridse::node::DataType;
 
 %template(VectorDataType) std::vector<hybridse::node::DataType>;
 %template(ExprNodeVector) std::vector<hybridse::node::ExprNode*>;
+%template(VectorString) std::vector<std::string>;

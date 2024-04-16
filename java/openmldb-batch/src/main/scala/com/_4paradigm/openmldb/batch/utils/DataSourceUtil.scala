@@ -26,9 +26,9 @@ import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.functions.{col, first}
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType,
-  ShortType, StringType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{IntegerType, LongType, ShortType, StructType}
 import org.apache.spark.sql.{DataFrame, DataFrameReader, Row, SparkSession}
+import _root_.org.apache.spark.sql.Column
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters.asScalaBufferConverter
@@ -41,12 +41,13 @@ object DataSourceUtil {
 
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
                columns: util.List[Common.ColumnDesc]): DataFrame = {
-    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, "")
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, "", skipCvt = false)
   }
 
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
-               columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
-    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, loadDataSql)
+               columns: util.List[Common.ColumnDesc], loadDataSql: String,
+               skipCvt: Boolean): DataFrame = {
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns, loadDataSql, skipCvt)
   }
 
   // otherwise isCatalog
@@ -60,7 +61,30 @@ object DataSourceUtil {
   }
 
   private def checkSchemaIgnoreNullable(actual: StructType, expect: StructType): Boolean = {
-    actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
+    actual.zip(expect).forall { case (a, b) => (a.name, a.dataType) == (b.name, b.dataType) }
+  }
+
+  private def checkSchemaColumnsName(actual: StructType, expect: StructType): Boolean = {
+    actual.zip(expect).forall { case (a, b) => (a.name) == (b.name) }
+  }
+
+  private def getMappingSchemaColumnsForTidb(actual: StructType, expect: StructType):
+  Seq[Column] = {
+    actual.zip(expect).flatMap { case (a, b) =>
+      if (a.name == b.name) {
+        if (a.dataType == b.dataType) {
+          Seq(col(b.name))
+        } else if (a.dataType == LongType && b.dataType == IntegerType) {
+          Seq(col(a.name).cast(IntegerType).alias(b.name))
+        } else if (a.dataType == LongType && b.dataType == ShortType) {
+          Seq(col(a.name).cast(ShortType).alias(b.name))
+        } else {
+          Seq.empty
+        }
+      } else {
+        Seq.empty
+      }
+    }
   }
 
   // Load df from file **and** symbol paths, they should in the same format and options.
@@ -74,52 +98,82 @@ object DataSourceUtil {
   // We use OpenmldbSession for running sparksql in hiveLoad. If in 4pd Spark distribution, SparkSession.sql
   // will do openmldbSql first, and if DISABLE_OPENMLDB_FALLBACK, we can't use sparksql.
   def autoLoad(openmldbSession: OpenmldbSession, file: String, symbolPaths: List[String], format: String,
-               options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String = "")
-    : DataFrame = {
+               options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String = ""
+               , skipCvt: Boolean = false)
+  : DataFrame = {
     val fmt = format.toLowerCase
-    if (isCatalog(fmt)) {
-      logger.info(s"load data from catalog table, format $fmt, paths: $file $symbolPaths")
-      if (file.isEmpty) {
-        // no file, read all symbol paths
-        var outputDf: DataFrame = null
-        symbolPaths.zipWithIndex.foreach { case (path, index) =>
-          if (index == 0) {
-            outputDf = catalogLoad(openmldbSession, path, columns, loadDataSql)
-          } else {
-            outputDf = outputDf.union(catalogLoad(openmldbSession, path, columns, loadDataSql))
-          }
-        }
-        outputDf
+    val isCataLog = isCatalog(fmt)
+    val fileTypeDesc = if (isCataLog) "catalog table" else "file"
+    logger.info(s"load data from ${fileTypeDesc} ${file} & ${symbolPaths} " +
+      s"reader[format ${fmt}, options ${options}, skipCvt ${skipCvt}]")
+    val getDataLoad = (path: String) => {
+      val df: DataFrame = if (isCataLog) {
+        catalogLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
       } else {
-        var outputDf = catalogLoad(openmldbSession, file, columns, loadDataSql)
-        for (path: String <- symbolPaths) {
-          outputDf = outputDf.union(catalogLoad(openmldbSession, path, columns, loadDataSql))
-        }
-        outputDf
+        autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
       }
-    } else {
-      logger.info("load data from file {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
-
-      if (file.isEmpty) {
-        var outputDf: DataFrame = null
-        symbolPaths.zipWithIndex.foreach { case (path, index) =>
-          if (index == 0) {
-            outputDf = autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
-          } else {
-            outputDf = outputDf.union(autoFileLoad(openmldbSession, path, fmt, options, columns,
-              loadDataSql))
-          }
+      if (columns != null) {
+        if (skipCvt) {
+          val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
+          require(checkSchemaColumnsName(df.schema, oriSchema),
+            s"schema mismatch(name), loaded data ${df.schema}!= table $oriSchema, check $file")
+          df
+        } else {
+          autoSchemaMappingAndCheck(df, file, format, columns)
         }
-        outputDf
       } else {
-        var outputDf = autoFileLoad(openmldbSession, file, fmt, options, columns, loadDataSql)
-        for (path: String <- symbolPaths) {
-          outputDf = outputDf.union(autoFileLoad(openmldbSession, path, fmt, options, columns,
-            loadDataSql))
-        }
-        outputDf
+        df
       }
     }
+    if (file.isEmpty) {
+      // no file, read all symbol paths
+      var outputDf: DataFrame = null
+      symbolPaths.zipWithIndex.foreach { case (path, index) =>
+        if (index == 0) {
+          outputDf = getDataLoad(path)
+        } else {
+          outputDf = outputDf.union(getDataLoad(path))
+        }
+      }
+      outputDf
+    } else {
+      var outputDf: DataFrame = getDataLoad(file)
+      for (path: String <- symbolPaths) {
+        outputDf = outputDf.union(getDataLoad(path))
+      }
+      outputDf
+    }
+  }
+
+  private def autoSchemaMappingAndCheck(df: DataFrame, file: String, format: String,
+                                        columns: util.List[Common.ColumnDesc]): DataFrame = {
+    var resultDf = df
+    val (oriSchema, _, _) = HybridseUtil.extractOriginAndReadSchema(columns)
+    // tidb schema mapping
+    if (format == "tidb" && !checkSchemaIgnoreNullable(resultDf.schema, oriSchema)) {
+      val convertedColumns = getMappingSchemaColumnsForTidb(resultDf.schema, oriSchema)
+      if (convertedColumns.length != oriSchema.length) {
+        throw new IllegalArgumentException(s"tidb schema mapping failed, " +
+          s"loaded tidb ${resultDf.schema}!= table $oriSchema, check $file")
+      }
+      logger.info(s"convert tidb data columns, convert select: ${convertedColumns}, table: $oriSchema")
+      resultDf = resultDf.select(convertedColumns: _*)
+    }
+    // check schema
+    (isCatalog(format), format) match {
+      case (true, "tidb") | (false, "parquet") =>
+        //df.schema == oriSchema, hive table always nullable?
+        require(checkSchemaIgnoreNullable(resultDf.schema, oriSchema),
+          s"schema mismatch(name and dataType), loaded data ${resultDf.schema}!= table $oriSchema, check $file")
+        if (!resultDf.schema.equals(oriSchema)) {
+          logger.info(s"df schema: ${resultDf.schema}, reset schema")
+          resultDf = resultDf.sqlContext.createDataFrame(resultDf.rdd, oriSchema)
+        }
+      case _ =>
+        require(resultDf.schema == oriSchema, s"schema mismatch, " +
+          s"loaded ${resultDf.schema} != table $oriSchema, check $file")
+    }
+    resultDf
   }
 
   // We want df with oriSchema, but if the file format is csv:
@@ -127,12 +181,13 @@ object DataSourceUtil {
   // 2. spark read may change the df schema to all nullable
   // So we should fix it.
   private def autoFileLoad(openmldbSession: OpenmldbSession, file: String, format: String,
-    options: Map[String, String], columns: util.List[Common.ColumnDesc], loadDataSql: String): DataFrame = {
+                           options: Map[String, String], columns: util.List[Common.ColumnDesc],
+                           loadDataSql: String): DataFrame = {
     require(format.equals("csv") || format.equals("parquet"), s"unsupported format $format")
     val reader = openmldbSession.getSparkSession.read.options(options)
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
-    var df = if (format.equals("parquet")) {
+    if (format.equals("parquet")) {
       // When reading Parquet files, all columns are automatically converted to be nullable for compatibility reasons.
       // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
       val df = if (loadDataSql != null && loadDataSql.nonEmpty) {
@@ -141,11 +196,7 @@ object DataSourceUtil {
       } else {
         reader.format(format).load(file)
       }
-
-      require(checkSchemaIgnoreNullable(df.schema, oriSchema),
-        s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
-      // reset nullable property
-      df.sqlContext.createDataFrame(df.rdd, oriSchema)
+      df
     } else {
       // csv should auto detect the timestamp format
       reader.format(format)
@@ -176,13 +227,10 @@ object DataSourceUtil {
       if (!df.schema.equals(oriSchema)) {
         logger.info(s"df schema: ${df.schema}, reset schema")
         df.sqlContext.createDataFrame(df.rdd, oriSchema)
-      } else{
+      } else {
         df
       }
     }
-
-    require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
-    df
   }
 
   // path can have prefix or not, we should remove it if exists
@@ -190,8 +238,9 @@ object DataSourceUtil {
     path.split("://").last
   }
 
-  private def catalogLoad(openmldbSession: OpenmldbSession, file: String, columns: util.List[Common.ColumnDesc],
-                       loadDataSql: String = ""): DataFrame = {
+  private def catalogLoad(openmldbSession: OpenmldbSession, file: String, format: String,
+                          options: Map[String, String], columns: util.List[Common.ColumnDesc],
+                          loadDataSql: String = ""): DataFrame = {
     if (logger.isDebugEnabled()) {
       logger.debug("session catalog {}", openmldbSession.getSparkSession.sessionState.catalog)
       openmldbSession.sparksql("show tables").show()
@@ -207,22 +256,6 @@ object DataSourceUtil {
       logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
       df.show(10)
     }
-
-    if (columns != null) {
-      val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
-
-      require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
-        s"schema mismatch(ignore nullable), loaded hive ${df.schema}!= table $oriSchema, check $file")
-
-      if (!df.schema.equals(oriSchema)) {
-        logger.info(s"df schema: ${df.schema}, reset schema")
-        df.sqlContext.createDataFrame(df.rdd, oriSchema)
-      } else{
-        df
-      }
-    } else {
-      df
-    }
-
+    df
   }
 }
