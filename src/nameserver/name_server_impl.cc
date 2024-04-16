@@ -1484,7 +1484,14 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         dist_lock_ = new DistLock(zk_path + "/leader", zk_client_, boost::bind(&NameServerImpl::OnLocked, this),
                                   boost::bind(&NameServerImpl::OnLostLock, this), endpoint);
         dist_lock_->Lock();
-
+        if (!RecoverDb()) {
+            PDLOG(WARNING, "recover db failed!");
+            exit(1);
+        }
+        if (!RecoverTableInfo()) {
+            PDLOG(WARNING, "recover table info failed!");
+            exit(1);
+        }
     } else {
         const std::string& tablet_endpoint = FLAGS_tablet;
         startup_mode_ = ::openmldb::type::StartupMode::kStandalone;
@@ -1513,15 +1520,6 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-
-    if (!RecoverDb()) {
-        PDLOG(WARNING, "recover db failed!");
-        exit(1);
-    }
-    if (!RecoverTableInfo()) {
-        PDLOG(WARNING, "recover table info failed!");
-        exit(1);
-    }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
