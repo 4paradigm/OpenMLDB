@@ -85,16 +85,23 @@ cases:
       schema: instance:string
       data: |
         0|
-  # - id: 5
-  #   desc: feature signature GCFormat nothing
-  #   mode: procedure-unsupport
-  #   db: db1
-  #   sql: |
-  #     select gcformat() as instance;
-  #   expect:
-  #     schema: instance:string
-  #     data: |
-  #       |
+  - id: 5
+    desc: feature signature GCFormat example
+    mode: procedure-unsupport
+    db: db1
+    sql: |
+      select gcformat(
+          regression_label(2),
+          continuous(1),
+          continuous(int("notint")),
+          continuous(0),
+          continuous(0.0),
+          discrete(3),
+          regression_label(int("notint"))) as instance;
+    expect:
+      schema: instance:string
+      data: |
+        | 1:0:1 3:0:0 4:0:0.000000 5:2681491882390849628
 
   - id: 6
     desc: feature signature CSV no label
@@ -139,16 +146,29 @@ cases:
       schema: instance:string
       data: |
         1
-  # - id: 9
-  #   desc: feature signature CSV nothing
-  #   mode: procedure-unsupport
-  #   db: db1
-  #   sql: |
-  #     select csv() as instance;
-  #   expect:
-  #     schema: instance:string
-  #     data: |
-
+  - id: 9
+    desc: feature signature CSV example
+    mode: procedure-unsupport
+    db: db1
+    sql: |
+      select replace(csv(
+          regression_label(2),
+          regression_label(2.0),
+          regression_label(int("notint")),
+          continuous(1),
+          continuous(1.0),
+          multiclass_label(-1),
+          discrete(int("notint")),
+          discrete(3),
+          continuous(int("notint")),
+          continuous(pow(10, 30)),
+          continuous(pow(10, 1000)),
+          continuous(sqrt(-1))
+      ), ",", ";") as instance;
+    expect:
+      schema: instance:string
+      data: |
+        2;2.000000;;1;1.000000;-1;;2681491882390849628;;1000000000000000019884624838656.000000;inf;-nan
   - id: 10
     desc: feature signature LIBSVM no label
     mode: procedure-unsupport
@@ -190,16 +210,23 @@ cases:
       schema: instance:string
       data: |
         1
-  # - id: 13
-  #   desc: feature signature LIBSVM nothing
-  #   mode: procedure-unsupport
-  #   db: db1
-  #   sql: |
-  #     select libsvm() as instance;
-  #   expect:
-  #     schema: instance:string
-  #     data: |
-
+  - id: 13
+    desc: feature signature LIBSVM example
+    mode: procedure-unsupport
+    db: db1
+    sql: |
+      select libsvm(
+          regression_label(2),
+          continuous(int("notint")),
+          discrete(int("notint")),
+          continuous(-1),
+          continuous(hash64(3)),
+          discrete(3, 5),
+          binary_label(false)) as instance;
+    expect:
+      schema: instance:string
+      data: |
+        0 2:-1 3:2681491882390849628 3:1
   - id: 14
     desc: feature signature select one row from
     db: db1
@@ -315,8 +342,7 @@ cases:
     mode: request-unsupport
     db: db1
     sql: |
-      SELECT gcformat(
-          regression_label(col1)) as col1,
+      SELECT gcformat(regression_label(col1)) as col1,
           csv(regression_label(col1)) as col2,
           libsvm(regression_label(col1)) as col3
       FROM t1;
@@ -348,7 +374,7 @@ cases:
           multiclass_label(t1.col1),
           continuous(-abs(t1.col1)),
           discrete(t2.col6, 1)
-        ), ",", ";") as instance
+      ), ",", ";") as instance
       FROM t1 last join t2 on t1.col1=t2.col1;
     inputs:
       - name: t1
