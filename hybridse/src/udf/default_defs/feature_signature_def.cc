@@ -326,7 +326,6 @@ struct LIBSVM {
                     }
                     instance_feature += format_discrete(input) + ":1";
                 }
-                ++slot_number;
                 break;
             }
             case kFeatureSignatureBinaryLabel: {
@@ -351,7 +350,6 @@ struct LIBSVM {
                 break;
             }
             default: {
-                ++slot_number;
                 break;
             }
         }

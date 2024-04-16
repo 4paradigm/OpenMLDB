@@ -19,8 +19,8 @@ cases:
     db: db1
     sql: |
       select gcformat(
-          continuous(1),
-          continuous(2),
+          continuous(0),
+          continuous(0.0),
           discrete(3),
           discrete("x", 1),
           multiclass_label(-10),
@@ -29,7 +29,7 @@ cases:
     expect:
       schema: instance:string
       data: |
-        -10| 1:0:1 2:0:2 3:2681491882390849628 4:0 5:0:5.500000 6:0:6.600000
+        -10| 1:0:0 2:0:0.000000 3:2681491882390849628 4:0 5:0:5.500000 6:0:6.600000
   - id: 1
     desc: feature signature select GCFormat const no label
     mode: procedure-unsupport
@@ -68,12 +68,13 @@ cases:
           continuous(int("notint")),
           discrete(int("notint")),
           continuous(-1),
+          continuous(hash64(3)),
           discrete(3, 5),
           continuous(int("notint"))) as instance;
     expect:
       schema: instance:string
       data: |
-        | 3:0:-1 4:3
+        | 3:0:-1 4:0:2681491882390849628 5:3
   - id: 4
     desc: feature signature GCFormat no feature
     mode: procedure-unsupport
@@ -120,13 +121,14 @@ cases:
           continuous(int("notint")),
           discrete(int("notint")),
           continuous(-1),
+          continuous(hash64(3)),
           discrete(3, 5),
           continuous(int("notint"))
         ), ",", ";") as instance;
     expect:
       schema: instance:string
       data: |
-        2;;;;-1;3;
+        2;;;;-1;2681491882390849628;3;
   - id: 8
     desc: feature signature CSV no feature
     mode: procedure-unsupport
@@ -171,12 +173,13 @@ cases:
           continuous(int("notint")),
           discrete(int("notint")),
           continuous(-1),
+          continuous(hash64(3)),
           discrete(3, 5),
           continuous(int("notint"))) as instance;
     expect:
       schema: instance:string
       data: |
-        3:-1 3:1
+        2:-1 3:2681491882390849628 3:1
   - id: 12
     desc: feature signature LIBSVM no feature
     mode: procedure-unsupport
