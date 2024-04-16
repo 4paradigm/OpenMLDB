@@ -24,18 +24,18 @@ namespace udf {
 namespace v1 {
 
 enum FeatureSignatureType {
-    kFeatureSignatureNumeric = 100,
-    kFeatureSignatureCategory = 101,
+    kFeatureSignatureContinuous = 100,
+    kFeatureSignatureDiscrete = 101,
     kFeatureSignatureBinaryLabel = 200,
     kFeatureSignatureMulticlassLabel = 201,
     kFeatureSignatureRegressionLabel = 202,
 };
 
 template <typename T>
-struct Numeric {
+struct Continuous {
     using Args = Tuple<int32_t, Nullable<T>>(Nullable<T>);
     void operator()(T v, bool is_null, int32_t* feature_signature, T* ret, bool* null_flag) {
-        *feature_signature = kFeatureSignatureNumeric;
+        *feature_signature = kFeatureSignatureContinuous;
         *null_flag = is_null;
         if (!is_null) {
             *ret = v;
@@ -43,13 +43,13 @@ struct Numeric {
     }
 };
 
-template <typename T> struct Category;
-template <typename T> struct Category<std::tuple<T>> {
+template <typename T> struct Discrete;
+template <typename T> struct Discrete<std::tuple<T>> {
     using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>);
     using ParamType = typename DataTypeTrait<T>::CCallArgType;
 
     void operator()(ParamType v, bool is_null, int32_t* feature_signature, int64_t* ret, bool* null_flag) {
-        *feature_signature = kFeatureSignatureCategory;
+        *feature_signature = kFeatureSignatureDiscrete;
         *null_flag = is_null;
         if (!is_null) {
             *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
@@ -57,13 +57,13 @@ template <typename T> struct Category<std::tuple<T>> {
     }
 };
 
-template <typename T> struct Category<std::tuple<T, int32_t>> {
+template <typename T> struct Discrete<std::tuple<T, int32_t>> {
     using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>, Nullable<int32_t>);
     using ParamType = typename DataTypeTrait<T>::CCallArgType;
 
     void operator()(ParamType v, bool is_null, int32_t bucket_size, bool bucket_null,
             int32_t* feature_signature, int64_t* ret, bool* null_flag) {
-        *feature_signature = kFeatureSignatureCategory;
+        *feature_signature = kFeatureSignatureDiscrete;
         *null_flag = is_null;
         if (!is_null) {
             *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
@@ -77,13 +77,13 @@ template <typename T> struct Category<std::tuple<T, int32_t>> {
     }
 };
 
-template <typename T> struct Category<std::tuple<T, int64_t>> {
+template <typename T> struct Discrete<std::tuple<T, int64_t>> {
     using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>, Nullable<int64_t>);
     using ParamType = typename DataTypeTrait<T>::CCallArgType;
 
     void operator()(ParamType v, bool is_null, int64_t bucket_size, bool bucket_null,
             int32_t* feature_signature, int64_t* ret, bool* null_flag) {
-        *feature_signature = kFeatureSignatureCategory;
+        *feature_signature = kFeatureSignatureDiscrete;
         *null_flag = is_null;
         if (!is_null) {
             *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
@@ -176,11 +176,12 @@ struct InstanceFormatHelper {
     }
 };
 
-std::string format_numeric(double value) {
+template<typename T>
+std::string format_continuous(T value) {
     return std::to_string(value);
 }
 
-std::string format_category(uint64_t value) {
+std::string format_discrete(uint64_t value) {
     return std::to_string(value);
 }
 
@@ -192,24 +193,25 @@ std::string format_multiclass_label(int64_t value) {
     return std::to_string(value);
 }
 
-std::string format_regression_label(double value) {
-    return format_numeric(value);
+template<typename T>
+std::string format_regression_label(T value) {
+    return format_continuous(value);
 }
 
 struct GCFormat {
     template<class T>
     void Update(int32_t feature_signature, T input, bool is_null) {
         switch (feature_signature) {
-            case kFeatureSignatureNumeric: {
+            case kFeatureSignatureContinuous: {
                 if (!is_null) {
-                    instance_feature += " " + std::to_string(slot_number) + ":0:" + format_numeric(input);
+                    instance_feature += " " + std::to_string(slot_number) + ":0:" + format_continuous(input);
                 }
                 ++slot_number;
                 break;
             }
-            case kFeatureSignatureCategory: {
+            case kFeatureSignatureDiscrete: {
                 if (!is_null) {
-                    instance_feature += " " + std::to_string(slot_number) + ":" + format_category(input);
+                    instance_feature += " " + std::to_string(slot_number) + ":" + format_discrete(input);
                 }
                 ++slot_number;
                 break;
@@ -258,15 +260,15 @@ struct CSV {
             instance += ",";
         }
         switch (feature_signature) {
-            case kFeatureSignatureNumeric: {
+            case kFeatureSignatureContinuous: {
                 if (!is_null) {
-                    instance += format_numeric(input);
+                    instance += format_continuous(input);
                 }
                 break;
             }
-            case kFeatureSignatureCategory: {
+            case kFeatureSignatureDiscrete: {
                 if (!is_null) {
-                    instance += format_category(input);
+                    instance += format_discrete(input);
                 }
                 break;
             }
@@ -307,22 +309,22 @@ struct LIBSVM {
     template<class T>
     void Update(int32_t feature_signature, T input, bool is_null) {
         switch (feature_signature) {
-            case kFeatureSignatureNumeric: {
+            case kFeatureSignatureContinuous: {
                 if (!is_null) {
                     if (!instance_feature.empty()) {
                         instance_feature += " ";
                     }
-                    instance_feature += std::to_string(slot_number) + ":" + format_numeric(input);
+                    instance_feature += std::to_string(slot_number) + ":" + format_continuous(input);
                 }
                 ++slot_number;
                 break;
             }
-            case kFeatureSignatureCategory: {
+            case kFeatureSignatureDiscrete: {
                 if (!is_null) {
                     if (!instance_feature.empty()) {
                         instance_feature += " ";
                     }
-                    instance_feature += format_category(input) + ":1";
+                    instance_feature += format_discrete(input) + ":1";
                 }
                 ++slot_number;
                 break;
@@ -374,12 +376,12 @@ struct LIBSVM {
 }  // namespace v1
 
 void DefaultUdfLibrary::InitFeatureSignature() {
-    RegisterExternalTemplate<v1::Numeric>("numeric")
+    RegisterExternalTemplate<v1::Continuous>("continuous")
         .doc(R"(
-             @brief Set the column signature to numeric feature.
+             @brief Set the column signature to continuous feature.
              Example:
              @code{.sql}
-                select CSV(numeric(1.5));
+                select csv(continuous(1.5));
                 -- output 1.500000
              @endcode
 
@@ -387,14 +389,14 @@ void DefaultUdfLibrary::InitFeatureSignature() {
         )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double>();
 
-    RegisterExternalTemplate<v1::Category>("category")
+    RegisterExternalTemplate<v1::Discrete>("discrete")
         .doc(R"(
-             @brief Set the column signature to category feature.
+             @brief Set the column signature to discrete feature.
              @param input Input column
              @param bucket_size (Optional) The result is within [0, bucket_size)
              Example:
              @code{.sql}
-                select CSV(category(3), category(3, 100));
+                select csv(discrete(3), discrete(3, 100));
                 -- output 2681491882390849628,28
              @endcode
 
@@ -413,7 +415,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @brief Set the column signature to binary label.
              Example:
              @code{.sql}
-                select CSV(binary_label(true));
+                select csv(binary_label(true));
                 -- output 1
              @endcode
 
@@ -426,7 +428,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @brief Set the column signature to multiclass label.
              Example:
              @code{.sql}
-                select CSV(multiclass_label(6));
+                select csv(multiclass_label(6));
                 -- output 6
              @endcode
 
@@ -439,7 +441,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @brief Set the column signature to regression label.
              Example:
              @code{.sql}
-                select CSV(regression_label(1.5));
+                select csv(regression_label(1.5));
                 -- output 1.500000
              @endcode
 
@@ -447,36 +449,33 @@ void DefaultUdfLibrary::InitFeatureSignature() {
         )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double>();
 
-    RegisterAlias("continuous", "numeric");
-    RegisterAlias("discrete", "category");
-
-    v1::InstanceFormatHelper<v1::GCFormat>::Register(this, "GCFormat", R"(
+    v1::InstanceFormatHelper<v1::GCFormat>::Register(this, "gcformat", R"(
         @brief Return instance in GCFormat format.
              Example:
              @code{.sql}
-                select GCFormat(multiclass_label(6), numeric(1.5), category(3));
+                select gcformat(multiclass_label(6), continuous(1.5), category(3));
                 -- output 6| 1:0:1.500000 2:2681491882390849628
              @endcode
 
              @since 0.9.0
         )");
 
-    v1::InstanceFormatHelper<v1::CSV>::Register(this, "CSV", R"(
+    v1::InstanceFormatHelper<v1::CSV>::Register(this, "csv", R"(
         @brief Return instance in CSV format.
              Example:
              @code{.sql}
-                select CSV(multiclass_label(6), numeric(1.5), category(3));
+                select csv(multiclass_label(6), continuous(1.5), category(3));
                 -- output 6,1.500000,2681491882390849628
              @endcode
 
              @since 0.9.0
         )");
 
-    v1::InstanceFormatHelper<v1::LIBSVM>::Register(this, "LIBSVM", R"(
+    v1::InstanceFormatHelper<v1::LIBSVM>::Register(this, "libsvm", R"(
         @brief Return instance in LIBSVM format.
              Example:
              @code{.sql}
-                select LIBSVM(multiclass_label(6), numeric(1.5), category(3));
+                select libsvm(multiclass_label(6), continuous(1.5), category(3));
                 -- output 6 1:1.500000 2681491882390849628:1
              @endcode
 

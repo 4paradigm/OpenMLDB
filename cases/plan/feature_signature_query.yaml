@@ -17,28 +17,28 @@ cases:
     desc: feature signature select const
     mode: request-unsupport
     sql: |
-      select GCFormat(
-          numeric(1),
+      select gcformat(
+          continuous(1),
           continuous(2),
-          category(3),
+          discrete(3),
           discrete("x", 1),
           binary_label(true),
-          numeric(5.5),
+          continuous(5.5),
           continuous(6.6));
   - id: 1
     desc: feature signature select const no label
     mode: request-unsupport
     sql: |
-      select GCFormat(
-          numeric(1),
+      select gcformat(
+          continuous(1),
           continuous(2),
-          category(3, 100),
+          discrete(3, 100),
           discrete("x", 1),
-          numeric(5.5),
+          continuous(5.5),
           continuous(POW(10, 1000)));
   - id: 2
     desc: feature signature select from
     db: db1
     sql: |
-      SELECT GCFormat(multiclass_label(col1), numeric(int(col0)), numeric(abs(col1)), category(col6, 1))
+      SELECT gcformat(multiclass_label(col1), continuous(int(col0)), continuous(abs(col1)), discrete(col6, 1))
       FROM t1;
