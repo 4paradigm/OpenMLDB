@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "node/node_manager.h"
 #include "vm/engine_context.h"
@@ -79,6 +80,9 @@ struct SqlContext {
     // 1. Array [ StructCtorWithParens ]
     // 2. StructCtorWithParens
     const node::ExprNode* request_expressions = nullptr;
+    // compiled request rows from SQL CONFIG clause, `values` option
+    // request_rows get fullfilled if engine mode is kRequestMode or kBatchRequestMode
+    std::vector<codec::Row> request_rows;
 
     ::hybridse::vm::BatchRequestInfo batch_request_info;
 

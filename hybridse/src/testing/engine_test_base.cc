@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/ascii.h"
 #include "absl/time/clock.h"
 #include "base/texttable.h"
 #include "google/protobuf/util/message_differencer.h"
@@ -419,7 +420,7 @@ Status EngineTestRunner::Compile() {
     if (!ok || !status.isOK()) {
         DLOG(INFO) << status;
         if (!sql_case_.expect().msg_.empty()) {
-            EXPECT_EQ(sql_case_.expect().msg_, status.msg);
+            EXPECT_EQ(absl::StripAsciiWhitespace(sql_case_.expect().msg_), status.msg);
         }
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {

@@ -91,7 +91,7 @@ int RunSingle(const std::string& yaml_path) {
         } else {
             default_mode = kBatchRequestMode;
         }
-        auto mode = Engine::TryDetermineMode(sql_case.sql_str_, default_mode);
+        auto mode = Engine::TryDetermineEngineMode(sql_case.sql_str_, default_mode);
         int ret = DoRunEngine(sql_case, options, mode);
         if (ret != ENGINE_TEST_RET_SUCCESS) {
             return ret;

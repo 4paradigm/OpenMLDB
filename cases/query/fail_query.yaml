@@ -70,3 +70,53 @@ cases:
     expect:
       success: false
       msg: unsupport join type RightJoin
+  - id: 4
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+    sql: |
+      SELECT * from t1
+      CONFIG (execute_mode = 'request', values = [])
+    expect:
+      success: false
+      msg: |
+        FAILED_PRECONDITION: element number of the request values must not empty
+  - id: 5
+    mode: batch-unsupport
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",20,1000]
+          - ["bb",30,1000]
+    sql: |
+      SELECT * from t1
+      CONFIG (execute_mode = 'request', values = ("c1"))
+    expect:
+      success: false
+      msg: |
+        INTERNAL: pass in expr number do not match, expect 3 but got 1: (c1)
+
+  # TODO: open this case after #3847
+  # - id: 6
+  #   mode: batch-unsupport
+  #   inputs:
+  #     - name: t1
+  #       columns: ["c1 string","c2 int","c4 date"]
+  #       indexs: ["index1:c1"]
+  #       rows:
+  #         - ["aa",20,1000]
+  #         - ["bb",30,1000]
+  #   sql: |
+  #     SELECT * from t1
+  #     CONFIG (execute_mode = 'request', values = ("c1", 19, 12) )
+  #   expect:
+  #     success: false
+  #     msg: |
+  #       xx

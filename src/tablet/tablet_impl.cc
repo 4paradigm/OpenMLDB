@@ -1686,7 +1686,7 @@ void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::
 
     hybridse::vm::EngineMode default_mode =
         request->is_batch() ? hybridse::vm::EngineMode::kBatchMode : hybridse::vm::EngineMode::kRequestMode;
-    auto mode = hybridse::vm::Engine::TryDetermineMode(request->sql(), default_mode);
+    auto mode = hybridse::vm::Engine::TryDetermineEngineMode(request->sql(), default_mode);
 
     ::hybridse::base::Status status;
     if (mode == hybridse::vm::EngineMode::kBatchMode) {

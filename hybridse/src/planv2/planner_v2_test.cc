@@ -91,15 +91,14 @@ INSTANTIATE_TEST_SUITE_P(SQLCmdParserTest, PlannerV2Test,
 TEST_P(PlannerV2Test, PlannerSucessTest) {
     const auto& param = GetParam();
     std::string sqlstr = param.sql_str();
-    std::cout << sqlstr << std::endl;
-    base::Status status;
-    node::PlanNodeList plan_trees;
-    EXPECT_EQ(param.expect().success_, PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status))
-        << status;
+    vm::SqlContext ctx;
+    ctx.sql = sqlstr;
+    auto status = PlanAPI::CreatePlanTreeFromScript(&ctx);
+    EXPECT_EQ(param.expect().success_, status.isOK()) << status;
     if (param.expect().success_) {
         if (!param.expect().plan_tree_str_.empty()) {
             // HACK: weak implementation, but usually it works
-            EXPECT_EQ(param.expect().plan_tree_str_, plan_trees.at(0)->GetTreeString());
+            EXPECT_EQ(param.expect().plan_tree_str_, ctx.logical_plan.at(0)->GetTreeString());
         }
     } else {
         if (!param.expect().msg_.empty()) {
@@ -117,10 +116,13 @@ TEST_P(PlannerV2Test, PlannerClusterOnlineServingOptTest) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
         return;
     }
-    base::Status status;
-    node::PlanNodeList plan_trees;
+    vm::SqlContext ctx;
+    ctx.sql = sqlstr;
+    ctx.engine_mode = vm::kRequestMode;
+    ctx.is_cluster_optimized = true;
+    auto status = PlanAPI::CreatePlanTreeFromScript(&ctx);
     // TODO(ace): many tests defined in 'cases/plan/' do not pass, should annotated in yaml file
-    plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true);
+    plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
 }
 
 TEST_F(PlannerV2Test, SimplePlannerCreatePlanTest) {
@@ -1880,9 +1882,11 @@ TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
         LOG(INFO) << "Skip mode " << sql_case.mode() << " for request mode error test";
         return;
     }
-    base::Status status;
-    node::PlanNodeList plan_trees;
-    EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
+    vm::SqlContext ctx;
+    ctx.sql = sqlstr;
+    ctx.engine_mode = vm::kRequestMode;
+    auto status = plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
+    EXPECT_FALSE(status.isOK()) << status;
     if (!sql_case.expect_.msg_.empty()) {
         EXPECT_EQ(absl::StripAsciiWhitespace(sql_case.expect_.msg_), status.msg);
     }
@@ -1896,9 +1900,12 @@ TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
         LOG(INFO) << "Skip mode " << sql_case.mode() << " for cluster request mode error test";
         return;
     }
-    base::Status status;
-    node::PlanNodeList plan_trees;
-    EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
+    vm::SqlContext ctx;
+    ctx.sql = sqlstr;
+    ctx.engine_mode = vm::kRequestMode;
+    ctx.is_cluster_optimized = true;
+    auto status = plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
+    EXPECT_FALSE(status.isOK()) << status;
     if (!sql_case.expect_.msg_.empty()) {
         EXPECT_EQ(absl::StripAsciiWhitespace(sql_case.expect_.msg_), status.msg);
     }
@@ -1911,9 +1918,11 @@ TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
         LOG(INFO) << "Skip mode " << sql_case.mode() << " for batch mode error test";
         return;
     }
-    base::Status status;
-    node::PlanNodeList plan_trees;
-    EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
+    vm::SqlContext ctx;
+    ctx.sql = sqlstr;
+    ctx.engine_mode = vm::kBatchMode;
+    auto status = plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
+    EXPECT_FALSE(status.isOK()) << status;
     if (!sql_case.expect_.msg_.empty()) {
         EXPECT_EQ(absl::StripAsciiWhitespace(sql_case.expect_.msg_), status.msg);
     }
