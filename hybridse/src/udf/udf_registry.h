@@ -1922,12 +1922,12 @@ class UdafTemplateRegistryHelper : public UdfRegistryHelper {
 };
 
 class VariadicUdfDefGenBase {
-public:
-    explicit VariadicUdfDefGenBase() {}
+ public:
+    VariadicUdfDefGenBase() {}
     virtual Status infer(UdfResolveContext* ctx,
                          const std::vector<ExprAttrNode>& args,
                          ExprAttrNode* out) = 0;
-    
+
     std::shared_ptr<UdfRegistry> init_gen;
     ArgSignatureTable update_gen;
     std::unordered_map<std::string, ArgSignatureTable> output_gen;
@@ -1936,7 +1936,7 @@ public:
 
 template <typename... Args>
 class VariadicUdfDefGen: public VariadicUdfDefGenBase {
-public:
+ public:
     using InferFType = typename VariadicLLVMUdfGen<Args...>::InferFType;
     template <std::size_t... I>
     Status infer_internal(UdfResolveContext* ctx,
@@ -1949,8 +1949,8 @@ public:
         return infer_func(ctx, args[I]..., variadic_args, out);
     }
 
-    explicit VariadicUdfDefGen() {}
-    virtual Status infer(UdfResolveContext* ctx,
+    VariadicUdfDefGen() {}
+    Status infer(UdfResolveContext* ctx,
                          const std::vector<ExprAttrNode>& args,
                          ExprAttrNode* out) override {
         if (infer_func == nullptr) {
@@ -2001,7 +2001,7 @@ class VariadicUdfRegistryHelper : public UdfRegistryHelper {
           name_prefix_(name),
           cur_def_(std::make_shared<VariadicUdfDefGen<Args...>>()) {
         cur_def_->infer_func = infer;
-        for (const node::TypeNode* arg_type: arg_tys_) {
+        for (const node::TypeNode* arg_type : arg_tys_) {
             name_prefix_.append(".").append(arg_type->GetName());
         }
     }

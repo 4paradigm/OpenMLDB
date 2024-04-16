@@ -24,11 +24,11 @@ namespace udf {
 namespace v1 {
 
 enum FeatureSignatureType {
-    kFeatureSignatureNumeric=100,
-    kFeatureSignatureCategory=101,
-    kFeatureSignatureBinaryLabel=200,
-    kFeatureSignatureMulticlassLabel=201,
-    kFeatureSignatureRegressionLabel=202,
+    kFeatureSignatureNumeric = 100,
+    kFeatureSignatureCategory = 101,
+    kFeatureSignatureBinaryLabel = 200,
+    kFeatureSignatureMulticlassLabel = 201,
+    kFeatureSignatureRegressionLabel = 202,
 };
 
 template <typename T>
@@ -371,7 +371,7 @@ struct LIBSVM {
     std::string instance_feature;
 };
 
-} // namespace v1
+}  // namespace v1
 
 void DefaultUdfLibrary::InitFeatureSignature() {
     RegisterExternalTemplate<v1::Numeric>("numeric")
@@ -386,7 +386,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @since 0.9.0
         )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double>();
-    
+
     RegisterExternalTemplate<v1::Category>("category")
         .doc(R"(
              @brief Set the column signature to category feature.
@@ -407,7 +407,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
                  std::tuple<StringRef>, std::tuple<StringRef, int32_t>, std::tuple<StringRef, int64_t>,
                  std::tuple<Timestamp>, std::tuple<Timestamp, int32_t>, std::tuple<Timestamp, int64_t>,
                  std::tuple<Date>, std::tuple<Date, int32_t>, std::tuple<Date, int64_t> >();
-    
+
     RegisterExternalTemplate<v1::BinaryLabel>("binary_label")
         .doc(R"(
              @brief Set the column signature to binary label.
@@ -420,7 +420,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @since 0.9.0
         )")
         .args_in<bool>();
-    
+
     RegisterExternalTemplate<v1::MulticlassLabel>("multiclass_label")
         .doc(R"(
              @brief Set the column signature to multiclass label.
@@ -433,7 +433,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @since 0.9.0
         )")
         .args_in<bool, int16_t, int32_t, int64_t>();
-    
+
     RegisterExternalTemplate<v1::RegressionLabel>("regression_label")
         .doc(R"(
              @brief Set the column signature to regression label.
@@ -471,7 +471,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
 
              @since 0.9.0
         )");
-    
+
     v1::InstanceFormatHelper<v1::LIBSVM>::Register(this, "LIBSVM", R"(
         @brief Return instance in LIBSVM format.
              Example:
@@ -484,5 +484,5 @@ void DefaultUdfLibrary::InitFeatureSignature() {
         )");
 }
 
-} // namespace udf
-} // namespace hybridse
+}  // namespace udf
+}  // namespace hybridse

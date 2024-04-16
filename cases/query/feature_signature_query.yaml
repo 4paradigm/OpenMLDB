@@ -15,6 +15,7 @@
 cases:
   - id: 0
     desc: feature signature select GCFormat const
+    mode: procedure-unsupport
     db: db1
     sql: |
       select GCFormat(
@@ -31,6 +32,7 @@ cases:
         1| 1:0:1.000000 2:0:2.000000 3:2681491882390849628 4:0 5:0:5.500000 6:0:6.600000
   - id: 1
     desc: feature signature select GCFormat const no label
+    mode: procedure-unsupport
     db: db1
     sql: |
       select GCFormat(
@@ -47,6 +49,7 @@ cases:
         | 1:0:1.000000 2:0:2.000000 3:28 4:0 5:0:5.500000 6:0 7:0:inf
   - id: 2
     desc: feature signature nagative bucket size
+    mode: procedure-unsupport
     db: db1
     sql: |
       select GCFormat(
@@ -58,6 +61,7 @@ cases:
         | 1:2681491882390849628 2:2681491882390849628
   - id: 3
     desc: feature signature GCFormat null
+    mode: procedure-unsupport
     db: db1
     sql: |
       select GCFormat(
@@ -72,6 +76,7 @@ cases:
         | 1:0:1.000000 3:2681491882390849628
   - id: 4
     desc: feature signature GCFormat no feature
+    mode: procedure-unsupport
     db: db1
     sql: |
       select GCFormat(binary_label(true)) as instance;
@@ -81,6 +86,7 @@ cases:
         1|
   # - id: 5
   #   desc: feature signature GCFormat nothing
+  #   mode: procedure-unsupport
   #   db: db1
   #   sql: |
   #     select GCFormat() as instance;
@@ -91,6 +97,7 @@ cases:
 
   - id: 6
     desc: feature signature CSV no label
+    mode: procedure-unsupport
     db: db1
     sql: |
       select replace(CSV(
@@ -103,6 +110,7 @@ cases:
         2681491882390849628;2681491882390849628
   - id: 7
     desc: feature signature CSV null
+    mode: procedure-unsupport
     db: db1
     sql: |
       select replace(CSV(
@@ -118,6 +126,7 @@ cases:
         ;1.000000;;2681491882390849628;
   - id: 8
     desc: feature signature CSV no feature
+    mode: procedure-unsupport
     db: db1
     sql: |
       select CSV(binary_label(true)) as instance;
@@ -127,6 +136,7 @@ cases:
         1
   # - id: 9
   #   desc: feature signature CSV nothing
+  #   mode: procedure-unsupport
   #   db: db1
   #   sql: |
   #     select CSV() as instance;
@@ -136,6 +146,7 @@ cases:
 
   - id: 10
     desc: feature signature LIBSVM no label
+    mode: procedure-unsupport
     db: db1
     sql: |
       select LIBSVM(
@@ -147,6 +158,7 @@ cases:
         2681491882390849628:1 2681491882390849628:1
   - id: 11
     desc: feature signature LIBSVM null
+    mode: procedure-unsupport
     db: db1
     sql: |
       select LIBSVM(
@@ -161,6 +173,7 @@ cases:
         1:1.000000 2681491882390849628:1
   - id: 12
     desc: feature signature LIBSVM no feature
+    mode: procedure-unsupport
     db: db1
     sql: |
       select LIBSVM(binary_label(true)) as instance;
@@ -170,6 +183,7 @@ cases:
         1
   # - id: 13
   #   desc: feature signature LIBSVM nothing
+  #   mode: procedure-unsupport
   #   db: db1
   #   sql: |
   #     select LIBSVM() as instance;

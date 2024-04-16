@@ -63,7 +63,7 @@ class UdfIRBuilder {
                          NativeValue* output);
 
     Status BuildVariadicUdfCall(const node::VariadicUdfDefNode* fn,
-                                const std::vector<const node::TypeNode*>& arg_types,       
+                                const std::vector<const node::TypeNode*>& arg_types,
                                 const std::vector<NativeValue>& args,
                                 NativeValue* output);
 
