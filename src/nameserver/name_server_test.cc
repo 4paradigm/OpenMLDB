@@ -298,44 +298,26 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
     ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
 }
 
-/* TEST_F(NameServerImplTest, ConfigGetAndSet) {
+TEST_F(NameServerImplTest, ConfigGetAndSet) {
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
-    std::string endpoint = "127.0.0.1:9631";
-    FLAGS_endpoint = endpoint;
-    NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init("");
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options;
-    brpc::Server server;
-    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    brpc::ServerOptions options_t;
+    brpc::Server server_t;
+    ASSERT_TRUE(StartTablet("127.0.0.1:9530", &server_t, &options_t));
 
-    std::string endpoint1 = "127.0.0.1:9632";
-    FLAGS_endpoint = endpoint1;
-    NameServerImpl* nameserver1 = new NameServerImpl();
-    ok = nameserver1->Init("");
-    ASSERT_TRUE(ok);
-    sleep(4);
-    brpc::ServerOptions options1;
-    brpc::Server server1;
-    if (server1.AddService(nameserver1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ::openmldb::client::NsClient name_server_client(endpoint, "");
+    brpc::ServerOptions options_n1;
+    brpc::Server server_n1;
+    auto server_n1_endpoint = "127.0.0.1:9631";
+    ASSERT_TRUE(StartNS(server_n1_endpoint, &server_n1, &options_n1));
+
+    brpc::ServerOptions options_n2;
+    brpc::Server server_n2;
+    auto server_n2_endpoint = "127.0.0.1:9632";
+    ASSERT_TRUE(StartNS(server_n2_endpoint, &server_n2, &options_n2));
+
+    ::openmldb::client::NsClient name_server_client(server_n1_endpoint, "");
     name_server_client.Init();
+
     std::string key = "auto_failover";
     std::string msg;
     std::map<std::string, std::string> conf_map;
@@ -350,14 +332,12 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
     ASSERT_STREQ(conf_map[key].c_str(), "true");
     ret = name_server_client.DisConnectZK(msg);
     sleep(5);
-    ::openmldb::client::NsClient name_server_client1(endpoint1, "");
+    ::openmldb::client::NsClient name_server_client1(server_n2_endpoint, "");
     name_server_client1.Init();
     ret = name_server_client1.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
     ASSERT_STREQ(conf_map[key].c_str(), "true");
-    delete nameserver;
-    delete nameserver1;
-} */
+}
 
 TEST_P(NameServerImplTest, CreateTable) {
     openmldb::common::StorageMode storage_mode = GetParam();
@@ -696,8 +676,11 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     delete tablet;
 }
 
-/* TEST_F(NameServerImplTest, CancelOP) {
+TEST_F(NameServerImplTest, CancelOP) {
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
+    brpc::ServerOptions options_t;
+    brpc::Server server_t;
+    ASSERT_TRUE(StartTablet("127.0.0.1:9530", &server_t, &options_t));
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -750,7 +733,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     ASSERT_EQ(0, response.code());
     ASSERT_TRUE(op_data->op_info_.task_status() == ::openmldb::api::kCanceled);
     delete nameserver;
-} */
+}
 
 bool InitRpc(Server* server, google::protobuf::Service* general_svr) {
     brpc::ServerOptions options;
