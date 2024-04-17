@@ -17,8 +17,6 @@
 #include <list>
 #include <queue>
 #include <string>
-#include <tuple>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -35,32 +33,46 @@ using openmldb::base::Timestamp;
 namespace hybridse {
 namespace udf {
 
+// `at` expect index start from 0, nth_value expect index start from 1.
+// 1. pos = -1: first element in list
+// 2. pos =  0: last element in list
+// 3. pos =  1: last second element in list
 template <class V>
-void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v, bool* is_null) {
-    if (pos < 0) {
-        *is_null = true;
-        *v = static_cast<V>(DataTypeTrait<V>::zero_value());
-        return;
-    }
-    codec::ListV<V>* list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
-    auto column = dynamic_cast<codec::WrapListImpl<V, codec::Row>*>(list);
-    if (column != nullptr) {
-        auto row = column->root()->At(pos);
-        if (row.empty()) {
-            *is_null = true;
-            *v = static_cast<V>(DataTypeTrait<V>::zero_value());
-        } else {
-            column->GetField(row, v, is_null);
+struct AtList {
+    static void param3(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, bool ignore_null, V* v, bool* is_null) {
+        codec::ListV<V>* list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
+        auto column = dynamic_cast<codec::ColumnImpl<V>*>(list);
+
+        std::unique_ptr<codec::ListV<V>> column_wrapper;
+        if (column != nullptr && ignore_null) {
+            column_wrapper.reset(column->GetAsNonNullColumnList());
+            list = column_wrapper.get();
         }
-    } else {
-        auto out = list->At(pos);
+        uint64_t p = 0;
+        if (pos < 0) {
+            uint64_t sz = list->GetCount();
+            uint64_t reverse = static_cast<uint64_t>(-pos);
+            if (sz < reverse) {
+                *is_null = true;
+                *v = static_cast<V>(DataTypeTrait<V>::zero_value());
+                return;
+            }
+            p = sz - reverse;
+        } else {
+            p = pos;
+        }
+        auto out = list->At(p);
         *is_null = codec::AtOut<V>::IsNull(out);
         *v = codec::AtOut<V>::Value(out);
     }
-}
 
-node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
-                        ExprNode* default_val) {
+    static void param2(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v, bool* is_null) {
+        return param3(list_ref, pos, false, v, is_null);
+    }
+};
+
+static node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx, ExprNode* default_val,
+                               ExprNode* ignore_null = nullptr) {
     auto input_type = input->GetOutputType();
     if (input_type->base() != node::kList) {
         ctx->SetError("Input type is not list: " + input_type->GetName());
@@ -88,7 +100,10 @@ node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
         idx->GetOutputType()->base() != node::kInt64) {
         idx = nm->MakeCastNode(node::kInt64, idx);
     }
-    auto res = nm->MakeFuncNode("at", {input, idx}, nullptr);
+    if (ignore_null == nullptr) {
+        ignore_null = nm->MakeConstNode(false);
+    }
+    auto res = nm->MakeFuncNode("at", {input, idx, ignore_null}, nullptr);
     if (default_val != nullptr) {
         res = nm->MakeFuncNode("if_null", {res, default_val}, nullptr);
     }
@@ -232,9 +247,9 @@ void RegisterBaseListLag(UdfLibrary* lib) {
             @endcode
 
         )")
-        .args<codec::ListRef<V>, int64_t>(AtList<V>)
-        .return_by_arg(true)
-        .template returns<Nullable<V>>();
+        .args<codec::ListRef<V>, int64_t, bool>(AtList<V>::param3);
+
+    lib->RegisterExternal("lag").args<codec::ListRef<V>, int64_t>(AtList<V>::param2);
 }
 
 void DefaultUdfLibrary::InitWindowFunctions() {
@@ -256,14 +271,26 @@ void DefaultUdfLibrary::InitWindowFunctions() {
         });
 
     RegisterAlias("at", "lag");
+
     RegisterExprUdf("first_value")
         .list_argument_at(0)
-        .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {
-            return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(0),
-                           nullptr);
+        .variadic_args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input,
+                                  const std::vector<ExprNode*>& args) -> ExprNode* {
+            if (args .size() > 1) {
+                ctx->SetError(absl::StrCat("invalid number of arguments for first_value, expect 1 or 2, but got ",
+                                           args.size() + 1));
+                return nullptr;
+            }
+            if (args.empty()) {
+                return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(-1), nullptr);
+            }
+            return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(-1), nullptr, args[0]);
         })
         .doc(R"(
-        @brief Returns the value of expr from the latest row (last row) of the window frame.
+        @brief `first_value(expr[, isIgnoreNull])` - Returns the value of `expr` from the first row of the window frame.  If `isIgnoreNull` is true, returns only non-null values.
+
+        NOTE before version 0.9.0, first_value returns the expr of latest row (last row), which is the semantic
+        equivalent to `last_value` in standard SQL. The behavior is corrected in version 0.9.0.
 
         Example:
 
@@ -275,14 +302,46 @@ void DefaultUdfLibrary::InitWindowFunctions() {
         | id | gp | ts | agg |
         | -- | -- | -- | --- |
         | 1  | 100 | 98 | 98 |
-        | 2  | 100 | 99 | 99 |
-        | 3  | 100 | 100 | 100 |
+        | 2  | 100 | 99 | 98 |
+        | 3  | 100 | 100 | 98 |
 
         @since 0.1.0)");
 
+    RegisterExprUdf("last_value")
+        .list_argument_at(0)
+        .variadic_args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input,
+                                  const std::vector<ExprNode*>& args) -> ExprNode* {
+            if (args .size() > 1) {
+                ctx->SetError(absl::StrCat("invalid number of arguments for last_value, expect 1 or 2, but got ",
+                                           args.size() + 1));
+                return nullptr;
+            }
+            if (args.empty()) {
+                return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(0), nullptr);
+            }
+            return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(0), nullptr, args[0]);
+        })
+        .doc(R"(
+        @brief `last_value(expr[, isIgnoreNull])` - Returns the value of `expr` from the last row of the window frame.  If `isIgnoreNull` is true, returns only non-null values.
+
+        Example:
+
+        @code{.sql}
+        select id, gp, ts, last_value(ts) over w as agg from t1
+        window w as (partition by gp order by ts rows between 3 preceding and current row);
+        @endcode
+
+        | id | gp | ts | agg |
+        | -- | -- | -- | --- |
+        | 1  | 100 | 98 | 98 |
+        | 2  | 100 | 99 | 99 |
+        | 3  | 100 | 100 | 100 |
+
+        @since 0.9.0)");
+
     RegisterUdafTemplate<NthValueWhere>("nth_value_where")
         .doc(R"(
-        @brief Returns the value of expr from the idx th row matches the condition.
+        @brief Returns the value of expr from the idx th row matches the condition. Index start from 1 or -1.
 
         @param value Expr of the matched row
         @param idx Idx th matched row (start from 1 or -1). If positive, count from first row of window; if negative, count from last row of window; 0 is invalid, results NULL.
