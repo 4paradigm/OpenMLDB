@@ -757,6 +757,7 @@ void InitTablet(int port, vector<Server*> services, vector<shared_ptr<TabletImpl
         PDLOG(WARNING, "services and eps size not equal");
         exit(1);
     }
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     for (uint64_t i = 0; i < services.size(); i++) {
         FLAGS_db_root_path = "/tmp/test4" + ::openmldb::test::GenRand();
         FLAGS_ssd_root_path = "/tmp/ssd/test4" + openmldb::test::GenRand();
@@ -792,7 +793,6 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
         PDLOG(WARNING, "services and eps size not equal");
         exit(1);
     }
-    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
     for (uint64_t i = 0; i < services.size(); i++) {
         shared_ptr<NameServerImpl> ns = std::make_shared<NameServerImpl>();
@@ -813,7 +813,7 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     return;
 }
 
-/* TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
+TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -832,16 +832,21 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
 
     int port = 9632;
 
-    m1_zkpath = FLAGS_zk_root_path;
-
     auto svrs_tablet = {&m1_t1_svr, &m1_t2_svr};
     auto endpoints_tablet = {&m1_t1_ep, &m1_t2_ep};
 
     InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
 
     InitNs(port, svrs, ns_vector, endpoints);
+    m1_zkpath = FLAGS_zk_root_path;
 
     port++;
+
+    svrs_tablet = {&f1_t1_svr, &f1_t2_svr};
+    endpoints_tablet = {&f1_t1_ep, &f1_t2_ep};
+    tb_vector = {&f1_t1, &f1_t2};
+
+    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
 
     svrs = {&f1_ns1_svr, &f1_ns2_svr};
     ns_vector = {&f1_ns1, &f1_ns2};
@@ -850,13 +855,13 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     InitNs(port, svrs, ns_vector, endpoints);
     f1_zkpath = FLAGS_zk_root_path;
 
-    svrs = {&f1_t1_svr, &f1_t2_svr};
-    endpoints = {&f1_t1_ep, &f1_t2_ep};
-    tb_vector = {&f1_t1, &f1_t2};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
-
     port++;
+
+    svrs_tablet = {&f2_t1_svr, &f2_t2_svr};
+    endpoints_tablet = {&f2_t1_ep, &f2_t2_ep};
+    tb_vector = {&f2_t1, &f2_t2};
+
+    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
 
     svrs = {&f2_ns1_svr, &f2_ns2_svr};
     ns_vector = {&f2_ns1, &f2_ns2};
@@ -864,12 +869,6 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
 
     InitNs(port, svrs, ns_vector, endpoints);
     f2_zkpath = FLAGS_zk_root_path;
-
-    svrs = {&f2_t1_svr, &f2_t2_svr};
-    endpoints = {&f2_t1_ep, &f2_t2_ep};
-    tb_vector = {&f2_t1, &f2_t2};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
 
     // disable autoconf
     ConfSetRequest conf_set_request;
@@ -979,9 +978,9 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
         ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
-} */
+}
 
-/* TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
+TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     std::shared_ptr<NameServerImpl> m1_ns1, m1_ns2, f1_ns1, f1_ns2, f2_ns1, f2_ns2;
     std::shared_ptr<TabletImpl> m1_t1, m1_t2, f1_t1, f1_t2, f2_t1, f2_t2;
     Server m1_ns1_svr, m1_ns2_svr, m1_t1_svr, m1_t2_svr;
@@ -998,15 +997,21 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     vector<string*> endpoints = {&m1_ns1_ep, &m1_ns2_ep};
 
     int port = 9642;
+    auto svrs_tablet = {&m1_t1_svr, &m1_t2_svr};
+    auto endpoints_tablet = {&m1_t1_ep, &m1_t2_ep};
+
+    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+
     InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
 
-    svrs = {&m1_t1_svr, &m1_t2_svr};
-    endpoints = {&m1_t1_ep, &m1_t2_ep};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
-
     port++;
+
+    svrs_tablet = {&f1_t1_svr, &f1_t2_svr};
+    endpoints_tablet = {&f1_t1_ep, &f1_t2_ep};
+    tb_vector = {&f1_t1, &f1_t2};
+
+    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
 
     svrs = {&f1_ns1_svr, &f1_ns2_svr};
     ns_vector = {&f1_ns1, &f1_ns2};
@@ -1015,13 +1020,13 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
     InitNs(port, svrs, ns_vector, endpoints);
     f1_zkpath = FLAGS_zk_root_path;
 
-    svrs = {&f1_t1_svr, &f1_t2_svr};
-    endpoints = {&f1_t1_ep, &f1_t2_ep};
-    tb_vector = {&f1_t1, &f1_t2};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
-
     port++;
+
+    svrs_tablet = {&f2_t1_svr, &f2_t2_svr};
+    endpoints_tablet = {&f2_t1_ep, &f2_t2_ep};
+    tb_vector = {&f2_t1, &f2_t2};
+
+    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
 
     svrs = {&f2_ns1_svr, &f2_ns2_svr};
     ns_vector = {&f2_ns1, &f2_ns2};
@@ -1029,12 +1034,6 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
 
     InitNs(port, svrs, ns_vector, endpoints);
     f2_zkpath = FLAGS_zk_root_path;
-
-    svrs = {&f2_t1_svr, &f2_t2_svr};
-    endpoints = {&f2_t1_ep, &f2_t2_ep};
-    tb_vector = {&f2_t1, &f2_t2};
-
-    InitTablet(port, svrs, tb_vector, endpoints);
 
     // disable autoconf
     ConfSetRequest conf_set_request;
@@ -1134,7 +1133,7 @@ void InitNs(int port, vector<Server*> services, vector<shared_ptr<NameServerImpl
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
-} */
+}
 
 TEST_F(NameServerImplTest, ShowCatalogVersion) {
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
