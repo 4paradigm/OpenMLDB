@@ -452,9 +452,10 @@ jobs:
           path: go
 
       - name: Upload Coverage Report
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: go/coverage.out,python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
           name: coverage-sdk
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
           verbose: true

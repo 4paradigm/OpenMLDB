@@ -1,6 +1,6 @@
 # CREATE INDEX
 
-`CREATE INDEX` 语句用来创建索引。添加索引会发起异步任务来加载数据, 可以通过执行`SHOW JOBS FROM NAMESERVER`来查看任务状态
+`CREATE INDEX` 语句用来创建索引。添加索引会发起异步任务来加载数据, 可以通过执行`SHOW JOBS FROM NAMESERVER`来查看任务状态。请注意，异步任务未完成之前，索引不可用，需要新索引的场景会失败。
 
 ## 语法
 
