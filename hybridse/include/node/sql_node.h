@@ -2920,7 +2920,7 @@ class UdafDefNode : public FnDefNode {
 
 class VariadicUdfDefNode : public FnDefNode {
  public:
-    VariadicUdfDefNode(const std::string &name, 
+    VariadicUdfDefNode(const std::string &name,
                        FnDefNode *init_func,
                        const std::vector<FnDefNode *>& update_func,
                        FnDefNode *output_func)

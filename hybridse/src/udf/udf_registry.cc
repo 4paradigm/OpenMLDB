@@ -363,7 +363,7 @@ Status VariadicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
     node::FnDefNode* output_func;
     CHECK_STATUS(cur_def_->init_gen->ResolveFunction(ctx, &init_func));
     CHECK_TRUE(init_func != nullptr, kCodegenError);
-    
+
     std::string signature;
     int variadic_pos;
     auto state_arg = nm->MakeExprIdNode("state");

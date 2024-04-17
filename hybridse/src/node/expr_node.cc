@@ -1169,7 +1169,7 @@ VariadicUdfDefNode* VariadicUdfDefNode::ShadowCopy(NodeManager* nm) const {
 VariadicUdfDefNode* VariadicUdfDefNode::DeepCopy(NodeManager* nm) const {
     FnDefNode* new_init = init_ ? init_->DeepCopy(nm) : nullptr;
     std::vector<FnDefNode*> new_update;
-    for (FnDefNode* update_func: update_) {
+    for (FnDefNode* update_func : update_) {
         new_update.push_back(update_func ? update_func->DeepCopy(nm): nullptr);
     }
     FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
