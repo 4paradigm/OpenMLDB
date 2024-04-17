@@ -610,8 +610,8 @@ bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
         return false;
     }
     switch (type->getTypeID()) {
-        case ::llvm::Type::TokenTyID: {
-            *output = ::hybridse::node::kNull;
+        case ::llvm::Type::VoidTyID: {
+            *output = ::hybridse::node::kVoid;
             return true;
         }
         case ::llvm::Type::FloatTyID: {

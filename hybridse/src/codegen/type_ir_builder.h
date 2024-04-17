@@ -92,10 +92,6 @@ class BoolIRBuilder : public TypeIRBuilder {
     }
 };
 
-// construct a safe null value for type
-// returns NativeValue{raw, is_null=true} on success, raw is ensured to be not nullptr
-absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Type* type);
-
 }  // namespace codegen
 }  // namespace hybridse
 #endif  // HYBRIDSE_SRC_CODEGEN_TYPE_IR_BUILDER_H_
