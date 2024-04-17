@@ -211,13 +211,15 @@ class MiniCluster {
         }
         ts_authenticator_ = new openmldb::authn::BRPCAuthenticator(
             [](const std::string& host, const std::string& username, const std::string& password) { return false; });
-        ts_opt_.auth = ts_authenticator_;
+
+        brpc::ServerOptions options;
+        options.auth = ts_authenticator_;
 
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
         }
-        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+        if (tb_server->Start(tb_endpoint.c_str(), &options) != 0) {
             LOG(WARNING) << "fail to start tablet";
             return false;
         }
@@ -362,12 +364,14 @@ class StandaloneEnv {
 
         ts_authenticator_ = new openmldb::authn::BRPCAuthenticator(
             [](const std::string& host, const std::string& username, const std::string& password) { return false; });
-        ts_opt_.auth = ts_authenticator_;
+
+        brpc::ServerOptions options;
+        options.auth = ts_authenticator_;
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
         }
-        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+        if (tb_server->Start(tb_endpoint.c_str(), &options) != 0) {
             LOG(WARNING) << "fail to start tablet";
             return false;
         }

@@ -256,7 +256,8 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
-    openmldb::authn::BRPCAuthenticator server_authenticator;
+    openmldb::authn::BRPCAuthenticator server_authenticator(
+        [](const std::string& host, const std::string& username, const std::string& password) { return false; });
     options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
