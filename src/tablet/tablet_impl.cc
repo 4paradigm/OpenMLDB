@@ -1684,8 +1684,12 @@ void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::
         }
     };
 
+    hybridse::vm::EngineMode default_mode =
+        request->is_batch() ? hybridse::vm::EngineMode::kBatchMode : hybridse::vm::EngineMode::kRequestMode;
+    auto mode = hybridse::vm::Engine::TryDetermineEngineMode(request->sql(), default_mode);
+
     ::hybridse::base::Status status;
-    if (request->is_batch()) {
+    if (mode == hybridse::vm::EngineMode::kBatchMode) {
         // convert repeated openmldb:type::DataType into hybridse::codec::Schema
         hybridse::codec::Schema parameter_schema;
         for (int i = 0; i < request->parameter_types().size(); i++) {

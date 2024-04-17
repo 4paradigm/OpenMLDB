@@ -20,9 +20,10 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <unordered_map>
+
 #include "base/spin_lock.h"
 #include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
@@ -36,6 +37,7 @@ using ::hybridse::codec::Row;
 
 inline constexpr const char* LONG_WINDOWS = "long_windows";
 
+class SqlContext;
 class Engine;
 /// \brief An options class for controlling engine behaviour.
 class EngineOptions {
@@ -148,7 +150,7 @@ class RunSession {
     }
 
     /// Return query related compile information.
-    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetCompileInfo() {
+    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetCompileInfo() const {
         return compile_info_;
     }
 
@@ -352,6 +354,8 @@ class Engine {
     /// \brief Create an Engine with a specific Catalog object.
     explicit Engine(const std::shared_ptr<Catalog>& cl);
 
+    ~Engine();
+
     /// \brief Create an Engine a specific Catalog object, configuring it with EngineOptions
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
 
@@ -360,7 +364,9 @@ class Engine {
 
     static void InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt);
 
-    ~Engine();
+    /// determine engine mode for `sql`, `sql` may contains option defining
+    /// execute_mode, `default_mode` used if not or error.
+    static EngineMode TryDetermineEngineMode(absl::string_view sql, EngineMode default_mode);
 
     /// \brief Compile sql in db and stored the results in the session
     bool Get(const std::string& sql, const std::string& db,
@@ -418,6 +424,13 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
+    /// extract request rows info in SQL.
+    /// A SQL e.g 'SELECT ... FROM t1 options (execute_mode = "request", values = ...)'
+    /// request row info exists in 'values' option, as a format of:
+    /// 1. [(col1_expr, col2_expr, ... ), (...), ...]
+    /// 2. (col1_expr, col2_expr, ... )
+    static absl::Status ExtractRequestRowsInSQL(SqlContext* ctx);
+
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode);

@@ -45,10 +45,10 @@ class LlvmUdfGenBase;
 namespace hybridse {
 namespace node {
 
-class ConstNode;
+class ExprNode;
 class WithClauseEntry;
 
-typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
+typedef std::unordered_map<std::string, const ExprNode*> OptionsMap;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -2578,6 +2578,7 @@ class FnReturnStmt : public FnNode {
     ExprNode *return_expr_;
 };
 
+// DEPRECATED!
 class StructExpr : public ExprNode {
  public:
     explicit StructExpr(const std::string &name) : ExprNode(kExprStruct), class_name_(name) {}
@@ -2596,6 +2597,26 @@ class StructExpr : public ExprNode {
     const std::string class_name_;
     FnNodeList *fileds_;
     FnNodeList *methods_;
+};
+
+// (expr1, expr2, ...)
+class StructCtorWithParens : public ExprNode {
+ public:
+    explicit StructCtorWithParens(absl::Span<ExprNode *const> fields)
+        : ExprNode(kExprStructCtorParens) {
+        for (auto e : fields) {
+            AddChild(e);
+        }
+    }
+    ~StructCtorWithParens() override {}
+
+    absl::Span<ExprNode *const> fields() const { return children_; }
+
+    // LOW priority
+    // void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    StructCtorWithParens *ShadowCopy(NodeManager *nm) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
 class ExternalFnDefNode : public FnDefNode {
@@ -3003,6 +3024,20 @@ class InputParameterNode : public SqlNode {
     std::string column_name_;
     DataType column_type_;
     bool is_constant_;
+};
+
+class CallStmt : public SqlNode {
+ public:
+    CallStmt(const std::vector<std::string> names, const std::vector<ExprNode *> args)
+        : SqlNode(kCallStmt, 0, 0), procedure_name_(names), arguments_(args) {}
+    ~CallStmt() override {}
+
+    const std::vector<std::string> &procedure_name() const { return procedure_name_; }
+    const std::vector<ExprNode *> &arguments() const { return arguments_; }
+
+ private:
+    const std::vector<std::string> procedure_name_;
+    const std::vector<ExprNode*> arguments_;
 };
 
 std::string ExprString(const ExprNode *expr);

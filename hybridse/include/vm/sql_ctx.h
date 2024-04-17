@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "node/node_manager.h"
 #include "vm/engine_context.h"
@@ -36,7 +37,7 @@ class ClusterJob;
 
 struct SqlContext {
     // mode: batch|request|batch request
-    ::hybridse::vm::EngineMode engine_mode;
+    ::hybridse::vm::EngineMode engine_mode = EngineMode::kBatchMode;
     bool is_cluster_optimized = false;
     bool is_batch_request_optimized = false;
     bool enable_expr_optimize = false;
@@ -72,6 +73,16 @@ struct SqlContext {
     std::string encoded_request_schema;
     ::hybridse::node::NodeManager nm;
     ::hybridse::udf::UdfLibrary* udf_library = nullptr;
+
+    // ref to request row expressions defined in SQL `options (execute_mode = 'request', values = ... )`.
+    // those expressions are used to construct request row in needed.
+    // can be:
+    // 1. Array [ StructCtorWithParens ]
+    // 2. StructCtorWithParens
+    const node::ExprNode* request_expressions = nullptr;
+    // compiled request rows from SQL CONFIG clause, `values` option
+    // request_rows get fullfilled if engine mode is kRequestMode or kBatchRequestMode
+    std::vector<codec::Row> request_rows;
 
     ::hybridse::vm::BatchRequestInfo batch_request_info;
 

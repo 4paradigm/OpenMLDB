@@ -793,10 +793,12 @@ absl::StatusOr<std::string> NodeAdapter::ExtractUserOption(const hybridse::node:
     if (!absl::EqualsIgnoreCase(map.begin()->first, "password")) {
         return absl::InvalidArgumentError("invalid option " + map.begin()->first);
     }
-    if (map.begin()->second->GetDataType() != hybridse::node::kVarchar) {
+    auto& kv = *map.begin();
+    auto cnode = kv.second->GetAsOrNull<::hybridse::node::ConstNode>();
+    if (cnode == nullptr || cnode->GetDataType() != hybridse::node::kVarchar) {
         return absl::InvalidArgumentError("the value of password should be string");
     }
-    return map.begin()->second->GetAsString();
+    return cnode->GetAsString();
 }
 
 }  // namespace openmldb::sdk
