@@ -1484,7 +1484,14 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         dist_lock_ = new DistLock(zk_path + "/leader", zk_client_, boost::bind(&NameServerImpl::OnLocked, this),
                                   boost::bind(&NameServerImpl::OnLostLock, this), endpoint);
         dist_lock_->Lock();
-
+        if (!RecoverDb()) {
+            PDLOG(WARNING, "recover db failed!");
+            exit(1);
+        }
+        if (!RecoverTableInfo()) {
+            PDLOG(WARNING, "recover table info failed!");
+            exit(1);
+        }
     } else {
         const std::string& tablet_endpoint = FLAGS_tablet;
         startup_mode_ = ::openmldb::type::StartupMode::kStandalone;
@@ -1513,6 +1520,10 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     return true;
 }
 
@@ -5579,6 +5590,13 @@ void NameServerImpl::OnLocked() {
         PDLOG(WARNING, "recover failed");
     }
     CreateDatabaseOrExit(INTERNAL_DB);
+    if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
+        auto temp = FLAGS_system_table_replica_num;
+        FLAGS_system_table_replica_num = temp == 0 ? 1 : temp;
+        CreateSystemTableOrExit(SystemTableType::kUser);
+        FLAGS_system_table_replica_num = temp;
+        InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
             LOG(ERROR) << "tablet num " << tablets_.size() << " is less then system table replica num "
@@ -5589,10 +5607,6 @@ void NameServerImpl::OnLocked() {
         if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(JOB_INFO_NAME) == 0) {
             CreateSystemTableOrExit(SystemTableType::kJobInfo);
         }
-    }
-    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
-        CreateSystemTableOrExit(SystemTableType::kUser);
-        InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
 
     if (FLAGS_system_table_replica_num > 0 && db_table_info_[INTERNAL_DB].count(PRE_AGG_META_NAME) == 0) {
@@ -9474,8 +9488,8 @@ base::Status NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::Crea
                                  ", endpoint: ", tb_client->GetEndpoint(), ", msg: ", status.GetMsg())};
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
-                   << "sp_name: " << sp_info.sp_name() << ", "
-                   << "sql: " << sp_info.sql() << "endpoint: " << tb_client->GetEndpoint();
+                   << "sp_name: " << sp_info.sp_name() << ", " << "sql: " << sp_info.sql()
+                   << "endpoint: " << tb_client->GetEndpoint();
     }
     return {};
 }

@@ -25,12 +25,6 @@ public class ServerConfig {
         e1.printStackTrace();
       }
     }
-
-    //        try (FileInputStream input = new FileInputStream(CONFIG_FILE_PATH)) {
-    //            properties.load(input);
-    //        } catch (IOException e) {
-    //            e.printStackTrace();
-    //        }
   }
 
   public static int getPort() {
@@ -51,5 +45,13 @@ public class ServerConfig {
 
   public static String getOpenmldbPassword() {
     return properties.getProperty("openmldb.password", "root");
+  }
+
+  public static long getSessionTimeout() {
+    return Long.parseLong(properties.getProperty("openmldb.sessionTimeout", "10000"));
+  }
+
+  public static long getRequestTimeout() {
+    return Long.parseLong(properties.getProperty("openmldb.requestTimeout", "60000"));
   }
 }

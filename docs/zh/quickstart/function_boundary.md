@@ -10,9 +10,17 @@
 
 通过配置 TaskManager 可以决定离线存储地址 `offline.data.prefix`、离线 job 计算所需 Spark 模式 `spark.master` 等。
 
-`offline.data.prefix`：可配置为文件路径或 HDFS 路径。生产环境建议配置 HDFS 路径，测试环境（特指 onebox 型，例如在 Docker 容器内启动）可以配置本地文件路径。文件路径作为离线存储，将无法支持多 TaskManager 分布式部署（TaskManager 之间不会传输数据）。如果想在多台主机上部署 TaskManager，请使用 HDFS 等多机可同时访问到的存储介质。如果想测试多 TaskManager 工作协同，可以在一台主机上部署多个 TaskManager，此时可以使用文件路径作为离线存储。
+`offline.data.prefix`：可配置为文件路径或 HDFS 路径。生产环境建议配置 HDFS 路径，测试环境（特指 onebox 型，例如在 Docker 容器内启动，或所有组件都在一台机器上）可以配置本地文件路径。这是因为，TaskManager提交local的Spark Job，这个Job可以访问到本地文件路径。但这样的话，将无法支持多 TaskManager 分布式部署（TaskManager 之间不会传输数据）。
+
+- 如果想在多台主机上部署 TaskManager，请使用 HDFS 等多机可同时访问到的存储介质。
+
+- 如果想测试多 TaskManager 工作协同，可以在一台主机上部署多个 TaskManager，此时可以使用文件路径作为离线存储。
 
 `spark.master=local[*]`：Spark 默认配置为 `local[*]` 模式（自动绑定 CPU 核数，如果发现离线任务比较慢，建议使用 yarn 模式，改变配置后重启 TaskManager 生效。更多配置可参考 [master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.htmlmaster-urls)。
+
+### 配置更新
+
+TaskManager除了`spark.default.conf`，其他所有配置都需要重启生效。TaskManager是无状态的，只要不是正在访问中，重启不会有副作用。如果你只需要临时改变离线命令相关的配置，可以不用在TaskManager的配置中更新，可以使用[临时spark配置](#临时spark配置)的方式，只对单个离线任务进行配置调整。
 
 ### spark.default.conf
 
@@ -26,7 +34,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### 临时Spark配置
 
-见[客户端Spark配置文件](../reference/client_config/client_spark_config.md)，CLI支持临时更改Spark配置，不需要重启TaskManager。但此配置方式不可以改变spark.master等配置。
+见[客户端Spark配置文件](../reference/client_config/client_spark_config.md)，CLI支持临时更改Spark配置，不需要重启TaskManager。但此配置方式不可以改变spark.master等配置，只能改变`spark.default.conf`中的配置项。
 
 ## DDL 边界——DEPLOY 语句
 
@@ -71,7 +79,9 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 `LOAD DATA` 无论导入到在线或离线，都是离线 job。源数据的格式规则，离线在线没有区别。
 
-推荐使用 HDFS 文件作为源数据，无论 TaskManager 是 local/yarn 模式，还是 TaskManager 在别的主机上运行，都可以导入。如果源数据为本地文件，是否可以顺利导入需要考虑 TaskManager 模式和运行主机。
+推荐使用 HDFS 文件作为源数据，无论 TaskManager 是 local/yarn 模式，还是 TaskManager 在别的主机上运行，都可以导入。
+
+如果源数据为本地文件，是否可以顺利导入需要考虑 TaskManager 模式和运行主机：
 
 - TaskManager 是 local 模式，只有将源数据放在 TaskManager 进程的主机上才能顺利导入。
 - TaskManager 是 yarn (client and cluster) 模式时，由于不知道运行容器是哪台主机，不可使用文件路径作为源数据地址。
