@@ -1,6 +1,6 @@
 # ALTER USER
 
-The `ALTER USER` statement is used to modify a user's password.
+The `ALTER USER` statement is used to modify a user's password. You can modify any user, including the root user. Please note that some services may use the username and password just like the client. Changing the password of the user in use will generally not affect its operation, but if the service is restarted, logging in with the old password will fail. It is recommended to update the relevant password configuration in time after modifying the password. For details, see [Authentication](../../deploy/auth.md).
 
 ## Syntax
 ```sql
