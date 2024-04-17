@@ -390,3 +390,33 @@ cases:
         3;-3;0
         4;-4;0
         5;-5;0
+  - id: 20
+    desc: feature signature select merge sql hash
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT libsvm(
+          continuous(int(col0)),
+          multiclass_label(col1),
+          continuous(abs(col1)),
+          discrete(col6)) as instance
+      FROM (select * from t1) as out1;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 3
+          1, 4, 55, 4.4, 44.4, 2, 3
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: instance:string
+      order: instance
+      data: |
+        1 1:0 2:1 13120140547090569137:1
+        2 1:0 2:2 5665509553878826940:1
+        3 1:1 2:3 11991475895402502921:1
+        4 1:1 2:4 11991475895402502921:1
+        5 1:2 2:5 13120140547090569137:1
