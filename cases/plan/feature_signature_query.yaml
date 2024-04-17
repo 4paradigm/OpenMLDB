@@ -23,7 +23,8 @@ cases:
           discrete(3, 100),
           discrete("x", 1),
           regression_label(2),
-          continuous(5.5));
+          continuous(5.5),
+          continuous(6.6)) as instance;
   - id: 1
     desc: feature signature select const no label
     mode: request-unsupport
