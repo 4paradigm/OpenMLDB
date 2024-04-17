@@ -18,6 +18,7 @@
 #include "gtest/gtest.h"
 #include "testing/engine_test_base.h"
 #include "vm/sql_compiler.h"
+#include "vm/engine.h"
 
 namespace hybridse {
 namespace vm {
@@ -256,7 +257,6 @@ TEST_P(BatchRequestOptimizeTest, test_with_common_columns) {
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";
     ::testing::InitGoogleTest(&argc, argv);
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

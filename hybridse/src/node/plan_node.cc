@@ -19,6 +19,7 @@
 #include <string>
 
 #include "absl/algorithm/container.h"
+#include "absl/strings/str_join.h"
 namespace hybridse {
 namespace node {
 
@@ -228,6 +229,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateUser";
         case kPlanTypeAlterUser:
             return "kPlanTypeAlterUser";
+        case kPlanTypeCallStmt:
+            return "kPlanTypeCallStmt";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -867,5 +870,16 @@ void AlterTableStmtPlanNode::Print(std::ostream &output, const std::string &org_
     }
 }
 
+void CallStmtPlan::Print(std::ostream &output, const std::string &org_tab) const {
+    LeafPlanNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, procedure_name_, "procedure_name", false);
+    output << "\n";
+    PrintValue(output, tab,
+               absl::StrJoin(arguments_, ", ",
+                             [](std::string *out, const ExprNode *n) { absl::StrAppend(out, n->GetExprString()); }),
+               "arguments", true);
+}
 }  // namespace node
 }  // namespace hybridse

@@ -15,21 +15,23 @@
  */
 
 #include "vm/jit.h"
+
 #include <string>
 #include <utility>
 extern "C" {
 #include <cmath>
 #include <cstdlib>
 }
+
+#include "absl/cleanup/cleanup.h"
+#include "absl/time/clock.h"
 #include "glog/logging.h"
-#include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
-#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
@@ -51,6 +53,8 @@ using ::llvm::orc::LLJIT;
 HybridSeJit::HybridSeJit(::llvm::orc::LLJITBuilderState& s, ::llvm::Error& e)
     : LLJIT(s, e) {}
 HybridSeJit::~HybridSeJit() {}
+
+HybridSeLlvmJitWrapper::HybridSeLlvmJitWrapper(const JitOptions& options) : jit_options_(options) {}
 
 static void RunDefaultOptPasses(::llvm::Module* m) {
     ::llvm::legacy::FunctionPassManager fpm(m);
@@ -149,9 +153,43 @@ bool HybridSeJit::AddSymbol(::llvm::orc::JITDylib& jd,
 }
 
 bool HybridSeLlvmJitWrapper::Init() {
-    DLOG(INFO) << "Start to initialize hybridse jit";
-    auto jit = ::llvm::Expected<std::unique_ptr<HybridSeJit>>(
-        HybridSeJitBuilder().create());
+    absl::Time begin = absl::Now();
+    absl::Cleanup clean = [&]() { DLOG(INFO) << "LLVM JIT initialize takes " << absl::Now() - begin; };
+
+    if (initialized_) {
+        return true;
+    }
+
+    HybridSeJitBuilder builder;
+    if (jit_options_.IsEnableGdb()) {
+        auto JTMB = llvm::orc::JITTargetMachineBuilder::detectHost();
+        auto e = JTMB.takeError();
+        if (e) {
+            LOG(WARNING) << "fail to init lljit";;
+            ::llvm::errs() << e;
+            return false;
+        }
+        if (!JTMB.get().getTargetTriple().isOSLinux()) {
+            LOG(WARNING) << "GDB listener not enabled for non-Linux";;
+        }
+        // require higher LLVM
+        // builder
+        //     .setJITTargetMachineBuilder(std::move(JTMB.get()))
+        //     .setObjectLinkingLayerCreator(
+        //         [&](llvm::orc::ExecutionSession& ES) {
+        //         auto GetMemMgr = []() { return std::make_unique<llvm::SectionMemoryManager>(); };
+        //         auto ObjLinkingLayer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(ES, std::move(GetMemMgr));
+        //
+        //         // Register the event listener.
+        //         ObjLinkingLayer->registerJITEventListener(*JITEventListener::createGDBRegistrationListener());
+        //
+        //         // Make sure the debug info sections aren't stripped.
+        //         ObjLinkingLayer->setProcessAllSections(true);
+        //
+        //         return ObjLinkingLayer;
+        //     });
+    }
+    auto jit = builder.create();
     {
         ::llvm::Error e = jit.takeError();
         if (e) {
@@ -166,16 +204,27 @@ bool HybridSeLlvmJitWrapper::Init() {
     this->mi_ = std::unique_ptr<::llvm::orc::MangleAndInterner>(
         new ::llvm::orc::MangleAndInterner(jit_->getExecutionSession(),
                                            jit_->getDataLayout()));
+
+    auto s = InitJitSymbols();
+    if (!s.isOK()) {
+        LOG(WARNING) << s;
+        return false;
+    }
+
+    initialized_ = true;
     return true;
 }
 
 bool HybridSeLlvmJitWrapper::OptModule(::llvm::Module* module) {
+    EnsureInitialized();
     return jit_->OptModule(module);
 }
 
 bool HybridSeLlvmJitWrapper::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+    EnsureInitialized();
+
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {
@@ -206,9 +255,18 @@ bool HybridSeLlvmJitWrapper::AddExternalFunction(const std::string& name,
 }
 
 #ifdef LLVM_EXT_ENABLE
-bool HybridSeMcJitWrapper::Init() { return true; }
+bool HybridSeMcJitWrapper::Init() {
+    auto s = InitJitSymbols();
+    if (!s.isOK()) {
+        LOG(WARNING) << s;
+        return false;
+    }
+    return true;
+}
 
 bool HybridSeMcJitWrapper::OptModule(::llvm::Module* module) {
+    EnsureInitialized();
+
     DLOG(INFO) << "Module before opt:\n" << LlvmToString(*module);
     RunDefaultOptPasses(module);
     DLOG(INFO) << "Module after opt:\n" << LlvmToString(*module);
@@ -218,6 +276,8 @@ bool HybridSeMcJitWrapper::OptModule(::llvm::Module* module) {
 bool HybridSeMcJitWrapper::AddModule(
     std::unique_ptr<llvm::Module> module,
     std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
+    EnsureInitialized();
+
     if (llvm::verifyModule(*module, &llvm::errs(), nullptr)) {
         // note: destruct module before ctx
         module = nullptr;

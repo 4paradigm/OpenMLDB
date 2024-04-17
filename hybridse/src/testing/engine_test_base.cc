@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 #include "testing/engine_test_base.h"
+
+#include <utility>
+
+#include "absl/cleanup/cleanup.h"
+#include "absl/strings/ascii.h"
+#include "absl/time/clock.h"
+#include "base/texttable.h"
+#include "google/protobuf/util/message_differencer.h"
+#include "plan/plan_api.h"
 #include "vm/sql_compiler.h"
 namespace hybridse {
 namespace vm {
@@ -21,10 +30,22 @@ namespace vm {
 bool IsNaN(float x) { return x != x; }
 bool IsNaN(double x) { return x != x; }
 
-void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
+void CheckSchema(const codec::Schema& schema, const codec::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
+    ::google::protobuf::util::MessageDifferencer differ;
+    // approximate equal for float values
+    differ.set_float_comparison(::google::protobuf::util::MessageDifferencer::FloatComparison::APPROXIMATE);
+    // equivalent avoid the issue that some optional bool fields that may contains a default value
+    differ.set_message_field_comparison(
+        ::google::protobuf::util::MessageDifferencer::MessageFieldComparison::EQUIVALENT);
     for (int i = 0; i < schema.size(); i++) {
-        ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString()) << "Fail column type at " << i;
+        std::string diff_str;
+        differ.ReportDifferencesToString(&diff_str);
+        ASSERT_TRUE(differ.Compare(schema.Get(i), exp_schema.Get(i)))
+            << "Fail column type at " << i
+            << "\ngot: " << schema.Get(i).ShortDebugString()
+            << "\nbut expect: " << exp_schema.Get(i).ShortDebugString()
+            << "\ndifference: " << diff_str;
     }
 }
 
@@ -387,19 +408,19 @@ Status EngineTestRunner::Compile() {
         CHECK_TRUE(parameter_schema_.empty(), common::kUnSupport,
                    "Request or BatchRequest mode do not support parameterized query currently")
     }
-    struct timeval st;
-    struct timeval et;
-    gettimeofday(&st, nullptr);
-    Status status;
-    bool ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
-    gettimeofday(&et, nullptr);
-    double mill = (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
-    DLOG(INFO) << "SQL Compile take " << mill << " milliseconds";
+
+    base::Status status;
+    bool ok = false;
+    {
+        absl::Time start = absl::Now();
+        absl::Cleanup clean = [&start]() { DLOG(INFO) << "compile takes " << absl::Now() - start; };
+        ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
+    }
 
     if (!ok || !status.isOK()) {
         DLOG(INFO) << status;
         if (!sql_case_.expect().msg_.empty()) {
-            EXPECT_EQ(sql_case_.expect().msg_, status.msg);
+            EXPECT_EQ(absl::StripAsciiWhitespace(sql_case_.expect().msg_), status.msg);
         }
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {

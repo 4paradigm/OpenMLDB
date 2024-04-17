@@ -29,6 +29,7 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 namespace openmldb::sdk {
@@ -1295,6 +1296,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("sql_router_test");
 
     ::openmldb::base::SetupGlog(true);
     FLAGS_zk_session_timeout = 100000;

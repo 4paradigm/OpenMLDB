@@ -81,6 +81,13 @@ absl::StatusOr<NativeValue> MapIRBuilder::Construct(CodeGenContextBase* ctx, abs
     }
 
     auto builder = ctx->GetBuilder();
+    if (args.empty()) {
+        if (!Set(ctx->GetCurrentBlock(), map_alloca, SZ_IDX, builder->getInt32(0))) {
+            return absl::InternalError("setting map size=0 for map failed");
+        }
+        return NativeValue::Create(map_alloca);
+    }
+
     auto* original_size = builder->getInt32(args.size() / 2);
     auto* key_vec = builder->CreateAlloca(key_type_, original_size, "key_vec");
     auto* value_vec = builder->CreateAlloca(value_type_, original_size, "value_vec");
@@ -191,7 +198,7 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
                                     {
                                         struct_type_->getPointerTo(),                   // arr ptr
                                         ctx->GetBuilder()->getInt1Ty(),                 // arr is null
-                                        key_type_,                                      // key type
+                                        key_type_,                                      // key value
                                         ctx->GetBuilder()->getInt1Ty(),                 // key is null
                                         value_type_->getPointerTo(),                    // output value ptr
                                         ctx->GetBuilder()->getInt1Ty()->getPointerTo()  // output is null ptr
@@ -210,37 +217,44 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
 
         auto builder = ctx->GetBuilder();
 
-        auto s = ctx->CreateBranch(
+        builder->CreateStore(builder->getInt1(true), out_null_alloca_param);
+        ::llvm::Value* idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
+        builder->CreateStore(builder->getInt32(0), idx_alloc);
+        ::llvm::Value* found_idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
+        builder->CreateStore(builder->getInt32(-1), found_idx_alloc);
+
+        llvm::Value* sz_alloca = builder->CreateAlloca(builder->getInt32Ty());
+        llvm::Value* keys_alloca = builder->CreateAlloca(key_type_->getPointerTo());
+
+        auto s = ctx->CreateBranchNot(
             builder->CreateOr(arr_is_null_param, key_is_null_param),
-            [&]() -> base::Status {
-                builder->CreateStore(builder->getInt1(true), out_null_alloca_param);
-                return {};
-            },
             [&]() -> base::Status {
                 ::llvm::Value* sz = nullptr;
                 CHECK_TRUE(Load(ctx->GetCurrentBlock(), map_ptr_param, SZ_IDX, &sz), common::kCodegenError);
+                ctx->GetBuilder()->CreateStore(sz, sz_alloca);
+
+                CHECK_STATUS(ctx->CreateBranch(builder->CreateICmpSLE(sz, builder->getInt32(0)), [&]() -> base::Status {
+                    builder->CreateRetVoid();
+                    return {};
+                }));
 
                 ::llvm::Value* keys = nullptr;
                 CHECK_TRUE(Load(ctx->GetCurrentBlock(), map_ptr_param, KEY_VEC_IDX, &keys), common::kCodegenError);
-
-                ::llvm::Value* idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
-                builder->CreateStore(builder->getInt32(0), idx_alloc);
-                ::llvm::Value* found_idx_alloc = builder->CreateAlloca(builder->getInt32Ty());
-                builder->CreateStore(builder->getInt32(-1), found_idx_alloc);
+                ctx->GetBuilder()->CreateStore(keys, keys_alloca);
 
                 CHECK_STATUS(
                     ctx->CreateWhile(
                         [&](::llvm::Value** cond) -> base::Status {
                             ::llvm::Value* idx = builder->CreateLoad(idx_alloc);
                             ::llvm::Value* found = builder->CreateLoad(found_idx_alloc);
-                            *cond = builder->CreateAnd(builder->CreateICmpSLT(idx, sz),
+                            *cond = builder->CreateAnd(builder->CreateICmpSLT(idx, builder->CreateLoad(sz_alloca)),
                                                        builder->CreateICmpSLT(found, builder->getInt32(0)));
                             return {};
                         },
                         [&]() -> base::Status {
                             ::llvm::Value* idx = builder->CreateLoad(idx_alloc);
                             // key never null
-                            auto* ele = builder->CreateLoad(builder->CreateGEP(keys, idx));
+                            auto* ele = builder->CreateLoad(builder->CreateGEP(builder->CreateLoad(keys_alloca), idx));
                             ::llvm::Value* eq = nullptr;
                             base::Status s;
                             PredicateIRBuilder::BuildEqExpr(ctx->GetCurrentBlock(), ele, key_val_param, &eq, s);
@@ -257,7 +271,7 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
                 auto* found_idx = builder->CreateLoad(found_idx_alloc);
 
                 CHECK_STATUS(ctx->CreateBranch(
-                    builder->CreateAnd(builder->CreateICmpSLT(found_idx, sz),
+                    builder->CreateAnd(builder->CreateICmpSLT(found_idx, builder->CreateLoad(sz_alloca)),
                                        builder->CreateICmpSGE(found_idx, builder->getInt32(0))),
                     [&]() -> base::Status {
                         ::llvm::Value* values = nullptr;
@@ -289,10 +303,12 @@ absl::StatusOr<NativeValue> MapIRBuilder::ExtractElement(CodeGenContextBase* ctx
     }
 
     auto builder = ctx->GetBuilder();
+    auto s = CreateSafeNull(ctx->GetCurrentBlock(), value_type_);
+    CHECK_ABSL_STATUSOR(s);
     auto* out_val_alloca = builder->CreateAlloca(value_type_);
-    builder->CreateStore(::llvm::UndefValue::get(value_type_), out_val_alloca);
+    builder->CreateStore(s->GetValue(ctx), out_val_alloca);
     auto* out_null_alloca = builder->CreateAlloca(builder->getInt1Ty());
-    builder->CreateStore(builder->getInt1(true), out_null_alloca);
+    builder->CreateStore(s->GetIsNull(ctx), out_null_alloca);
 
     builder->CreateCall(fn, {arr.GetValue(builder), arr.GetIsNull(builder), key.GetValue(builder),
                              key.GetIsNull(builder), out_val_alloca, out_null_alloca});
@@ -393,6 +409,12 @@ absl::StatusOr<llvm::Function*> MapIRBuilder::BuildEncodeByteSizeFn(CodeGenConte
         auto& key_vec = elements_vec[1];
         auto& value_vec = elements_vec[2];
         auto& value_null_vec = elements_vec[3];
+
+        CHECK_STATUS_TO_ABSL(
+            ctx->CreateBranch(builder->CreateICmpSLE(map_size, builder->getInt32(0)), [&]() -> base::Status {
+                builder->CreateRet(CodecSizeForPrimitive(builder, builder->getInt32Ty()));
+                return {};
+            }));
 
         auto keys_sz = CalEncodeSizeForArray(ctx, key_vec, map_size);
         CHECK_ABSL_STATUSOR(keys_sz);
@@ -712,61 +734,71 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::EncodeBaseValue(CodeGenContextBase* c
 
 absl::StatusOr<llvm::Value*> MapIRBuilder::Decode(CodeGenContextBase* ctx, llvm::Value* row_ptr) const {
     auto* builder = ctx->GetBuilder();
-    auto* map_sz = builder->CreateLoad(builder->getInt32Ty(), row_ptr);
+    auto* map_sz = builder->CreateLoad(builder->getInt32Ty(),
+                                       builder->CreatePointerCast(row_ptr, builder->getInt32Ty()->getPointerTo()));
 
     llvm::Value* map_alloca = nullptr;
     if (!Allocate(ctx->GetCurrentBlock(), &map_alloca)) {
         return absl::InternalError("fail to allocate map");
     }
+    if (!Set(ctx->GetCurrentBlock(), map_alloca, SZ_IDX, builder->getInt32(0))) {
+        return absl::InternalError("fail to set default size for map");
+    }
 
-    // only work if allocation happens in the top function, otherwise vectors will be cleared
-    llvm::Value* key_vec = builder->CreateAlloca(key_type_, map_sz, "map_key_vec");
-    llvm::Value* value_vec = builder->CreateAlloca(value_type_, map_sz, "map_value_vec");
-    llvm::Value* value_nulls_vec = builder->CreateAlloca(builder->getInt1Ty(), map_sz, "map_nulls_vec");
+    CHECK_STATUS_TO_ABSL(ctx->CreateBranch(builder->CreateICmpSGT(map_sz, builder->getInt32(0)), [&]() -> base::Status {
+        // only work if allocation happens in the top function, otherwise vectors will be cleared
+        llvm::Value* key_vec = builder->CreateAlloca(key_type_, map_sz, "map_key_vec");
+        llvm::Value* value_vec = builder->CreateAlloca(value_type_, map_sz, "map_value_vec");
+        llvm::Value* value_nulls_vec = builder->CreateAlloca(builder->getInt1Ty(), map_sz, "map_nulls_vec");
 
-    llvm::Value* idx0_alloca = builder->CreateAlloca(builder->getInt32Ty());
-    builder->CreateStore(builder->getInt32(0), idx0_alloca);
-    // also allocate space for pointer type that points to
-    CHECK_STATUS_TO_ABSL(ctx->CreateWhile(
-        [&](llvm::Value** cond) -> base::Status {
-            *cond = ctx->GetBuilder()->CreateICmpSLT(builder->CreateLoad(idx0_alloca), map_sz);
-            return {};
-        },
-        [&]() -> base::Status {
-            llvm::Value* idx = builder->CreateLoad(idx0_alloca);
-            if (key_type_->isPointerTy()) {
-                auto* ele_val = builder->CreateAlloca(key_type_->getPointerElementType());
-                builder->CreateStore(ele_val, builder->CreateGEP(key_type_, key_vec, idx));
-            }
-            if (value_type_->isPointerTy()) {
-                auto* ele_val = builder->CreateAlloca(value_type_->getPointerElementType());
-                builder->CreateStore(ele_val, builder->CreateGEP(value_type_, value_vec, idx));
-            }
+        llvm::Value* idx0_alloca = builder->CreateAlloca(builder->getInt32Ty());
+        builder->CreateStore(builder->getInt32(0), idx0_alloca);
+        // also allocate space for pointer type that points to
+        CHECK_STATUS(ctx->CreateWhile(
+            [&](llvm::Value** cond) -> base::Status {
+                *cond = ctx->GetBuilder()->CreateICmpSLT(builder->CreateLoad(idx0_alloca), map_sz);
+                return {};
+            },
+            [&]() -> base::Status {
+                llvm::Value* idx = builder->CreateLoad(idx0_alloca);
+                if (key_type_->isPointerTy()) {
+                    auto* ele_val = builder->CreateAlloca(key_type_->getPointerElementType());
+                    builder->CreateStore(ele_val, builder->CreateGEP(key_type_, key_vec, idx));
+                }
+                if (value_type_->isPointerTy()) {
+                    auto* ele_val = builder->CreateAlloca(value_type_->getPointerElementType());
+                    builder->CreateStore(ele_val, builder->CreateGEP(value_type_, value_vec, idx));
+                }
 
-            builder->CreateStore(builder->CreateAdd(builder->getInt32(1), idx), idx0_alloca);
-            return {};
-        }));
+                builder->CreateStore(builder->CreateAdd(builder->getInt32(1), idx), idx0_alloca);
+                return {};
+            }));
 
-    auto s0 = BuildGetPtrOffset(builder, row_ptr, builder->getInt32(4), builder->getInt8Ty()->getPointerTo());
-    CHECK_ABSL_STATUSOR(s0);
-    auto key_vec_res = DecodeArrayValue(ctx, s0.value(), map_sz, key_vec, key_type_);
-    CHECK_ABSL_STATUSOR(key_vec_res);
+        auto s0 = BuildGetPtrOffset(builder, row_ptr, builder->getInt32(4), builder->getInt8Ty()->getPointerTo());
+        CHECK_TRUE(s0.ok(), common::kCodegenError, s0.status());
+        auto key_vec_res = DecodeArrayValue(ctx, s0.value(), map_sz, key_vec, key_type_);
+        CHECK_TRUE(key_vec_res.ok(), common::kCodegenError, key_vec_res.status());
 
-    auto s1 = BuildGetPtrOffset(builder, row_ptr, builder->CreateAdd(builder->getInt32(4), key_vec_res.value()),
-                                builder->getInt8Ty()->getPointerTo());
-    CHECK_ABSL_STATUSOR(s1);
-    auto value_vec_res = DecodeArrayValue(ctx, s1.value(), map_sz, value_vec, value_type_);
-    CHECK_ABSL_STATUSOR(value_vec_res);
+        auto s1 = BuildGetPtrOffset(builder, row_ptr, builder->CreateAdd(builder->getInt32(4), key_vec_res.value()),
+                                    builder->getInt8Ty()->getPointerTo());
+        CHECK_TRUE(s1.ok(), common::kCodegenError, s1.status());
+        auto value_vec_res = DecodeArrayValue(ctx, s1.value(), map_sz, value_vec, value_type_);
+        CHECK_TRUE(value_vec_res.ok(), common::kCodegenError, value_vec_res.status());
 
-    auto s2 = BuildGetPtrOffset(
-        builder, row_ptr,
-        builder->CreateAdd(builder->getInt32(4), builder->CreateAdd(key_vec_res.value(), value_vec_res.value())),
-        builder->getInt8Ty()->getPointerTo());
-    CHECK_ABSL_STATUSOR(s2);
-    auto value_null_vec_res = DecodeArrayValue(ctx, s2.value(), map_sz, value_nulls_vec, builder->getInt1Ty());
-    CHECK_ABSL_STATUSOR(value_null_vec_res);
+        auto s2 = BuildGetPtrOffset(
+            builder, row_ptr,
+            builder->CreateAdd(builder->getInt32(4), builder->CreateAdd(key_vec_res.value(), value_vec_res.value())),
+            builder->getInt8Ty()->getPointerTo());
+        CHECK_TRUE(s2.ok(), common::kCodegenError, s2.status());
+        auto value_null_vec_res = DecodeArrayValue(ctx, s2.value(), map_sz, value_nulls_vec, builder->getInt1Ty());
+        CHECK_TRUE(value_null_vec_res.ok(), common::kCodegenError, value_null_vec_res.status());
 
-    CHECK_ABSL_STATUS(Set(ctx, map_alloca, {map_sz, key_vec, value_vec, value_nulls_vec}));
+        {
+            auto s = Set(ctx, map_alloca, {map_sz, key_vec, value_vec, value_nulls_vec});
+            CHECK_TRUE(s.ok(), common::kCodegenError, s);
+        }
+        return {};
+    }));
 
     return map_alloca;
 }
@@ -837,7 +869,8 @@ absl::StatusOr<llvm::Value*> MapIRBuilder::DecodeBaseValue(CodeGenContextBase* c
                                                            llvm::Value* base_ptr, llvm::Type* type) const {
     auto builder = ctx->GetBuilder();
     if (type->isIntegerTy() || type->isFloatTy() || type->isDoubleTy()) {
-        builder->CreateStore(builder->CreateLoad(type, ptr), base_ptr);
+        builder->CreateStore(builder->CreateLoad(type, builder->CreatePointerCast(ptr, type->getPointerTo())),
+                             base_ptr);
         return CodecSizeForPrimitive(builder, type);
     }
     // struct pointer

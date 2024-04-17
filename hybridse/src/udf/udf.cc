@@ -1407,6 +1407,12 @@ int64_t FarmFingerprint(absl::string_view input) {
     return absl::bit_cast<int64_t>(farmhash::Fingerprint64(input));
 }
 
+void printLog(const char* fmt) {
+    if (fmt) {
+        fprintf(stderr, "%s\n", fmt);
+    }
+}
+
 }  // namespace v1
 
 bool RegisterMethod(UdfLibrary *lib, const std::string &fn_name, hybridse::node::TypeNode *ret,

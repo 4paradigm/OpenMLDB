@@ -19,9 +19,13 @@
 #include <string>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/strings/str_join.h"
 #include "codec/type_codec.h"
+#include "codegen/insert_row_builder.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "proto/fe_common.pb.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -69,6 +73,69 @@ bool IsCodecBaseType(const type::ColumnSchema& sc) {
 
 bool IsCodecStrLikeType(const type::ColumnSchema& sc) {
     return sc.has_map_type() || sc.has_array_type() || (sc.has_base_type() && sc.base_type() == type::kVarchar);
+}
+
+static absl::Status ColumnSchemaStr(std::ostream& os, const type::ColumnSchema& cs) {
+    if (cs.has_base_type()) {
+        switch (cs.base_type()) {
+            case type::kInt16:
+                os << "smallint";
+                break;
+            case type::kInt32:
+                os << "int";
+                break;
+            case type::kInt64:
+                os << "bigint";
+                break;
+            case type::kFloat:
+                os << "float";
+                break;
+            case type::kDouble:
+                os << "double";
+                break;
+            case type::kVarchar:
+                os << "string";
+                break;
+            case type::kTimestamp:
+                os << "timestamp";
+                break;
+            case type::kDate:
+                os << "date";
+                break;
+            case type::kBool:
+                os << "bool";
+                break;
+            case type::kNull:
+                os << "null";
+                break;
+            default:
+                return absl::UnimplementedError(absl::StrCat("un-support tostring: ", cs.DebugString()));
+        }
+    } else if (cs.has_array_type()) {
+        os << "ARRAY<";
+        CHECK_ABSL_STATUS(ColumnSchemaStr(os, cs.array_type().ele_type()));
+        os << ">";
+    } else if (cs.has_map_type()) {
+        os << "MAP<";
+        CHECK_ABSL_STATUS(ColumnSchemaStr(os, cs.map_type().key_type()));
+        os << ", ";
+        CHECK_ABSL_STATUS(ColumnSchemaStr(os, cs.map_type().value_type()));
+        os << ">";
+    } else {
+        return absl::UnimplementedError(absl::StrCat("un-support tostring: ", cs.DebugString()));
+    }
+
+    if (cs.is_not_null()) {
+        os << " NOT NULL";
+    }
+
+    return absl::OkStatus();
+}
+
+absl::StatusOr<std::string> ColumnSchemaStr(const type::ColumnSchema& cs) {
+    std::stringstream ss;
+    CHECK_ABSL_STATUS(ColumnSchemaStr(ss, cs));
+    return ss.str();
 }
 
 RowBuilder::RowBuilder(const Schema& schema)
@@ -1033,5 +1100,104 @@ absl::StatusOr<StringColInfo> SliceFormat::GetStringColumnInfo(size_t idx) const
                          str_field_start_offset_);
 }
 
+SliceBuilder::SliceBuilder(vm::HybridSeJitWrapper* jit, const hybridse::codec::Schema* schema)
+    : schema_(schema) {
+    row_builder_ = std::make_shared<codegen::InsertRowBuilder>(jit, schema_);
+}
+
+base::Status SliceBuilder::Build(const std::vector<node::ExprNode* >& values, base::RefCountedSlice* slice) {
+    return Build(absl::MakeSpan(values), slice);
+}
+
+base::Status SliceBuilder::Build(absl::Span<node::ExprNode* const> values, base::RefCountedSlice* slice) {
+    EnsureInitialized();
+
+    auto rs = row_builder_->ComputeRowUnsafe(values);
+    if (!rs.ok()) {
+        return {common::kCodegenEncodeError, rs.status().ToString()};
+    }
+
+    auto buf = rs.value();
+    if (buf == nullptr) {
+        return {common::kCodegenEncodeError, "internal error: encoded buf is null"};
+    }
+
+    *slice = base::RefCountedSlice::CreateManaged(buf, RowView::GetSize(buf));
+
+    return {};
+}
+
+RowBuilder2::RowBuilder2(vm::HybridSeJitWrapper* jit, int sliceSize) : jit_(jit) {
+    schemas_.resize(sliceSize);
+    builders_.resize(sliceSize);
+}
+RowBuilder2::RowBuilder2(vm::HybridSeJitWrapper* jit, const std::vector<codec::Schema>& schemas)
+    : jit_(jit), schemas_(schemas) {
+    builders_.resize(schemas_.size());
+}
+RowBuilder2::RowBuilder2(vm::HybridSeJitWrapper* jit,
+                         const std::vector<std::vector<hybridse::type::ColumnDef>>& schemas)
+    : jit_(jit) {
+    for (auto& sc : schemas) {
+        schemas_.push_back(Schema());
+        auto& ref = schemas_.back();
+        for (auto& col : sc) {
+            ref.Add()->CopyFrom(col);
+        }
+    }
+    builders_.resize(schemas_.size());
+}
+
+base::Status RowBuilder2::Init() {
+    CHECK_TRUE(jit_ != nullptr, common::kCodegenEncodeError, "jit is null");
+    for (size_t i = 0; i < schemas_.size(); ++i) {
+        CHECK_TRUE(!schemas_[i].empty(), common::kCodegenEncodeError, absl::StrCat(i, "th schema un-initialized"));
+        if (builders_[i] == nullptr) {
+            builders_[i] = std::make_shared<SliceBuilder>(jit_, &schemas_[i]);
+        }
+    }
+
+    initialized_ = true;
+    return {};
+}
+
+base::Status RowBuilder2::Build(const std::vector<node::ExprNode*>& values, codec::Row* out) {
+    EnsureInitialized();
+
+    auto expect_cols =
+        std::accumulate(schemas_.begin(), schemas_.end(), 0, [](int val, const auto& e) { return val + e.size(); });
+    CHECK_TRUE(values.size() == expect_cols, common::kCodegenEncodeError, "pass in expr number do not match, expect ",
+               expect_cols, " but got ", values.size(), ": (",
+               absl::StrJoin(
+                   values, ", ",
+                   [](std::string* out, const node::ExprNode* expr) { absl::StrAppend(out, expr->GetExprString()); }),
+               ")");
+
+    int col_idx = 0;
+    Row row;
+    auto values_ref = absl::MakeSpan(values);
+    for (size_t i = 0; i < schemas_.size(); ++i) {
+        RefCountedSlice slice;
+        CHECK_STATUS(builders_[i]->Build(values_ref.subspan(col_idx, schemas_[i].size()), &slice));
+        if (i == 0) {
+            row.Reset(slice);
+        } else {
+            row.Append(slice);
+        }
+
+        col_idx += schemas_[i].size();
+    }
+
+    *out = row;
+
+    return {};
+}
+base::Status RowBuilder2::InitSchema(int idx, const codec::Schema& sc) {
+    if (idx >= schemas_.size()) {
+        return {common::kCodegenEncodeError, "idx out of bound"};
+    }
+    schemas_[idx] = sc;
+    return {};
+}
 }  // namespace codec
 }  // namespace hybridse

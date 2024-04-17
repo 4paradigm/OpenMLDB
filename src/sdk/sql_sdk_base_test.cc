@@ -16,7 +16,6 @@
 
 #include "sdk/sql_sdk_base_test.h"
 
-#include "absl/random/random.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_replace.h"
@@ -71,7 +70,6 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         if (sql_case.BuildCreateSqlFromInput(i, &create, partition_num) && !create.empty()) {
             std::string placeholder = "{" + std::to_string(i) + "}";
             absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &create);
-            LOG(INFO) << create;
             router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
             ASSERT_TRUE(status.code == 0) << status.msg;
@@ -411,11 +409,11 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         if (!sql_case.inputs().empty()) {
             if (!has_batch_request) {
                 ASSERT_TRUE(sql_case.ExtractInputTableDef(insert_table, 0));
-                ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
+                ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0, insert_table.columns()));
                 sql_case.BuildInsertSqlListFromInput(0, &inserts);
             } else {
                 ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.batch_request_, insert_table));
-                ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, insert_rows));
+                ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, insert_rows, insert_table.columns()));
             }
             CheckSchema(insert_table.columns(), *(request_row->GetSchema().get()));
             DLOG(INFO) << "Request Row:\n";
@@ -571,7 +569,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
     } else {
         ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.inputs_[0], batch_request_table));
         std::vector<hybridse::codec::Row> rows;
-        ASSERT_TRUE(sql_case.ExtractInputData(sql_case.inputs_[0], rows));
+        ASSERT_TRUE(sql_case.ExtractInputData(sql_case.inputs_[0], rows, batch_request_table.columns()));
         request_rows.push_back(rows.back());
     }
     CheckSchema(batch_request_table.columns(), *(request_row->GetSchema().get()));
@@ -798,7 +796,7 @@ void DeploymentEnv::CallDeployProcedure() const {
     std::vector<hybridse::codec::Row> insert_rows;
     std::vector<std::string> inserts;
     ASSERT_TRUE(sql_case_->ExtractInputTableDef(insert_table, 0));
-    ASSERT_TRUE(sql_case_->ExtractInputData(insert_rows, 0));
+    ASSERT_TRUE(sql_case_->ExtractInputData(insert_rows, 0, insert_table.columns()));
     sql_case_->BuildInsertSqlListFromInput(0, &inserts);
     test::SQLCaseTest::CheckSchema(insert_table.columns(), *(request_row->GetSchema().get()));
     LOG(INFO) << "Request Row:\n";
@@ -849,7 +847,7 @@ void DeploymentEnv::CallDeployProcedureTiny() const {
     hybridse::type::TableDef insert_table;
     std::vector<hybridse::codec::Row> insert_rows;
     ASSERT_TRUE(sql_case_->ExtractInputTableDef(insert_table, 0));
-    ASSERT_TRUE(sql_case_->ExtractInputData(insert_rows, 0));
+    ASSERT_TRUE(sql_case_->ExtractInputData(insert_rows, 0, insert_table.columns()));
 
     hybridse::codec::RowView row_view(insert_table.columns());
     for (size_t i = 0; i < insert_rows.size(); i++) {

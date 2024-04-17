@@ -16,6 +16,8 @@ OpenMLDB Docs (|version|)
     maintain/index
     reference/index
     developer/index
+    faq/index
+    blog_post/index
 
 .. toctree::
     :maxdepth: 1

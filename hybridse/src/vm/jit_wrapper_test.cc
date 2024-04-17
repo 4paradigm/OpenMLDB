@@ -83,7 +83,6 @@ void simple_test(const EngineOptions &options) {
     ASSERT_FALSE(ir_str.empty());
     HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    HybridSeJitWrapper::InitJitSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
@@ -151,7 +150,6 @@ TEST_F(JitWrapperTest, test_window) {
     ASSERT_FALSE(ir_str.empty());
     HybridSeJitWrapper *jit = HybridSeJitWrapper::Create();
     ASSERT_TRUE(jit->Init());
-    HybridSeJitWrapper::InitJitSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));

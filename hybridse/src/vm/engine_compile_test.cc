@@ -709,12 +709,31 @@ TEST_F(EngineCompileTest, ExternalFunctionTest) {
     std::string sql2 = "select cut2(col0) from t1;";
     ASSERT_TRUE(engine.Get(sql2, "simple_db", session, get_status));
 }
+
+TEST_F(EngineCompileTest, DetermineEngineMode) {
+    EXPECT_EQ(vm::kRequestMode, Engine::TryDetermineEngineMode(R"(SELECT * from t1
+CONFIG (execute_mode = 'request', values = [12]))",
+                                    kBatchMode));
+
+    EXPECT_EQ(vm::kBatchRequestMode, Engine::TryDetermineEngineMode(R"(SELECT * from t1
+CONFIG (execute_mode = 'request', values = [(12), (12)]))",
+                                    kBatchMode));
+
+    EXPECT_EQ(vm::kBatchRequestMode, Engine::TryDetermineEngineMode(R"(SELECT * from t1
+CONFIG (execute_mode = 'batchrequest', values = [(12)]))",
+                                    kBatchMode));
+
+    // no option, default
+    EXPECT_EQ(vm::kRequestMode, Engine::TryDetermineEngineMode(R"(SELECT * FROM t1)", kRequestMode));
+    // on error, default
+    EXPECT_EQ(vm::kBatchMode, Engine::TryDetermineEngineMode(R"(SELECT)", kBatchMode));
+}
+
 }  // namespace vm
 }  // namespace hybridse
 
 int main(int argc, char** argv) {
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     // ::hybridse::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();

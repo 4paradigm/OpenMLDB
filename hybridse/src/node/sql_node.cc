@@ -23,6 +23,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
@@ -144,9 +145,10 @@ static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap()
       {kExprEscaped, "escape"},
       {kExprArray, "array"},
       {kExprArrayElement, "array element"},
+      {kExprStructCtorParens, "struct with parens"},
   };
   for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
-        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+      DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
   }
   return map;
 }
@@ -850,12 +852,12 @@ void CastExprNode::Print(std::ostream &output, const std::string &org_tab) const
     ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    PrintValue(output, tab, DataTypeName(cast_type_), "cast_type", false);
+    PrintValue(output, tab, cast_type_->DebugString(), "cast_type", false);
     output << "\n";
     PrintSqlNode(output, tab, expr(), "expr", true);
 }
 const std::string CastExprNode::GetExprString() const {
-    std::string str = DataTypeName(cast_type_);
+    std::string str = cast_type_->DebugString();
     str.append("(").append(ExprString(expr())).append(")");
     return str;
 }
@@ -867,7 +869,7 @@ bool CastExprNode::Equals(const ExprNode *node) const {
         return false;
     }
     const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
-    return this->cast_type_ == that->cast_type_ && ExprEquals(expr(), that->expr());
+    return TypeEquals(cast_type_, that->cast_type()) && ExprEquals(expr(), that->expr());
 }
 CastExprNode *CastExprNode::CastFrom(ExprNode *node) { return dynamic_cast<CastExprNode *>(node); }
 
@@ -1191,6 +1193,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kWithClauseEntry, "kWithClauseEntry"},
         {kAlterTableStmt, "kAlterTableStmt"},
         {kColumnSchema, "kColumnSchema"},
+        {kCallStmt, "kCallStmt"},
     };
     for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
         DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
@@ -2783,7 +2786,7 @@ std::string SetOptionsAction::DebugString() const {
         }
         absl::StrAppend(&output, kv.first);
         absl::StrAppend(&output, "=");
-        absl::StrAppend(&output, kv.second->GetAsString());
+        absl::StrAppend(&output, kv.second->GetExprString());
     }
     return absl::Substitute("SetOptionsAction ($0)", output);
 }
@@ -2804,6 +2807,90 @@ void SetOperationNode::Print(std::ostream &output, const std::string &org_tab) c
         output << "\n";
         PrintSqlNode(output, org_tab + INDENT + INDENT, node, std::to_string(i), i + 1 == inputs().size());
     }
+}
+
+absl::StatusOr<codec::Schema> CreateStmt::GetColumnDefListAsSchema() const {
+    codec::Schema sc;
+
+    for (auto col : GetTableElementList()) {
+        auto *col_def = col->GetAsOrNull<node::ColumnDefNode>();
+        if (col_def == nullptr) {
+            continue;
+        }
+
+        CHECK_ABSL_STATUS(col_def->GetProtoColumnDef(sc.Add()));
+    }
+
+    return sc;
+}
+absl::Status ColumnDefNode::GetProtoColumnDef(type::ColumnDef* def) const {
+    def->set_name(GetColumnName());
+    def->set_is_not_null(GetIsNotNull());
+
+    CHECK_ABSL_STATUS(schema()->GetProtoColumnSchema(def->mutable_schema()));
+
+    if (def->schema().has_base_type()) {
+        def->set_type(def->schema().base_type());
+    }
+
+    return absl::OkStatus();
+}
+
+absl::Status ColumnSchemaNode::GetProtoColumnSchema(type::ColumnSchema* sc_alloca) const {
+    sc_alloca->set_is_not_null(not_null());
+
+    switch (type()) {
+        case hybridse::node::kBool:
+            sc_alloca->set_base_type(type::kBool);
+            break;
+        case hybridse::node::kInt16:
+            sc_alloca->set_base_type(type::kInt16);
+            break;
+        case hybridse::node::kInt32:
+            sc_alloca->set_base_type(type::kInt32);
+            break;
+        case hybridse::node::kInt64:
+            sc_alloca->set_base_type(type::kInt64);
+            break;
+        case hybridse::node::kFloat:
+            sc_alloca->set_base_type(type::kFloat);
+            break;
+        case hybridse::node::kDouble:
+            sc_alloca->set_base_type(type::kDouble);
+            break;
+        case hybridse::node::kDate:
+            sc_alloca->set_base_type(type::kDate);
+            break;
+        case hybridse::node::kTimestamp:
+            sc_alloca->set_base_type(type::kTimestamp);
+            break;
+        case hybridse::node::kVarchar:
+            sc_alloca->set_base_type(type::kVarchar);
+            break;
+        case hybridse::node::kArray: {
+            if (generics().size() != 1) {
+                return absl::FailedPreconditionError(
+                    absl::Substitute("expect generic size = 1 for array type, but got $0", generics().size()));
+            }
+            auto* arr = sc_alloca->mutable_array_type();
+            CHECK_ABSL_STATUS(generics_[0]->GetProtoColumnSchema(arr->mutable_ele_type()));
+            break;
+        }
+        case hybridse::node::kMap: {
+            if (generics().size() != 2) {
+                return absl::FailedPreconditionError(
+                    absl::Substitute("expect generic size = 2 for map type, but got $0", generics().size()));
+            }
+            auto* mp = sc_alloca->mutable_map_type();
+            CHECK_ABSL_STATUS(generics_[0]->GetProtoColumnSchema(mp->mutable_key_type()));
+            CHECK_ABSL_STATUS(generics_[1]->GetProtoColumnSchema(mp->mutable_value_type()));
+            break;
+        }
+        default:
+            return absl::UnimplementedError(absl::StrCat("unsupported type: ", DebugString()));
+    }
+
+    return absl::OkStatus();
 }
 }  // namespace node
 }  // namespace hybridse

@@ -22,6 +22,7 @@
 #include "node/sql_node.h"
 #include "plan/plan_api.h"
 #include "vm/sql_ctx.h"
+#include "vm/engine.h"
 
 namespace hybridse {
 namespace codegen {
@@ -29,7 +30,7 @@ namespace codegen {
 class InsertRowBuilderTest : public ::testing::Test {};
 
 TEST_F(InsertRowBuilderTest, encode) {
-    std::string sql = "insert into t1 values (1, map (1, '12'))";
+    std::string sql = "insert into t1 values (1, map (1, '12'), null, map())";
     vm::SqlContext ctx;
     ctx.sql = sql;
     auto s = plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
@@ -50,12 +51,23 @@ TEST_F(InsertRowBuilderTest, encode) {
         map_ty->mutable_key_type()->set_base_type(type::kInt32);
         map_ty->mutable_value_type()->set_base_type(type::kVarchar);
     }
-
-    InsertRowBuilder builder(&sc);
     {
-        auto s = builder.Init();
-        ASSERT_TRUE(s.ok()) << s;
+        auto col = sc.Add();
+        auto map_ty = col->mutable_schema()->mutable_map_type();
+        map_ty->mutable_key_type()->set_base_type(type::kFloat);
+        map_ty->mutable_value_type()->set_base_type(type::kTimestamp);
     }
+    {
+        auto col = sc.Add();
+        auto map_ty = col->mutable_schema()->mutable_map_type();
+        map_ty->mutable_key_type()->set_base_type(type::kDate);
+        map_ty->mutable_value_type()->set_base_type(type::kVarchar);
+    }
+
+    auto jit = std::shared_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::Create());
+    ASSERT_TRUE(jit->Init());
+
+    InsertRowBuilder builder(jit.get(), &sc);
 
     auto as = builder.ComputeRow(dynamic_cast<node::ExprListNode*>(exprlist));
     ASSERT_TRUE(as.ok()) << as.status();
@@ -67,5 +79,6 @@ TEST_F(InsertRowBuilderTest, encode) {
 //
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

@@ -81,7 +81,6 @@ class NodeManager {
     PlanNode *MakeUnaryPlanNode(const PlanType &type);
     PlanNode *MakeBinaryPlanNode(const PlanType &type);
     PlanNode *MakeMultiPlanNode(const PlanType &type);
-    PlanNode *MakeMergeNode(int column_size);
     WindowPlanNode *MakeWindowPlanNode(int w_id);
     ProjectListNode *MakeProjectListPlanNode(const WindowPlanNode *w, const bool need_agg);
     FilterPlanNode *MakeFilterPlanNode(PlanNode *node,
@@ -415,26 +414,20 @@ class NodeManager {
         return node_ptr;
     }
 
- private:
-    void SetNodeUniqueId(ExprNode *node);
-    void SetNodeUniqueId(TypeNode *node);
-    void SetNodeUniqueId(PlanNode *node);
-    void SetNodeUniqueId(vm::PhysicalOpNode *node);
+    void SetIdCounter(size_t i) {
+        assert(i > id_counter_);
+        id_counter_ = i;
+    }
 
+ private:
     template <typename T>
     void SetNodeUniqueId(T *node) {
-        node->SetNodeId(other_node_idx_counter_++);
+        node->SetNodeId(id_counter_++);
     }
 
     std::list<base::FeBaseObject *> node_list_;
-
-    // unique id counter for various types of node
-    size_t expr_idx_counter_ = 1;
-    size_t type_idx_counter_ = 1;
-    size_t plan_idx_counter_ = 1;
-    size_t physical_plan_idx_counter_ = 1;
-    size_t other_node_idx_counter_ = 1;
-    size_t exprid_idx_counter_ = 0;
+    size_t id_counter_ = 0;
+    size_t expr_id_counter_ = 0;
 };
 
 }  // namespace node

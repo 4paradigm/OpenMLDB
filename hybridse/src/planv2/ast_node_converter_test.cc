@@ -742,7 +742,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
     auto option = create_fun_stmt->Options();
     ASSERT_EQ(option->size(), 1);
     ASSERT_EQ(option->begin()->first, "PATH");
-    ASSERT_EQ(option->begin()->second->GetAsString(), "/tmp/libmyfun.so");
+    ASSERT_EQ(option->begin()->second->GetExprString(), "/tmp/libmyfun.so");
 
     std::string sql2 = "CREATE AGGREGATE FUNCTION fun1 (x BIGINT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
     create_fun_stmt = nullptr;

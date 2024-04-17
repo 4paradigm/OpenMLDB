@@ -79,6 +79,24 @@ void StartNameServer(brpc::Server& server, const std::string& real_ep) {  // NOL
     sleep(2);
 }
 
+void StartNameServerWithDelay(brpc::Server& server, const std::string& real_ep) {  // NOLINT
+    NameServerImpl* nameserver = new NameServerImpl();
+    bool ok = nameserver->Init(real_ep);
+    sleep(5);
+    ASSERT_EQ(true, nameserver->RegisterName());
+    ASSERT_TRUE(ok);
+    brpc::ServerOptions options;
+    if (server.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(real_ep.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    sleep(2);
+}
+
 void StartTablet(brpc::Server& server, const std::string& real_ep) {  // NOLINT
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     bool ok = tablet->Init(real_ep);
@@ -150,6 +168,96 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     std::string ns_real_ep = "127.0.0.1:9631";
     brpc::Server ns_server;
     StartNameServer(ns_server, ns_real_ep);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
+    name_server_client.Init();
+
+    // tablet1
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "tb1";
+    std::string tb_real_ep_1 = "127.0.0.1:9831";
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    brpc::Server tb_server1;
+    StartTablet(tb_server1, tb_real_ep_1);
+
+    // tablet2
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "tb2";
+    std::string tb_real_ep_2 = "127.0.0.1:9931";
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    brpc::Server tb_server2;
+    StartTablet(tb_server2, tb_real_ep_2);
+
+    {
+        std::map<std::string, std::string> map;
+        ShowNameServer(&map);
+        ASSERT_EQ(1u, map.size());
+        auto it = map.find("ns1");
+        if (it != map.end()) {
+            ASSERT_EQ(ns_real_ep, it->second);
+        } else {
+            ASSERT_TRUE(false);
+        }
+    }
+    {
+        // showtablet
+        ::openmldb::nameserver::ShowTabletRequest request;
+        ::openmldb::nameserver::ShowTabletResponse response;
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+
+        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
+        ASSERT_EQ("tb1", status.endpoint());
+        ASSERT_EQ(tb_real_ep_1, status.real_endpoint());
+        ASSERT_EQ("kHealthy", status.state());
+
+        status = response.tablets(1);
+        ASSERT_EQ("tb2", status.endpoint());
+        ASSERT_EQ(tb_real_ep_2, status.real_endpoint());
+        ASSERT_EQ("kHealthy", status.state());
+    }
+    std::string ns_sdk_ep = "127.0.0.1:8881";
+    std::string tb_sdk_ep_1 = "127.0.0.1:8882";
+    std::string tb_sdk_ep_2 = "127.0.0.1:8883";
+    {
+        // set sdkendpoint
+        SetSdkEndpoint(name_server_client, "ns1", ns_sdk_ep);
+        SetSdkEndpoint(name_server_client, "tb1", tb_sdk_ep_1);
+        SetSdkEndpoint(name_server_client, "tb2", tb_sdk_ep_2);
+    }
+    {
+        // show sdkendpoint
+        ::openmldb::nameserver::ShowSdkEndpointRequest request;
+        ::openmldb::nameserver::ShowSdkEndpointResponse response;
+        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowSdkEndpoint, &request,
+                                                 &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+
+        auto status = response.tablets(0);
+        ASSERT_EQ("ns1", status.endpoint());
+        ASSERT_EQ(ns_sdk_ep, status.real_endpoint());
+
+        status = response.tablets(1);
+        ASSERT_EQ("tb1", status.endpoint());
+        ASSERT_EQ(tb_sdk_ep_1, status.real_endpoint());
+
+        status = response.tablets(2);
+        ASSERT_EQ("tb2", status.endpoint());
+        ASSERT_EQ(tb_sdk_ep_2, status.real_endpoint());
+    }
+}
+
+TEST_F(NewServerEnvTest, ShowRealEndpointDelayNameserverStart) {
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
+
+    // ns1
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "ns1";
+    std::string ns_real_ep = "127.0.0.1:9631";
+    brpc::Server ns_server;
+    StartNameServerWithDelay(ns_server, ns_real_ep);
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(ns_real_ep);
     name_server_client.Init();
 
@@ -358,6 +466,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::test::InitRandomDiskFlags("new_server_env_test");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

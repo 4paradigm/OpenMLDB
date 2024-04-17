@@ -45,10 +45,10 @@ class LlvmUdfGenBase;
 namespace hybridse {
 namespace node {
 
-class ConstNode;
+class ExprNode;
 class WithClauseEntry;
 
-typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
+typedef std::unordered_map<std::string, const ExprNode*> OptionsMap;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -357,6 +357,22 @@ class SqlNode : public NodeBase<SqlNode> {
     const std::string GetTypeName() const override { return NameOfSqlNodeType(type_); }
 
     bool Equals(const SqlNode *node) const override;
+
+    // Return this node cast as a NodeType.
+    // Use only when this node is known to be that type, otherwise, behavior is undefined.
+    template <typename NodeType>
+    const NodeType *GetAsOrNull() const {
+        static_assert(std::is_base_of<SqlNode, NodeType>::value,
+                      "NodeType must be a member of the SqlNode class hierarchy");
+        return dynamic_cast<const NodeType *>(this);
+    }
+
+    template <typename NodeType>
+    NodeType *GetAsOrNull() {
+        static_assert(std::is_base_of<SqlNode, NodeType>::value,
+                      "NodeType must be a member of the SqlNode class hierarchy");
+        return dynamic_cast<NodeType *>(this);
+    }
 
     SqlNodeType type_;
 
@@ -1504,22 +1520,28 @@ class FnDefNode : public SqlNode {
 
 class CastExprNode : public ExprNode {
  public:
-    explicit CastExprNode(const node::DataType cast_type, node::ExprNode *expr)
+    explicit CastExprNode(const node::TypeNode *cast_type, node::ExprNode *expr)
         : ExprNode(kExprCast), cast_type_(cast_type) {
         this->AddChild(expr);
     }
-
     ~CastExprNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *that) const override;
     CastExprNode *ShadowCopy(NodeManager *) const override;
     static CastExprNode *CastFrom(ExprNode *node);
 
     ExprNode *expr() const { return GetChild(0); }
-    const DataType cast_type_;
+    const TypeNode *cast_type() const { return cast_type_; }
+
+    // legacy interface, required by offline batch
+    // pls use cast_type() as much as possible
+    node::DataType base_cast_type() const;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    const TypeNode *cast_type_;
 };
 
 class WhenExprNode : public ExprNode {
@@ -1883,6 +1905,8 @@ class ColumnSchemaNode : public SqlNode {
     bool not_null() const { return not_null_; }
     const ExprNode *default_value() const { return default_value_; }
 
+    absl::Status GetProtoColumnSchema(type::ColumnSchema *) const;
+
     std::string DebugString() const;
 
  private:
@@ -1901,6 +1925,8 @@ class ColumnDefNode : public SqlNode {
     std::string GetColumnName() const { return column_name_; }
 
     const ColumnSchemaNode *schema() const { return schema_; }
+
+    absl::Status GetProtoColumnDef(type::ColumnDef *) const;
 
     // deprecated, use ColumnDefNode::schema instead
     DataType GetColumnType() const { return schema_->type(); }
@@ -2025,8 +2051,11 @@ class CreateStmt : public SqlNode {
 
     ~CreateStmt() {}
 
-    NodePointVector* MutableColumnDefList() { return &column_desc_list_; }
-    const NodePointVector &GetColumnDefList() const { return column_desc_list_; }
+    NodePointVector* MutableTableElementList() { return &column_desc_list_; }
+    const NodePointVector &GetTableElementList() const { return column_desc_list_; }
+
+    // collect the column definitions in column_desc_list_, and convert to the proto representation type::ColumnDef
+    absl::StatusOr<codec::Schema> GetColumnDefListAsSchema() const;
 
     std::string GetTableName() const { return table_name_; }
     std::string GetDbName() const { return db_name_; }
@@ -2549,6 +2578,7 @@ class FnReturnStmt : public FnNode {
     ExprNode *return_expr_;
 };
 
+// DEPRECATED!
 class StructExpr : public ExprNode {
  public:
     explicit StructExpr(const std::string &name) : ExprNode(kExprStruct), class_name_(name) {}
@@ -2567,6 +2597,26 @@ class StructExpr : public ExprNode {
     const std::string class_name_;
     FnNodeList *fileds_;
     FnNodeList *methods_;
+};
+
+// (expr1, expr2, ...)
+class StructCtorWithParens : public ExprNode {
+ public:
+    explicit StructCtorWithParens(absl::Span<ExprNode *const> fields)
+        : ExprNode(kExprStructCtorParens) {
+        for (auto e : fields) {
+            AddChild(e);
+        }
+    }
+    ~StructCtorWithParens() override {}
+
+    absl::Span<ExprNode *const> fields() const { return children_; }
+
+    // LOW priority
+    // void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    StructCtorWithParens *ShadowCopy(NodeManager *nm) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
 class ExternalFnDefNode : public FnDefNode {
@@ -3032,6 +3082,20 @@ class InputParameterNode : public SqlNode {
     std::string column_name_;
     DataType column_type_;
     bool is_constant_;
+};
+
+class CallStmt : public SqlNode {
+ public:
+    CallStmt(const std::vector<std::string> names, const std::vector<ExprNode *> args)
+        : SqlNode(kCallStmt, 0, 0), procedure_name_(names), arguments_(args) {}
+    ~CallStmt() override {}
+
+    const std::vector<std::string> &procedure_name() const { return procedure_name_; }
+    const std::vector<ExprNode *> &arguments() const { return arguments_; }
+
+ private:
+    const std::vector<std::string> procedure_name_;
+    const std::vector<ExprNode*> arguments_;
 };
 
 std::string ExprString(const ExprNode *expr);

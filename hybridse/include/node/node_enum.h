@@ -99,6 +99,7 @@ enum SqlNodeType {
     kColumnSchema,
     kCreateUserStmt,
     kAlterUserStmt,
+    kCallStmt,
     kSqlNodeTypeLast,  // debug type
 };
 
@@ -144,8 +145,9 @@ enum ExprType {
     kExprIn,
     kExprEscaped,
     kExprArray,
-    kExprArrayElement,  // extract value from a array or map, with `[]` operator
-    kExprFake,          // not a real one
+    kExprArrayElement,      // extract value from a array or map, with `[]` operator
+    kExprStructCtorParens,  // (expr1, expr2, ...)
+    kExprFake,              // not a real one
     kExprLast = kExprFake,
 };
 
@@ -345,6 +347,7 @@ enum PlanType {
     kPlanTypeShow,
     kPlanTypeCreateUser,
     kPlanTypeAlterUser,
+    kPlanTypeCallStmt,
     kUnknowPlan = -1,
 };
 

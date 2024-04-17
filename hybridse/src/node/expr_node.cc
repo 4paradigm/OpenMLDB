@@ -119,8 +119,9 @@ Status ExprIdNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+node::DataType CastExprNode::base_cast_type() const { return cast_type_->base(); }
 Status CastExprNode::InferAttr(ExprAnalysisContext* ctx) {
-    SetOutputType(ctx->node_manager()->MakeTypeNode(cast_type_));
+    SetOutputType(cast_type_);
     return Status::OK();
 }
 
@@ -281,16 +282,27 @@ absl::StatusOr<const TypeNode*> ExprNode::CompatibleType(NodeManager* nm, const 
 
 /**
 * support rules:
-*  case target_type
-*   bool         -> from_type is bool
-*   int*         -> from_type is bool or from_type is equal/smaller integral type
-*   float|double -> from_type is bool or equal/smaller float type
-*   timestamp    -> from_type is timestamp or integral type
+* 1. case target_type
+*    bool            -> from_type is bool
+*    intXX           -> from_type is bool or from_type is equal/smaller integral type
+*    float | double  -> from_type is bool or equal/smaller float type
+*    timestamp       -> from_type is timestamp or integral type
+*    string | date   -> not convertible from other type
+*    MAP<KEY, VALUE> ->
+*      from_type: MAP<VOID, VOID> (consturct by map()) -> OK
+*      from_type: MAP<K, V> -> SafeCast(K -> KEY) && SafeCast(V -> VALUE)
+*
+* 2. from_type of NOT_NULL = false can not cast to target_type of NOT_NULL = True
+*    TODO(someone): TypeNode should contains NOT_NULL ATtribute.
 */
 bool ExprNode::IsSafeCast(const TypeNode* from_type,
                           const TypeNode* target_type) {
     if (from_type == nullptr || target_type == nullptr) {
         return false;
+    }
+    if (from_type->IsNull()) {
+        // VOID -> T
+        return true;
     }
     if (TypeEquals(from_type, target_type)) {
         return true;
@@ -314,8 +326,9 @@ bool ExprNode::IsSafeCast(const TypeNode* from_type,
         case kTimestamp:
             return from_base == kTimestamp || from_type->IsInteger();
         default:
-            return false;
+            break;
     }
+    return false;
 }
 
 bool ExprNode::IsIntFloat2PointerCast(const TypeNode* lhs,
@@ -895,7 +908,7 @@ ExprIdNode* ExprIdNode::ShadowCopy(NodeManager* nm) const {
 }
 
 CastExprNode* CastExprNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeCastNode(cast_type_, GetChild(0));
+    return nm->MakeNode<CastExprNode>(cast_type_, GetChild(0));
 }
 
 WhenExprNode* WhenExprNode::ShadowCopy(NodeManager* nm) const {
@@ -1217,5 +1230,21 @@ Status ArrayElementExpr::InferAttr(ExprAnalysisContext* ctx) {
 }
 ExprNode *ArrayElementExpr::array() const { return GetChild(0); }
 ExprNode *ArrayElementExpr::position() const { return GetChild(1); }
+
+StructCtorWithParens* StructCtorWithParens::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeNode<StructCtorWithParens>(fields());
+}
+const std::string StructCtorWithParens::GetExprString() const {
+    return absl::StrCat(
+        "(",
+        absl::StrJoin(fields(), ", ",
+                      [](std::string* out, const ExprNode* e) { absl::StrAppend(out, e->GetExprString()); }),
+        ")");
+}
+
+Status StructCtorWithParens::InferAttr(ExprAnalysisContext* ctx) {
+    // TODO
+    return {};
+}
 }  // namespace node
 }  // namespace hybridse

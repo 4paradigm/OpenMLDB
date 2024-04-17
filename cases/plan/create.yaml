@@ -798,7 +798,7 @@ cases:
           |  +-0:
           |  |  +-node[kColumnDesc]
           |  |    +-column_name: column1
-          |  |    +-column_type: string DEFAULT string(1)
+          |  |    +-column_type: string DEFAULT STRING(1)
           |  +-1:
           |    +-node[kColumnDesc]
           |      +-column_name: column3

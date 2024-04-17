@@ -322,7 +322,7 @@ ColumnRefNode *NodeManager::MakeColumnRefNode(const std::string &column_name, co
     return MakeColumnRefNode(column_name, relation_name, "");
 }
 CastExprNode *NodeManager::MakeCastNode(const node::DataType cast_type, ExprNode *expr) {
-    CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
+    CastExprNode *node_ptr = new CastExprNode(MakeNode<TypeNode>(cast_type), expr);
     return RegisterNode(node_ptr);
 }
 WhenExprNode *NodeManager::MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr) {
@@ -416,7 +416,7 @@ ParameterExpr *NodeManager::MakeParameterExpr(int position) {
     return RegisterNode(node_ptr);
 }
 ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name) {
-    return RegisterNode(new ::hybridse::node::ExprIdNode(name, exprid_idx_counter_++));
+    return RegisterNode(new ::hybridse::node::ExprIdNode(name, expr_id_counter_++));
 }
 ExprIdNode *NodeManager::MakeUnresolvedExprId(const std::string &name) {
     return RegisterNode(new ::hybridse::node::ExprIdNode(name, -1));
@@ -439,7 +439,7 @@ CreateStmt *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::st
                                           const std::string &table_name, SqlNodeList *column_desc_list,
                                           SqlNodeList *table_option_list) {
     CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist);
-    FillSqlNodeList2NodeVector(column_desc_list, *(node_ptr->MutableColumnDefList()));
+    FillSqlNodeList2NodeVector(column_desc_list, *(node_ptr->MutableTableElementList()));
     FillSqlNodeList2NodeVector(table_option_list, *(node_ptr->MutableTableOptionList()));
     return RegisterNode(node_ptr);
 }
@@ -1072,11 +1072,6 @@ SqlNode *NodeManager::MakeInputParameterNode(bool is_constant, const std::string
     SqlNode *node_ptr = new InputParameterNode(column_name, data_type, is_constant);
     return RegisterNode(node_ptr);
 }
-
-void NodeManager::SetNodeUniqueId(ExprNode *node) { node->SetNodeId(expr_idx_counter_++); }
-void NodeManager::SetNodeUniqueId(TypeNode *node) { node->SetNodeId(type_idx_counter_++); }
-void NodeManager::SetNodeUniqueId(PlanNode *node) { node->SetNodeId(plan_idx_counter_++); }
-void NodeManager::SetNodeUniqueId(vm::PhysicalOpNode *node) { node->SetNodeId(physical_plan_idx_counter_++); }
 
 }  // namespace node
 }  // namespace hybridse

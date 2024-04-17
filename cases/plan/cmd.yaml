@@ -754,3 +754,11 @@ cases:
         +-node[CMD]
           +-cmd_type: show create table
           +-args: [db1, t1]
+
+  - id: callstmt
+    sql: call sp(1, cast("ab" as string))
+    expect:
+      plan_tree_str: |
+        +-[kPlanTypeCallStmt]
+          +-procedure_name: [sp]
+          +-arguments: 1, string(ab)
