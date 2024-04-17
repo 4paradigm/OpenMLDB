@@ -296,6 +296,10 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
     FLAGS_make_snapshot_threshold_offset = old_offset;
     ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path + "/2_0");
     ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path + "/2_0");
+    server1.Stop(1);
+    server1.Join();
+    server.Stop(1);
+    server.Join();
 }
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
@@ -337,6 +341,12 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ret = name_server_client1.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
     ASSERT_STREQ(conf_map[key].c_str(), "true");
+    server_t.Stop(1);
+    server_t.Join();
+    server_n1.Stop(1);
+    server_n1.Join();
+    server_n2.Stop(1);
+    server_n2.Join();
 }
 
 TEST_P(NameServerImplTest, CreateTable) {
@@ -414,6 +424,10 @@ TEST_P(NameServerImplTest, CreateTable) {
                                         FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
+    server1.Stop(1);
+    server1.Join();
+    server.Stop(1);
+    server.Join();
     delete nameserver;
     delete tablet;
 
@@ -551,6 +565,12 @@ TEST_P(NameServerImplTest, Offline) {
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
+    server2.Stop(1);
+    server2.Join();
+    server1.Stop(1);
+    server1.Join();
+    server.Stop(1);
+    server.Join();
     delete nameserver;
     delete tablet;
     delete tablet2;
@@ -671,7 +691,10 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, get_response.code());
     ASSERT_FALSE(get_response.table_partition().partition_meta(0).is_leader());
-
+    server1.Stop(1);
+    server1.Join();
+    server.Stop(1);
+    server.Join();
     delete nameserver;
     delete tablet;
 }
@@ -732,6 +755,10 @@ TEST_F(NameServerImplTest, CancelOP) {
     nameserver->CancelOP(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
     ASSERT_TRUE(op_data->op_info_.task_status() == ::openmldb::api::kCanceled);
+    server_t.Stop(1);
+    server_t.Join();
+    server.Stop(1);
+    server.Join();
     delete nameserver;
 }
 
@@ -825,28 +852,29 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     string f2_ns1_ep, f2_ns2_ep, f2_t1_ep, f2_t2_ep;
     string m1_zkpath, f1_zkpath, f2_zkpath;
 
-    vector<Server*> svrs = {&m1_ns1_svr, &m1_ns2_svr};
+    vector<Server*> svrs = {&m1_t1_svr, &m1_t2_svr};
     vector<shared_ptr<NameServerImpl>*> ns_vector = {&m1_ns1, &m1_ns2};
     vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
-    vector<string*> endpoints = {&m1_ns1_ep, &m1_ns2_ep};
+    vector<string*> endpoints = {&m1_t1_ep, &m1_t2_ep};
+    ;
 
     int port = 9632;
 
-    auto svrs_tablet = {&m1_t1_svr, &m1_t2_svr};
-    auto endpoints_tablet = {&m1_t1_ep, &m1_t2_ep};
+    InitTablet(port, svrs, tb_vector, endpoints);
 
-    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+    svrs = {&m1_ns1_svr, &m1_ns2_svr};
+    endpoints = {&m1_ns1_ep, &m1_ns2_ep};
 
     InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
 
     port++;
 
-    svrs_tablet = {&f1_t1_svr, &f1_t2_svr};
-    endpoints_tablet = {&f1_t1_ep, &f1_t2_ep};
+    svrs = {&f1_t1_svr, &f1_t2_svr};
+    endpoints = {&f1_t1_ep, &f1_t2_ep};
     tb_vector = {&f1_t1, &f1_t2};
 
-    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     svrs = {&f1_ns1_svr, &f1_ns2_svr};
     ns_vector = {&f1_ns1, &f1_ns2};
@@ -857,11 +885,11 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
 
     port++;
 
-    svrs_tablet = {&f2_t1_svr, &f2_t2_svr};
-    endpoints_tablet = {&f2_t1_ep, &f2_t2_ep};
+    svrs = {&f2_t1_svr, &f2_t2_svr};
+    endpoints = {&f2_t1_ep, &f2_t2_ep};
     tb_vector = {&f2_t1, &f2_t2};
 
-    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     svrs = {&f2_ns1_svr, &f2_ns2_svr};
     ns_vector = {&f2_ns1, &f2_ns2};
@@ -978,6 +1006,11 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
         ASSERT_EQ(2, show_replica_cluster_response.replicas_size());
         show_replica_cluster_response.Clear();
     }
+
+    for (auto svc : svrs) {
+        svc->Stop(1);
+        svc->Join();
+    }
 }
 
 TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
@@ -991,27 +1024,29 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     string f2_ns1_ep, f2_ns2_ep, f2_t1_ep, f2_t2_ep;
     string m1_zkpath, f1_zkpath, f2_zkpath;
 
-    vector<Server*> svrs = {&m1_ns1_svr, &m1_ns2_svr};
+    vector<Server*> svrs = {&m1_t1_svr, &m1_t2_svr};
     vector<shared_ptr<NameServerImpl>*> ns_vector = {&m1_ns1, &m1_ns2};
     vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
-    vector<string*> endpoints = {&m1_ns1_ep, &m1_ns2_ep};
+    vector<string*> endpoints = {&m1_t1_ep, &m1_t2_ep};
+    ;
 
-    int port = 9642;
-    auto svrs_tablet = {&m1_t1_svr, &m1_t2_svr};
-    auto endpoints_tablet = {&m1_t1_ep, &m1_t2_ep};
+    int port = 9632;
 
-    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+    InitTablet(port, svrs, tb_vector, endpoints);
+
+    svrs = {&m1_ns1_svr, &m1_ns2_svr};
+    endpoints = {&m1_ns1_ep, &m1_ns2_ep};
 
     InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
 
     port++;
 
-    svrs_tablet = {&f1_t1_svr, &f1_t2_svr};
-    endpoints_tablet = {&f1_t1_ep, &f1_t2_ep};
+    svrs = {&f1_t1_svr, &f1_t2_svr};
+    endpoints = {&f1_t1_ep, &f1_t2_ep};
     tb_vector = {&f1_t1, &f1_t2};
 
-    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     svrs = {&f1_ns1_svr, &f1_ns2_svr};
     ns_vector = {&f1_ns1, &f1_ns2};
@@ -1022,11 +1057,11 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 
     port++;
 
-    svrs_tablet = {&f2_t1_svr, &f2_t2_svr};
-    endpoints_tablet = {&f2_t1_ep, &f2_t2_ep};
+    svrs = {&f2_t1_svr, &f2_t2_svr};
+    endpoints = {&f2_t1_ep, &f2_t2_ep};
     tb_vector = {&f2_t1, &f2_t2};
 
-    InitTablet(port, svrs_tablet, tb_vector, endpoints_tablet);
+    InitTablet(port, svrs, tb_vector, endpoints);
 
     svrs = {&f2_ns1_svr, &f2_ns2_svr};
     ns_vector = {&f2_ns1, &f2_ns2};
@@ -1133,6 +1168,11 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
         ASSERT_EQ(name, show_table_response.table_info(0).name());
         show_table_response.Clear();
     }
+
+    for (auto svc : svrs) {
+        svc->Stop(1);
+        svc->Join();
+    }
 }
 
 TEST_F(NameServerImplTest, ShowCatalogVersion) {
@@ -1225,6 +1265,13 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         ASSERT_EQ(cur_catalog.version(), version_map[cur_catalog.endpoint()] + 1);
         PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
     }
+
+    server2.Stop(1);
+    server2.Join();
+    server1.Stop(1);
+    server1.Join();
+    server.Stop(1);
+    server.Join();
 }
 
 INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, NameServerImplTest,
@@ -1265,6 +1312,10 @@ TEST_F(NameServerImplTest, AddField) {
     ASSERT_EQ(table_info1.schema_versions_size(), 1);
     ASSERT_EQ(table_info1.schema_versions(0).id(), 2);
     ASSERT_EQ(table_info1.schema_versions(0).field_count(), 3);
+    server1.Stop(1);
+    server1.Join();
+    server.Stop(1);
+    server.Join();
 }
 
 }  // namespace nameserver
