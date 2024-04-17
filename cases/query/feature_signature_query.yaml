@@ -38,12 +38,12 @@ cases:
       select gcformat(
           discrete(hash64("x"), 1),
           continuous(pow(10, 30)),
-          continuous(pow(10, 1000)),
-          continuous(sqrt(-1))) as instance;
+          continuous(-pow(10, 1000)),
+          continuous(abs(sqrt(-1)))) as instance;
     expect:
       schema: instance:string
       data: |
-        | 1:0 2:0:1000000000000000019884624838656.000000 3:0:inf 4:0:-nan
+        | 1:0 2:0:1000000000000000019884624838656.000000 3:0:-inf 4:0:nan
   - id: 2
     desc: feature signature nagative bucket size
     mode: procedure-unsupport
@@ -163,12 +163,12 @@ cases:
           continuous(int("notint")),
           continuous(pow(10, 30)),
           continuous(pow(10, 1000)),
-          continuous(sqrt(-1))
+          continuous(abs(sqrt(-1)))
       ), ",", ";") as instance;
     expect:
       schema: instance:string
       data: |
-        2;2.000000;;1;1.000000;-1;;2681491882390849628;;1000000000000000019884624838656.000000;inf;-nan
+        2;2.000000;;1;1.000000;-1;;2681491882390849628;;1000000000000000019884624838656.000000;inf;nan
   - id: 10
     desc: feature signature LIBSVM no label
     mode: procedure-unsupport
