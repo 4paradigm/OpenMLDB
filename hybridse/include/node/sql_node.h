@@ -1629,6 +1629,10 @@ class BinaryExpr : public ExprNode {
  public:
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
+    BinaryExpr(FnOperator op, ExprNode *lhs, ExprNode *rhs) : ExprNode(kExprBinary), op_(op) {
+        AddChild(lhs);
+        AddChild(rhs);
+    }
     FnOperator GetOp() const { return op_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
