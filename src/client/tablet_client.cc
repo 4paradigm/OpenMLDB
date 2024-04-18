@@ -35,11 +35,14 @@ DECLARE_uint32(absolute_ttl_max);
 namespace openmldb {
 namespace client {
 
-TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint)
-    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint) {}
+TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint,
+                           const openmldb::authn::AuthToken auth_token)
+    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint, auth_token) {}
 
-TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy)
-    : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy) {}
+TabletClient::TabletClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy,
+                           const openmldb::authn::AuthToken auth_token)
+    : Client(endpoint, real_endpoint),
+      client_(real_endpoint.empty() ? endpoint : real_endpoint, use_sleep_policy, auth_token) {}
 
 TabletClient::~TabletClient() {}
 

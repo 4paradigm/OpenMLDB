@@ -554,7 +554,7 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
-            auto wrapper = std::make_shared<TabletAccessor>(kv.first);
+            auto wrapper = std::make_shared<TabletAccessor>(kv.first, auth_token_);
             if (!wrapper->UpdateClient(kv.second)) {
                 LOG(WARNING) << "add client failed. name " << kv.first << ", endpoint " << kv.second;
                 continue;
@@ -583,7 +583,7 @@ bool ClientManager::UpdateClient(
     for (const auto& kv : tablet_clients) {
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
-            auto wrapper = std::make_shared<TabletAccessor>(kv.first, kv.second);
+            auto wrapper = std::make_shared<TabletAccessor>(kv.first, kv.second, auth_token_);
             DLOG(INFO) << "add client. name " << kv.first << ", endpoint " << kv.second->GetRealEndpoint();
             clients_.emplace(kv.first, wrapper);
             real_endpoint_map_.emplace(kv.first, kv.second->GetRealEndpoint());

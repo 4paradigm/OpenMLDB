@@ -117,7 +117,15 @@ class DBSDK {
     // build client_manager, then create a new catalog, replace the catalog in engine
     virtual bool BuildCatalog() = 0;
 
-    DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
+    DBSDK() {
+        if (auto options = GetOptions(); !options->user.empty()) {
+            client_manager_ = std::make_shared<::openmldb::catalog::ClientManager>(
+                authn::UserToken{options->user, codec::Encrypt(options->password)});
+        } else {
+            client_manager_ = std::make_shared<::openmldb::catalog::ClientManager>();
+        }
+        catalog_ = std::make_shared<catalog::SDKCatalog>(client_manager_);
+    }
 
     static std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
     bool InitExternalFun();
