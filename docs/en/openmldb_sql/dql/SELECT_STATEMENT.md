@@ -1,124 +1,98 @@
 # SELECT Overview
 
+## Syntax Notation
+
+- Square brackets `[ ]`: Optional clause.
+- Curly braces with vertical bars `{ a | b | c }`: Logical OR. Select one option.
+- Ellipsis `...`: Preceding item can repeat.
+
 ## Syntax
 
-### SelectStmt
+```yacc
+query_statement:
+  query [ CONFIG ( { key = value }[, ...] )]
 
-```sql
-SelectStmt
-         ::= WithClause ( NoTableSelectClause | SelectStmtFromTable) 
+query:
+  [ WITH {non_recursive_cte}[, ...] ]
+  { select | ( query ) | set_operation }
+  [ ORDER BY ordering_expression ]
+  [ LIMIT count ]
 
-WithClause
-         ::= 'WITH' non_recursive_cte [, ...]
+select:
+  SELECT select_list
+  [ FROM from_item ]
+  [ WHERE bool_expression ]
+  [ GROUP BY group_by_specification ]
+  [ HAVING bool_expression ]
+  [ window_clause ]
 
-non_recursive_cte
-         ::= cte_name 'AS' '(' SelectStmt ')'
+set_operation:
+  query set_operator query
 
-NoTableSelectClause
-         ::= 'SELECT' SelectExprList      
+non_recursive_cte:
+  cte_name AS ( query )
 
-SelectStmtFromTable
-         ::= SelectStmtBasic 'FROM' TableRefs [WhereClause] [GroupByClause] [HavingClause] [WindowClause] [OrderByClause] [LimitClause]
-           
-JoinClause
-         ::= TableRef JoinType 'JOIN' TableRef [OrderClause] 'ON' Expression 
-JoinType ::= 'LAST'           
-         
-WhereClause
-         ::= 'WHERE' Expression
-         
-GroupByClause
-         ::= 'GROUP' 'BY' ByList
+set_operator:
+  UNION { ALL | DISTINCT }
 
-HavingClause
-         ::= 'HAVING' Expression 
-         
-WindowClause
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )   
-         
-OrderByClause  ::= 'ORDER' 'BY' ByList   
+from_item:
+  table_name [ as_alias ]
+  | { join_operation | ( join_operation ) }
+  | ( query ) [ as_alias ]
+  | cte_name [ as_alias ]
 
-ByList   ::= ByItem ( ',' ByItem )*
+as_alias:
+  [ AS ] alias_name
 
-ByItem   ::= Expression Order
+join_operation:
+  condition_join_operation
 
-Order    ::= ( 'ASC' | 'DESC' )?
+condition_join_operation:
+  from_item LEFT [ OUTER ] JOIN from_item join_condition
+  | from_item LAST JOIN [ ORDER BY ordering_expression ] from_item join_condition
 
-WindowClauseOptional
-         ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
-WindowDefinition
-         ::= WindowName 'AS' WindowSpec
+join_condition:
+  ON bool_expression
 
-WindowSpec
-        ::= '(' WindowSpecDetails ')'   
+window_clause:
+  WINDOW named_window_expression [, ...]
 
-WindowSpecDetails
-        ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
+named_window_expression:
+  named_window AS { named_window | ( window_specification ) }
 
-WindowUnionClause
-	:: = ( 'UNION' TableRefs)
+window_specification:
+  [ UNION ( from_item [, ...] ) ]
+  PARTITION BY expression [ ORDER BY ordering_expression ]
+  window_frame_clause [ window_attr [, ...] ]
 
-WindowPartitionClause
-         ::= ( 'PARTITION' 'BY' ByList ) 
+window_frame_clause:
+  frame_units BETWEEN frame_bound AND frame_bound [ MAXSIZE numeric_expression ] )
 
-WindowOrderByClause
-        ::= ( 'ORDER' 'BY' ByList )
+frame_unit:
+  ROWS 
+  | ROWS_RANGE
 
-WindowFrameClause
-        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
+frame_boud:
+  { UNBOUNDED | numeric_expression | interval_expression } [ OPEN ] PRECEDING
+  | CURRENT ROW
 
-WindowFrameUnits
-        ::= 'ROWS'
-          | 'ROWS_RANGE'
+window_attr:
+  EXCLUDE CURRENT_TIME
+  | EXCLUDE CURRENT_ROW
+  | INSTANCE_NOT_IN_WINDOW
 
-WindowFrameBounds
-        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+// each item in select list is one of:
+// - *
+// - expression.*
+// - expression
+select_list:
+  { select_all | select_expression } [, ...]
 
-WindowFrameBound
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
+select_all:
+  [ expression. ]*
 
-WindowAttribute
-        ::= WindowExcludeCurrentTime
-          | WindowExcludeCurrentRow
-          | WindowInstanceNotInWindow
-
-WindowExcludeCurrentTime
-        ::= 'EXCLUDE' 'CURRENT_TIME'
-
-WindowExcludeCurrentRow
-        ::= 'EXCLUDE' 'CURRENT_ROW'
-
-WindowInstanceNotInWindow
-        :: = 'INSTANCE_NOT_IN_WINDOW'
-
-WindowFrameMaxSize
-        :: = 'MAXSIZE' NumLiteral
-```
-
-### SelectExprList
-
-```
-SelectExprList
-         ::= SelectExpr ( ',' SelectExpr )*
-SelectExpr    ::= ( Identifier '.' ( Identifier '.' )? )? '*'
-           | ( Expression | '{' Identifier Expression '}' ) ['AS' Identifier]
-           
-           
-```
-
-### TableRefs
-
-```
-TableRefs
-         ::= EscapedTableRef ( ',' EscapedTableRef )*
-TableRef ::= TableFactor
-           | JoinClause
-TableFactor
-         ::= TableName [TableAsName]
-           | '(' ( ( SelectStmt ) ')' TableAsName | TableRefs ')' )
-TableAsName
-         ::= 'AS'? Identifier
+select_expression:
+  expression [ [ AS ] alias ]
 ```
 
 ## SELECT Statement
@@ -142,3 +116,32 @@ The largest number of bytes to scan is limited, namely `scan_max_bytes_size`, de
 
 Even if the `scan_max_bytes_size` is set to unlimited, the `SELECT` statement may failed, e.g. client errors `body_size=xxx from xx:xxxx is too large`, ` Fail to parse response from xx:xxxx by baidu_std at client-side`. We don't recommend to use `SELECT` in online mode or the stand-alone version. If you want to get the count of the online table, please use `SELECT COUNT(*) FROM table_name;`.
 ```
+
+## CONFIG clause
+
+`query_statement` is able to take optional CONFIG clause, as `CONFIG ( key_string = value_expr, ...)`, which make extra configuration over current query. Supported keys and values are:
+
+| key_string | value_expr type | Note |
+| ---------- | ---------  | ---- |
+| execute_mode | string | SQL `execute_mode`, choose one: `online`, `request`, `offline`. default to value of system variable `execute_mode`. You can view it via SQL `show variables` |
+| values | Any valid expression | See [SQL request query in RAW SQL](#sql-request-query-in-raw-sql) |
+
+## SQL request query in raw SQL
+
+OpenMLDB >= 0.9.0 make it possible for a query statement to run as request mode without extra request row info passed in , for example from one of the parameter in JAVA SDK. Those request row informations are
+instead allowed inside CONFIG clause, as `execute_mode` and `values`. When CONFIG `execute_mode = 'request'`，it firstly parse request row value in CONFIG `values`.
+CONFIG `values` supports two formats：
+1. Parentheses `()` surrounded expression list, representing single request row. For example `(1, "str", timestamp(1000) )` 
+2. Square brackets `[]` surrounded parentheses expression lists, say it is surrounding N parentheses expressions, representing N request rows. For example `[ (1, "str", timestamp(1000)), (2, "foo", timestamp(5000)) ]`
+
+Parentheses `()` expression is the minimal unit to a request row, every expression inside parentheses should match exactly to the data type of request table schema, which current SQL contains.
+
+```sql
+-- table t1 of schema ( id int, val string, ts timestamp )
+
+-- executing SQL as request mode, with request row (10, "foo", timestamp(4000))
+SELECT id, count (val) over (partition by id order by ts rows between 10 preceding and current row)
+FROM t1
+CONFIG (execute_mode = 'online', values = (10, "foo", timestamp (4000)))
+```
+
