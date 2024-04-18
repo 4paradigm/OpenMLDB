@@ -43,11 +43,11 @@ using ::openmldb::nameserver::NameServerImpl;
 namespace openmldb {
 namespace tablet {
 
-class SqlClusterTest : public ::testing::Test {
+class ProcedureDropTest : public ::testing::Test {
  public:
-    SqlClusterTest() {}
+    ProcedureDropTest() {}
 
-    ~SqlClusterTest() {}
+    ~ProcedureDropTest() {}
 };
 
 std::shared_ptr<openmldb::sdk::SQLRouter> GetNewSQLRouter() {
@@ -132,13 +132,13 @@ void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
     ASSERT_EQ(response.table_info_size(), size);
 }
 
-TEST_F(SqlClusterTest, RecoverProcedure) {
+TEST_F(ProcedureDropTest, DropProcedureBeforeDropTable) {
     FLAGS_auto_failover = true;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
     // tablet1
-    FLAGS_endpoint = "127.0.0.1:9831";
+    FLAGS_endpoint = "127.0.0.1:9832";
     ::openmldb::test::TempPath tmp_path;
     FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server1;
@@ -146,15 +146,14 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     StartTablet(&tb_server1, tablet1);
 
     // ns1
-    FLAGS_endpoint = "127.0.0.1:9631";
+    FLAGS_endpoint = "127.0.0.1:9632";
     brpc::Server ns_server;
     StartNameServer(ns_server);
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
     name_server_client.Init();
 
-    FLAGS_endpoint = "127.0.0.1:9831";
-
     {
+        FLAGS_endpoint = "127.0.0.1:9832";
         // showtablet
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
@@ -176,12 +175,21 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
         "                   c6 double,\n"
         "                   c7 timestamp,\n"
         "                   c8 date,\n"
-        "                   index(key=c1, ts=c7));";
+        "                   index(key=c1, ts=c7))OPTIONS(partitionnum=4);";
+    std::string ddl2 =
+        "create table trans1(c1 string,\n"
+        "                   c3 int,\n"
+        "                   c4 bigint,\n"
+        "                   c5 float,\n"
+        "                   c6 double,\n"
+        "                   c7 timestamp,\n"
+        "                   c8 date,\n"
+        "                   index(key=c1, ts=c7))OPTIONS(partitionnum=4);";
     auto router = GetNewSQLRouter();
     if (!router) {
         FAIL() << "Fail new cluster sql router";
     }
-    std::string db = "test";
+    std::string db = "test1";
     hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
     router->ExecuteDDL(db, "drop table trans;", &status);
@@ -189,23 +197,26 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     if (!router->ExecuteDDL(db, ddl, &status)) {
         FAIL() << "fail to create table";
     }
+    if (!router->ExecuteDDL(db, ddl2, &status)) {
+        FAIL() << "fail to create table";
+    }
     ASSERT_TRUE(router->RefreshCatalog());
     // insert
-    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    std::string insert_sql = "insert into trans1 values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     // create procedure
     std::string sp_name = "sp";
     std::string sql =
         "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
-        " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        " (UNION trans1 PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     std::string sp_ddl = "create procedure " + sp_name +
                          " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
                          ")" + " begin " + sql + " end;";
     if (!router->ExecuteDDL(db, sp_ddl, &status)) {
         FAIL() << "fail to create procedure";
     }
-    // call procedure
     ASSERT_TRUE(router->RefreshCatalog());
+    // call procedure
     auto request_row = router->GetRequestRow(db, sql, &status);
     ASSERT_TRUE(request_row);
     request_row->Init(2);
@@ -247,13 +258,29 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
     ASSERT_FALSE(rs->Next());
 
-    ShowTable(name_server_client, db, 1);
+    // create another procedure
+    std::string sp_name1 = "sp1";
+    std::string sp_ddl1 = "create procedure " + sp_name1 +
+                          " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
+                          ")" + " begin " + sql + " end;";
+    if (!router->ExecuteDDL(db, sp_ddl1, &status)) {
+        FAIL() << "fail to create procedure";
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ShowTable(name_server_client, db, 2);
     // drop table fail
     DropTable(name_server_client, db, "trans", false);
     // drop procedure sp
     DropProcedure(name_server_client, db, sp_name);
+    // drop table fail
+    DropTable(name_server_client, db, "trans", false);
+    // drop procedure sp1
+    DropProcedure(name_server_client, db, sp_name1);
     // drop table success
     DropTable(name_server_client, db, "trans", true);
+    // drop table success
+    DropTable(name_server_client, db, "trans1", true);
     ShowTable(name_server_client, db, 0);
 
     tb_server2.Stop(10);
@@ -269,7 +296,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::InitRandomDiskFlags("recover_procedure_test");
+    ::openmldb::test::InitRandomDiskFlags("procedure_recover_test");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }
