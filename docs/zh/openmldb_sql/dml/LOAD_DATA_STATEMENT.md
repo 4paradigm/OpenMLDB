@@ -201,9 +201,9 @@ curl http://<ns_endpoint>/NameServer/UpdateOfflineTableInfo -d '{"db":"<db_name>
 5. local的字符串不支持quote转义，所以如果你的字符串中存在quote字符，请使用cluster模式。
 6. cluster如果读取csv时解析失败，将会把失败的列值设为NULL，继续导入流程，但local模式会直接报错，不会继续导入。
 7. csv的编码格式推荐使用UTF-8，不支持GB一类的中文字符编码。如果csv导入后表数据中的中文为乱码，请先转换csv源数据的格式再导入，参考命令：
-	```bash
-	iconv -f GBK -t UTF-8 gbk.csv > utf8.csv
-	```
+    ```bash
+    iconv -f GBK -t UTF-8 gbk.csv > utf8.csv
+    ```
 
 ## PutIfAbsent说明
 
