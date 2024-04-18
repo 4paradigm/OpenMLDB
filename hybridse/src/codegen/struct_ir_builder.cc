@@ -21,8 +21,10 @@
 #include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/map_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
+#include "node/node_manager.h"
 
 namespace hybridse {
 namespace codegen {
@@ -40,19 +42,34 @@ bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Valu
 
 absl::StatusOr<std::unique_ptr<StructTypeIRBuilder>> StructTypeIRBuilder::CreateStructTypeIRBuilder(
     ::llvm::Module* m, ::llvm::Type* type) {
-    node::DataType base_type;
-    if (!GetBaseType(type, &base_type)) {
-        return absl::UnimplementedError(
-            absl::StrCat("fail to create struct type ir builder for ", GetLlvmObjectString(type)));
+    node::NodeManager nm;
+    const node::TypeNode* ctype = nullptr;
+    if (!GetFullType(&nm, type, &ctype)) {
+        return absl::InvalidArgumentError(absl::StrCat("can't get full type for: ", GetLlvmObjectString(type)));
     }
 
-    switch (base_type) {
+    switch (ctype->base()) {
         case node::kTimestamp:
             return std::make_unique<TimestampIRBuilder>(m);
         case node::kDate:
             return std::make_unique<DateIRBuilder>(m);
         case node::kVarchar:
             return std::make_unique<StringIRBuilder>(m);
+        case node::DataType::kMap: {
+            assert(ctype->IsMap() && "logic error: not a map type");
+            auto map_type = ctype->GetAsOrNull<node::MapType>();
+            assert(map_type != nullptr && "logic error: map type empty");
+            ::llvm::Type* key_type = nullptr;
+            ::llvm::Type* value_type = nullptr;
+            if (codegen::GetLlvmType(m, map_type->key_type(), &key_type) &&
+                codegen::GetLlvmType(m, map_type->value_type(), &value_type)) {
+                return std::make_unique<MapIRBuilder>(m, key_type, value_type);
+            } else {
+                return absl::InvalidArgumentError(
+                    absl::Substitute("not able to casting map type: $0", GetLlvmObjectString(type)));
+            }
+            break;
+        }
         default: {
             break;
         }
@@ -224,5 +241,16 @@ absl::StatusOr<std::vector<llvm::Value*>> StructTypeIRBuilder::Load(CodeGenConte
 
     return res;
 }
+
+absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Type* type) {
+    if (TypeIRBuilder::IsStructPtr(type)) {
+        auto s = StructTypeIRBuilder::CreateStructTypeIRBuilder(block->getModule(), type);
+        CHECK_ABSL_STATUSOR(s);
+        return s.value()->CreateNull(block);
+    }
+
+    return NativeValue(nullptr, nullptr, type);
+}
+
 }  // namespace codegen
 }  // namespace hybridse

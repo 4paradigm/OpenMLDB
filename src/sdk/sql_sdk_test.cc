@@ -23,17 +23,11 @@
 #include <string>
 #include <vector>
 
-#include "base/file_util.h"
 #include "base/glog_wrapper.h"
-#include "codec/fe_row_codec.h"
-#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
-#include "sdk/sql_sdk_base_test.h"
-#include "test/base_test.h"
 #include "test/util.h"
-#include "vm/catalog.h"
 
 namespace openmldb {
 namespace sdk {
@@ -44,6 +38,7 @@ std::shared_ptr<SQLRouter> router_ = std::shared_ptr<SQLRouter>();
 static void SetOnlineMode(std::shared_ptr<SQLRouter> router) {
     ::hybridse::sdk::Status status;
     router->ExecuteSQL("SET @@execute_mode='online';", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
 }
 
 static std::shared_ptr<SQLRouter> GetNewSQLRouter() {

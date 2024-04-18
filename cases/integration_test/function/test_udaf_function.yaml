@@ -2026,7 +2026,7 @@ cases:
           - [12, 0, "b"]
     sql: |
       SELECT {0}.id, 
-        count_where(id, ifnull(c1, "a") = ifnull(first_value(c1), "a")) OVER w1 AS count_where
+        count_where(id, ifnull(c1, "a") = ifnull(last_value(c1), "a")) OVER w1 AS count_where
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
@@ -2455,7 +2455,7 @@ cases:
       `val1`,
       lag(val1, 0) over w1 as agg1,
       lag(val1, 3) over w1 as agg2,
-      first_value(val1) over w1 as agg3
+      last_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
     expect:
@@ -2534,7 +2534,7 @@ cases:
       `val1`,
       lag(val1, 0) over w1 as agg1,
       lag(val1, 3) over w1 as agg2,
-      first_value(val1) over w1 as agg3
+      last_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
     expect:

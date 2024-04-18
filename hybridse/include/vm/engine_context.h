@@ -24,8 +24,9 @@
 namespace hybridse {
 namespace vm {
 
-enum EngineMode { kBatchMode, kRequestMode, kMockRequestMode, kBatchRequestMode };
+enum EngineMode { kBatchMode, kRequestMode, kMockRequestMode, kBatchRequestMode, kOffline };
 std::string EngineModeName(EngineMode mode);
+absl::StatusOr<EngineMode> UnparseEngineMode(absl::string_view);
 
 struct BatchRequestInfo {
     // common column indices in batch request mode

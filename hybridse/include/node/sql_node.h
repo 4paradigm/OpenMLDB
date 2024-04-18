@@ -45,10 +45,10 @@ class LlvmUdfGenBase;
 namespace hybridse {
 namespace node {
 
-class ConstNode;
+class ExprNode;
 class WithClauseEntry;
 
-typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
+typedef std::unordered_map<std::string, const ExprNode*> OptionsMap;
 
 // Global methods
 std::string NameOfSqlNodeType(const SqlNodeType &type);
@@ -1520,22 +1520,28 @@ class FnDefNode : public SqlNode {
 
 class CastExprNode : public ExprNode {
  public:
-    explicit CastExprNode(const node::DataType cast_type, node::ExprNode *expr)
+    explicit CastExprNode(const node::TypeNode *cast_type, node::ExprNode *expr)
         : ExprNode(kExprCast), cast_type_(cast_type) {
         this->AddChild(expr);
     }
-
     ~CastExprNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *that) const override;
     CastExprNode *ShadowCopy(NodeManager *) const override;
     static CastExprNode *CastFrom(ExprNode *node);
 
     ExprNode *expr() const { return GetChild(0); }
-    const DataType cast_type_;
+    const TypeNode *cast_type() const { return cast_type_; }
+
+    // legacy interface, required by offline batch
+    // pls use cast_type() as much as possible
+    node::DataType base_cast_type() const;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    const TypeNode *cast_type_;
 };
 
 class WhenExprNode : public ExprNode {
@@ -1623,6 +1629,10 @@ class BinaryExpr : public ExprNode {
  public:
     BinaryExpr() : ExprNode(kExprBinary) {}
     explicit BinaryExpr(FnOperator op) : ExprNode(kExprBinary), op_(op) {}
+    BinaryExpr(FnOperator op, ExprNode *lhs, ExprNode *rhs) : ExprNode(kExprBinary), op_(op) {
+        AddChild(lhs);
+        AddChild(rhs);
+    }
     FnOperator GetOp() const { return op_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -2572,6 +2582,7 @@ class FnReturnStmt : public FnNode {
     ExprNode *return_expr_;
 };
 
+// DEPRECATED!
 class StructExpr : public ExprNode {
  public:
     explicit StructExpr(const std::string &name) : ExprNode(kExprStruct), class_name_(name) {}
@@ -2590,6 +2601,26 @@ class StructExpr : public ExprNode {
     const std::string class_name_;
     FnNodeList *fileds_;
     FnNodeList *methods_;
+};
+
+// (expr1, expr2, ...)
+class StructCtorWithParens : public ExprNode {
+ public:
+    explicit StructCtorWithParens(absl::Span<ExprNode *const> fields)
+        : ExprNode(kExprStructCtorParens) {
+        for (auto e : fields) {
+            AddChild(e);
+        }
+    }
+    ~StructCtorWithParens() override {}
+
+    absl::Span<ExprNode *const> fields() const { return children_; }
+
+    // LOW priority
+    // void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    StructCtorWithParens *ShadowCopy(NodeManager *nm) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
 class ExternalFnDefNode : public FnDefNode {
@@ -2997,6 +3028,20 @@ class InputParameterNode : public SqlNode {
     std::string column_name_;
     DataType column_type_;
     bool is_constant_;
+};
+
+class CallStmt : public SqlNode {
+ public:
+    CallStmt(const std::vector<std::string> names, const std::vector<ExprNode *> args)
+        : SqlNode(kCallStmt, 0, 0), procedure_name_(names), arguments_(args) {}
+    ~CallStmt() override {}
+
+    const std::vector<std::string> &procedure_name() const { return procedure_name_; }
+    const std::vector<ExprNode *> &arguments() const { return arguments_; }
+
+ private:
+    const std::vector<std::string> procedure_name_;
+    const std::vector<ExprNode*> arguments_;
 };
 
 std::string ExprString(const ExprNode *expr);

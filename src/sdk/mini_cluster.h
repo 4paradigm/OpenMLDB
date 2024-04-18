@@ -72,20 +72,22 @@ class MiniCluster {
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
 
     ~MiniCluster() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
+
         for (const auto& kv : tb_clients_) {
             delete kv.second;
         }
 
         if (ns_client_) {
             delete ns_client_;
-        }
-
-        if (user_access_manager_) {
-            delete user_access_manager_;
-        }
-
-        if (ns_authenticator_) {
-            delete ns_authenticator_;
         }
 
         if (ts_authenticator_) {
@@ -160,6 +162,15 @@ class MiniCluster {
     }
 
     void Close() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
         nameserver->CloseThreadpool();
         ns_.Stop(10);
         ns_.Join();
@@ -260,17 +271,20 @@ class StandaloneEnv {
  public:
     StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
     ~StandaloneEnv() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
         if (tb_client_) {
             delete tb_client_;
         }
         if (ns_client_) {
             delete ns_client_;
-        }
-        if (user_access_manager_) {
-            delete user_access_manager_;
-        }
-        if (ns_authenticator_) {
-            delete ns_authenticator_;
         }
         if (ts_authenticator_) {
             delete ts_authenticator_;
@@ -333,6 +347,15 @@ class StandaloneEnv {
     }
 
     void Close() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
         nameserver->CloseThreadpool();
         ns_.Stop(10);
         ns_.Join();

@@ -30,7 +30,7 @@ namespace codegen {
 class InsertRowBuilderTest : public ::testing::Test {};
 
 TEST_F(InsertRowBuilderTest, encode) {
-    std::string sql = "insert into t1 values (1, map (1, '12'))";
+    std::string sql = "insert into t1 values (1, map (1, '12'), null, map())";
     vm::SqlContext ctx;
     ctx.sql = sql;
     auto s = plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
@@ -49,6 +49,18 @@ TEST_F(InsertRowBuilderTest, encode) {
         auto col = sc.Add();
         auto map_ty = col->mutable_schema()->mutable_map_type();
         map_ty->mutable_key_type()->set_base_type(type::kInt32);
+        map_ty->mutable_value_type()->set_base_type(type::kVarchar);
+    }
+    {
+        auto col = sc.Add();
+        auto map_ty = col->mutable_schema()->mutable_map_type();
+        map_ty->mutable_key_type()->set_base_type(type::kFloat);
+        map_ty->mutable_value_type()->set_base_type(type::kTimestamp);
+    }
+    {
+        auto col = sc.Add();
+        auto map_ty = col->mutable_schema()->mutable_map_type();
+        map_ty->mutable_key_type()->set_base_type(type::kDate);
         map_ty->mutable_value_type()->set_base_type(type::kVarchar);
     }
 
