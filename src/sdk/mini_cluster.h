@@ -72,6 +72,11 @@ class MiniCluster {
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
 
     ~MiniCluster() {
+        if (tablet_user_access_manager_) {
+            delete tablet_user_access_manager_;
+            tablet_user_access_manager_ = nullptr;
+        }
+
         if (user_access_manager_) {
             delete user_access_manager_;
             user_access_manager_ = nullptr;
@@ -130,8 +135,9 @@ class MiniCluster {
             PDLOG(WARNING, "Failed to get table info for user table");
             return false;
         }
-        user_access_manager_ =
-            new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator(), user_table_info_);
+        user_access_manager_ = new openmldb::auth::UserAccessManager(
+            nameserver->GetSystemTableIterator(),
+            std::make_unique<::openmldb::codec::Schema>(user_table_info_->column_desc()));
         ns_authenticator_ = new openmldb::authn::BRPCAuthenticator(
             [this](const std::string& host, const std::string& username, const std::string& password) {
                 return user_access_manager_->IsAuthenticated(host, username, password);
@@ -162,6 +168,11 @@ class MiniCluster {
     }
 
     void Close() {
+        if (tablet_user_access_manager_) {
+            delete tablet_user_access_manager_;
+            tablet_user_access_manager_ = nullptr;
+        }
+
         if (user_access_manager_) {
             delete user_access_manager_;
             user_access_manager_ = nullptr;
@@ -220,8 +231,13 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
+
+        tablet_user_access_manager_ = new openmldb::auth::UserAccessManager(
+            tablet->GetSystemTableIterator(), tablet->GetSystemTableColumnDesc(::openmldb::nameserver::USER_INFO_NAME));
         ts_authenticator_ = new openmldb::authn::BRPCAuthenticator(
-            [](const std::string& host, const std::string& username, const std::string& password) { return false; });
+            [this](const std::string& host, const std::string& username, const std::string& password) {
+                return tablet_user_access_manager_->IsAuthenticated(host, username, password);
+            });
 
         brpc::ServerOptions options;
         options.auth = ts_authenticator_;
@@ -264,6 +280,7 @@ class MiniCluster {
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
     openmldb::authn::BRPCAuthenticator* ts_authenticator_;
     openmldb::auth::UserAccessManager* user_access_manager_;
+    openmldb::auth::UserAccessManager* tablet_user_access_manager_;
     std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
 };
 
@@ -271,6 +288,11 @@ class StandaloneEnv {
  public:
     StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
     ~StandaloneEnv() {
+        if (tablet_user_access_manager_) {
+            delete tablet_user_access_manager_;
+            tablet_user_access_manager_ = nullptr;
+        }
+
         if (user_access_manager_) {
             delete user_access_manager_;
             user_access_manager_ = nullptr;
@@ -317,8 +339,9 @@ class StandaloneEnv {
             PDLOG(WARNING, "Failed to get table info for user table");
             return false;
         }
-        user_access_manager_ =
-            new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator(), user_table_info_);
+        user_access_manager_ = new openmldb::auth::UserAccessManager(
+            nameserver->GetSystemTableIterator(),
+            std::make_unique<::openmldb::codec::Schema>(user_table_info_->column_desc()));
         ns_authenticator_ = new openmldb::authn::BRPCAuthenticator(
             [this](const std::string& host, const std::string& username, const std::string& password) {
                 return user_access_manager_->IsAuthenticated(host, username, password);
@@ -347,6 +370,11 @@ class StandaloneEnv {
     }
 
     void Close() {
+        if (tablet_user_access_manager_) {
+            delete tablet_user_access_manager_;
+            tablet_user_access_manager_ = nullptr;
+        }
+
         if (user_access_manager_) {
             delete user_access_manager_;
             user_access_manager_ = nullptr;
@@ -385,9 +413,12 @@ class StandaloneEnv {
             return false;
         }
 
+        tablet_user_access_manager_ = new openmldb::auth::UserAccessManager(
+            tablet->GetSystemTableIterator(), tablet->GetSystemTableColumnDesc(::openmldb::nameserver::USER_INFO_NAME));
         ts_authenticator_ = new openmldb::authn::BRPCAuthenticator(
-            [](const std::string& host, const std::string& username, const std::string& password) { return false; });
-
+            [this](const std::string& host, const std::string& username, const std::string& password) {
+                return tablet_user_access_manager_->IsAuthenticated(host, username, password);
+            });
         brpc::ServerOptions options;
         options.auth = ts_authenticator_;
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -418,6 +449,7 @@ class StandaloneEnv {
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
     openmldb::authn::BRPCAuthenticator* ts_authenticator_;
     openmldb::auth::UserAccessManager* user_access_manager_;
+    openmldb::auth::UserAccessManager* tablet_user_access_manager_;
     std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
 };
 

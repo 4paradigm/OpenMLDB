@@ -259,10 +259,10 @@ class ClientManager {
 
  private:
     std::unordered_map<std::string, std::string> real_endpoint_map_;
-    const openmldb::authn::AuthToken auth_token_;
     std::unordered_map<std::string, std::shared_ptr<TabletAccessor>> clients_;
     mutable ::openmldb::base::SpinMutex mu_;
     mutable ::openmldb::base::Random rand_;
+    const openmldb::authn::AuthToken auth_token_;
 };
 
 }  // namespace catalog

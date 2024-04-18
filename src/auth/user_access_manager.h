@@ -32,7 +32,8 @@ class UserAccessManager {
     using IteratorFactory =
         std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>;
 
-    UserAccessManager(IteratorFactory iterator_factory, std::shared_ptr<nameserver::TableInfo> user_table_info);
+    UserAccessManager(IteratorFactory iterator_factory,
+                      std::unique_ptr<const openmldb::codec::Schema> user_table_schema);
     ~UserAccessManager();
     bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
 
@@ -42,6 +43,7 @@ class UserAccessManager {
     RefreshableMap<std::string, std::string> user_map_;
     std::atomic<bool> sync_task_running_{false};
     std::thread sync_task_thread_;
+    std::unique_ptr<const openmldb::codec::Schema> user_table_schema_;
 
     void SyncWithDB();
     void StartSyncTask();

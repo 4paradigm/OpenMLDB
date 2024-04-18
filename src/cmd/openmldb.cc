@@ -151,7 +151,8 @@ void StartNameServer() {
         PDLOG(WARNING, "Failed to get table info for user table");
         exit(1);
     }
-    openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
+    openmldb::auth::UserAccessManager user_access_manager(
+        name_server->GetSystemTableIterator(), std::make_unique<::openmldb::codec::Schema>(table_info->column_desc()));
     brpc::ServerOptions options;
     openmldb::authn::BRPCAuthenticator server_authenticator(
         [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
