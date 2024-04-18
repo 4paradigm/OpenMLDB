@@ -1086,6 +1086,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
     // range bias won't work cuz no new abs index in deploy
     index_res = rows_test("rows_bias=20, range_bias='inf'");
     ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    // invalid bias format
     rows_test("rows_bias=20s", false);
     i--;  // last one is failed, reset the num
 
@@ -1100,19 +1101,32 @@ TEST_P(DBSDKTest, DeployWithBias) {
         auto info = sr->GetTableInfo(db, "t1");
         return info.column_key().Get(1);
     };
+    // test index is lat now, add range, it will be absanlat
     index_res = range_test("range_bias=0");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);  // ref d1 deploy
     index_res = range_test("range_bias=20");
     ASSERT_EQ(index_res.ttl().abs_ttl(), 2);
     // rows bias won't work cuz no **new** lat index in deploy, just new abs index + the old index
     index_res = range_test("range_bias=1d, rows_bias=100");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);  // ref d1 deploy
 
     // set inf in the end, if not, all bias + inf = inf
+    // bias won't work cuz no **new** abs index in deploy
     index_res = rows_test("range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    index_res = range_test("range_bias='inf'");
+    // never expired, it'll be std to abs 0
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsoluteTime);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
     index_res = rows_test("rows_bias='inf'");
-    ASSERT_EQ(index_res.ttl().lat_ttl(), 0);
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsoluteTime);
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
 
     // sp in tablet may be stored a bit late, wait
     sleep(3);

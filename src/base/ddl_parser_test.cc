@@ -304,8 +304,6 @@ class DDLParserTest : public ::testing::Test {
 };
 
 TEST_F(DDLParserTest, ttlMerge) {
-    // old ttl miss some fields
-
     // values: {abs ttl, lat ttl}
     auto test_func = [](type::TTLType old_type, std::initializer_list<uint64_t> old_values, type::TTLType new_type,
                         std::initializer_list<uint64_t> new_values, bool should_update, type::TTLType expect_type,
@@ -319,17 +317,15 @@ TEST_F(DDLParserTest, ttlMerge) {
         new_ttl.set_ttl_type(new_type);
         new_ttl.set_abs_ttl(*new_values.begin());
         new_ttl.set_lat_ttl(*(new_values.begin() + 1));
-
-        ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update)
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
-        ASSERT_TRUE(result.ttl_type() == expect_type);
-        ASSERT_EQ(result.abs_ttl(), *expect_values.begin())
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
-        ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1))
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
+        {
+            SCOPED_TRACE(
+                absl::StrCat("old ttl[", old_ttl.ShortDebugString(), "], new ttl[", new_ttl.ShortDebugString(), "]"));
+            ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update);
+            ASSERT_TRUE(result.ttl_type() == expect_type)
+                << "expect " << expect_type << ", but got " << result.ttl_type();
+            ASSERT_EQ(result.abs_ttl(), *expect_values.begin());
+            ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1));
+        }
     };
 
     auto test_same_type = [&](type::TTLType type, std::initializer_list<uint64_t> old_values,
@@ -345,23 +341,56 @@ TEST_F(DDLParserTest, ttlMerge) {
     test_same_type(type::TTLType::kAbsAndLat, {10, 20}, {5, 30}, true, {10, 30});
     test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {20, 30}, true, {20, 30});
     test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {5, 30}, true, {10, 30});
+
+    // just old ttl after merged, but we do std cvt in merge, result will be changed
+    test_func(type::TTLType::kAbsOrLat, {0, 0}, type::TTLType::kAbsOrLat, {1, 2}, true, type::TTLType::kAbsoluteTime,
+              {0, 0});
+    test_func(type::TTLType::kAbsAndLat, {0, 10}, type::TTLType::kAbsOrLat, {1, 2}, true, type::TTLType::kAbsoluteTime,
+              {0, 0});
+
     // different type
     // abs + lat
-    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsOrLat,
+    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsAndLat,
               {1, 2});
-    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsOrLat,
+    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsAndLat,
               {4, 3});
 
     // abs + complex type
-    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, false,
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, true, type::TTLType::kAbsAndLat,
+              {10, 6});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {15, 6}, true,
+              type::TTLType::kAbsAndLat, {15, 6});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, false,
               type::TTLType::kAbsoluteTime, {10, 0});
-    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, true, type::TTLType::kAbsOrLat,
-              {10, 8});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {17, 8}, true,
+              type::TTLType::kAbsoluteTime, {17, 0});
+    // swap
+    test_func(type::TTLType::kAbsAndLat, {5, 6}, type::TTLType::kAbsoluteTime, {10, 0}, true, type::TTLType::kAbsAndLat,
+              {10, 6});
+    test_func(type::TTLType::kAbsAndLat, {15, 6}, type::TTLType::kAbsoluteTime, {10, 0}, false,
+              type::TTLType::kAbsAndLat, {15, 6});
+    test_func(type::TTLType::kAbsOrLat, {7, 8}, type::TTLType::kAbsoluteTime, {10, 0}, true,
+              type::TTLType::kAbsoluteTime, {10, 0});
+    test_func(type::TTLType::kAbsOrLat, {17, 8}, type::TTLType::kAbsoluteTime, {10, 0}, true,
+              type::TTLType::kAbsoluteTime, {17, 0});
     // lat + complex type
-    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, false,
-              type::TTLType::kLatestTime, {0, 11});
-    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kAbsOrLat,
-              {14, 15});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, true, type::TTLType::kAbsAndLat,
+              {12, 11});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kLatestTime,
+              {0, 15});
+    // swap
+    test_func(type::TTLType::kAbsAndLat, {12, 6}, type::TTLType::kLatestTime, {0, 11}, true, type::TTLType::kAbsAndLat,
+              {12, 11});
+    test_func(type::TTLType::kAbsOrLat, {14, 15}, type::TTLType::kLatestTime, {0, 11}, true, type::TTLType::kLatestTime,
+              {0, 15});
+
+    // and + or
+    test_func(type::TTLType::kAbsAndLat, {10, 20}, type::TTLType::kAbsOrLat, {30, 40}, true, type::TTLType::kAbsAndLat,
+              {30, 40});
+    test_func(type::TTLType::kAbsOrLat, {10, 20}, type::TTLType::kAbsAndLat, {30, 40}, true, type::TTLType::kAbsAndLat,
+              {30, 40});
+    test_func(type::TTLType::kAbsAndLat, {0, 20}, type::TTLType::kAbsOrLat, {20, 30}, true,
+              type::TTLType::kAbsoluteTime, {0, 0});
 }
 
 // create procedure: only inner plan will be sql compiled.
