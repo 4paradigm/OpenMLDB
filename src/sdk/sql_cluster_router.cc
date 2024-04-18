@@ -2680,14 +2680,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     // functions we called later may not change the status if it's succeed. So if we pass error status here, we'll get a
     // fake error
     status->SetOK();
-    hybridse::node::NodeManager node_manager;
-    hybridse::node::PlanNodeList plan_trees;
-    hybridse::base::Status sql_status;
-    hybridse::plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, &node_manager, sql_status);
+    hybridse::vm::SqlContext ctx;
+    ctx.sql = sql;
+    auto sql_status = hybridse::plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
     if (!sql_status.isOK()) {
         COPY_PREPEND_AND_WARN(status, sql_status, "create logic plan tree failed");
         return {};
     }
+
+    auto& plan_trees = ctx.logical_plan;
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "no ns client, retry or check ns process");
@@ -3081,6 +3082,43 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 *status = {StatusCode::kCmdError, absl::StrCat("invalid component ", target)};
             }
             return {};
+        }
+        case hybridse::node::kPlanTypeCallStmt: {
+            auto* call = dynamic_cast<hybridse::node::CallStmtPlan*>(node);
+            std::string db = db_;
+            std::string procedure_name;
+            if (call->procedure_name().size() == 1) {
+                procedure_name = call->procedure_name().at(0);
+            } else if (call->procedure_name().size() == 2) {
+                db = call->procedure_name().at(0);
+                procedure_name = call->procedure_name().at(1);
+            } else {
+                *status = {StatusCode::kCmdError,
+                           absl::StrCat("invalid procedure name: ", absl::StrJoin(call->procedure_name(), "."))};
+                return {};
+            }
+            auto req = GetRequestRowByProcedure(db, procedure_name, status);
+            if (!status->IsOK()) {
+                return {};
+            }
+            auto sc = std::dynamic_pointer_cast<hybridse::sdk::SchemaImpl>(req->GetSchema());
+            ::hybridse::vm::Engine::InitializeGlobalLLVM();
+            hybridse::base::Status s;
+            auto jit = std::shared_ptr<hybridse::vm::HybridSeJitWrapper>(
+                hybridse::vm::HybridSeJitWrapper::CreateWithDefaultSymbols(&s));
+            if (!s.isOK()) {
+                APPEND_FROM_BASE(status, s, "");
+                return {};
+            }
+            hybridse::codec::SliceBuilder builder(jit.get(), &sc->GetSchema());
+            hybridse::base::RefCountedSlice slice;
+            s = builder.Build(call->arguments(), &slice);
+            if (!s.isOK()) {
+                APPEND_FROM_BASE(status, s, "");
+                return {};
+            }
+            base::Slice sl(slice.data(), slice.size(), false);
+            return CallProcedure(db, procedure_name, sl, "", status);
         }
         default: {
             *status = {StatusCode::kCmdError, "Unsupported command"};
@@ -3696,16 +3734,18 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
     }
     fun->set_file((*option)["FILE"]->GetExprString());
     if (auto iter = option->find("RETURN_NULLABLE"); iter != option->end()) {
-        if (iter->second->GetDataType() != hybridse::node::kBool) {
+        auto cnode = iter->second->GetAsOrNull<hybridse::node::ConstNode>();
+        if (cnode == nullptr || cnode->GetDataType() != hybridse::node::kBool) {
             return {StatusCode::kCmdError, "return_nullable should be bool"};
         }
-        fun->set_return_nullable(iter->second->GetBool());
+        fun->set_return_nullable(cnode->GetBool());
     }
     if (auto iter = option->find("ARG_NULLABLE"); iter != option->end()) {
-        if (iter->second->GetDataType() != hybridse::node::kBool) {
+        auto cnode = iter->second->GetAsOrNull<hybridse::node::ConstNode>();
+        if (cnode == nullptr || cnode->GetDataType() != hybridse::node::kBool) {
             return {StatusCode::kCmdError, "arg_nullable should be bool"};
         }
-        fun->set_arg_nullable(iter->second->GetBool());
+        fun->set_arg_nullable(cnode->GetBool());
     }
     hybridse::sdk::Status st;
     if (cluster_sdk_->IsClusterMode()) {
@@ -3833,13 +3873,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     Bias bias;
     iter = deploy_node->Options()->find(RANGE_BIAS_OPTION);
     if (iter != deploy_node->Options()->end()) {
-        if (!bias.SetRange(iter->second)) {
+        if (!bias.SetRange(iter->second->GetAsOrNull<hybridse::node::ConstNode>())) {
             return {StatusCode::kCmdError, "range bias '" + iter->second->GetExprString() + "' is illegal"};
         }
     }
     iter = deploy_node->Options()->find(ROWS_BIAS_OPTION);
     if (iter != deploy_node->Options()->end()) {
-        if (!bias.SetRows(iter->second)) {
+        if (!bias.SetRows(iter->second->GetAsOrNull<hybridse::node::ConstNode>())) {
             return {StatusCode::kCmdError, "rows bias '" + iter->second->GetExprString() + "' is illegal"};
         }
     }

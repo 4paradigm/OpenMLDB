@@ -60,7 +60,6 @@ class InsertRowBuilder {
     absl::StatusOr<llvm::Function*> BuildFn(CodeGenContext* ctx, llvm::StringRef fn_name,
                                             absl::Span<node::ExprNode* const>);
 
-    // CodeGenContextBase* ctx_;
     const codec::Schema* schema_;
     vm::HybridSeJitWrapper* jit_;
     std::atomic<uint32_t> fn_counter_ = 0;

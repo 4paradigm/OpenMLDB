@@ -809,6 +809,22 @@ class AlterTableStmtPlanNode : public LeafPlanNode {
     std::vector<const AlterActionBase *> actions_;
 };
 
+class CallStmtPlan : public LeafPlanNode {
+ public:
+    CallStmtPlan(const std::vector<std::string> names, const std::vector<ExprNode *> args)
+        : LeafPlanNode(kPlanTypeCallStmt), procedure_name_(names), arguments_(args) {}
+    ~CallStmtPlan() override {}
+
+    const std::vector<std::string> &procedure_name() const { return procedure_name_; }
+    const std::vector<ExprNode *> &arguments() const { return arguments_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+ private:
+    const std::vector<std::string> procedure_name_;
+    const std::vector<ExprNode*> arguments_;
+};
+
 bool PlanEquals(const PlanNode *left, const PlanNode *right);
 bool PlanListEquals(const std::vector<PlanNode *> &list1, const std::vector<PlanNode *> &list2);
 void PrintPlanVector(std::ostream &output, const std::string &tab, PlanNodeList vec, const std::string vector_name,

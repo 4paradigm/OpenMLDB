@@ -109,7 +109,7 @@ object SimpleProjectPlan {
 
       case ExprType.kExprCast =>
         val cast = CastExprNode.CastFrom(expr)
-        val castType = cast.getCast_type_
+        val castType = cast.base_cast_type
         val (childCol, childType) =
           createSparkColumn(spark, inputDf, node, cast.GetChild(0))
         val castColumn = ConstProjectPlan.castSparkOutputCol(

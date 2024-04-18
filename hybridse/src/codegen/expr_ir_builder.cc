@@ -229,7 +229,7 @@ Status ExprIRBuilder::BuildConstExpr(
     ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     switch (const_node->GetDataType()) {
         case ::hybridse::node::kNull: {
-            *output = NativeValue(nullptr, nullptr, llvm::Type::getTokenTy(builder.getContext()));
+            *output = NativeValue(nullptr, nullptr, llvm::Type::getVoidTy(builder.getContext()));
             break;
         }
         case ::hybridse::node::kBool: {
@@ -649,14 +649,10 @@ Status ExprIRBuilder::BuildCastExpr(const ::hybridse::node::CastExprNode* node,
 
     CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
     ::llvm::Type* cast_type = NULL;
-    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), node->cast_type_, &cast_type),
-               kCodegenError, "Fail to cast expr: dist type invalid");
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), node->cast_type(), &cast_type), kCodegenError,
+               "Fail to cast expr: dist type invalid");
 
-    if (cast_builder.IsSafeCast(left.GetType(), cast_type)) {
-        return cast_builder.SafeCast(left, cast_type, output);
-    } else {
-        return cast_builder.UnSafeCast(left, cast_type, output);
-    }
+    return cast_builder.Cast(left, cast_type, output);
 }
 
 Status ExprIRBuilder::BuildBinaryExpr(const ::hybridse::node::BinaryExpr* node,

@@ -203,7 +203,7 @@ cases:
     sql: |
       SELECT
         {0}.id, c1,
-        count(case when c2 > first_value(c2) over w1 then c3 else null end) OVER w1 as m2,
+        count(case when c2 > last_value(c2) over w1 then c3 else null end) OVER w1 as m2,
         sum(nvl(c3, 14)) OVER w1 as m3
       FROM {0} WINDOW
         w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);

@@ -16,6 +16,7 @@
 #ifndef HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
 #define HYBRIDSE_INCLUDE_PLAN_PLAN_API_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -48,6 +49,8 @@ class PlanAPI {
     static const int GetPlanLimitCount(node::PlanNode* plan_trees);
     static const std::string GenerateName(const std::string prefix, int id);
 };
+
+absl::Status ParseStatement(absl::string_view, std::unique_ptr<zetasql::ParserOutput>*);
 
 // Parse the input str and SQL type and convert to TypeNode representation
 //

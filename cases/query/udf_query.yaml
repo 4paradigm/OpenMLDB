@@ -557,6 +557,7 @@ cases:
 
   # ================================================================
   # Map data type
+  # FIXME: request mode tests disabled, because TestRequestEngineForLastRow cause SEG FAULT
   # ================================================================
   - id: 13
     mode: request-unsupport
@@ -637,3 +638,17 @@ cases:
         1, abc
         2, null
 
+  - id: 19
+    mode: request-unsupport
+    desc: empty or null map
+    sql: |
+      select cast (null as map<int, string>)[0] as o1,
+        cast (null as map<string, int>) ["12"] as o2,
+        cast (map() as map<string, int64>) ["12"] as o3,
+        cast (map() as map<int, timestamp>) [7] as o4,
+        cast (map(7, "9") as map<int, string>) [7] as o5,
+        cast (map() as map<date, timestamp>) [date("2012-12-12")] as o6,
+    expect:
+      columns: ["o1 string", "o2 int", "o3 int64", "o4 timestamp", "o5 string", "o6 timestamp"]
+      data: |
+        NULL, NULL, NULL, NULL, 9, NULL

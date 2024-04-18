@@ -145,9 +145,10 @@ static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap()
       {kExprEscaped, "escape"},
       {kExprArray, "array"},
       {kExprArrayElement, "array element"},
+      {kExprStructCtorParens, "struct with parens"},
   };
   for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
-        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+      DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
   }
   return map;
 }
@@ -851,12 +852,12 @@ void CastExprNode::Print(std::ostream &output, const std::string &org_tab) const
     ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    PrintValue(output, tab, DataTypeName(cast_type_), "cast_type", false);
+    PrintValue(output, tab, cast_type_->DebugString(), "cast_type", false);
     output << "\n";
     PrintSqlNode(output, tab, expr(), "expr", true);
 }
 const std::string CastExprNode::GetExprString() const {
-    std::string str = DataTypeName(cast_type_);
+    std::string str = cast_type_->DebugString();
     str.append("(").append(ExprString(expr())).append(")");
     return str;
 }
@@ -868,7 +869,7 @@ bool CastExprNode::Equals(const ExprNode *node) const {
         return false;
     }
     const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
-    return this->cast_type_ == that->cast_type_ && ExprEquals(expr(), that->expr());
+    return TypeEquals(cast_type_, that->cast_type()) && ExprEquals(expr(), that->expr());
 }
 CastExprNode *CastExprNode::CastFrom(ExprNode *node) { return dynamic_cast<CastExprNode *>(node); }
 
@@ -1191,6 +1192,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kWithClauseEntry, "kWithClauseEntry"},
         {kAlterTableStmt, "kAlterTableStmt"},
         {kColumnSchema, "kColumnSchema"},
+        {kCallStmt, "kCallStmt"},
     };
     for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
         DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
@@ -2763,7 +2765,7 @@ std::string SetOptionsAction::DebugString() const {
         }
         absl::StrAppend(&output, kv.first);
         absl::StrAppend(&output, "=");
-        absl::StrAppend(&output, kv.second->GetAsString());
+        absl::StrAppend(&output, kv.second->GetExprString());
     }
     return absl::Substitute("SetOptionsAction ($0)", output);
 }
