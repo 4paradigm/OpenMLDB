@@ -50,49 +50,42 @@ template <typename T> struct Discrete<std::tuple<T>> {
 
     void operator()(ParamType v, bool is_null, int32_t* feature_signature, int64_t* ret, bool* null_flag) {
         *feature_signature = kFeatureSignatureDiscrete;
-        *null_flag = is_null;
         if (!is_null) {
             *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
         }
+        *null_flag = is_null;
     }
 };
 
 template <typename T> struct Discrete<std::tuple<T, int32_t>> {
-    using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>, Nullable<int32_t>);
+    using Args = Tuple<int32_t, Nullable<int64_t>, int64_t>(Nullable<T>, Nullable<int32_t>);
     using ParamType = typename DataTypeTrait<T>::CCallArgType;
 
     void operator()(ParamType v, bool is_null, int32_t bucket_size, bool bucket_null,
-            int32_t* feature_signature, int64_t* ret, bool* null_flag) {
-        *feature_signature = kFeatureSignatureDiscrete;
-        *null_flag = is_null;
-        if (!is_null) {
-            *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
-            if (!bucket_null) {
-                uint64_t mod = static_cast<int64_t>(bucket_size);
-                if (mod) {
-                    *ret %= mod;
-                }
-            }
-        }
+            int32_t* feature_signature, int64_t* ret, bool* null_flag, int64_t* ret_bucket_size) {
+        Discrete<std::tuple<T, int64_t>>()(v, is_null, bucket_size, bucket_null,
+              feature_signature, ret, null_flag, ret_bucket_size);
     }
 };
 
 template <typename T> struct Discrete<std::tuple<T, int64_t>> {
-    using Args = Tuple<int32_t, Nullable<int64_t>>(Nullable<T>, Nullable<int64_t>);
+    using Args = Tuple<int32_t, Nullable<int64_t>, int64_t>(Nullable<T>, Nullable<int64_t>);
     using ParamType = typename DataTypeTrait<T>::CCallArgType;
 
     void operator()(ParamType v, bool is_null, int64_t bucket_size, bool bucket_null,
-            int32_t* feature_signature, int64_t* ret, bool* null_flag) {
+            int32_t* feature_signature, int64_t* ret, bool* null_flag, int64_t* bucket_size_ret) {
         *feature_signature = kFeatureSignatureDiscrete;
-        *null_flag = is_null;
-        if (!is_null) {
-            *ret = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
-            if (!bucket_null) {
-                uint64_t mod = static_cast<int64_t>(bucket_size);
-                if (mod) {
-                    *ret %= mod;
-                }
+        if (!bucket_null && bucket_size > 0) {
+            if (!is_null) {
+                uint64_t hash = FarmFingerprint(CCallDataTypeTrait<ParamType>::to_bytes_ref(&v));
+                *ret = hash % static_cast<uint64_t>(bucket_size);
             }
+            *null_flag = is_null;
+            *bucket_size_ret = bucket_size;
+        } else {
+            *ret = 0;
+            *null_flag = true;
+            *bucket_size_ret = 0;
         }
     }
 };
@@ -148,6 +141,12 @@ struct InstanceFormatHelper {
         return formatting;
     }
 
+    static InstanceFormat* UpdateDiscrete(InstanceFormat* formatting, int32_t feature_signature,
+            int64_t input, bool is_null, int64_t bucket_size) {
+        formatting->UpdateDiscrete(feature_signature, input, is_null, bucket_size);
+        return formatting;
+    }
+
     static void Output(InstanceFormat* formatting, StringRef* output) {
         std::string instance = formatting->Output();
         char* buffer = udf::v1::AllocManagedStringBuf(instance.size() + 1);
@@ -172,6 +171,7 @@ struct InstanceFormatHelper {
               .template update<Tuple<int32_t, Nullable<int64_t>>>(Update<int64_t>)
               .template update<Tuple<int32_t, Nullable<float>>>(Update<float>)
               .template update<Tuple<int32_t, Nullable<double>>>(Update<double>)
+              .template update<Tuple<int32_t, Nullable<int64_t>, int64_t>>(UpdateDiscrete)
               .output(Output);
     }
 };
@@ -244,6 +244,10 @@ struct GCFormat {
         }
     }
 
+    void UpdateDiscrete(int32_t feature_signature, int64_t input, bool is_null, int64_t) {
+        return Update<int64_t>(feature_signature, input, is_null);
+    }
+
     std::string Output() {
         return instance_label + "|" + instance_feature;
     }
@@ -295,6 +299,10 @@ struct CSV {
             }
         }
         ++slot_number;
+    }
+
+    void UpdateDiscrete(int32_t feature_signature, int64_t input, bool is_null, int64_t) {
+        return Update<int64_t>(feature_signature, input, is_null);
     }
 
     std::string Output() {
@@ -351,6 +359,28 @@ struct LIBSVM {
             }
             default: {
                 break;
+            }
+        }
+    }
+
+    void UpdateDiscrete(int32_t feature_signature, int64_t input, bool is_null, int64_t bucket_size) {
+        if (bucket_size == 0) {
+            Update<int64_t>(feature_signature, input, is_null);
+        } else {
+            switch (feature_signature) {
+                case kFeatureSignatureDiscrete: {
+                    if (!is_null) {
+                        if (!instance_feature.empty()) {
+                            instance_feature += " ";
+                        }
+                        instance_feature += format_discrete(slot_number + input) + ":1";
+                    }
+                    slot_number += bucket_size;
+                    break;
+                }
+                default: {
+                    break;
+                }
             }
         }
     }

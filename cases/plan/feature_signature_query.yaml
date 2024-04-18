@@ -46,3 +46,18 @@ cases:
           continuous(abs(col1)),
           discrete(col6, 1))
       FROM t1;
+  - id: 3
+    desc: feature signature select const no label
+    sql: |
+      SELECT libsvm(
+          continuous(int(col0)),
+          multiclass_label(col1),
+          discrete(col6),
+          continuous(abs(col1)),
+          discrete(col6, 100),
+          discrete(col6, 100),
+          discrete(col6),
+          discrete(int("null"), 1000),
+          discrete(1000, int("null")),
+          continuous(abs(col1))) as instance
+      FROM (select * from t1) as out1;

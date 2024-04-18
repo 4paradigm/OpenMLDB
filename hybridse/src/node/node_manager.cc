@@ -1008,13 +1008,6 @@ LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args, E
     return RegisterNode(new node::LambdaNode(args, body));
 }
 
-node::VariadicUdfDefNode *NodeManager::MakeVariadicUdfDefNode(const std::string &name,
-                                                              FnDefNode *init_func,
-                                                              const std::vector<FnDefNode *>& update_func,
-                                                              FnDefNode *output_func) {
-    return RegisterNode(new node::VariadicUdfDefNode(name, init_func, update_func, output_func));
-}
-
 
 CondExpr *NodeManager::MakeCondExpr(ExprNode *condition, ExprNode *left, ExprNode *right) {
     return RegisterNode(new CondExpr(condition, left, right));

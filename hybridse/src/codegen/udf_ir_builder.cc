@@ -758,7 +758,7 @@ Status UdfIRBuilder::BuildVariadicUdfCall(const node::VariadicUdfDefNode* fn,
                                           NativeValue* output) {
     CHECK_TRUE(arg_types.size() == args.size(), kCodegenError);
     CHECK_TRUE(fn->GetArgSize() == args.size(), kCodegenError);
-    std::vector<NativeValue> cur_state_values(1 + fn->update_func().size());
+    NativeValue cur_state_value;
     std::vector<const node::TypeNode*> init_arg_types;
     std::vector<NativeValue> init_args;
     for (size_t i = 0; i < fn->init_func()->GetArgSize(); ++i) {
@@ -768,7 +768,7 @@ Status UdfIRBuilder::BuildVariadicUdfCall(const node::VariadicUdfDefNode* fn,
     }
     UdfIRBuilder sub_udf_builder_init(ctx_, frame_arg_, frame_);
     CHECK_STATUS(sub_udf_builder_init.BuildCall(fn->init_func(),
-          init_arg_types, init_args, &cur_state_values[0]));
+          init_arg_types, init_args, &cur_state_value));
 
     const node::TypeNode* cur_state_value_type = fn->init_func()->GetReturnType();
     for (size_t i = 0; i < fn->update_func().size(); ++i) {
@@ -776,17 +776,17 @@ Status UdfIRBuilder::BuildVariadicUdfCall(const node::VariadicUdfDefNode* fn,
             cur_state_value_type, arg_types[fn->init_func()->GetArgSize() + i]
         };
         std::vector<NativeValue> update_args = {
-            cur_state_values[i], args[fn->init_func()->GetArgSize() + i]
+            cur_state_value, args[fn->init_func()->GetArgSize() + i]
         };
         UdfIRBuilder sub_udf_builder_update(ctx_, frame_arg_, frame_);
         CHECK_STATUS(sub_udf_builder_update.BuildCall(fn->update_func()[i],
-            update_arg_types, update_args, &cur_state_values[i + 1]));
+            update_arg_types, update_args, &cur_state_value));
         cur_state_value_type = fn->update_func()[i]->GetReturnType();
     }
 
     NativeValue local_output;
     std::vector<const node::TypeNode*> output_arg_types = {cur_state_value_type};
-    std::vector<NativeValue> output_args = {cur_state_values.back()};
+    std::vector<NativeValue> output_args = {cur_state_value};
     UdfIRBuilder sub_udf_builder_output(ctx_, frame_arg_, frame_);
     CHECK_STATUS(sub_udf_builder_output.BuildCall(fn->output_func(),
         output_arg_types, output_args, &local_output));

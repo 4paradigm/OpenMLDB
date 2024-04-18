@@ -385,10 +385,6 @@ class NodeManager {
                                  FnDefNode *merge_func, FnDefNode *output_func);
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
-    VariadicUdfDefNode *MakeVariadicUdfDefNode(const std::string &name,
-                                               FnDefNode *init_func,
-                                               const std::vector<FnDefNode *>& update_func,
-                                               FnDefNode *output_func);
 
     SqlNode *MakePartitionMetaNode(RoleType role_type,
                                    const std::string &endpoint);

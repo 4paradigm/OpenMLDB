@@ -76,7 +76,6 @@ enum SqlNodeType {
     kUdfByCodeGenDef,
     kUdafDef,
     kLambdaDef,
-    kVariadicUdfDef,
     kPartitionMeta,
     kReplicaNum,
     kDistributions,
@@ -101,6 +100,7 @@ enum SqlNodeType {
     kAlterUserStmt,
     kCallStmt,
     kSqlNodeTypeLast,  // debug type
+    kVariadicUdfDef,
 };
 
 enum class ShowStmtType {

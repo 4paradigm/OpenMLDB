@@ -1930,7 +1930,7 @@ class VariadicUdfDefGenBase {
 
     std::shared_ptr<UdfRegistry> init_gen;
     ArgSignatureTable update_gen;
-    std::unordered_map<std::string, ArgSignatureTable> output_gen;
+    std::unordered_map<std::string, std::shared_ptr<UdfRegistry>> output_gen;
     int variadic_pos;
 };
 
@@ -2090,7 +2090,7 @@ class VariadicUdfRegistryHelper : public UdfRegistryHelper {
             library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
                 ret_type, fn_ptr.return_nullable, {state_ty_}, {state_nullable_}, -1, fn_ptr.return_by_arg));
         auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
-        cur_def_->output_gen[ret_type->GetName()].Register({state_ty_}, false, registry);
+        cur_def_->output_gen[ret_type->GetName()] = registry;
         library()->AddExternalFunction(fname, fn_ptr.ptr);
         return *this;
     }

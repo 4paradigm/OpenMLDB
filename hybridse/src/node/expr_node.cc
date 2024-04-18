@@ -1163,7 +1163,7 @@ UdafDefNode* UdafDefNode::DeepCopy(NodeManager* nm) const {
 }
 
 VariadicUdfDefNode* VariadicUdfDefNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeVariadicUdfDefNode(name_, init_, update_, output_);
+    return nm->MakeNode<VariadicUdfDefNode>(name_, init_, update_, output_);
 }
 
 VariadicUdfDefNode* VariadicUdfDefNode::DeepCopy(NodeManager* nm) const {
@@ -1173,7 +1173,7 @@ VariadicUdfDefNode* VariadicUdfDefNode::DeepCopy(NodeManager* nm) const {
         new_update.push_back(update_func ? update_func->DeepCopy(nm): nullptr);
     }
     FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
-    return nm->MakeVariadicUdfDefNode(name_, new_init, new_update, new_output);
+    return nm->MakeNode<VariadicUdfDefNode>(name_, new_init, new_update, new_output);
 }
 
 // Default expr deep copy: shadow copy self and deep copy children

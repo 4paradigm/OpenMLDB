@@ -390,17 +390,14 @@ Status VariadicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                "Resolve output type failure: <" + return_type->GetName() + ">");
     std::vector<node::ExprNode*> output_args = {state_arg};
     UdfResolveContext output_ctx(output_args, nm, ctx->library());
-    std::shared_ptr<UdfRegistry> output_registry;
-    CHECK_STATUS(output_it->second.Find(
-        &output_ctx, &output_registry, &signature, &variadic_pos));
+    std::shared_ptr<UdfRegistry> output_registry = output_it->second;
     CHECK_TRUE(output_registry != nullptr, kCodegenError);
-    CHECK_TRUE(variadic_pos == -1, kCodegenError);
     CHECK_STATUS(output_registry->ResolveFunction(ctx, &output_func));
     CHECK_TRUE(output_func != nullptr, kCodegenError);
     CHECK_TRUE(output_func->GetReturnType()->Equals(return_type), kCodegenError);
     CHECK_TRUE(output_func->IsReturnNullable() == return_nullable, kCodegenError,
                "Infer variadic udf output type nullable not inconsistent");
-    *result = ctx->node_manager()->MakeVariadicUdfDefNode(
+    *result = ctx->node_manager()->MakeNode<node::VariadicUdfDefNode>(
           name(), init_func, update_funcs, output_func);
     return Status::OK();
 }
