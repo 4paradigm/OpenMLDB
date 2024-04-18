@@ -10003,7 +10003,11 @@ void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionR
 
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
-        {"execute_mode", "offline"}, {"enable_trace", "false"}, {"sync_job", "false"}, {"job_timeout", "20000"}};
+        {"execute_mode", "online"},
+        {"enable_trace", "false"},
+        {"sync_job", "false"},
+        {"job_timeout", "20000"}
+    };
     // get table_info
     std::string db = INFORMATION_SCHEMA_DB;
     std::string table = GLOBAL_VARIABLES;
