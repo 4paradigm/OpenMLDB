@@ -1297,7 +1297,6 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             }
         }
         openmldb::base::Slice value = it->GetValue();
-        DLOG(INFO) << "encode pk " << it->GetPK() << " ts " << it->GetKey() << " size " << value.size();
         ::openmldb::codec::EncodeFull(it->GetPK(), it->GetKey(), value.data(), value.size(), &buf);
         scount++;
         if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
@@ -1320,8 +1319,6 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     buf.copy_to(response->mutable_pairs());
     delete it;
-    DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
-               << " last_time " << last_time << " ts_pos " << ts_pos;
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_count(scount);
     response->set_pk(last_pk);
@@ -5813,53 +5810,48 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
     response->set_code(ReturnCode::kOk);
 }
 
-std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>
+std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                      std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
 TabletImpl::GetSystemTableIterator() {
-    return [this](const std::string& table_name) -> std::unique_ptr<::openmldb::catalog::FullTableIterator> {
+    return [this](const std::string& table_name)
+               -> std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                          std::unique_ptr<openmldb::codec::Schema>>> {
         for (const auto& [tid, tables] : tables_) {
-            for (const auto& [tid, table] : tables) {
+            for (const auto& [pid, table] : tables) {
                 if (table->GetName() == table_name) {
                     auto handler = catalog_->GetTable(table->GetDB(), table->GetName());
                     if (!handler) {
                         PDLOG(WARNING, "no TableHandler. tid %u, table %s", table->GetId(), table->GetName());
-                        return nullptr;
+                        return std::nullopt;
                     }
                     auto tablet_table_handler = std::dynamic_pointer_cast<catalog::TabletTableHandler>(handler);
                     if (!tablet_table_handler) {
                         PDLOG(WARNING, "convert TableHandler. tid %u, table %s", table->GetId(), table->GetName());
-                        return nullptr;
+                        return std::nullopt;
                     }
                     const ::openmldb::codec::Schema test = table->GetTableMeta()->column_desc();
-                    uint32_t pid_num = tablet_table_handler->GetPartitionNum();
                     auto table_client_manager = tablet_table_handler->GetTableClientManager();
+                    if (table_client_manager == nullptr) {
+                        return std::nullopt;
+                    }
+                    auto tablet = table_client_manager->GetTablet(pid);
+                    if (tablet == nullptr) {
+                        return std::nullopt;
+                    }
+                    auto client = tablet->GetClient();
+                    if (client == nullptr) {
+                        return std::nullopt;
+                    }
                     std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> tablet_clients = {
-                        {0, table_client_manager->GetTablet(pid_num)->GetClient()}};
-                    return std::make_unique<catalog::FullTableIterator>(table->GetId(), nullptr, tablet_clients);
+                        {0, client}};
+                    return {{std::make_unique<catalog::FullTableIterator>(table->GetId(), nullptr, tablet_clients),
+                             std::make_unique<::openmldb::codec::Schema>(table->GetTableMeta()->column_desc())}};
                 }
             }
         }
-        return nullptr;
+        return std::nullopt;
     };
 }
-std::unique_ptr<openmldb::codec::Schema> TabletImpl::GetSystemTableColumnDesc(const std::string& table_name) {
-    for (const auto& [tid, tables] : tables_) {
-        for (const auto& [tid, table] : tables) {
-            if (table->GetName() == table_name) {
-                auto handler = catalog_->GetTable(table->GetDB(), table->GetName());
-                if (!handler) {
-                    PDLOG(WARNING, "no TableHandler. tid %u, table %s", table->GetId(), table->GetName());
-                    return nullptr;
-                }
-                auto tablet_table_handler = std::dynamic_pointer_cast<catalog::TabletTableHandler>(handler);
-                if (!tablet_table_handler) {
-                    PDLOG(WARNING, "convert TableHandler. tid %u, table %s", table->GetId(), table->GetName());
-                    return nullptr;
-                }
-                return std::make_unique<::openmldb::codec::Schema>(table->GetTableMeta()->column_desc());
-            }
-        }
-    }
-    return nullptr;
-}
+
 }  // namespace tablet
 }  // namespace openmldb

@@ -9585,12 +9585,15 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
     response->set_msg("ok");
 }
 
-std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>
+std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                      std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
 NameServerImpl::GetSystemTableIterator() {
-    return [this](const std::string& table_name) -> std::unique_ptr<::openmldb::catalog::FullTableIterator> {
+    return [this](const std::string& table_name)
+               -> std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                          std::unique_ptr<openmldb::codec::Schema>>> {
         std::shared_ptr<TableInfo> table_info;
         if (!GetTableInfo(table_name, INTERNAL_DB, &table_info)) {
-            return nullptr;
+            return std::nullopt;
         }
         auto tid = table_info->tid();
         auto table_partition = table_info->table_partition(0);  // only one partition for system table
@@ -9598,13 +9601,17 @@ NameServerImpl::GetSystemTableIterator() {
             if (table_partition.partition_meta(meta_idx).is_leader() &&
                 table_partition.partition_meta(meta_idx).is_alive()) {
                 auto endpoint = table_partition.partition_meta(meta_idx).endpoint();
-                auto table_ptr = GetTablet(endpoint);
+                auto tablet_ptr = GetTablet(endpoint);
+                if (tablet_ptr == nullptr) {
+                    return std::nullopt;
+                }
                 std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> tablet_clients = {
-                    {0, table_ptr->client_}};
-                return std::make_unique<catalog::FullTableIterator>(tid, nullptr, tablet_clients);
+                    {0, tablet_ptr->client_}};
+                return {{std::make_unique<catalog::FullTableIterator>(tid, nullptr, tablet_clients),
+                         std::make_unique<::openmldb::codec::Schema>(table_info->column_desc())}};
             }
         }
-        return nullptr;
+        return std::nullopt;
     };
 }
 
