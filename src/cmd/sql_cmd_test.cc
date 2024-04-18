@@ -3951,7 +3951,7 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"enable_trace", "false"},
                           {"sync_job", "false"},
                           {"job_timeout", "20000"},
-                          {"execute_mode", "offline"}},
+                          {"execute_mode", "online"}},
                          rs.get());
     // init session variables from systemtable
     rs = sr->ExecuteSQL("show session variables", &status);
