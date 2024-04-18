@@ -392,7 +392,7 @@ Status UdfIRBuilder::BuildLlvmCall(const node::FnDefNode* fn,
     for (size_t i = 0; i < variadic_pos; ++i) {
         CHECK_STATUS(ExpandLlvmCallArgs(arg_types[i], arg_nullable[i],
                                         args[i], &builder, &llvm_args,
-                                        &should_ret_null), fn->GetName());
+                                        &should_ret_null));
     }
     size_t ret_pos_begin = llvm_args.size();
     if (return_by_arg) {

@@ -169,7 +169,7 @@ bool TypeNode::Equals(const SqlNode *node) const {
     }
 
     const TypeNode *that = dynamic_cast<const TypeNode *>(node);
-    return this->base_ == that->base_ &&
+    return this->base_ == that->base_ && this->generics_.size() == that->generics_.size() &&
            std::equal(
                this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
                [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return TypeEquals(a, b); });
