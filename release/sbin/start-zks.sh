@@ -32,7 +32,8 @@ do
   dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
   echo "start zookeeper in $dir with endpoint $host:$port "
-  cmd="cd $dir && bin/zkServer.sh start"
+  # ref deploy.sh zk_conf
+  cmd="cd $dir && bin/zkServer.sh start conf/zoo.cfg"
   # special for java
   pre=""
   if [[ -n $RUNNER_JAVA_HOME ]]; then
