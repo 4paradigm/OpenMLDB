@@ -31,7 +31,7 @@ sessionVariableName ::= '@@'Identifier | '@@session.'Identifier | '@@global.'Ide
 
 | SESSION系统变量                        | 变量描述                                                                                                          | 变量值                | 默认值    |
 | -------------------------------------- |---------------------------------------------------------------------------------------------------------------| --------------------- | --------- |
-| @@session.execute_mode｜@@execute_mode | OpenMDLB在当前会话下的执行模式。目前支持`offline`和`online`两种模式。<br />在离线执行模式下，只会导入/插入以及查询离线数据。<br />在在线执行模式下，只会导入/插入以及查询在线数据。 | "offline" \| "online" | "offline" |
+| @@session.execute_mode｜@@execute_mode | OpenMDLB在当前会话下的执行模式。目前支持`offline`和`online`两种模式。<br />在离线执行模式下，只会导入/插入以及查询离线数据。<br />在在线执行模式下，只会导入/插入以及查询在线数据。 | "offline" \| "online" | "online" |
 | @@session.enable_trace｜@@enable_trace | 当该变量值为 `true`，SQL语句有语法错误或者在计划生成过程发生错误时，会打印错误信息栈。<br />当该变量值为 `false`，SQL语句有语法错误或者在计划生成过程发生错误时，仅打印基本错误信息。      | "true" \| "false"     | "false"   |
 | @@session.sync_job｜@@sync_job | 当该变量值为 `true`，离线的命令将变为同步，等待执行的最终结果。<br />当该变量值为 `false`，离线的命令即时返回，若要查看命令的执行情况，请使用`SHOW JOB`。                  | "true" \| "false"     | "false"   |
 | @@session.job_timeout｜@@job_timeout | 可配置离线异步命令或离线管理命令的等待时间（以*毫秒*为单位），将立即返回。离线异步命令返回后仍可通过`SHOW JOB`查看命令执行情况。                             | Int | "20000" |
