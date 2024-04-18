@@ -372,7 +372,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
         base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
         return;
     }
-    PDLOG(INFO, "update table tid %u pid %u ttl to abs_ttl %lu lat_ttl %lu index_name %s", tid, pid, abs_ttl, lat_ttl,
+    PDLOG(INFO, "update table tid %u pid %u ttl meta to abs_ttl %lu lat_ttl %lu index_name %s", tid, pid, abs_ttl, lat_ttl,
           index_name.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
