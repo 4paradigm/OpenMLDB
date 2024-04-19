@@ -1,0 +1,63 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cases:
+  - id: 0
+    desc: feature signature select const
+    mode: request-unsupport
+    sql: |
+      select gcformat(
+          continuous(1),
+          continuous(2),
+          discrete(3, 100),
+          discrete("x", 1),
+          regression_label(2),
+          continuous(5.5),
+          continuous(6.6)) as instance;
+  - id: 1
+    desc: feature signature select const no label
+    mode: request-unsupport
+    sql: |
+      select csv(
+          continuous(1),
+          continuous(2),
+          discrete(3, 100),
+          discrete("x", 1),
+          continuous(5.5),
+          continuous(POW(10, 1000)));
+  - id: 2
+    desc: feature signature select from
+    db: db1
+    sql: |
+      SELECT libsvm(
+          multiclass_label(col1),
+          continuous(int(col0)),
+          continuous(abs(col1)),
+          discrete(col6, 1))
+      FROM t1;
+  - id: 3
+    desc: feature signature select const no label
+    sql: |
+      SELECT libsvm(
+          continuous(int(col0)),
+          multiclass_label(col1),
+          discrete(col6),
+          continuous(abs(col1)),
+          discrete(col6, 100),
+          discrete(col6, 100),
+          discrete(col6),
+          discrete(int("null"), 1000),
+          discrete(1000, int("null")),
+          continuous(abs(col1))) as instance
+      FROM (select * from t1) as out1;

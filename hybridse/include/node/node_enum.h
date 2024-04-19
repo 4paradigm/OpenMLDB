@@ -100,6 +100,7 @@ enum SqlNodeType {
     kAlterUserStmt,
     kCallStmt,
     kSqlNodeTypeLast,  // debug type
+    kVariadicUdfDef,
 };
 
 enum class ShowStmtType {

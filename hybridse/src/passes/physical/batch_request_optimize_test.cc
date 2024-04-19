@@ -50,6 +50,9 @@ INSTANTIATE_TEST_SUITE_P(
     BatchRequestUdafQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    BatchRequestFeatureSignatureQuery, BatchRequestOptimizeTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/query/feature_signature_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     BatchRequestExtreamQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("cases/query/extream_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(

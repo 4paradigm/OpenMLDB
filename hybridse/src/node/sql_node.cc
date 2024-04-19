@@ -1161,6 +1161,7 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kUdfByCodeGenDef, "kUdfByCodeGenDef"},
         {kUdafDef, "kUdafDef"},
         {kLambdaDef, "kLambdaDef"},
+        {kVariadicUdfDef, "kVariadicUdfDef"},
         {kPartitionMeta, "kPartitionMeta"},
         {kCreateIndexStmt, "kCreateIndexStmt"},
         {kInsertStmt, "kInsertStmt"},
@@ -2550,6 +2551,26 @@ void UdafDefNode::Print(std::ostream &output, const std::string &org_tab) const 
     PrintSqlNode(output, tab, merge_, "merge", false);
     output << "\n";
     PrintSqlNode(output, tab, output_, "output", true);
+}
+
+void VariadicUdfDefNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << "[kVariadicUdfDef] " << name_;
+}
+
+bool VariadicUdfDefNode::Equals(const SqlNode *node) const {
+    auto other = dynamic_cast<const VariadicUdfDefNode *>(node);
+    if (other != nullptr) {
+        return false;
+    }
+    if (name_ != other->name_ || update_.size() != other->update_.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < update_.size(); ++i) {
+        if (!FnDefEquals(update_[i], other->update_[i])) {
+            return false;
+        }
+    }
+    return FnDefEquals(init_, other->init_) && FnDefEquals(output_, other->output_);
 }
 
 void CondExpr::Print(std::ostream &output, const std::string &org_tab) const {
