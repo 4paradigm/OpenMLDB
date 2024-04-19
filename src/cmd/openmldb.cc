@@ -151,8 +151,7 @@ void StartNameServer() {
         PDLOG(WARNING, "Failed to get table info for user table");
         exit(1);
     }
-    openmldb::auth::UserAccessManager user_access_manager(
-        name_server->GetSystemTableIterator(), std::make_unique<::openmldb::codec::Schema>(table_info->column_desc()));
+    openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator());
     brpc::ServerOptions options;
     openmldb::authn::BRPCAuthenticator server_authenticator(
         [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
@@ -257,8 +256,11 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
+    openmldb::auth::UserAccessManager user_access_manager(tablet->GetSystemTableIterator());
     openmldb::authn::BRPCAuthenticator server_authenticator(
-        [](const std::string& host, const std::string& username, const std::string& password) { return false; });
+        [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
+            return user_access_manager.IsAuthenticated(host, username, password);
+        });
     options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;

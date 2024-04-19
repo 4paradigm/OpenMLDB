@@ -16,7 +16,7 @@
 
         <java.version>11</java.version>
         <netty.version>4.1.68.Final</netty.version>
-        <mysql.version>8.0.23</mysql.version>
+        <mysql.version>8.0.28</mysql.version>
     </properties>
 
     <dependencies>

@@ -23,9 +23,9 @@
 #include "nameserver/system_table.h"
 
 namespace openmldb::auth {
-UserAccessManager::UserAccessManager(IteratorFactory iterator_factory,
-                                     std::unique_ptr<const openmldb::codec::Schema> user_table_schema)
-    : user_table_iterator_factory_(std::move(iterator_factory)), user_table_schema_(std::move(user_table_schema)) {
+
+UserAccessManager::UserAccessManager(IteratorFactory iterator_factory)
+    : user_table_iterator_factory_(std::move(iterator_factory)) {
     StartSyncTask();
 }
 
@@ -49,14 +49,15 @@ void UserAccessManager::StopSyncTask() {
 }
 
 void UserAccessManager::SyncWithDB() {
-    auto new_user_map = std::make_unique<std::unordered_map<std::string, std::string>>();
-    if (auto it = user_table_iterator_factory_(::openmldb::nameserver::USER_INFO_NAME); it != nullptr) {
+    if (auto it_pair = user_table_iterator_factory_(::openmldb::nameserver::USER_INFO_NAME); it_pair) {
+        auto new_user_map = std::make_unique<std::unordered_map<std::string, std::string>>();
+        auto it = it_pair->first.get();
         it->SeekToFirst();
         while (it->Valid()) {
             auto row = it->GetValue();
             auto buf = it->GetValue().buf();
             auto size = it->GetValue().size();
-            codec::RowView row_view(*user_table_schema_.get(), buf, size);
+            codec::RowView row_view(*it_pair->second.get(), buf, size);
             std::string host, user, password;
             row_view.GetStrValue(0, &host);
             row_view.GetStrValue(1, &user);

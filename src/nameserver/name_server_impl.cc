@@ -5592,7 +5592,7 @@ void NameServerImpl::OnLocked() {
     CreateDatabaseOrExit(INTERNAL_DB);
     if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
         auto temp = FLAGS_system_table_replica_num;
-        FLAGS_system_table_replica_num = temp == 0 ? 1 : temp;
+        FLAGS_system_table_replica_num = tablets_.size();
         CreateSystemTableOrExit(SystemTableType::kUser);
         FLAGS_system_table_replica_num = temp;
         InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -10010,7 +10010,11 @@ void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionR
 
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
-        {"execute_mode", "offline"}, {"enable_trace", "false"}, {"sync_job", "false"}, {"job_timeout", "20000"}};
+        {"execute_mode", "online"},
+        {"enable_trace", "false"},
+        {"sync_job", "false"},
+        {"job_timeout", "20000"}
+    };
     // get table_info
     std::string db = INFORMATION_SCHEMA_DB;
     std::string table = GLOBAL_VARIABLES;
