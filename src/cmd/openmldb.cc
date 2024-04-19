@@ -37,6 +37,8 @@
 #include "tablet/tablet_impl.h"
 #endif
 #include "apiserver/api_server_impl.h"
+#include "auth/brpc_authenticator.h"
+#include "auth/user_access_manager.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -143,7 +145,20 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to register name");
         exit(1);
     }
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    if (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                   &table_info)) {
+        PDLOG(WARNING, "Failed to get table info for user table");
+        exit(1);
+    }
+    openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
     brpc::ServerOptions options;
+    openmldb::authn::BRPCAuthenticator server_authenticator(
+        [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
+            return user_access_manager.IsAuthenticated(host, username, password);
+        });
+    options.auth = &server_authenticator;
+
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -241,6 +256,8 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
+    openmldb::authn::BRPCAuthenticator server_authenticator;
+    options.auth = &server_authenticator;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -1592,8 +1609,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
                 }
                 it = tb_client->Scan(tid, pid, key, "", st, et, limit, msg);
             } catch (std::exception const& e) {
-                std::cout << "Invalid args. st and et should be uint64_t, limit should"
-                          << "be uint32_t" << std::endl;
+                std::cout << "Invalid args. st and et should be uint64_t, limit should" << "be uint32_t" << std::endl;
                 return;
             }
         }
@@ -3692,8 +3708,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
-                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path, FLAGS_zk_auth_schema, FLAGS_zk_cert);
+        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", FLAGS_zk_session_timeout, "",
+                                                               FLAGS_zk_root_path, FLAGS_zk_auth_schema, FLAGS_zk_cert);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;

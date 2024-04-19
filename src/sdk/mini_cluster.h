@@ -21,9 +21,12 @@
 #include <unistd.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "auth/brpc_authenticator.h"
+#include "auth/user_access_manager.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "brpc/server.h"
@@ -69,6 +72,16 @@ class MiniCluster {
         : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
 
     ~MiniCluster() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
+
         for (const auto& kv : tb_clients_) {
             delete kv.second;
         }
@@ -108,7 +121,19 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
+        if (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                      &user_table_info_)) {
+            PDLOG(WARNING, "Failed to get table info for user table");
+            return false;
+        }
+        user_access_manager_ =
+            new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator(), user_table_info_);
+        ns_authenticator_ = new openmldb::authn::BRPCAuthenticator(
+            [this](const std::string& host, const std::string& username, const std::string& password) {
+                return user_access_manager_->IsAuthenticated(host, username, password);
+            });
         brpc::ServerOptions options;
+        options.auth = ns_authenticator_;
         if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add ns";
             return false;
@@ -133,6 +158,15 @@ class MiniCluster {
     }
 
     void Close() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
         nameserver->CloseThreadpool();
         ns_.Stop(10);
         ns_.Join();
@@ -183,6 +217,8 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions ts_opt;
+        ts_opt.auth = &tablet_authenticator_;
+
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
@@ -218,12 +254,25 @@ class MiniCluster {
     ::openmldb::client::NsClient* ns_client_;
     std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
     std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
+    openmldb::authn::BRPCAuthenticator tablet_authenticator_;
+    openmldb::authn::BRPCAuthenticator* ns_authenticator_;
+    openmldb::auth::UserAccessManager* user_access_manager_;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
 };
 
 class StandaloneEnv {
  public:
     StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
     ~StandaloneEnv() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
         if (tb_client_) {
             delete tb_client_;
         }
@@ -253,7 +302,19 @@ class StandaloneEnv {
         if (!ok) {
             return false;
         }
+        if (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
+                                      &user_table_info_)) {
+            PDLOG(WARNING, "Failed to get table info for user table");
+            return false;
+        }
+        user_access_manager_ =
+            new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator(), user_table_info_);
+        ns_authenticator_ = new openmldb::authn::BRPCAuthenticator(
+            [this](const std::string& host, const std::string& username, const std::string& password) {
+                return user_access_manager_->IsAuthenticated(host, username, password);
+            });
         brpc::ServerOptions options;
+        options.auth = ns_authenticator_;
         if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add ns";
             return false;
@@ -276,6 +337,15 @@ class StandaloneEnv {
     }
 
     void Close() {
+        if (user_access_manager_) {
+            delete user_access_manager_;
+            user_access_manager_ = nullptr;
+        }
+
+        if (ns_authenticator_) {
+            delete ns_authenticator_;
+            ns_authenticator_ = nullptr;
+        }
         nameserver->CloseThreadpool();
         ns_.Stop(10);
         ns_.Join();
@@ -305,6 +375,7 @@ class StandaloneEnv {
             return false;
         }
         brpc::ServerOptions ts_opt;
+        ts_opt.auth = &tablet_authenticator_;
         if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add tablet";
             return false;
@@ -330,6 +401,10 @@ class StandaloneEnv {
     uint64_t ns_port_ = 0;
     ::openmldb::client::NsClient* ns_client_;
     ::openmldb::client::TabletClient* tb_client_;
+    openmldb::authn::BRPCAuthenticator tablet_authenticator_;
+    openmldb::authn::BRPCAuthenticator* ns_authenticator_;
+    openmldb::auth::UserAccessManager* user_access_manager_;
+    std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
 };
 
 }  // namespace sdk

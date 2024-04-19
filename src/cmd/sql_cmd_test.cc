@@ -245,6 +245,7 @@ TEST_P(DBSDKTest, TestUser) {
     ASSERT_TRUE(status.IsOK());
     ASSERT_TRUE(true);
     auto opt = sr->GetRouterOptions();
+    std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
     if (cs->IsClusterMode()) {
         auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
         sdk::SQLRouterOptions opt1;
@@ -256,6 +257,7 @@ TEST_P(DBSDKTest, TestUser) {
         ASSERT_TRUE(router != nullptr);
         sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
         ASSERT_TRUE(status.IsOK());
+        std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
         router = NewClusterSQLRouter(opt1);
         ASSERT_FALSE(router != nullptr);
     } else {
@@ -269,6 +271,7 @@ TEST_P(DBSDKTest, TestUser) {
         ASSERT_TRUE(router != nullptr);
         sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
         ASSERT_TRUE(status.IsOK());
+        std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
         router = NewStandaloneSQLRouter(opt1);
         ASSERT_FALSE(router != nullptr);
     }

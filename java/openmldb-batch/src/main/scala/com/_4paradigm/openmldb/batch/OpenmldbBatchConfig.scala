@@ -159,7 +159,7 @@ class OpenmldbBatchConfig extends Serializable {
   var openmldbUser = "root"
 
   @ConfigOption(name = "openmldb.password", doc = "The password of OpenMLDB")
-  var openmldbPassword = "root"
+  var openmldbPassword = ""
 
   @ConfigOption(name = "openmldb.default.db", doc = "The default database for OpenMLDB SQL")
   var defaultDb = "default_db"

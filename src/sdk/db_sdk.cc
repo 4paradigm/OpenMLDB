@@ -45,7 +45,12 @@ std::shared_ptr<::openmldb::client::NsClient> DBSDK::GetNsClient() {
         DLOG(ERROR) << "fail to get ns address";
         return {};
     }
-    ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
+    if (auto options = GetOptions(); !options->user.empty()) {
+        ns_client = std::make_shared<::openmldb::client::NsClient>(
+            endpoint, real_endpoint, authn::UserToken{options->user, codec::Encrypt(options->password)});
+    } else {
+        ns_client = std::make_shared<::openmldb::client::NsClient>(endpoint, real_endpoint);
+    }
     int ret = ns_client->Init();
     if (ret != 0) {
         // We GetNsClient and use it without checking not null. It's intolerable.
@@ -142,8 +147,10 @@ bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::External
         ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-    if (engine_->RegisterExternalFunction(fun->name(), return_type, fun->return_nullable(),
-                arg_types, fun->arg_nullable(), fun->is_aggregate(), "").isOK()) {
+    if (engine_
+            ->RegisterExternalFunction(fun->name(), return_type, fun->return_nullable(), arg_types, fun->arg_nullable(),
+                                       fun->is_aggregate(), "")
+            .isOK()) {
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         external_fun_.emplace(fun->name(), fun);
         return true;
@@ -212,11 +219,8 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::openmldb::zk::ZkClient(options_->zk_cluster, "",
-                                              options_->zk_session_timeout, "",
-                                              options_->zk_path,
-                                              options_->zk_auth_schema,
-                                              options_->zk_cert);
+    zk_client_ = new ::openmldb::zk::ZkClient(options_->zk_cluster, "", options_->zk_session_timeout, "",
+                                              options_->zk_path, options_->zk_auth_schema, options_->zk_cert);
 
     bool ok = zk_client_->Init(options_->zk_log_level, options_->zk_log_file);
     if (!ok) {

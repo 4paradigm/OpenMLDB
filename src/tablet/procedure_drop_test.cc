@@ -43,11 +43,11 @@ using ::openmldb::nameserver::NameServerImpl;
 namespace openmldb {
 namespace tablet {
 
-class SqlClusterTest : public ::testing::Test {
+class ProcedureDropTest : public ::testing::Test {
  public:
-    SqlClusterTest() {}
+    ProcedureDropTest() {}
 
-    ~SqlClusterTest() {}
+    ~ProcedureDropTest() {}
 };
 
 std::shared_ptr<openmldb::sdk::SQLRouter> GetNewSQLRouter() {
@@ -125,150 +125,17 @@ void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
     ::openmldb::nameserver::ShowTableRequest request;
     ::openmldb::nameserver::ShowTableResponse response;
     request.set_db(db);
-    request.set_show_all(true);
+    request.set_show_all(false);
     bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTable, &request, &response,
                                              FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(response.table_info_size(), size);
 }
 
-TEST_F(SqlClusterTest, RecoverProcedure) {
+TEST_F(ProcedureDropTest, DropProcedureBeforeDropTable) {
     FLAGS_auto_failover = true;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
-
-    // ns1
-    FLAGS_endpoint = "127.0.0.1:9631";
-    brpc::Server ns_server;
-    StartNameServer(ns_server);
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
-    name_server_client.Init();
-
-    // tablet1
-    FLAGS_endpoint = "127.0.0.1:9831";
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
-    brpc::Server tb_server1;
-    ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
-    StartTablet(&tb_server1, tablet1);
-
-    {
-        // showtablet
-        ::openmldb::nameserver::ShowTabletRequest request;
-        ::openmldb::nameserver::ShowTabletResponse response;
-        bool ok = name_server_client.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowTablet, &request,
-                                                 &response, FLAGS_request_timeout_ms, 1);
-        ASSERT_TRUE(ok);
-        ASSERT_EQ(response.tablets_size(), 1);
-        ::openmldb::nameserver::TabletStatus status = response.tablets(0);
-        ASSERT_EQ(FLAGS_endpoint, status.endpoint());
-        ASSERT_EQ("kHealthy", status.state());
-    }
-
-    // create table
-    std::string ddl =
-        "create table trans(c1 string,\n"
-        "                   c3 int,\n"
-        "                   c4 bigint,\n"
-        "                   c5 float,\n"
-        "                   c6 double,\n"
-        "                   c7 timestamp,\n"
-        "                   c8 date,\n"
-        "                   index(key=c1, ts=c7));";
-    auto router = GetNewSQLRouter();
-    if (!router) {
-        FAIL() << "Fail new cluster sql router";
-    }
-    std::string db = "test";
-    hybridse::sdk::Status status;
-    ASSERT_TRUE(router->CreateDB(db, &status));
-    router->ExecuteDDL(db, "drop table trans;", &status);
-    ASSERT_TRUE(router->RefreshCatalog());
-    if (!router->ExecuteDDL(db, ddl, &status)) {
-        FAIL() << "fail to create table";
-    }
-    ASSERT_TRUE(router->RefreshCatalog());
-    // insert
-    std::string insert_sql = "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
-    ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
-    // create procedure
-    std::string sp_name = "sp";
-    std::string sql =
-        "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
-        " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string sp_ddl = "create procedure " + sp_name +
-                         " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" +
-                         ")" + " begin " + sql + " end;";
-    if (!router->ExecuteDDL(db, sp_ddl, &status)) {
-        FAIL() << "fail to create procedure";
-    }
-    // call procedure
-    ASSERT_TRUE(router->RefreshCatalog());
-    auto request_row = router->GetRequestRow(db, sql, &status);
-    ASSERT_TRUE(request_row);
-    request_row->Init(2);
-    ASSERT_TRUE(request_row->AppendString("bb"));
-    ASSERT_TRUE(request_row->AppendInt32(23));
-    ASSERT_TRUE(request_row->AppendInt64(33));
-    ASSERT_TRUE(request_row->AppendFloat(1.5f));
-    ASSERT_TRUE(request_row->AppendDouble(2.5));
-    ASSERT_TRUE(request_row->AppendTimestamp(1590738994000));
-    ASSERT_TRUE(request_row->AppendDate(1234));
-    ASSERT_TRUE(request_row->Build());
-    auto rs = router->CallProcedure(db, sp_name, request_row, &status);
-    if (!rs) FAIL() << "call procedure failed";
-    auto schema = rs->GetSchema();
-    ASSERT_EQ(schema->GetColumnCnt(), 3);
-    ASSERT_TRUE(rs->Next());
-    ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
-    ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
-    ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
-    ASSERT_FALSE(rs->Next());
-    // stop
-    tb_server1.Stop(10);
-    delete tablet1;
-    sleep(3);
-    rs = router->CallProcedure(db, sp_name, request_row, &status);
-    ASSERT_FALSE(rs);
-    // restart
-    brpc::Server tb_server2;
-    ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
-    StartTablet(&tb_server2, tablet2);
-    sleep(3);
-    rs = router->CallProcedure(db, sp_name, request_row, &status);
-    if (!rs) FAIL() << "call procedure failed";
-    schema = rs->GetSchema();
-    ASSERT_EQ(schema->GetColumnCnt(), 3);
-    ASSERT_TRUE(rs->Next());
-    ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
-    ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
-    ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
-    ASSERT_FALSE(rs->Next());
-
-    ShowTable(name_server_client, db, 1);
-    // drop table fail
-    DropTable(name_server_client, db, "trans", false);
-    // drop procedure sp
-    DropProcedure(name_server_client, db, sp_name);
-    // drop table success
-    DropTable(name_server_client, db, "trans", true);
-    ShowTable(name_server_client, db, 0);
-
-    tb_server2.Stop(10);
-    delete tablet2;
-}
-
-TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
-    FLAGS_auto_failover = true;
-    FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
-
-    // ns1
-    FLAGS_endpoint = "127.0.0.1:9632";
-    brpc::Server ns_server;
-    StartNameServer(ns_server);
-    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
-    name_server_client.Init();
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9832";
@@ -278,7 +145,15 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);
 
+    // ns1
+    FLAGS_endpoint = "127.0.0.1:9632";
+    brpc::Server ns_server;
+    StartNameServer(ns_server);
+    ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint, "");
+    name_server_client.Init();
+
     {
+        FLAGS_endpoint = "127.0.0.1:9832";
         // showtablet
         ::openmldb::nameserver::ShowTabletRequest request;
         ::openmldb::nameserver::ShowTabletResponse response;
@@ -421,7 +296,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::InitRandomDiskFlags("sql_cluster_availability_test");
+    ::openmldb::test::InitRandomDiskFlags("procedure_recover_test");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

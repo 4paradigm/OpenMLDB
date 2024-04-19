@@ -42,6 +42,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 
+#include "auth/brpc_authenticator.h"
 #include "base/glog_wrapper.h"
 #include "base/status.h"
 #include "proto/tablet.pb.h"
@@ -75,10 +76,22 @@ static SleepRetryPolicy sleep_retry_policy;
 template <class T>
 class RpcClient {
  public:
-    explicit RpcClient(const std::string& endpoint)
-        : endpoint_(endpoint), use_sleep_policy_(false), log_id_(0), stub_(NULL), channel_(NULL) {}
-    RpcClient(const std::string& endpoint, bool use_sleep_policy)
-        : endpoint_(endpoint), use_sleep_policy_(use_sleep_policy), log_id_(0), stub_(NULL), channel_(NULL) {}
+    explicit RpcClient(const std::string& endpoint,
+                       const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : endpoint_(endpoint),
+          use_sleep_policy_(false),
+          log_id_(0),
+          stub_(NULL),
+          channel_(NULL),
+          client_authenticator_(auth_token) {}
+    RpcClient(const std::string& endpoint, bool use_sleep_policy,
+              const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : endpoint_(endpoint),
+          use_sleep_policy_(use_sleep_policy),
+          log_id_(0),
+          stub_(NULL),
+          channel_(NULL),
+          client_authenticator_(auth_token) {}
     ~RpcClient() {
         delete channel_;
         delete stub_;
@@ -90,6 +103,8 @@ class RpcClient {
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
+        options.auth = &client_authenticator_;
+
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;
         }
@@ -148,7 +163,8 @@ class RpcClient {
     template <class Request, class Response, class Callback>
     base::Status SendRequestSt(void (T::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
                                const Request* request, Response* response, uint64_t rpc_timeout, int retry_times) {
-        return SendRequestSt(func, [](brpc::Controller* cntl) {}, request, response, rpc_timeout, retry_times);
+        return SendRequestSt(
+            func, [](brpc::Controller* cntl) {}, request, response, rpc_timeout, retry_times);
     }
 
     template <class Request, class Response, class Callback, typename Func>
@@ -218,10 +234,12 @@ class RpcClient {
 
  private:
     std::string endpoint_;
+    std::string auth_str_;
     bool use_sleep_policy_;
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;
+    authn::BRPCAuthenticator client_authenticator_;
 };
 
 template <class Response>

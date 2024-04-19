@@ -28,6 +28,7 @@
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "client/taskmanager_client.h"
+#include "codec/encrypt.h"
 #include "common/thread_pool.h"
 #include "sdk/options.h"
 #include "vm/catalog.h"
@@ -49,9 +50,8 @@ struct ClusterOptions {
     std::string to_string() {
         std::stringstream ss;
         ss << "zk options [cluster:" << zk_cluster << ", path:" << zk_path
-           << ", zk_session_timeout:" << zk_session_timeout
-           << ", log_level:" << zk_log_level << ", log_file:" << zk_log_file
-           << ", zk_auth_schema:" << zk_auth_schema << ", zk_cert:" << zk_cert << "]";
+           << ", zk_session_timeout:" << zk_session_timeout << ", log_level:" << zk_log_level
+           << ", log_file:" << zk_log_file << ", zk_auth_schema:" << zk_auth_schema << ", zk_cert:" << zk_cert << "]";
         return ss.str();
     }
 };

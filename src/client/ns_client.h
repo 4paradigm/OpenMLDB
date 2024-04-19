@@ -46,7 +46,8 @@ struct TabletInfo {
 
 class NsClient : public Client {
  public:
-    explicit NsClient(const std::string& endpoint, const std::string& real_endpoint);
+    explicit NsClient(const std::string& endpoint, const std::string& real_endpoint,
+                      const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"});
     ~NsClient() override = default;
 
     int Init() override;
@@ -191,7 +192,7 @@ class NsClient : public Client {
                    const std::string& ts_name, std::string& msg);  // NOLINT
 
     bool UpdateTTL(const std::string& db, const std::string& name, const ::openmldb::type::TTLType& type,
-            uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name, std::string& msg);  // NOLINT
+                   uint64_t abs_ttl, uint64_t lat_ttl, const std::string& ts_name, std::string& msg);  // NOLINT
 
     bool AddReplicaClusterByNs(const std::string& alias, const std::string& name, uint64_t term,
                                std::string& msg);  // NOLINT

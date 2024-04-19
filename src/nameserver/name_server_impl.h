@@ -31,6 +31,7 @@
 
 #include "base/hash.h"
 #include "base/random.h"
+#include "catalog/distribute_iterator.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
@@ -77,7 +78,6 @@ struct TabletInfo {
 
     bool Health() const { return state_ == ::openmldb::type::EndpointState::kHealthy; }
 };
-
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
@@ -140,7 +140,6 @@ class NameServerImpl : public NameServer {
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
-
     void RefreshTablet(uint32_t tid);
 
     void CreateTableInfoSimply(RpcController* controller, const CreateTableInfoRequest* request,
@@ -155,8 +154,8 @@ class NameServerImpl : public NameServer {
     void CreateProcedure(RpcController* controller, const api::CreateProcedureRequest* request,
                          GeneralResponse* response, Closure* done);
 
-    void DeploySQL(RpcController* controller, const DeploySQLRequest* request,
-                         DeploySQLResponse* response, Closure* done);
+    void DeploySQL(RpcController* controller, const DeploySQLRequest* request, DeploySQLResponse* response,
+                   Closure* done);
 
     void DropTableInternel(const DropTableRequest& request, GeneralResponse& response,  // NOLINT
                            std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
@@ -165,8 +164,8 @@ class NameServerImpl : public NameServer {
     void DropTable(RpcController* controller, const DropTableRequest* request, GeneralResponse* response,
                    Closure* done);
 
-    void TruncateTable(RpcController* controller, const TruncateTableRequest* request,
-            TruncateTableResponse* response, Closure* done);
+    void TruncateTable(RpcController* controller, const TruncateTableRequest* request, TruncateTableResponse* response,
+                       Closure* done);
 
     void AddTableField(RpcController* controller, const AddTableFieldRequest* request, GeneralResponse* response,
                        Closure* done);
@@ -182,11 +181,11 @@ class NameServerImpl : public NameServer {
     void CreateFunction(RpcController* controller, const CreateFunctionRequest* request,
                         CreateFunctionResponse* response, Closure* done);
 
-    void DropFunction(RpcController* controller, const DropFunctionRequest* request,
-                        DropFunctionResponse* response, Closure* done);
+    void DropFunction(RpcController* controller, const DropFunctionRequest* request, DropFunctionResponse* response,
+                      Closure* done);
 
-    void ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
-                        ShowFunctionResponse* response, Closure* done);
+    void ShowFunction(RpcController* controller, const ShowFunctionRequest* request, ShowFunctionResponse* response,
+                      Closure* done);
 
     void ShowProcedure(RpcController* controller, const api::ShowProcedureRequest* request,
                        api::ShowProcedureResponse* response, Closure* done);
@@ -309,7 +308,7 @@ class NameServerImpl : public NameServer {
 
     void UpdateOfflineTableInfo(::google::protobuf::RpcController* controller,
                                 const ::openmldb::nameserver::TableInfo* request,
-                       ::openmldb::nameserver::GeneralResponse* response, ::google::protobuf::Closure* done);
+                                ::openmldb::nameserver::GeneralResponse* response, ::google::protobuf::Closure* done);
 
     int SyncExistTable(const std::string& alias, const std::string& name, const std::string& db,
                        const std::vector<::openmldb::nameserver::TableInfo> tables_remote,
@@ -317,14 +316,15 @@ class NameServerImpl : public NameServer {
                        std::string& msg);                                                                   // NOLINT
 
     base::Status CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
-            bool is_leader, uint64_t term, std::map<uint32_t, std::vector<std::string>>* endpoint_map);
+                                     bool is_leader, uint64_t term,
+                                     std::map<uint32_t, std::vector<std::string>>* endpoint_map);
 
     void CheckZkClient();
 
     int UpdateTaskStatusRemote(bool is_recover_op);
 
-    int UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, const std::string& endpoint,
-                   bool is_recover_op, const ::openmldb::api::TaskStatusResponse& response);
+    int UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, const std::string& endpoint, bool is_recover_op,
+                   const ::openmldb::api::TaskStatusResponse& response);
 
     int UpdateTaskStatus(bool is_recover_op);
 
@@ -358,7 +358,15 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
+    std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>
+    GetSystemTableIterator();
+
+    bool GetTableInfo(const std::string& table_name, const std::string& db_name,
+                      std::shared_ptr<TableInfo>* table_info);
+
  private:
+    base::Status InsertUserRecord(const std::string& host, const std::string& user, const std::string& password);
+
     base::Status InitGlobalVarTable();
 
     // create the database if not exists, exit on fail
@@ -463,7 +471,7 @@ class NameServerImpl : public NameServer {
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
     template <typename T, typename... Arg>
-    std::shared_ptr<Task> CreateTask(Arg &&...arg) {
+    std::shared_ptr<Task> CreateTask(Arg&&... arg) {
         T meta(std::forward<Arg>(arg)...);
         return CreateTaskInternal(&meta);
     }
@@ -488,11 +496,8 @@ class NameServerImpl : public NameServer {
                                                      uint32_t pid, const std::vector<std::string>& endpoints,
                                                      const ::openmldb::common::ColumnKey& column_key);
 
-    bool GetTableInfo(const std::string& table_name, const std::string& db_name,
-            std::shared_ptr<TableInfo>* table_info);
-
     bool GetTableInfoUnlock(const std::string& table_name, const std::string& db_name,
-            std::shared_ptr<TableInfo>* table_info);
+                            std::shared_ptr<TableInfo>* table_info);
 
     int AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
                   std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,  // NOLINT
@@ -560,14 +565,13 @@ class NameServerImpl : public NameServer {
     base::Status CreateDeployOP(const DeploySQLRequest& request, uint64_t* op_id);
 
     base::Status CreateAddIndexOP(const std::string& name, const std::string& db,
-            const std::vector<::openmldb::common::ColumnKey>& column_key);
+                                  const std::vector<::openmldb::common::ColumnKey>& column_key);
 
     base::Status CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
 
-    base::Status FillAddIndexTask(uint64_t op_index, api::OPType op_type,
-            const std::string& name, const std::string& db,
-            const std::vector<::openmldb::common::ColumnKey>& column_key,
-            std::list<std::shared_ptr<Task>>* task_list);
+    base::Status FillAddIndexTask(uint64_t op_index, api::OPType op_type, const std::string& name,
+                                  const std::string& db, const std::vector<::openmldb::common::ColumnKey>& column_key,
+                                  std::list<std::shared_ptr<Task>>* task_list);
 
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
@@ -583,13 +587,13 @@ class NameServerImpl : public NameServer {
                                  std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     bool AddIndexToTableInfo(const std::string& name, const std::string& db,
-            const std::vector<::openmldb::common::ColumnKey>& column_key,
-            std::shared_ptr<::openmldb::api::TaskInfo> task_info);
+                             const std::vector<::openmldb::common::ColumnKey>& column_key,
+                             std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void WrapTaskFun(const boost::function<bool()>& fun, std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void WrapNormalTaskFun(const boost::function<base::Status()>& fun,
-            std::shared_ptr<::openmldb::api::TaskInfo> task_info);
+                           std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void RunSubTask(std::shared_ptr<Task> task);
     void RunSeqTask(std::shared_ptr<Task> task);
@@ -658,9 +662,8 @@ class NameServerImpl : public NameServer {
     bool AddFieldToTablet(const std::vector<openmldb::common::ColumnDesc>& cols, std::shared_ptr<TableInfo> table_info,
                           openmldb::common::VersionPair* new_pair);
 
-    base::Status AddMultiIndexs(const std::string& db, const std::string& name,
-            std::shared_ptr<TableInfo> table_info,
-            const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys);
+    base::Status AddMultiIndexs(const std::string& db, const std::string& name, std::shared_ptr<TableInfo> table_info,
+                                const ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnKey>& column_keys);
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
