@@ -15,6 +15,7 @@
  */
 #include "plan/plan_api.h"
 
+#include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "planv2/ast_node_converter.h"
 #include "planv2/planner_v2.h"
@@ -46,7 +47,19 @@ base::Status PlanAPI::CreatePlanTreeFromScript(vm::SqlContext *ctx) {
     auto planner_ptr =
         std::make_unique<SimplePlannerV2>(&ctx->nm, ctx->engine_mode == vm::kBatchMode, ctx->is_cluster_optimized,
                                           ctx->enable_batch_window_parallelization, ctx->options.get());
-    return planner_ptr->CreateASTScriptPlan(script, ctx->logical_plan);
+    CHECK_STATUS(planner_ptr->CreateASTScriptPlan(script, ctx->logical_plan));
+
+    for (auto plan : ctx->logical_plan) {
+        if (plan->GetType() == node::kPlanTypeQuery) {
+            auto query = dynamic_cast<node::QueryPlanNode *>(plan);
+            if (query && query->config_options_ && query->config_options_->count("values") != 0) {
+                ctx->request_expressions = query->config_options_->at("values");
+                break;
+            }
+        }
+    }
+
+    return {};
 }
 
 bool PlanAPI::CreatePlanTreeFromScript(const std::string &sql, PlanNodeList &plan_trees, NodeManager *node_manager,
@@ -87,6 +100,22 @@ const std::string PlanAPI::GenerateName(const std::string prefix, int id) {
     time(&t);
     std::string name = prefix + "_" + std::to_string(id) + "_" + std::to_string(t);
     return name;
+}
+
+absl::Status ParseStatement(absl::string_view sql, std::unique_ptr<zetasql::ParserOutput>* out) {
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    auto zetasql_status = zetasql::ParseStatement(sql, parser_opts, out);
+    zetasql::ErrorLocation location;
+    if (!zetasql_status.ok()) {
+        zetasql::ErrorLocation location;
+        GetErrorLocation(zetasql_status, &location);
+        return absl::InvalidArgumentError(zetasql::FormatError(zetasql_status));
+    }
+
+    return absl::OkStatus();
 }
 
 absl::StatusOr<codec::Schema> ParseTableColumSchema(absl::string_view str) {

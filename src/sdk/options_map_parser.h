@@ -47,7 +47,8 @@ class OptionsMapParser {
             if (options_map_.find(key) != options_map_.end()) {
                 LOG(WARNING) << "option " << key << " already exists, won't replace";
             } else {
-                options_map_.insert(std::pair<std::string, hybridse::node::ConstNode>(key, *(item.second)));  // copy
+                options_map_.insert(std::pair<std::string, hybridse::node::ConstNode>(
+                    key, *(item.second)->GetAsOrNull<hybridse::node ::ConstNode>()));  // copy
             }
         }
     }

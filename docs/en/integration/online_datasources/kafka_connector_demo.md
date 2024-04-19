@@ -7,15 +7,41 @@ Apache Kafka is an event streaming platform that can be used as an online data s
 Please note that, for the sake of simplicity, this article will demonstrate the use of the Kafka Connect standalone mode to start the connector. However, the connector can also be fully started in distributed mode.
 
 ```{seealso}
-The implementation of the OpenMLDB Kafka Connector can be found in the [extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) directory.
+The implementation of the OpenMLDB Kafka Connector can be found in the [extensions/kafka-connect-jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) directory. For information on features, configuration, and development, please refer to the [Development Guide](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md).
 ```
+
+## Enhanced Features
+
+- Auto Schema
+
+The OpenMLDB Kafka Connector supports automatically using the table schema of OpenMLDB to parse messages without a schema registry. Therefore, messages can be simple JSON-formatted data maps. For detailed configuration and format, refer to [Auto Schema](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md#auto-schema).
+
+When Auto Schema is enabled, versions prior to 0.8.5 require messages to contain all columns in the schema. Timestamp and date columns only support integers. Versions 0.8.5 and later support importing messages with only a subset of columns, with other columns filled with default values. Timestamp and date columns can also support string formats for year, month, day, hour, minute, and second.
+
+- Topic Table Mapping
+
+The OpenMLDB Kafka Connector supports mapping topics to tables, which is more flexible than the `table.name.format` configuration. See [Topic Table Mapping](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md#topic-table-mapping) for the configuration method.
+
+This feature can be used independently. If this field is empty, the `table.name.format` rule will be used. The `table.name.format` rule replaces `${topic}` with the topic name. The default configuration is `${topic}`, which means the table and topic have the same name. A more complex example is configuring the format as `kafka_${topic}`. If the topic name is "t1", the table name will be "kafka_t1". Therefore, the format configuration is only applicable to fixed table names or those that include the topic name.
+
+## Performance
+
+When importing data from Kafka to the OpenMLDB cluster using the OpenMLDB Kafka Connector, the performance is influenced by both the Kafka sender and the OpenMLDB receiver. We provide performance test reports for both single-node and cluster scenarios, which can be found in [Kafka Perf Test](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file).
+
+Assuming that the data volume of the topic is large enough, the efficiency of Kafka import is mainly determined by the number of partitions in the Kafka topic and the number of tasks in the Connector. If these two factors are not large enough, the concurrency of writing to OpenMLDB will be limited. When the number of tasks is large, a single Kafka Connect service will also be limited by the physical resources of the machine. In this case, it is necessary to deploy a distributed Kafka Connect, evenly distributing the tasks across multiple machines to increase concurrency.
+
+Observing the pqs and latency of the report, in the case of a single machine, with 40 CPU cores available, the Kafka Connector can be configured with a larger number of tasks, and the write QPS of OpenMLDB on a single machine is 50k, totaling 100k. However, the internal write latency of OpenMLDB did not significantly increase, it is just limited by the performance of a single machine, resulting in such write performance. Cluster performance testing also proved this point. After making OpenMLDB a cluster, deploying Kafka Connect on a single machine, changing the Kafka topic partition and task count, QPS will not have a significant improvement. However, after deploying Kafka Connect in a distributed manner, QPS will significantly increase. With 78 sink tasks being evenly distributed to two Kafka Connect instances, TabletServer QPS can reach 90k on a single machine, totaling 180k. With 120 sink tasks being evenly distributed to three Kafka Connect instances, TabletServer QPS can reach 100k on a single machine, totaling 200k.
 
 ## Overview
 
-### Download and Preperation
+```{note}
+If you are already familiar with Kafka and OpenMLDB and do not want to follow the steps below, you can refer to [OpenMLDB Compose With Kafka](https://github.com/vagetablechicken/openmldb-compose?tab=readme-ov-file#kafka) for quickly starting OpenMLDB and Kafka using docker-compose. This project also includes test scripts for writing to Kafka. If you only want to use Kafka, you can use the image `docker pull ghcr.io/vagetablechicken/kafka-connect:latest`, which already includes the OpenMLDB Connector. For running instructions, refer to [compose.yml](https://github.com/vagetablechicken/openmldb-compose/blob/519387e7ad9a8f0467b51886d5b3f07964150753/compose.yml#L288).
+```
+
+### Download and Preparation
 
 - If you need to download Kafka, please click on the [Kafka Official Download](https://kafka.apache.org/downloads) link and download `kafka_2.13-3.1.0.tgz`.
-- If you need to download the connector package and its dependencies, please click on [kafka-connect-jdbc.tgz](http://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz).
+- If you need to download the connector package and its dependencies, please click on [kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz](https://openmldb.ai/download/kafka-connector/kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz).
 - If you need to download the configuration and script files required in this article, please click on [kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz).
 
 This article will use Docker mode to start OpenMLDB, so there is no need to download OpenMLDB separately. Additionally, both Kafka and the connector can be started in the same container.
@@ -28,7 +54,7 @@ docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.5 bash
 
 ### Note
 
-Timestamp is in ms, value is set to JsonConvertor, only integer is supported. Depends on different messages, other Convertor can be selected. 
+Timestamp is in ms, value is set to JsonConvertor, only integer is supported. Depending on different messages, other Convertor can be selected. 
 
 Connector can be used in earlier versions of Kafka Server, e.g. 1.1.1. However, note that the earlier versions may not have Kafka Broker "auto create topics" on. You will need to [enable it](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable).
 
@@ -116,7 +142,7 @@ First, upzip `/work/kafka` in the connector and kafka_demo_files package.
 
 ```
 cd /work/kafka
-tar zxf kafka-connect-jdbc.tgz
+tar zxf kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz
 tar zxf kafka_demo_files.tgz
 ```
 

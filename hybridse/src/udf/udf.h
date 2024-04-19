@@ -519,6 +519,8 @@ void hex(StringRef *str, StringRef *output);
 
 void unhex(StringRef *str, StringRef *output, bool* is_null);
 
+void printLog(const char* fmt);
+
 }  // namespace v1
 
 /// \brief register native udf related methods into given UdfLibrary `lib`

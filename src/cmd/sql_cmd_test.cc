@@ -1040,7 +1040,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
         "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
     ProcessSQLs(sr, {
                         "set @@execute_mode = 'online';",
-                        "create database " + db ,
+                        "create database " + db,
                         "use " + db,
                         ddl1,
                         ddl2,
@@ -1083,6 +1083,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
     // range bias won't work cuz no new abs index in deploy
     index_res = rows_test("rows_bias=20, range_bias='inf'");
     ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    // invalid bias format
     rows_test("rows_bias=20s", false);
     i--;  // last one is failed, reset the num
 
@@ -1097,19 +1098,32 @@ TEST_P(DBSDKTest, DeployWithBias) {
         auto info = sr->GetTableInfo(db, "t1");
         return info.column_key().Get(1);
     };
+    // test index is lat now, add range, it will be absanlat
     index_res = range_test("range_bias=0");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);  // ref d1 deploy
     index_res = range_test("range_bias=20");
     ASSERT_EQ(index_res.ttl().abs_ttl(), 2);
     // rows bias won't work cuz no **new** lat index in deploy, just new abs index + the old index
     index_res = range_test("range_bias=1d, rows_bias=100");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);  // ref d1 deploy
 
     // set inf in the end, if not, all bias + inf = inf
+    // bias won't work cuz no **new** abs index in deploy
     index_res = rows_test("range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsAndLat);
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    index_res = range_test("range_bias='inf'");
+    // never expired, it'll be std to abs 0
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsoluteTime);
     ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
     index_res = rows_test("rows_bias='inf'");
-    ASSERT_EQ(index_res.ttl().lat_ttl(), 0);
+    ASSERT_EQ(index_res.ttl().ttl_type(), type::TTLType::kAbsoluteTime);
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
 
     // sp in tablet may be stored a bit late, wait
     sleep(3);
@@ -1265,12 +1279,15 @@ TEST_P(DBSDKTest, DeletetSameTsCol) {
                         ddl,
                     });
     hybridse::sdk::Status status;
-    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                " values (1,\"aa\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"), &status);
-    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                " values (2,\"bb\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"), &status);
-    sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                " values (3,\"aa\",1,2,3,1.1,2.1,1590738990000,\"2020-05-01\",true);"), &status);
+    sr->ExecuteSQL(
+        absl::StrCat("insert into ", table_name, " values (1,\"aa\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"),
+        &status);
+    sr->ExecuteSQL(
+        absl::StrCat("insert into ", table_name, " values (2,\"bb\",1,2,3,1.1,2.1,1590738989000,\"2020-05-01\",true);"),
+        &status);
+    sr->ExecuteSQL(
+        absl::StrCat("insert into ", table_name, " values (3,\"aa\",1,2,3,1.1,2.1,1590738990000,\"2020-05-01\",true);"),
+        &status);
 
     auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 3);
@@ -1296,8 +1313,8 @@ TEST_P(DBSDKTest, TestDelete) {
     sr->ExecuteSQL(db, "set @@execute_mode = 'online';", &status);
     sr->ExecuteSQL(db, "use " + db + " ;", &status);
     ddl = absl::StrCat("create table ", name,
-          "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
-          "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
+                       "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
+                       "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
     ASSERT_TRUE(sr->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ASSERT_TRUE(sr->RefreshCatalog());
     for (int i = 0; i < 10; i++) {
@@ -1305,8 +1322,8 @@ TEST_P(DBSDKTest, TestDelete) {
         std::string key2 = absl::StrCat("key2_", i);
         std::string key3 = absl::StrCat("key3_", i);
         for (int j = 0; j < 10; j++) {
-            sr->ExecuteSQL(absl::StrCat("insert into ", name,
-                        " values ('", key1, "', '", key2, "', '", key3, "', ", 100 + j, ",", 1000 + j, ", 1, 'v');"),
+            sr->ExecuteSQL(absl::StrCat("insert into ", name, " values ('", key1, "', '", key2, "', '", key3, "', ",
+                                        100 + j, ",", 1000 + j, ", 1, 'v');"),
                            &status);
         }
     }
@@ -1343,7 +1360,6 @@ TEST_P(DBSDKTest, TestDelete) {
     ASSERT_TRUE(sr->DropDB(db, &status));
 }
 
-
 TEST_P(DBSDKTest, DeletetMulIndex) {
     auto cli = GetParam();
     sr = cli->sr;
@@ -1364,9 +1380,9 @@ TEST_P(DBSDKTest, DeletetMulIndex) {
         std::string key2 = absl::StrCat("key2_", i);
         for (int j = 0; j < 10; j++) {
             uint64_t ts = 1000 + j;
-            sr->ExecuteSQL(absl::StrCat("insert into ", table_name,
-                        " values ('", key1, "', '", key2, "', ", ts, ",", ts, ");"),
-                           &status);
+            sr->ExecuteSQL(
+                absl::StrCat("insert into ", table_name, " values ('", key1, "', '", key2, "', ", ts, ",", ts, ");"),
+                &status);
         }
     }
 
@@ -3935,7 +3951,7 @@ TEST_P(DBSDKTest, GlobalVariable) {
                           {"enable_trace", "false"},
                           {"sync_job", "false"},
                           {"job_timeout", "20000"},
-                          {"execute_mode", "offline"}},
+                          {"execute_mode", "online"}},
                          rs.get());
     // init session variables from systemtable
     rs = sr->ExecuteSQL("show session variables", &status);
@@ -4087,7 +4103,7 @@ struct DeploymentEnv {
         auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>();
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
         ASSERT_TRUE(row_batch->AddRow(rr));
-        sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
+        sr_->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
@@ -4095,15 +4111,37 @@ struct DeploymentEnv {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, dp_name_);
-        sr->CallProcedure(db_, dp_name_, rr, &status);
+        sr_->CallProcedure(db_, dp_name_, rr, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
+    }
+    void CallDeployProcedureWithCallStmt() {
+        hybridse::sdk::Status ss;
+        auto call = absl::Substitute(
+            // casting is mandatory util #3847
+            "call $0('12', 99, cast(100 as int64), cast(77.7 as float), cast(88.8 as double), timestamp(8000), "
+            "date(null))",
+            dp_name_);
+        auto rs = sr_->ExecuteSQL(call, &ss);
+        ASSERT_TRUE(ss.IsOK()) << ss.ToString();
+        ASSERT_EQ(rs->Size(), 1);
+        rs->Next();
+        std::string col1;
+        ASSERT_TRUE(rs->GetString(0, &col1));
+        EXPECT_EQ("12", col1);
+        int32_t col2 = 0;
+        ASSERT_TRUE(rs->GetInt32(1, &col2));
+        EXPECT_EQ(99, col2);
+        int64_t col3 = 0;
+        ASSERT_TRUE(rs->GetInt64(2, &col3));
+        EXPECT_EQ(100, col3);
+        HandleSQL(call);
     }
 
     void CallProcedure() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, procedure_name_);
-        sr->CallProcedure(db_, procedure_name_, rr, &status);
+        sr_->CallProcedure(db_, procedure_name_, rr, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
@@ -4132,6 +4170,18 @@ struct DeploymentEnv {
         *rs = res;
     }
 };
+
+TEST_P(DBSDKTest, deploymentCall) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    DeploymentEnv env(sr);
+
+    env.SetUp();
+
+    env.CallDeployProcedure();
+    env.CallDeployProcedureWithCallStmt();
+}
 
 class StripSpaceTest : public ::testing::TestWithParam<std::pair<std::string_view, std::string_view>> {};
 

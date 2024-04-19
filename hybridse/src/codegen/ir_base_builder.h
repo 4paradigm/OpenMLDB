@@ -117,6 +117,9 @@ llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
 
 llvm::Value* CodecSizeForPrimitive(llvm::IRBuilder<>* builder, llvm::Type* type);
 
+void PrintLog(llvm::LLVMContext* context, llvm::Module* module, llvm::IRBuilder<>* builder, absl::string_view toPrint,
+              bool useGlobal = true);
+
 }  // namespace codegen
 }  // namespace hybridse
 #endif  // HYBRIDSE_SRC_CODEGEN_IR_BASE_BUILDER_H_

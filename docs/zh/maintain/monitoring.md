@@ -9,6 +9,40 @@ OpenMLDB 的监控方案概述如下：
 - 每个组件作为独立的 server 暴露组件级别的监控指标
 - 使用 [node_exporter](https://github.com/prometheus/node_exporter) 暴露机器和操作系统相关指标
 
+## 快速部署
+
+1. [可选]OpenMLDB各台机器上部署node_exporter，如不部署，不影响Grafana OpenMLDB Dashboard展示
+2. [可选]部署一个OpenMLDB exporter，如不部署，只会导致Grafana OpenMLDB Dashboard中的少数图表缺失数据，不影响读写方面的监控
+3. 启动Prometheus，配置文件最简版本如下，填对应IP，注意不要填TaskManager的IP（不支持metric）：
+```yaml
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: openmldb_components
+    metrics_path: /brpc_metrics
+    static_configs:
+      - targets:
+        - nameserver_ip
+        - tablet_ip
+        - tablet_ip
+        - apiserver_ip
+```
+完整配置参考[openmldb_mixin/prometheus_example.yml](https://github.com/4paradigm/openmldb-exporter/blob/main/openmldb_mixin/prometheus_example.yml)。
+
+参考命令：`docker run -d -v <config_file>:/etc/prometheus/prometheus.yml -p 9090:9090 -name promethues prom/prometheus`
+
+4. 启动Grafana，并使用OpenMLDB Dashboard模版
+
+参考命令：`docker run -d -p 3000:3000 --name=grafana grafana/grafana-oss`
+
+使用Dashboard模版创建Dashboard，模版ID：17843，URL：https://grafana.com/grafana/dashboards/17843 。如果是空Dashboard，可以到设置中修改`JSON Model`，将模版内容粘贴进去。
+
+5. 统计Deployment执行，还需要配置OpenMLDB全局变量`SET GLOBAL deploy_stats = 'on';`。
+
 ## 安装运行 OpenMLDB exporter
 
 ### 简介
@@ -135,10 +169,9 @@ optional arguments:
 
 </details>
 
-
 ## 部署 node exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) 是 Prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。
+[node_exporter](https://github.com/prometheus/node_exporter) 是 Prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。要在Grafana中展示这部分指标，使用Prometheus提供的官方Dashboard 1860。
 
 
 ## 部署 Prometheus 和 Grafana

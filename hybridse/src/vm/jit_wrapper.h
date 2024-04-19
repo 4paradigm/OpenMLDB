@@ -37,6 +37,7 @@ class HybridSeJitWrapper {
  public:
     HybridSeJitWrapper();
     HybridSeJitWrapper(const HybridSeJitWrapper&) = delete;
+    HybridSeJitWrapper& operator=(const HybridSeJitWrapper&) = delete;
 
     virtual ~HybridSeJitWrapper() {}
 

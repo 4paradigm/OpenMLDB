@@ -34,6 +34,8 @@ class StructTypeIRBuilder : public TypeIRBuilder {
     explicit StructTypeIRBuilder(::llvm::Module*);
     ~StructTypeIRBuilder();
 
+    // construct corresponding struct ir builder if exists for input type,
+    // otherwise, error status returned
     static absl::StatusOr<std::unique_ptr<StructTypeIRBuilder>> CreateStructTypeIRBuilder(::llvm::Module*,
                                                                                           ::llvm::Type*);
     static bool StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist);
@@ -93,6 +95,11 @@ class StructTypeIRBuilder : public TypeIRBuilder {
     ::llvm::Module* m_;
     ::llvm::StructType* struct_type_;
 };
+
+// construct a safe null value for type
+// returns NativeValue{raw, is_null=true} on success, raw is ensured to be not nullptr
+absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Type* type);
+
 }  // namespace codegen
 }  // namespace hybridse
 #endif  // HYBRIDSE_SRC_CODEGEN_STRUCT_IR_BUILDER_H_

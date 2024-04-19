@@ -194,6 +194,7 @@ void BatchRequestEngineCheck(const SqlCase& sql_case,
 
 void EngineCheck(const SqlCase& sql_case, const EngineOptions& options,
                  EngineMode engine_mode) {
+    engine_mode = hybridse::vm::Engine::TryDetermineEngineMode(sql_case.sql_str(), engine_mode);
     if (engine_mode == kBatchMode) {
         ToydbBatchEngineTestRunner engine_test(sql_case, options);
         engine_test.RunCheck();

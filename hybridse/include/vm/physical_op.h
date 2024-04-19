@@ -1835,14 +1835,14 @@ class PhysicalSelectIntoNode : public PhysicalUnaryNode {
             return nullptr;
         }
         auto it = options_->find(option);
-        return it == options_->end() ? nullptr : it->second;
+        return it == options_->end() ? nullptr : it->second->GetAsOrNull<hybridse::node::ConstNode>();
     }
     const hybridse::node::ConstNode *GetConfigOption(const std::string &option) const {
         if (!config_options_) {
             return nullptr;
         }
         auto it = config_options_->find(option);
-        return it == config_options_->end() ? nullptr : it->second;
+        return it == config_options_->end() ? nullptr : it->second->GetAsOrNull<hybridse::node::ConstNode>();
     }
 
     std::string query_str_, out_file_;
@@ -1878,7 +1878,7 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
             return nullptr;
         }
         auto it = options_->find(option);
-        return it == options_->end() ? nullptr : it->second;
+        return it == options_->end() ? nullptr : it->second->GetAsOrNull<hybridse::node::ConstNode>();
     }
 
     std::string file_;
@@ -1944,6 +1944,8 @@ class PhysicalInsertNode : public PhysicalOpNode {
     }
 
     const node::InsertStmt* GetInsertStmt() const { return insert_stmt_; }
+
+    static PhysicalInsertNode *CastFrom(PhysicalOpNode *node);
 
  private:
     const node::InsertStmt* insert_stmt_;

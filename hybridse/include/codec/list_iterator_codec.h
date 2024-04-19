@@ -16,20 +16,18 @@
 
 #ifndef HYBRIDSE_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
 #define HYBRIDSE_INCLUDE_CODEC_LIST_ITERATOR_CODEC_H_
+
 #include <cstdint>
-#include <iostream>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
-#include "base/fe_object.h"
-#include "base/fe_slice.h"
+
 #include "base/iterator.h"
 #include "base/string_ref.h"
 #include "codec/row.h"
 #include "codec/row_list.h"
 #include "codec/type_codec.h"
-#include "glog/logging.h"
+
 namespace hybridse {
 namespace codec {
 
@@ -44,39 +42,29 @@ class ColumnImpl;
 template <class V>
 class ColumnIterator;
 
-
-template <class V, class R>
-class WrapListImpl : public ListV<V> {
- public:
-    WrapListImpl() : ListV<V>() {}
-    ~WrapListImpl() override {}
-    virtual const V GetFieldUnsafe(const R &row) const = 0;
-    virtual void GetField(const R &row, V *, bool *) const = 0;
-    virtual const bool IsNull(const R &row) const = 0;
-    virtual ListV<Row> *root() const = 0;
-};
+template <class V>
+class NonNullColumnIterator;
 
 template <class V>
-class ColumnImpl : public WrapListImpl<V, Row> {
+class NonNullColumnList;
+
+// table column list. remember column values might be NULL
+template <class V>
+class ColumnImpl : public ListV<V> {
  public:
-    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx,
-               uint32_t offset)
-        : WrapListImpl<V, Row>(),
-          root_(impl),
-          row_idx_(row_idx),
-          col_idx_(col_idx),
-          offset_(offset) {}
+    ColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx, uint32_t offset)
+        : ListV<V>(), root_(impl), row_idx_(row_idx), col_idx_(col_idx), offset_(offset) {}
 
     ~ColumnImpl() override {}
 
-    const V GetFieldUnsafe(const Row &row) const override {
+    virtual const V GetFieldUnsafe(const Row &row) const {
         V value;
         const int8_t *ptr = row.buf(row_idx_) + offset_;
         value = *((const V *)ptr);
         return value;
     }
 
-    void GetField(const Row &row, V *res, bool *is_null) const override {
+    virtual void GetField(const Row &row, V *res, bool *is_null) const {
         const int8_t *buf = row.buf(row_idx_);
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
@@ -87,28 +75,21 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         }
     }
 
-    const bool IsNull(const Row &row) const override {
+    virtual const bool IsNull(const Row &row) const {
         const int8_t *buf = row.buf(row_idx_);
         return buf == nullptr || v1::IsNullAt(buf, col_idx_);
     }
 
     // TODO(xxx): iterator of nullable V
-    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
-        return std::make_unique<ColumnIterator<V>>(root_, this);
-    }
     ConstIterator<uint64_t, V> *GetRawIterator() override {
-        return new ColumnIterator<V>(root_, this);
-    }
-    const uint64_t GetCount() override { return root_->GetCount(); }
-    std::optional<V> At(uint64_t pos) override {
-        auto row = root_->At(pos);
-        if (row.empty()) {
-            return std::nullopt;
-        }
-        return GetFieldUnsafe(row);
+        return new ColumnIterator<V>(root_->GetIterator(), this);
     }
 
-    ListV<Row> *root() const override { return root_; }
+    NonNullColumnList<V>* GetAsNonNullColumnList() {
+        return new NonNullColumnList<V>(this);
+    }
+
+    ListV<Row>* root() const { return root_; }
 
  protected:
     ListV<Row> *root_;
@@ -119,9 +100,8 @@ class ColumnImpl : public WrapListImpl<V, Row> {
 
 class StringColumnImpl : public ColumnImpl<StringRef> {
  public:
-    StringColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx,
-                     int32_t str_field_offset, int32_t next_str_field_offset,
-                     int32_t str_start_offset)
+    StringColumnImpl(ListV<Row> *impl, int32_t row_idx, uint32_t col_idx, int32_t str_field_offset,
+                     int32_t next_str_field_offset, int32_t str_start_offset)
         : ColumnImpl<StringRef>(impl, row_idx, col_idx, 0u),
           str_field_offset_(str_field_offset),
           next_str_field_offset_(next_str_field_offset),
@@ -531,9 +511,8 @@ class InnerRowsRangeList : public ListV<V> {
 template <class V>
 class ColumnIterator : public ConstIterator<uint64_t, V> {
  public:
-    ColumnIterator(ListV<Row> *list, const ColumnImpl<V> *column_impl)
-        : ConstIterator<uint64_t, V>(), column_impl_(column_impl) {
-        row_iter_ = list->GetIterator();
+    ColumnIterator(std::unique_ptr<RowIterator> &&it, const ColumnImpl<V> *column_impl)
+        : ConstIterator<uint64_t, V>(), row_iter_(std::move(it)), column_impl_(column_impl) {
         if (row_iter_ != nullptr) {
             row_iter_->SeekToFirst();
         }
@@ -547,13 +526,88 @@ class ColumnIterator : public ConstIterator<uint64_t, V> {
         value_ = column_impl_->GetFieldUnsafe(row_iter_->GetValue());
         return value_;
     }
+    bool IsValueNull() override {
+        return column_impl_->IsNull(row_iter_->GetValue());
+    }
     const uint64_t &GetKey() const override { return row_iter_->GetKey(); }
     bool IsSeekable() const override { return row_iter_->IsSeekable(); }
 
- private:
-    const ColumnImpl<V> *column_impl_;
+ protected:
     std::unique_ptr<RowIterator> row_iter_;
+    const ColumnImpl<V> *column_impl_;
     V value_;
+};
+
+template <class V>
+class NonNullColumnIterator : public ColumnIterator<V> {
+ public:
+    NonNullColumnIterator(std::unique_ptr<RowIterator> &&it, const ColumnImpl<V> *column_impl)
+    : ColumnIterator<V>(std::move(it), column_impl), valid_(true) {
+        NextNonNull();
+    }
+    ~NonNullColumnIterator() override {}
+
+    void Seek(const uint64_t &key) override {
+        valid_ = true;
+        this->row_iter_->Seek(key);
+        NextNonNull(true);
+    }
+
+    void SeekToFirst() override {
+        valid_ = true;
+        this->row_iter_->SeekToFirst();
+        NextNonNull();
+    }
+    bool Valid() const override { return valid_ && this->row_iter_->Valid(); }
+
+    void Next() override {
+        this->row_iter_->Next();
+        NextNonNull();
+    }
+
+ private:
+    void NextNonNull(bool current_key_only = false) {
+        if (!this->row_iter_ || !this->row_iter_->Valid()) {
+            return;
+        }
+
+        auto key = this->row_iter_->GetKey();
+
+        while (this->row_iter_->Valid()) {
+            bool is_null = true;
+            V val {};
+            this->column_impl_->GetField(this->row_iter_->GetValue(), &val, &is_null);
+            if (!is_null) {
+                break;
+            }
+
+            if (current_key_only && key != this->row_iter_->GetKey()) {
+                // invalid if key not seeked
+                valid_ = false;
+                break;
+            }
+
+            this->row_iter_->Next();
+        }
+    }
+
+ private:
+    bool valid_;
+};
+
+// column list filters out NULL values
+template <class V>
+class NonNullColumnList : public ListV<V> {
+ public:
+    explicit NonNullColumnList(ColumnImpl<V> *impl) : columns_(impl) {}
+    ~NonNullColumnList() override {}
+
+    ConstIterator<uint64_t, V> *GetRawIterator() override {
+        return new NonNullColumnIterator<V>(columns_->root()->GetIterator(), columns_);
+    }
+
+ private:
+    ColumnImpl<V> *columns_;
 };
 
 }  // namespace codec

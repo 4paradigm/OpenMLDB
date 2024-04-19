@@ -22,16 +22,11 @@
 
 #include "base/fe_status.h"
 #include "node/node_manager.h"
-#include "node/plan_node.h"
 #include "plan/planner.h"
 #include "zetasql/parser/parser.h"
 
 namespace hybridse {
 namespace plan {
-
-using base::Status;
-using node::NodePointVector;
-using node::PlanNodeList;
 
 class SimplePlannerV2 : public SimplePlanner {
  public:

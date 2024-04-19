@@ -345,11 +345,13 @@ bool SqlCase::BuildCreateSqlFromSchema(const type::TableDef& table,
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
-        sql.append(column.name()).append(" ").append(TypeString(column.type()));
-
-        if (column.is_not_null()) {
-            sql.append(" NOT NULL");
+        auto s = codec::ColumnSchemaStr(column.schema());
+        if (!s.ok()) {
+            LOG(WARNING) << s.status();
+            return false;
         }
+        sql.append(column.name()).append(" ").append(s.value());
+
         if (isGenerateIndex || i < table.columns_size() - 1) {
             sql.append(",\n");
         }
@@ -900,6 +902,9 @@ bool SqlCase::BuildInsertSqlListFromInput(
             }
             sql_list->push_back(insert_sql);
         }
+    } else if (!inputs_[input_idx].inserts_.empty()) {
+        auto& inserts  = inputs_[input_idx].inserts_;
+        sql_list->insert(sql_list->end(), inserts.begin(), inserts.end());
     }
     return true;
 }

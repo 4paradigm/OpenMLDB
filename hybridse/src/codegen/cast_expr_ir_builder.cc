@@ -66,8 +66,10 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* lhs, ::llvm::Type* rhs) {
 }
 Status CastExprIRBuilder::Cast(const NativeValue& value,
                                ::llvm::Type* cast_type, NativeValue* output) {
-    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(node::ExprNode::IsCastAccept,
-                                                  value.GetType(), cast_type));
+    if (value.GetType() == cast_type) {
+        *output = value;
+        return {};
+    }
     if (IsSafeCast(value.GetType(), cast_type)) {
         CHECK_STATUS(SafeCast(value, cast_type, output));
     } else {
@@ -81,6 +83,7 @@ Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* dst_t
     CHECK_TRUE(IsSafeCast(value.GetType(), dst_type), kCodegenError, "Safe cast fail: unsafe cast");
     Status status;
     if (value.IsConstNull()) {
+        // VOID type
         auto res = CreateSafeNull(block_, dst_type);
         CHECK_TRUE(res.ok(), kCodegenError, res.status().ToString());
         *output = res.value();
@@ -114,6 +117,12 @@ Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* dst_t
 
 Status CastExprIRBuilder::UnSafeCast(const NativeValue& value, ::llvm::Type* dst_type, NativeValue* output) {
     ::llvm::IRBuilder<> builder(block_);
+    node::NodeManager nm;
+    const node::TypeNode* src_node = nullptr;
+    const node::TypeNode* dst_node = nullptr;
+    CHECK_TRUE(GetFullType(&nm, value.GetType(), &src_node), kCodegenError);
+    CHECK_TRUE(GetFullType(&nm, dst_type, &dst_node), kCodegenError);
+
     if (value.IsConstNull() || (TypeIRBuilder::IsNumber(dst_type) && TypeIRBuilder::IsDatePtr(value.GetType()))) {
         // input is const null or (cast date to number)
         auto res = CreateSafeNull(block_, dst_type);
@@ -135,6 +144,20 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value, ::llvm::Type* dst
         StringIRBuilder string_ir_builder(block_->getModule());
         CHECK_STATUS(string_ir_builder.CastToNumber(block_, value, dst_type, output));
         return Status::OK();
+    } else if (src_node->IsMap() && dst_node->IsMap()) {
+        auto src_map_node = src_node->GetAsOrNull<node::MapType>();
+        assert(src_map_node != nullptr && "logic error: map type empty");
+        if (src_map_node->GetGenericType(0)->IsNull() && src_map_node->GetGenericType(1)->IsNull()) {
+            auto s = StructTypeIRBuilder::CreateStructTypeIRBuilder(block_->getModule(), dst_type);
+            CHECK_TRUE(s.ok(), kCodegenError, s.status().ToString());
+            llvm::Value* val = nullptr;
+            CHECK_TRUE(s.value()->CreateDefault(block_, &val), kCodegenError);
+            *output = NativeValue::Create(val);
+            return Status::OK();
+        } else {
+            CHECK_TRUE(false, kCodegenError, "unimplemented: casting ", src_node->DebugString(), " to ",
+                       dst_node->DebugString());
+        }
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;

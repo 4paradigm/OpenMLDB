@@ -179,7 +179,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     globalvar_changed_notify_path_ = zk_path + "/notify/global_variable";
     global_variables_ = std::make_shared<std::map<std::string, std::string>>();
-    global_variables_->emplace("execute_mode", "offline");
+    global_variables_->emplace("execute_mode", "online");
     global_variables_->emplace("enable_trace", "false");
 
     ::openmldb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_[::openmldb::common::kMemory]);
@@ -372,7 +372,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
         base::SetResponseStatus(base::ReturnCode::kWriteDataFailed, "write meta data failed", response);
         return;
     }
-    PDLOG(INFO, "update table tid %u pid %u ttl to abs_ttl %lu lat_ttl %lu index_name %s", tid, pid, abs_ttl, lat_ttl,
+    PDLOG(INFO, "update table tid %u pid %u ttl meta to abs_ttl %lu lat_ttl %lu index_name %s", tid, pid, abs_ttl, lat_ttl,
           index_name.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -1684,8 +1684,12 @@ void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::
         }
     };
 
+    hybridse::vm::EngineMode default_mode =
+        request->is_batch() ? hybridse::vm::EngineMode::kBatchMode : hybridse::vm::EngineMode::kRequestMode;
+    auto mode = hybridse::vm::Engine::TryDetermineEngineMode(request->sql(), default_mode);
+
     ::hybridse::base::Status status;
-    if (request->is_batch()) {
+    if (mode == hybridse::vm::EngineMode::kBatchMode) {
         // convert repeated openmldb:type::DataType into hybridse::codec::Schema
         hybridse::codec::Schema parameter_schema;
         for (int i = 0; i < request->parameter_types().size(); i++) {

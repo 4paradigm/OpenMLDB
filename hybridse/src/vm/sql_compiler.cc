@@ -133,21 +133,6 @@ bool SqlCompiler::Compile(SqlContext& ctx, Status& status) {  // NOLINT
     return true;
 }
 
-std::string EngineModeName(EngineMode mode) {
-    switch (mode) {
-        case kBatchMode:
-            return "kBatchMode";
-        case kRequestMode:
-            return "kRequestMode";
-        case kBatchRequestMode:
-            return "kBatchRequestMode";
-        case kMockRequestMode:
-            return "kMockRequestMode";
-        default:
-            return "unknown";
-    }
-}
-
 Status SqlCompiler::BuildBatchModePhysicalPlan(SqlContext* ctx, const ::hybridse::node::PlanNodeList& plan_list,
                                                ::llvm::Module* llvm_module, udf::UdfLibrary* library,
                                                PhysicalOpNode** output) {

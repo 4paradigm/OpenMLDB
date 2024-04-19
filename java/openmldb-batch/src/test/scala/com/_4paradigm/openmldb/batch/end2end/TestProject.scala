@@ -49,8 +49,9 @@ class TestProject extends SparkTestSuite {
 
     val data = Seq(
       Row(1, Map.apply(1 -> "11", 12 -> "99")),
-      Row(2, Map.apply(13 -> "99")))
-      // Row(2, Map.empty[Int, String]))
+      Row(2, Map.apply(13 -> "99")),
+      Row(3, Map.empty[Int, String]),
+      Row(4, null))
     val schema = StructType(List(
       StructField("id", IntegerType),
       StructField("val", MapType(IntegerType, StringType))))
