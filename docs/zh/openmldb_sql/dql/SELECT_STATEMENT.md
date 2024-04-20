@@ -130,6 +130,32 @@ FROM 子句的来源可以是:
 - JOIN 操作, OpenMLDB 支持 LEFT JOIN 和 LAST JOIN
 - 任意子查询, 被括在括号中
 
+## CONFIG 子句
+
+`query_statement` 最后可以带可选的 CONFIG 子句，`CONFIG ( key_string = value_expr, ...)` 的形式，表示对当前 SQL 的额外配置信息，目前支持的选项有：
+
+| key_string | value_expr 类型 | 说明 |
+| ---------- | ---------  | ---- |
+| execute_mode | string | 表示当前 SQL 的执行模式，可选值有 `online`, `request`, `offline`, 如果不填，默认值为系统变量 `execute_mode` 设置的值，可以通过 SQL `show variables` 查看。 |
+| values | 任意合法的表达式 | 详见 [纯 SQL 在线请求模式查询](#sql-request-query-in-raw-sql) |
+
+## SQL request query in raw SQL
+
+OpenMLDB >= 0.9.0 支持在 query statement 中用 CONFIG 子句配置 SQL 的执行模式 (`execute_mode`) 和请求行信息(`values`). 即当 CONFIG `execute_mode = 'request'` 时，将首先读取 CONFIG 中 `values` 的值, 并解析成请求行，因此不需要在其他地方，例如 JAVA SDK 接口手动传入请求行。CONFIG `values` 支持的格式有两种：
+1. 小括号 `()` 包括起来的表达式列表，表示一行数据。例如 `(1, "str", timestamp(1000) )` 
+2. 中括号 `[]` 包括起来的 N 个小括号 `()` 列表， 表示 N 行数据。例如 `[ (1, "str", timestamp(1000)), (2, "foo", timestamp(5000)) ]`
+
+小括号 `()` 包含的整个表达式表示单行请求行，它内部的每一个表达式类型必须和 SQL 请求表的 schema 严格一致。 第一种格式，表示单行的在线请求模式查询，查询结果为单行数据。第二中格式，表示 N 行的在线请求模式查询，查询结果为 N 行。
+
+```sql
+-- table t1 of schema ( id int, val string, ts timestamp )
+
+-- 执行请求行为 (10, "foo", timestamp(4000)) 的在线请求模式 query
+SELECT id, count (val) over (partition by id order by ts rows between 10 preceding and current row)
+FROM t1
+CONFIG (execute_mode = 'online', values = (10, "foo", timestamp (4000)))
+```
+
 ## 离线同步模式 Query
 
 设置`SET @@sync_job=true`后的 Query 语句，就是离线同步模式下的 Query。在这个状态下的 Query 会展示结果到CLI（不建议在SDK中使用这种模式，不会得到正常的ResultSet）。
