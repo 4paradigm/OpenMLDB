@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 #include "catalog/distribute_iterator.h"
 #include "refreshable_map.h"
