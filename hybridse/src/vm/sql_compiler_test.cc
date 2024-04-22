@@ -43,6 +43,9 @@ INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(
+    SqlFeatureSignatureQueryParse, SqlCompilerTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/plan/feature_signature_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, SqlCompilerTest,
     testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(

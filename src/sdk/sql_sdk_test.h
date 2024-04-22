@@ -112,6 +112,9 @@ INSTANTIATE_TEST_SUITE_P(
     UdafQuery, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    FeatureSignatureQuery, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/feature_signature_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     LimitClauseQuery, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/limit.yaml")));
 

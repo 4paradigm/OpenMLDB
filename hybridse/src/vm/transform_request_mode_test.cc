@@ -110,6 +110,8 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 }
 INSTANTIATE_TEST_SUITE_P(SqlSimpleQueryParse, TransformRequestModeTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/simple_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(SqlFeatureSignatureQueryParse, TransformRequestModeTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/feature_signature_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlWindowQueryParse, TransformRequestModeTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(SqlJoinPlan, TransformRequestModeTest,

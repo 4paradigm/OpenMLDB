@@ -361,6 +361,7 @@ class StandaloneEnv {
             });
         brpc::ServerOptions options;
         options.auth = ns_authenticator_;
+        options.auth = ns_authenticator_;
         if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
             LOG(WARNING) << "fail to add ns";
             return false;

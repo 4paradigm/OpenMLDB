@@ -201,6 +201,10 @@ Importing supports two data formats: CSV and Parquet. Special attention should b
    2. Dates cannot be in the `yyyy-MM-dd HH:mm:ss` format; for instance, `2022-2-2 00:00:00` will result in a parsing error.
 5. Local mode does not support quote escaping for strings. If your strings contain quote characters, it is recommended to use the cluster mode.
 6. If cluster mode encounters parsing failures during CSV reading, the failed column values are set to NULL, and the import process continues. In local mode, parsing failures result in direct errors, and the import is not continued.
+7. It is recommended to use UTF-8 as the encoding format for CSV. Chinese character encodings like GB are not supported. If the Chinese characters in the table data are displayed as garbled after CSV import, please convert the format of the CSV source data before importing. You can refer to the following command:
+   ```bash
+   iconv -f GBK -t UTF-8 gbk.csv > utf8.csv
+   ```
 
 ## PutIfAbsent Explanation
 

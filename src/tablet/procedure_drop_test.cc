@@ -43,11 +43,11 @@ using ::openmldb::nameserver::NameServerImpl;
 namespace openmldb {
 namespace tablet {
 
-class SqlClusterTest : public ::testing::Test {
+class ProcedureDropTest : public ::testing::Test {
  public:
-    SqlClusterTest() {}
+    ProcedureDropTest() {}
 
-    ~SqlClusterTest() {}
+    ~ProcedureDropTest() {}
 };
 
 std::shared_ptr<openmldb::sdk::SQLRouter> GetNewSQLRouter() {
@@ -132,7 +132,7 @@ void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
     ASSERT_EQ(response.table_info_size(), size);
 }
 
-TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
+TEST_F(ProcedureDropTest, DropProcedureBeforeDropTable) {
     FLAGS_auto_failover = true;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
@@ -296,7 +296,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::InitRandomDiskFlags("drop_procedure_before_drop_table_test");
+    ::openmldb::test::InitRandomDiskFlags("procedure_recover_test");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }
