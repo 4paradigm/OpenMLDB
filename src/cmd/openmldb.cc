@@ -3256,7 +3256,6 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::cli
                 return;
             }
         }
-        // TODO(): get status msg
         auto st = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
                                     boost::lexical_cast<uint32_t>(parts[3]), ttl, is_leader, seg_cnt);
         if (st.OK()) {

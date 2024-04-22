@@ -3038,6 +3038,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
             break;
         }
         std::string root_path;
+        // we can't know table is memory or disk, so set the right storage_mode in request message
         bool ok = ChooseDBRootPath(tid, pid, table_meta.storage_mode(), root_path);
         if (!ok) {
             response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
