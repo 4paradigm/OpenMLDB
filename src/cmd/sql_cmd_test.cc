@@ -3545,7 +3545,7 @@ TEST_P(DBSDKTest, ShowComponents) {
 void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectInfo>>& expect,
                                  hybridse::sdk::ResultSet* rs, bool all_db = false, bool is_cluster = false) {
     static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableStatus = {
-        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
+        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "2", "NULL", "NULL", "NULL", ""},
         {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "JOB_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{},
