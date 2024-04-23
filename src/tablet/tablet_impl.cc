@@ -5822,32 +5822,11 @@ TabletImpl::GetSystemTableIterator() {
         for (const auto& [tid, tables] : tables_) {
             for (const auto& [pid, table] : tables) {
                 if (table->GetName() == table_name) {
-                    auto handler = catalog_->GetTable(table->GetDB(), table->GetName());
-                    if (!handler) {
-                        PDLOG(WARNING, "no TableHandler. tid %u, table %s", table->GetId(), table->GetName());
-                        return std::nullopt;
-                    }
-                    auto tablet_table_handler = std::dynamic_pointer_cast<catalog::TabletTableHandler>(handler);
-                    if (!tablet_table_handler) {
-                        PDLOG(WARNING, "convert TableHandler. tid %u, table %s", table->GetId(), table->GetName());
-                        return std::nullopt;
-                    }
-                    const ::openmldb::codec::Schema test = table->GetTableMeta()->column_desc();
-                    auto table_client_manager = tablet_table_handler->GetTableClientManager();
-                    if (table_client_manager == nullptr) {
-                        return std::nullopt;
-                    }
-                    auto tablet = table_client_manager->GetTablet(pid);
-                    if (tablet == nullptr) {
-                        return std::nullopt;
-                    }
-                    auto client = tablet->GetClient();
-                    if (client == nullptr) {
-                        return std::nullopt;
-                    }
-                    std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> tablet_clients = {
-                        {0, client}};
-                    return {{std::make_unique<catalog::FullTableIterator>(table->GetId(), nullptr, tablet_clients),
+                    std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> empty_tablet_clients;
+                    auto user_table = std::make_shared<std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>>(
+                        std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>{{pid, table}});
+                    return {{std::make_unique<::openmldb::catalog::FullTableIterator>(table->GetId(), user_table,
+                                                                                      empty_tablet_clients),
                              std::make_unique<::openmldb::codec::Schema>(table->GetTableMeta()->column_desc())}};
                 }
             }
