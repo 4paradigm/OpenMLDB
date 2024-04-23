@@ -23,6 +23,26 @@
   </properties>
 
   <dependencies>
+
+    <!-- OpenMLDB -->
+    <dependency>
+      <groupId>com.4paradigm.openmldb</groupId>
+      <artifactId>openmldb-native</artifactId>
+      <version>${variant.native.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.4paradigm.openmldb</groupId>
+      <artifactId>openmldb-batch</artifactId>
+      <version>${project.parent.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.spark</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -62,27 +82,6 @@
       <artifactId>spark-hive_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
       <scope>${spark.scope}</scope>
-    </dependency>
-
-    <!-- OpenMLDB -->
-    <dependency>
-      <groupId>com.4paradigm.openmldb</groupId>
-      <artifactId>openmldb-native</artifactId>
-      <version>${variant.native.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.4paradigm.openmldb</groupId>
-      <artifactId>openmldb-batch</artifactId>
-      <version>${project.parent.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.spark</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
-      <scope>provided</scope>
     </dependency>
 
   </dependencies>
@@ -129,10 +128,12 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <artifactSet>
-                <excludes>
-                </excludes>
-              </artifactSet>
+              <relocations>
+                <relocation>
+                  <pattern>com.google.protobuf</pattern>
+                  <shadedPattern>shade.protobuf</shadedPattern>
+                </relocation>
+              </relocations>
             </configuration>
           </execution>
         </executions>
