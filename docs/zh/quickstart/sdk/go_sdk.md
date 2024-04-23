@@ -12,7 +12,7 @@ Go SDK 目前功能支持上并不完善，目前仅用于开发测试或者特�
 ## Go SDK 包安装
 
 ```Bash
-go get github.com/4paradigm/OpenMLDB/go
+go get github.com/4paradigm/openmldb-go-sdk
 ```
 
 ## 使用 Go SDK
@@ -80,7 +80,7 @@ import (
   "database/sql"
 
   // 加载 OpenMLDB SDK
-  _ "github.com/4paradigm/OpenMLDB/go"
+  _ "github.com/4paradigm/openmldb-go-sdk"
 )
 
 func main() {

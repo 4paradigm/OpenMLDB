@@ -368,49 +368,8 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
-  go-sdk:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/4paradigm/hybridsql:latest
-    env:
-      OPENMLDB_BUILD_TARGET: "openmldb"
-      OPENMLDB_MODE: standalone
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
-
-      - name: build openmldb
-        run: make build install
-
-      - name: start server
-        run: ./openmldb/sbin/start-all.sh
-
-      - name: init test database
-        env:
-          OPENMLDB_NS_HOST: 127.0.0.1
-          OPENMLDB_NS_PORT: 6527
-        run: |
-          echo "CREATE DATABASE test_db;" | ./openmldb/bin/openmldb --host=$OPENMLDB_NS_HOST --port=$OPENMLDB_NS_PORT
-
-      - name: go test
-        env:
-          OPENMLDB_APISERVER_HOST: 127.0.0.1
-          OPENMLDB_APISERVER_PORT: 8080
-        working-directory: go
-        run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
-
-      - name: upload coverage
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-go-report-${{ github.sha }}
-          path: go/coverage.out
-          retention-days: 3
-
   publish-test-results:
-    needs: ["java-sdk", "python-sdk", "go-sdk"]
+    needs: ["java-sdk", "python-sdk"]
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
@@ -426,7 +385,7 @@ jobs:
       comment_title: SDK Test Report
 
   publish-coverage-results:
-    needs: ["java-sdk", "python-sdk", "go-sdk"]
+    needs: ["java-sdk", "python-sdk"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -454,7 +413,7 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v4
         with:
-          files: go/coverage.out,python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
+          files: python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml,java/**/target/site/jacoco/jacoco.xml,java/**/target/scoverage.xml
           name: coverage-sdk
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
