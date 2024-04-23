@@ -192,10 +192,10 @@ cd openmldb-0.8.5-linux
 
 | 环境变量                         | 默认值                   | 定义                                                                                                                                          |
 | -------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| OPENMLDB_VERSION                 | 0.8.5                    | OpenMLDB版本，主要用于spark下载，一般不改动。                                                                                                 |
+| OPENMLDB_VERSION                 | 0.8.5                    | OpenMLDB版本，主要用于Spark下载，一般不改动。                                                                                                 |
 | OPENMLDB_MODE                    | cluster                  | standalone或者cluster                                                                                                                         |
 | OPENMLDB_HOME                    | 当前发行版的根目录       | openmldb发行版根目录，不则使用当前根目录，也就是openmldb-0.8.5-linux所在目录。                                                                |
-| SPARK_HOME                       | $OPENMLDB_HOME/spark     | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载。**此路径也将成为TaskManager运行机器上的Spark安装目录。**                        |
+| SPARK_HOME                       | $OPENMLDB_HOME/spark     | Spark发行版根目录，如果该目录不存在，自动从网上下载。**此路径也将成为TaskManager运行机器上的Spark安装目录。**                        |
 | RUNNER_EXISTING_SPARK_HOME       |                          | 配置此项，运行TaskManager的机器将使用该Spark环境，将不下载、部署OpenMLDB Spark发行版。                                                        |
 | OPENMLDB_USE_EXISTING_ZK_CLUSTER | false                    | 是否使用已经运行的ZooKeeper集群。如果是`true`，将跳过ZooKeeper集群的部署与管理。                                                              |
 | OPENMLDB_ZK_HOME                 | $OPENMLDB_HOME/zookeeper | ZooKeeper发行版根目录，如果该目录不存在，自动从网上下载。                                                                                     |
@@ -208,7 +208,7 @@ cd openmldb-0.8.5-linux
 通常来讲，需要确认以下几点：
 - ZooKeeper集群地址，如果使用已有ZooKeeper集群，需要配置`OPENMLDB_USE_EXISTING_ZK_CLUSTER=true`，并配置`OPENMLDB_ZK_CLUSTER`。（如果在`conf/hosts`中配置外部ZK集群，请注释标注其不受sbin部署影响，避免混乱。）
 - 需要此工具部署ZooKeeper集群时，在`conf/hosts`中配置`[zookeeper]`。填写多个ZooKeeper节点，即部署ZooKeeper集群，无需额外配置。
-- Spark环境，如果需要使用运行机器上已有的Spark环境，需要配置`RUNNER_EXISTING_SPARK_HOME`（地址为TaskManager运行机器上的路径）。如果部署机器存在Spark环境，并想要在TaskManager机器上使用此套环境，可配置`SPARK_HOME`（部署到TaskManager机器同名路径上）。`SPARK_HOME`不进行配置时，将自动下载、使用OpenMLDB Spark发行版。
+- Spark环境，如果需要使用运行机器上已有的Spark环境，需要配置`RUNNER_EXISTING_SPARK_HOME`（地址为TaskManager运行机器上的路径）。如果部署机器存在Spark环境，并想要在TaskManager机器上使用此套环境，可配置`SPARK_HOME`（部署到TaskManager机器同名路径上）。`SPARK_HOME`不进行配置时，将自动下载、使用特定Spark发行版。
 
 #### 默认端口
 | 环境变量                  | 默认值 | 定义                 |
@@ -628,9 +628,14 @@ curl http://<apiserver_ip>:<port>/dbs/foo -X POST -d'{"mode":"online","sql":"sho
 
 TaskManager 可以只存在一台，如果你需要高可用性，可以部署多 TaskManager ，需要注意避免IP端口冲突。如果 TaskManager 主节点出现故障，从节点将自动恢复故障取代主节点，客户端无需任何修改可继续访问 TaskManager 服务。
 
-**1. 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版**
+**1. 下载 OpenMLDB 部署包和 Spark 发行版**
 
 Spark发行版：
+
+从 Spark 官网下载[Spark 发行版](https://spark.apache.org/downloads.html)，解压后配置`SPARK_HOME`环境变量。
+  
+或者使用 OpenMLDB Spark 发行版。
+
 ```shell
 wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.5/spark-3.2.1-bin-openmldbspark.tgz
 # 中国镜像地址：https://www.openmldb.com/download/v0.8.5/spark-3.2.1-bin-openmldbspark.tgz
