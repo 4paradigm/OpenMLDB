@@ -1520,9 +1520,12 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!FLAGS_skip_grant_tables) {
+        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+        while (
+            !GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     return true;
 }
