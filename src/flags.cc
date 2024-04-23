@@ -186,3 +186,4 @@ DEFINE_uint32(keep_log_file_num, 5, "Maximal info log files to be kept");
 DEFINE_int32(sync_job_timeout, 30 * 60 * 1000,
              "sync job timeout, unit is milliseconds, should <= server.channel_keep_alive_time in TaskManager");
 DEFINE_int32(deploy_job_max_wait_time_ms, 30 * 60 * 1000, "the max wait time of waiting deploy job");
+DEFINE_bool(skip_grant_tables, true, "skip the grant tables");

@@ -69,7 +69,9 @@ constexpr int MAX_TABLET_NUM = 3;
 class MiniCluster {
  public:
     explicit MiniCluster(int32_t zk_port)
-        : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {}
+        : zk_port_(zk_port), ns_(), tablet_num_(2), zk_cluster_(), zk_path_(), ns_client_(NULL) {
+        FLAGS_skip_grant_tables = false;
+    }
 
     ~MiniCluster() {
         for (auto& tablet_user_access_manager : tablet_user_access_managers_) {
@@ -102,6 +104,7 @@ class MiniCluster {
         if (ns_client_) {
             delete ns_client_;
         }
+        FLAGS_skip_grant_tables = true;
     }
 
     bool SetUp(int tablet_num = 2) {
@@ -296,7 +299,7 @@ class MiniCluster {
 
 class StandaloneEnv {
  public:
-    StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) {}
+    StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) { FLAGS_skip_grant_tables = false; }
     ~StandaloneEnv() {
         for (auto& tablet_user_access_manager : tablet_user_access_managers_) {
             if (tablet_user_access_manager) {
@@ -326,6 +329,7 @@ class StandaloneEnv {
         if (ns_client_) {
             delete ns_client_;
         }
+        FLAGS_skip_grant_tables = true;
     }
 
     bool SetUp() {

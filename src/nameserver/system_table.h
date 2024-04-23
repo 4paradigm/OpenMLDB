@@ -26,6 +26,7 @@
 #include "proto/name_server.pb.h"
 
 DECLARE_uint32(system_table_replica_num);
+DECLARE_bool(skip_grant_tables);
 
 namespace openmldb {
 namespace nameserver {

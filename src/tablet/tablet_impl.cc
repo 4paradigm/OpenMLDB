@@ -1297,6 +1297,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             }
         }
         openmldb::base::Slice value = it->GetValue();
+        DLOG(INFO) << "encode pk " << it->GetPK() << " ts " << it->GetKey() << " size " << value.size();
         ::openmldb::codec::EncodeFull(it->GetPK(), it->GetKey(), value.data(), value.size(), &buf);
         scount++;
         if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
@@ -1319,6 +1320,8 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     buf.copy_to(response->mutable_pairs());
     delete it;
+    DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
+               << " last_time " << last_time << " ts_pos " << ts_pos;
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_count(scount);
     response->set_pk(last_pk);
