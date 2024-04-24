@@ -36,17 +36,10 @@ public class CSVReader {
     }
 
     private static void convertData(CSVRecord record, HashMap<String, ArrayList<TalkingData>> map) {
-        TalkingData td = new TalkingData();
-        String ip = record.get("ip");
-        td.setIp(ip);
-        td.setApp(Integer.parseInt(record.get("app")));
-        td.setDevice(Integer.parseInt(record.get("device")));
-        td.setOs(Integer.parseInt(record.get("os")));
-        td.setChannel(Integer.parseInt(record.get("channel")));
-        td.setClickTime(record.get("click_time"));
-        td.setIsAttribute(Integer.parseInt(record.get("is_attributed")));
-        map.computeIfAbsent(ip, v -> new ArrayList<>());
-        map.get(ip).add(td);
+        TalkingData td = TalkingData.from(record);
+        String key = td.getIp();
+        map.computeIfAbsent(key, v -> new ArrayList<>());
+        map.get(key).add(td);
     }
 
     public static void main(String[] args) {

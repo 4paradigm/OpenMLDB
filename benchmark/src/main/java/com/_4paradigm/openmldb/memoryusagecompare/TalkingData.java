@@ -1,6 +1,7 @@
 package com._4paradigm.openmldb.memoryusagecompare;
 
 import com.google.gson.annotations.Expose;
+import org.apache.commons.csv.CSVRecord;
 
 public class TalkingData {
     public String ip;
@@ -84,5 +85,19 @@ public class TalkingData {
                 ", clickTime='" + clickTime + '\'' +
                 ", isAttribute=" + isAttribute +
                 '}';
+    }
+
+    // convert CSVRecord to TalkingData
+    public static TalkingData from(CSVRecord record) {
+        TalkingData td = new TalkingData();
+        String ip = record.get("ip");
+        td.setIp(ip);
+        td.setApp(Integer.parseInt(record.get("app")));
+        td.setDevice(Integer.parseInt(record.get("device")));
+        td.setOs(Integer.parseInt(record.get("os")));
+        td.setChannel(Integer.parseInt(record.get("channel")));
+        td.setClickTime(record.get("click_time"));
+        td.setIsAttribute(Integer.parseInt(record.get("is_attributed")));
+        return td;
     }
 }

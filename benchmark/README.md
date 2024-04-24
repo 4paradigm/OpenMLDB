@@ -91,3 +91,15 @@ Similar to memory usage comparison testing, we also provide two approaches for t
 Note:
 1. You can get the TalkingData sample dataset from [here](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_sample.csv), or you can get the full TalkingData training dataset from [here](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/data).
 2. The full TalkingData dataset is too large, so we recommend extracting a portion of it for testing.
+
+### Query Performance Comparison
+Comparing the query performance of OpenMLDB and Redis under the same scenario.
+1. Configure [memory.properties](src%2Fmain%2Fresources%2Fmemory.properties).
+
+   Configure the service addresses for your OpenMLDB and Redis instances, and modify the configuration parameters in the 'query perf test' section according to the requirements.
+2. (Optional) Load data into OpenMLDB.
+3. Start the test by executing the following command:
+   ```
+   java -cp conf/:lib/* com._4paradigm.openmldb.memoryusagecompare.BenchmarkQueryPerf
+   ```
+4. The test report will be printed at the end of the test execution.
