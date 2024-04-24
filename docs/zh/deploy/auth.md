@@ -12,6 +12,8 @@ OpenMLDB 0.8.4版本及以后，可以使用有密码的ZooKeeper。需要在启
 
 ## OpenMLDB身份认证
 
+通过在启动客户端和服务器时包含`--noskip_grant_tables`来启用OpenMLDB身份认证。
+
 OpenMLDB 0.8.5版本及以后，集群内可以使用用户名和密码进行身份认证。自定义用户和密码的创建都在集群启动之后，初始集群只有root用户，密码为空。默认情况下，任何的server和client都是以root用户名和空密码连接到集群。
 
 为了安全，我们通常需要root用户使用密码，再创建普通用户。而由于架构上部分server也会作为client连接集群，如果修改root密码需要注意。

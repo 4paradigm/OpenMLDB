@@ -12,6 +12,8 @@ OpenMLDB 0.8.4 and later versions support ZooKeeper with passwords. You need to 
 
 ## OpenMLDB Authentication
 
+Authentication and authorization can be enabled by including `--noskip_grant_tables` when starting clients and servers.
+
 OpenMLDB 0.8.5 and later versions support username and password authentication in the cluster. Custom user and password creation is performed after the cluster is started. The initial cluster has only the root user with an empty password. By default, all servers and clients connect to the cluster using the root username and an empty password.
 
 For security reasons, we usually need the root user to use a password and then create ordinary users. Due to the architecture, some servers also connect to the cluster as clients. If you need to change the root password, pay attention to these servers.
