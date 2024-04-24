@@ -404,12 +404,6 @@ jobs:
           name: coverage-python-report-${{ github.sha }}
           path: python
 
-      - name: Download Artifacts (go)
-        uses: actions/download-artifact@v3
-        with:
-          name: coverage-go-report-${{ github.sha }}
-          path: go
-
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v4
         with:
