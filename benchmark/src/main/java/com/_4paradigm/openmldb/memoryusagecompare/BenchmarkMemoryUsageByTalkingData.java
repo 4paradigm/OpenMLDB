@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
@@ -84,7 +85,7 @@ public class BenchmarkMemoryUsageByTalkingData {
         opdb.close();
     }
 
-    private void insertData() {
+    private void insertData() throws ParseException {
         logger.info("start test using dataset train_sample.csv from here: https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection.");
         int curr;
 

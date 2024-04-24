@@ -62,7 +62,8 @@ public class BenchmarkMemoryUsage {
     public BenchmarkMemoryUsage() throws IOException, SQLException {
         redis.initializeJedis(config, configStream);
         opdb.initializeOpenMLDB(config, configStream);
-        opdb.initOpenMLDBEnv();
+        String ddl = "CREATE TABLE IF NOT EXISTS `" + opdb.tableName + "`( \n`key` string,\n`value` string\n) OPTIONS (replicanum=1); ";
+        opdb.initOpenMLDBEnvWithDDL(ddl);
     }
 
     private void clearData() throws InterruptedException {

@@ -11,7 +11,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jedis.version>5.1.0</jedis.version>
+        <jedis.version>5.1.2</jedis.version>
         <openmldb.sdk.version>0.8.5</openmldb.sdk.version>
     </properties>
 
