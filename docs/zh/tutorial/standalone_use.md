@@ -11,7 +11,7 @@
 执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.5 bash
+docker run -it 4pdosc/openmldb:0.9.0 bash
 ```
 
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。

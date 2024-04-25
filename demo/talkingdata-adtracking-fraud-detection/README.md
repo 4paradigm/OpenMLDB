@@ -15,7 +15,7 @@ We recommend you to use docker to run the demo. OpenMLDB and dependencies have b
 **Start docker**
 
 ```
-docker run -it 4pdosc/openmldb:0.8.5 bash
+docker run -it 4pdosc/openmldb:0.9.0 bash
 ```
 
 #### Run locally
