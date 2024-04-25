@@ -44,7 +44,7 @@ We plan to test with 1 million (referred to as 1M) keys, each corresponding to 1
 Deployment can be done through containerization or directly on physical machines using software packages. There is no significant difference between the two methods. Below is an example of using containerization for deployment:
 
 - OpenMLDB
-    - Docker image: `docker pull 4pdosc/openmldb:0.8.5`
+    - Docker image: `docker pull 4pdosc/openmldb:0.9.0`
     - Documentation: [https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
 
 - Redis:

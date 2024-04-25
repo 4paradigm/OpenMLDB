@@ -49,7 +49,7 @@ This article will use Docker mode to start OpenMLDB, so there is no need to down
 We recommend that you bind all three downloaded file packages to the `kafka` directory. Alternatively, you can download the file packages after starting the container. For our demonstration, we assume that the file packages are all in the `/work/kafka` directory.
 
 ```
-docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.5 bash
+docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.9.0 bash
 ```
 
 ### Note

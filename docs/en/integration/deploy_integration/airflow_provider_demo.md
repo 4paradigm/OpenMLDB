@@ -36,7 +36,7 @@ For smooth function, we recommend starting OpenMLDB using the docker image and i
 Since Airflow Web requires an external port for login, the container's port must be exposed. Then map the downloaded file from the previous step to the `/work/airflow/dags` directory. This step is crucial for Airflow to load the DAGs from this folder correctly.
 
 ```
-docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.8.5 bash
+docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.9.0 bash
 ```
 
 #### Download and Install Airflow and Airflow OpenMLDB Provider
