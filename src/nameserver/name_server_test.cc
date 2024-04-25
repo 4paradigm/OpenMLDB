@@ -856,7 +856,6 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     vector<shared_ptr<NameServerImpl>*> ns_vector = {&m1_ns1, &m1_ns2};
     vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
     vector<string*> endpoints = {&m1_t1_ep, &m1_t2_ep};
-    ;
 
     int port = 9632;
 
@@ -1028,7 +1027,6 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     vector<shared_ptr<NameServerImpl>*> ns_vector = {&m1_ns1, &m1_ns2};
     vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
     vector<string*> endpoints = {&m1_t1_ep, &m1_t2_ep};
-    ;
 
     int port = 9632;
 

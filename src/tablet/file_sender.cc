@@ -24,6 +24,7 @@
 #include "boost/algorithm/string/predicate.hpp"
 #include "common/timer.h"
 #include "gflags/gflags.h"
+#include "nameserver/system_table.h"
 
 DECLARE_int32(send_file_max_try);
 DECLARE_uint32(stream_block_size);
@@ -63,7 +64,9 @@ bool FileSender::Init() {
     }
     channel_ = new brpc::Channel();
     brpc::ChannelOptions options;
-    options.auth = &client_authenticator_;
+    if (!FLAGS_skip_grant_tables) {
+        options.auth = &client_authenticator_;
+    }
     options.timeout_ms = FLAGS_request_timeout_ms;
     options.connect_timeout_ms = FLAGS_request_timeout_ms;
     options.max_retry = FLAGS_request_max_retry;

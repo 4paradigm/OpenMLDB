@@ -145,19 +145,19 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to register name");
         exit(1);
     }
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    if (!name_server->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                   &table_info)) {
-        PDLOG(WARNING, "Failed to get table info for user table");
-        exit(1);
-    }
-    openmldb::auth::UserAccessManager user_access_manager(name_server->GetSystemTableIterator(), table_info);
+
     brpc::ServerOptions options;
-    openmldb::authn::BRPCAuthenticator server_authenticator(
-        [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
-            return user_access_manager.IsAuthenticated(host, username, password);
-        });
-    options.auth = &server_authenticator;
+    std::unique_ptr<openmldb::auth::UserAccessManager> user_access_manager;
+    std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
+    if (!FLAGS_skip_grant_tables) {
+        user_access_manager =
+            std::make_unique<openmldb::auth::UserAccessManager>(name_server->GetSystemTableIterator());
+        server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
+            [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
+                return user_access_manager->IsAuthenticated(host, username, password);
+            });
+        options.auth = server_authenticator.get();
+    }
 
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -256,8 +256,17 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
-    openmldb::authn::BRPCAuthenticator server_authenticator;
-    options.auth = &server_authenticator;
+    std::unique_ptr<openmldb::auth::UserAccessManager> user_access_manager;
+    std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
+
+    if (!FLAGS_skip_grant_tables) {
+        user_access_manager = std::make_unique<openmldb::auth::UserAccessManager>(tablet->GetSystemTableIterator());
+        server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
+            [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
+                return user_access_manager->IsAuthenticated(host, username, password);
+            });
+        options.auth = server_authenticator.get();
+    }
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {

@@ -65,6 +65,7 @@
 #include "storage/segment.h"
 #include "storage/table.h"
 #include "tablet/file_sender.h"
+#include "tablet_impl.h"
 
 using ::openmldb::base::ReturnCode;
 using ::openmldb::storage::DiskTable;
@@ -5810,6 +5811,28 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
 
     // TODO(hw): delete rpc?
     response->set_code(ReturnCode::kOk);
+}
+
+std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                      std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
+TabletImpl::GetSystemTableIterator() {
+    return [this](const std::string& table_name)
+               -> std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                          std::unique_ptr<openmldb::codec::Schema>>> {
+        for (const auto& [tid, tables] : tables_) {
+            for (const auto& [pid, table] : tables) {
+                if (table->GetName() == table_name) {
+                    std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> empty_tablet_clients;
+                    auto user_table = std::make_shared<std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>>(
+                        std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>{{pid, table}});
+                    return {{std::make_unique<::openmldb::catalog::FullTableIterator>(table->GetId(), user_table,
+                                                                                      empty_tablet_clients),
+                             std::make_unique<::openmldb::codec::Schema>(table->GetTableMeta()->column_desc())}};
+                }
+            }
+        }
+        return std::nullopt;
+    };
 }
 
 }  // namespace tablet

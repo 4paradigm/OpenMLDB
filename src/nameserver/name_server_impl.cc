@@ -1520,9 +1520,12 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!FLAGS_skip_grant_tables) {
+        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+        while (
+            !GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     return true;
 }
@@ -5590,9 +5593,9 @@ void NameServerImpl::OnLocked() {
         PDLOG(WARNING, "recover failed");
     }
     CreateDatabaseOrExit(INTERNAL_DB);
-    if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
+    if (!FLAGS_skip_grant_tables && db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
         auto temp = FLAGS_system_table_replica_num;
-        FLAGS_system_table_replica_num = temp == 0 ? 1 : temp;
+        FLAGS_system_table_replica_num = tablets_.size();
         CreateSystemTableOrExit(SystemTableType::kUser);
         FLAGS_system_table_replica_num = temp;
         InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -9585,12 +9588,15 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
     response->set_msg("ok");
 }
 
-std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>
+std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                      std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
 NameServerImpl::GetSystemTableIterator() {
-    return [this](const std::string& table_name) -> std::unique_ptr<::openmldb::catalog::FullTableIterator> {
+    return [this](const std::string& table_name)
+               -> std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                          std::unique_ptr<openmldb::codec::Schema>>> {
         std::shared_ptr<TableInfo> table_info;
         if (!GetTableInfo(table_name, INTERNAL_DB, &table_info)) {
-            return nullptr;
+            return std::nullopt;
         }
         auto tid = table_info->tid();
         auto table_partition = table_info->table_partition(0);  // only one partition for system table
@@ -9598,13 +9604,17 @@ NameServerImpl::GetSystemTableIterator() {
             if (table_partition.partition_meta(meta_idx).is_leader() &&
                 table_partition.partition_meta(meta_idx).is_alive()) {
                 auto endpoint = table_partition.partition_meta(meta_idx).endpoint();
-                auto table_ptr = GetTablet(endpoint);
+                auto tablet_ptr = GetTablet(endpoint);
+                if (tablet_ptr == nullptr) {
+                    return std::nullopt;
+                }
                 std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> tablet_clients = {
-                    {0, table_ptr->client_}};
-                return std::make_unique<catalog::FullTableIterator>(tid, nullptr, tablet_clients);
+                    {0, tablet_ptr->client_}};
+                return {{std::make_unique<catalog::FullTableIterator>(tid, nullptr, tablet_clients),
+                         std::make_unique<::openmldb::codec::Schema>(table_info->column_desc())}};
             }
         }
-        return nullptr;
+        return std::nullopt;
     };
 }
 

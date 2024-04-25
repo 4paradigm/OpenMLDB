@@ -29,6 +29,8 @@ namespace openmldb::auth {
 template <typename Key, typename Value>
 class RefreshableMap {
  public:
+    RefreshableMap() : map_(std::make_shared<std::unordered_map<Key, Value>>()) {}
+
     std::optional<Value> Get(const Key& key) const {
         std::shared_lock<std::shared_mutex> lock(mutex_);
         if (auto it = map_->find(key); it != map_->end()) {

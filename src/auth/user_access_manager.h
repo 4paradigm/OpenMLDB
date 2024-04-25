@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 #include "catalog/distribute_iterator.h"
 #include "refreshable_map.h"
@@ -29,16 +30,17 @@
 namespace openmldb::auth {
 class UserAccessManager {
  public:
-    using IteratorFactory =
-        std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>;
+    using IteratorFactory = std::function<std::optional<
+        std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>, std::unique_ptr<openmldb::codec::Schema>>>(
+        const std::string& table_name)>;
 
-    UserAccessManager(IteratorFactory iterator_factory, std::shared_ptr<nameserver::TableInfo> user_table_info);
+    explicit UserAccessManager(IteratorFactory iterator_factory);
+
     ~UserAccessManager();
     bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
 
  private:
     IteratorFactory user_table_iterator_factory_;
-    std::shared_ptr<nameserver::TableInfo> user_table_info_;
     RefreshableMap<std::string, std::string> user_map_;
     std::atomic<bool> sync_task_running_{false};
     std::thread sync_task_thread_;

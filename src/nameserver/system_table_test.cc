@@ -48,8 +48,8 @@ class MockClosure : public ::google::protobuf::Closure {
 };
 class SystemTableTest : public ::testing::Test {
  public:
-    SystemTableTest() {}
-    ~SystemTableTest() {}
+    SystemTableTest() { FLAGS_skip_grant_tables = false; }
+    ~SystemTableTest() { FLAGS_skip_grant_tables = true; }
 };
 
 TEST_F(SystemTableTest, SystemTable) {

@@ -116,9 +116,6 @@ class DBSDK {
     virtual bool GetTaskManagerAddress(std::string* endpoint, std::string* real_endpoint) = 0;
     // build client_manager, then create a new catalog, replace the catalog in engine
     virtual bool BuildCatalog() = 0;
-
-    DBSDK() : client_manager_(new catalog::ClientManager), catalog_(new catalog::SDKCatalog(client_manager_)) {}
-
     static std::string GetFunSignature(const openmldb::common::ExternalFun& fun);
     bool InitExternalFun();
 
@@ -186,7 +183,15 @@ class ClusterSDK : public DBSDK {
 
 class StandAloneSDK : public DBSDK {
  public:
-    explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {}
+    explicit StandAloneSDK(const std::shared_ptr<StandaloneOptions> options) : options_(options) {
+        if (!options->user.empty()) {
+            client_manager_ = std::make_shared<::openmldb::catalog::ClientManager>(
+                authn::UserToken{options->user, codec::Encrypt(options->password)});
+        } else {
+            client_manager_ = std::make_shared<::openmldb::catalog::ClientManager>();
+        }
+        catalog_ = std::make_shared<catalog::SDKCatalog>(client_manager_);
+    }
 
     ~StandAloneSDK() override { pool_.Stop(false); }
     bool Init() override;

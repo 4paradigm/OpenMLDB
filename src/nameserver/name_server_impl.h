@@ -358,7 +358,8 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
-    std::function<std::unique_ptr<::openmldb::catalog::FullTableIterator>(const std::string& table_name)>
+    std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                          std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
     GetSystemTableIterator();
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,

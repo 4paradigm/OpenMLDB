@@ -190,7 +190,15 @@ ClusterSDK::ClusterSDK(const std::shared_ptr<SQLRouterOptions>& options)
       leader_path_(options->zk_path + "/leader"),
       taskmanager_leader_path_(options->zk_path + "/taskmanager/leader"),
       zk_client_(nullptr),
-      pool_(1) {}
+      pool_(1) {
+    if (!options->user.empty()) {
+        client_manager_ = std::make_shared<::openmldb::catalog::ClientManager>(
+            authn::UserToken{options->user, codec::Encrypt(options->password)});
+    } else {
+        client_manager_ = std::make_shared<::openmldb::catalog::ClientManager>();
+    }
+    catalog_ = std::make_shared<catalog::SDKCatalog>(client_manager_);
+}
 
 ClusterSDK::~ClusterSDK() {
     pool_.Stop(false);

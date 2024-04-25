@@ -132,17 +132,20 @@ class AsyncTablesHandler : public ::hybridse::vm::MemTableHandler {
 
 class TabletAccessor : public ::hybridse::vm::Tablet {
  public:
-    explicit TabletAccessor(const std::string& name) : name_(name), tablet_client_() {}
+    explicit TabletAccessor(const std::string& name,
+                            const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : name_(name), tablet_client_(), auth_token_(auth_token) {}
 
-    TabletAccessor(const std::string& name, const std::shared_ptr<::openmldb::client::TabletClient>& client)
-        : name_(name), tablet_client_(client) {}
+    TabletAccessor(const std::string& name, const std::shared_ptr<::openmldb::client::TabletClient>& client,
+                   const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : name_(name), tablet_client_(client), auth_token_(auth_token) {}
 
     std::shared_ptr<::openmldb::client::TabletClient> GetClient() {
         return std::atomic_load_explicit(&tablet_client_, std::memory_order_relaxed);
     }
 
     bool UpdateClient(const std::string& endpoint) {
-        auto client = std::make_shared<::openmldb::client::TabletClient>(name_, endpoint);
+        auto client = std::make_shared<::openmldb::client::TabletClient>(name_, endpoint, auth_token_);
         if (client->Init() != 0) {
             return false;
         }
@@ -170,6 +173,7 @@ class TabletAccessor : public ::hybridse::vm::Tablet {
  private:
     std::string name_;
     std::shared_ptr<::openmldb::client::TabletClient> tablet_client_;
+    const openmldb::authn::AuthToken auth_token_;
 };
 
 class TabletsAccessor : public ::hybridse::vm::Tablet {
@@ -243,7 +247,8 @@ class TableClientManager {
 
 class ClientManager {
  public:
-    ClientManager() : real_endpoint_map_(), clients_(), mu_(), rand_(0xdeadbeef) {}
+    explicit ClientManager(const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : real_endpoint_map_(), clients_(), mu_(), rand_(0xdeadbeef), auth_token_(auth_token) {}
     std::shared_ptr<TabletAccessor> GetTablet(const std::string& name) const;
     std::shared_ptr<TabletAccessor> GetTablet() const;
     std::vector<std::shared_ptr<TabletAccessor>> GetAllTablet() const;
@@ -257,6 +262,7 @@ class ClientManager {
     std::unordered_map<std::string, std::shared_ptr<TabletAccessor>> clients_;
     mutable ::openmldb::base::SpinMutex mu_;
     mutable ::openmldb::base::Random rand_;
+    const openmldb::authn::AuthToken auth_token_;
 };
 
 }  // namespace catalog

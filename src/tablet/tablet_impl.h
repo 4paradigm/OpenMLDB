@@ -274,6 +274,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 ::openmldb::api::DeployStatsResponse* response,
                                 ::google::protobuf::Closure* done) override;
 
+    std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
+                                          std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
+    GetSystemTableIterator();
+
  private:
     class UpdateAggrClosure : public Closure {
      public:
