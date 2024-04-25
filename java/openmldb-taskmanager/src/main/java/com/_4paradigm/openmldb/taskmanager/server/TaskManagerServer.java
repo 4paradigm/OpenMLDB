@@ -105,8 +105,8 @@ public class TaskManagerServer {
         rpcServer = new RpcServer(TaskManagerConfig.getServerPort(), options);
         rpcServer.registerService(new TaskManagerImpl());
         rpcServer.start();
-        log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.getServerPort(),
-                TaskManagerConfig.getServerWorkerThreads());
+        logger.info(String.format("Start TaskManager on %d with worker thread number %d",
+                        TaskManagerConfig.getServerPort(), TaskManagerConfig.getServerWorkerThreads()));
 
         if (blocking) {
             // make server keep running
