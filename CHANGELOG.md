@@ -2,9 +2,15 @@
 
 ## [0.9.0] - 2024-04-25
 
+### Breaking Changes
+- Upgrade SQLAlchemy to 2.0.27 and SQLAlchemy 1.x is not supported(#3805 @yht520100)
+- Correct semantic for `first_value` which will be compatible with ANSI SQL(#3861 @aceforeverd)
+- Set execute_mode default to `online` which was `offline` before 0.9.0(#3862 @aceforeverd)
+- The client-side authentication is deprecated and we can enable authentication in server-side(#3835 #3885 @oh2024)
+
 ### Features
 - Support offline building docker image(#3773 #3787 @QiChenX, #3778 @aceforeverd)
-- Support MySQL protocol with new project OpenM(ysq)LDB(#3800 @tobegit3hub #3816 #3820 #3823 #3824 #3831 @yangwucheng)
+- Support MySQL protocol with new module OpenM(ysq)LDB(#3800 @tobegit3hub #3816 #3820 #3823 #3824 #3831 @yangwucheng)
 - Support map datatype for SQL engine(#3841 #3847 @aceforeverd)
 - Support TiDB backend for online and offline storage(#3815 #3839 @yht520100)
 - Kafka connector support string timestamp and partial insert(#3834 @vagetablechicken)
@@ -22,12 +28,6 @@
 - Fix TTL merge for different types(#3859 @vagetablechicken)
 - Fix ddl parser when getting duplicated column keys(#3873 @vagetablechicken)
 - Fix initializing nameserver bug when calling zk RegisterName(#3869 @oh2024)
-
-### Breaking Changes
-- Upgrade SQLAlchemy to 2.0.27 and SQLAlchemy 1.x is not supported(#3805 @yht520100)
-- Correct semantic for `first_value` which will be compatible with ANSI SQL(#3861 @aceforeverd)
-- Set execute_mode default to `online` which was `offline` before 0.9.0(#3862 @aceforeverd)
-- The client-side authentication is depcreated and we can enable authentication in server-side(#3835 #3885 @oh2024)
 
 ### Testing
 - Set NPROC in intergration test(#3782 @dl239)
