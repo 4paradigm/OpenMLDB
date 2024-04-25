@@ -181,7 +181,7 @@ std::string format_continuous(T value) {
     return std::to_string(value);
 }
 
-std::string format_discrete(uint64_t value) {
+std::string format_discrete(int64_t value) {
     return std::to_string(value);
 }
 
