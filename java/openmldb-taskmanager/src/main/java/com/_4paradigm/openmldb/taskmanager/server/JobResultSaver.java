@@ -25,6 +25,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -51,6 +53,8 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class JobResultSaver {
+    private static final Log log = LogFactory.getLog(JobResultSaver.class);
+
     // false: unused, true: using
     // 0: unused, 1: saving, 2: finished but still in use
     private List<Integer> idStatus;
