@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.9.0] - 2024-04-25
+
+### Features
+- Support offline building docker image(#3773 #3787 @QiChenX, #3778 @aceforeverd)
+- Support MySQL protocol with new project OpenM(ysq)LDB(#3800 @tobegit3hub #3816 #3820 #3823 #3824 #3831 @yangwucheng)
+- Support map datatype for SQL engine(#3841 #3847 @aceforeverd)
+- Support TiDB backend for online and offline storage(#3815 #3839 @yht520100)
+- Kafka connector support string timestamp and partial insert(#3834 @vagetablechicken)
+- Support arbitrary spark distribution and remove dependency of OpenMLDB Spark(#3849 @tobegit3hub)
+- Support insert function in offline mode(#3854 @Matagits)
+- Support feature signature with SQL functions(#3877 @wyl4pd)
+- Support reuqest mode in raw SQL(#3874 @aceforeverd)
+
+### Bug Fixes
+- Fix delete with same ts(#3780 @dl239)
+- Fix '\x00' Issue in Python SDK Precompiled SQL Inserts(#3788 @yht520100)
+- Fix import spark config when create like hive(@3792 @vagetablechicken)
+- Fix select constant return empty value in offline (#3825 @Matagits)
+- Fix show and load sql to print result set for notebook magic function(#3856 @tobegit3hub)
+- Fix TTL merge for different types(#3859 @vagetablechicken)
+- Fix ddl parser when getting duplicated column keys(#3873 @vagetablechicken)
+- Fix initializing nameserver bug when calling zk RegisterName(#3869 @oh2024)
+
+### Breaking Changes
+- Upgrade SQLAlchemy to 2.0.27 and SQLAlchemy 1.x is not supported(#3805 @yht520100)
+- Correct semantic for `first_value` which will be compatible with ANSI SQL(#3861 @aceforeverd)
+- Set execute_mode default to `online` which was `offline` before 0.9.0(#3862 @aceforeverd)
+- The client-side authentication is depcreated and we can enable authentication in server-side(#3835 #3885 @oh2024)
+
+### Testing
+- Set NPROC in intergration test(#3782 @dl239)
+- Support map data type in yaml testing framework(#3765 @aceforeverd)
+- Add automatic table cleanup after go sdk tests(#3799 @oh2024)
+- Fix sql_cmd_test and no impl for MakeMergeNode(#3829 @aceforeverd)
+- Add query performance benchmark(#3855 @gaoboal)
+
 ## [0.8.5] - 2024-02-27
 
 ### Features
