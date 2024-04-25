@@ -17,12 +17,12 @@
 - Support arbitrary spark distribution and remove dependency of OpenMLDB Spark(#3849 @tobegit3hub)
 - Support insert function in offline mode(#3854 @Matagits)
 - Support feature signature with SQL functions(#3877 @wyl4pd)
-- Support reuqest mode in raw SQL(#3874 @aceforeverd)
+- Support request mode in raw SQL(#3874 @aceforeverd)
 
 ### Bug Fixes
 - Fix delete with same ts(#3780 @dl239)
 - Fix '\x00' Issue in Python SDK Precompiled SQL Inserts(#3788 @yht520100)
-- Fix import spark config when create like hive(@3792 @vagetablechicken)
+- Fix import spark config when creating like hive(@3792 @vagetablechicken)
 - Fix select constant return empty value in offline (#3825 @Matagits)
 - Fix show and load sql to print result set for notebook magic function(#3856 @tobegit3hub)
 - Fix TTL merge for different types(#3859 @vagetablechicken)
