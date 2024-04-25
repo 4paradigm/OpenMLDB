@@ -11,12 +11,12 @@
 - Support arbitrary spark distribution and remove dependency of OpenMLDB Spark(#3849 @tobegit3hub)
 - Support insert function in offline mode(#3854 @Matagits)
 - Support feature signature with SQL functions(#3877 @wyl4pd)
-- Support reuqest mode in raw SQL(#3874 @aceforeverd)
+- Support request mode in raw SQL(#3874 @aceforeverd)
 
 ### Bug Fixes
 - Fix delete with same ts(#3780 @dl239)
 - Fix '\x00' Issue in Python SDK Precompiled SQL Inserts(#3788 @yht520100)
-- Fix import spark config when create like hive(@3792 @vagetablechicken)
+- Fix import spark config when creating like hive(@3792 @vagetablechicken)
 - Fix select constant return empty value in offline (#3825 @Matagits)
 - Fix show and load sql to print result set for notebook magic function(#3856 @tobegit3hub)
 - Fix TTL merge for different types(#3859 @vagetablechicken)
@@ -27,7 +27,7 @@
 - Upgrade SQLAlchemy to 2.0.27 and SQLAlchemy 1.x is not supported(#3805 @yht520100)
 - Correct semantic for `first_value` which will be compatible with ANSI SQL(#3861 @aceforeverd)
 - Set execute_mode default to `online` which was `offline` before 0.9.0(#3862 @aceforeverd)
-- The client-side authentication is depcreated and we can enable authentication in server-side(#3835 #3885 @oh2024)
+- The client-side authentication is deprecated and we can enable authentication on server-side(#3835 #3885 @oh2024)
 
 ### Testing
 - Set NPROC in intergration test(#3782 @dl239)
