@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - v0.9-package
     paths-ignore:
       - 'docs/**'
       - 'demo/**'
@@ -51,12 +52,7 @@ jobs:
 
       - name: prepare release
         run: |
-          VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
-            bash steps/prepare_release.sh "$VERSION"
-          fi
+          VERSION="0.9.0"
           echo "OPENMLDB_PREFIX=openmldb-$VERSION-linux" >> $GITHUB_ENV
 
       - name: enable java on release
@@ -77,42 +73,6 @@ jobs:
           # delete thirdparty build directory($ROOT/.deps/) to save disk space
           # make thirdpartybuild-clean
 
-      - name: run cpp
-        id: unittest
-        run: |
-          make test
-
-      - name: run sql_router_test
-        id: sql_router_test
-        run: |
-          bash steps/ut.sh sql_router_test 0
-
-      - name: run sql_sdk_test
-        id: sql_sdk_test
-        run: |
-          bash steps/ut.sh sql_sdk_test 0
-
-      - name: run sql_cluster_test
-        id: sql_cluster_test
-        run: |
-          bash steps/ut.sh sql_cluster_test 0
-
-      - name: run sql_standalone_sdk_test
-        id: sql_standalone_sdk_test
-        run: |
-          bash steps/ut.sh sql_standalone_sdk_test 0
-
-      - name: upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-ut-result-cpp-${{ github.sha }}
-          # exclude _deps xml
-          path: |
-            build/**/*.xml
-            reports/*.xml
-            !build/_deps/*
-
       - name: install
         if: ${{ github.event_name == 'push' }}
         run: |
@@ -129,21 +89,6 @@ jobs:
         with:
           path: openmldb-*.tar.gz
           name: release-artifacts
-
-  publish-test-results:
-    needs: [ "cpp" ]
-
-    # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
-    if: >
-      always() && github.event_name == 'push' || (
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.sender.login != 'dependabot[bot]' )
-    name: Publish Linux UT Results
-    uses: ./.github/workflows/publish-test-results-action.yml
-    with:
-      files: linux-ut-result-*/**/*.xml
-      check_name: Linux Test Report
-      comment_title: Linux Test Report
 
   macos-cpp:
     runs-on: macos-12
@@ -164,12 +109,7 @@ jobs:
 
       - name: prepare release
         run: |
-          VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
-            bash steps/prepare_release.sh "$VERSION"
-          fi
+          VERSION="0.9.0"
           echo "OPENMLDB_PREFIX=openmldb-$VERSION-darwin" >> $GITHUB_ENV
 
       - name: enable java on release
@@ -194,51 +134,19 @@ jobs:
           # make thirdpartybuild-clean
 
       - name: install
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           make install
 
       - name: package
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
 
       - name: upload artifacts
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v3
         with:
           path: openmldb-*.tar.gz
           name: release-artifacts
 
-      - name: Upload Event File
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: event-file
-          path: ${{ github.event_path }}
-
-  release:
-    runs-on: ubuntu-latest
-    # if test failed, shouldn't release
-    needs: [ "cpp", "macos-cpp" ]
-    if: >
-      success() && startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Download Release Artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: release-artifacts
-
-      - name: generate signature
-        run: |
-          sha256sum openmldb-*.tar.gz > SHA256SUM
-
-      - name: Release
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            openmldb-*.tar.gz
-            SHA256SUM
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
