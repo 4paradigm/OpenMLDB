@@ -32,6 +32,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.PreparedStatement;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -927,4 +931,20 @@ public class SQLRouterSmokeTest {
                 "FROM\n" +
                 "  t2\n");
     }
+
+    @Test(dataProvider = "executor")
+    public void testMergeAIOSDAGSQL(SqlExecutor router) {
+        try {
+            System.out.println("user.dir: " + System.getProperty("user.dir"));
+
+            Path path = Paths.get("src/test/data/aiosdagsql/1.in");
+            String content = new String(Files.readAllBytes(path));
+            System.out.println(router.mergeAIOSDAGSQL(content));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
 }
+

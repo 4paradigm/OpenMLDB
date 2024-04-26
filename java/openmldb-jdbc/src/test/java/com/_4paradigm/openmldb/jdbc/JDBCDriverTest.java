@@ -44,7 +44,6 @@ public class JDBCDriverTest {
     @BeforeTest
     public void connection() {
         try {
-
             Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
             // No database in jdbcUrl, and print zk log
             connection = DriverManager.getConnection(String.format("jdbc:openmldb:///?zk=%s&zkPath=%s", zk, zkPath));

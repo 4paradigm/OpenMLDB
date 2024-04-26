@@ -1,0 +1,73 @@
+{
+    "nodes": [{
+            "id": -1,
+            "uuid": "ab115093-a9be-431f-a530-8e3cd402836f",
+            "type": "FeatureCompute",
+            "script": "select col_0, 0 as age from t1",
+            "isDebug": false,
+            "isCurrent": false,
+            "parents": [
+                "a1a20cd2-cfd9-4282-8671-b2da5d154054"
+            ],
+            "inputTables": [
+                "t1"
+            ],
+            "tableNameMap": {
+                "t1": "68a00e17-eec1-4e91-9b25-cbb62025f550/instance_test.table"
+            },
+            "outputTables": [],
+            "instanceType": null,
+            "tables": {},
+            "loader": null,
+            "originConfig": null,
+            "enablePrn": true
+        },
+        {
+            "id": -1,
+            "uuid": "3f52842a-c2e1-4cfb-ae54-a92af12eb91c",
+            "type": "FeatureSign",
+            "script": "select col_0 from t1",
+            "isDebug": false,
+            "isCurrent": false,
+            "parents": [
+                "ab115093-a9be-431f-a530-8e3cd402836f"
+            ],
+            "inputTables": [
+                "t1"
+            ],
+            "tableNameMap": {
+                "t1": "modelIDE/test03-NativeFeSql-1713854736-8301e4.table"
+            },
+            "outputTables": [],
+            "instanceType": null,
+            "tables": {},
+            "loader": null,
+            "originConfig": null,
+            "enablePrn": true
+        }
+    ],
+    "schemas": [{
+            "uuid": null,
+            "prn": "68a00e17-eec1-4e91-9b25-cbb62025f550/instance_test.table",
+            "cols": [{
+                "name": "col_0",
+                "type": "Varchar"
+            }],
+            "isOutput": null
+        },
+        {
+            "uuid": null,
+            "prn": "modelIDE/test03-NativeFeSql-1713854736-8301e4.table",
+            "cols": [{
+                    "name": "col_0",
+                    "type": "Varchar"
+                },
+                {
+                    "name": "age",
+                    "type": "Integer"
+                }
+            ],
+            "isOutput": null
+        }
+    ]
+}
