@@ -53,7 +53,7 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class JobResultSaver {
-    private static final Log log = LogFactory.getLog(JobResultSaver.class);
+    private static final Log logger = LogFactory.getLog(JobResultSaver.class);
 
     // false: unused, true: using
     // 0: unused, 1: saving, 2: finished but still in use
@@ -92,8 +92,8 @@ public class JobResultSaver {
     public boolean saveFile(int resultId, String jsonData) {
         // No need to wait, cuz id status must have been changed by genResultId before.
         // It's a check.
-        if (log.isDebugEnabled()) {
-            log.debug("save result " + resultId + ", data " + jsonData);
+        if (logger.isDebugEnabled()) {
+            logger.debug("save result " + resultId + ", data " + jsonData);
         }
         int status = idStatus.get(resultId);
         if (status != 1) {
@@ -105,7 +105,7 @@ public class JobResultSaver {
                 idStatus.set(resultId, 2);
                 idStatus.notifyAll();
             }
-            log.info("saved all result of result " + resultId);
+            logger.info("saved all result of result " + resultId);
             return true;
         }
         // save to <log path>/tmp_result/<result_id>/<unique file name>
@@ -114,7 +114,7 @@ public class JobResultSaver {
             File saveP = new File(savePath);
             if (!saveP.exists()) {
                 boolean res = saveP.mkdirs();
-                log.info("create save path " + savePath + ", status " + res);
+                logger.info("create save path " + savePath + ", status " + res);
             }
         }
         String fileFullPath = String.format("%s/%s", savePath, genUniqueFileName());
@@ -125,7 +125,7 @@ public class JobResultSaver {
                         + fileFullPath);
             }
         } catch (IOException e) {
-            log.error("create file failed, path " + fileFullPath, e);
+            logger.error("create file failed, path " + fileFullPath, e);
             return false;
         }
 
@@ -135,7 +135,7 @@ public class JobResultSaver {
         } catch (IOException e) {
             // Write failed, we'll lost a part of result, but it's ok for show sync job
             // output. So we just log it, and response the http request.
-            log.error("write result to file failed, path " + fileFullPath, e);
+            logger.error("write result to file failed, path " + fileFullPath, e);
             return false;
         }
         return true;
@@ -151,7 +151,7 @@ public class JobResultSaver {
             }
         }
         if (idStatus.get(resultId) != 2) {
-            log.warn("read result timeout, result saving may be still running, try read anyway, id " + resultId);
+            logger.warn("read result timeout, result saving may be still running, try read anyway, id " + resultId);
         }
         String output = "";
         // all finished, read csv from savePath
@@ -163,7 +163,7 @@ public class JobResultSaver {
             output = printFilesTostr(savePath);
             FileUtils.forceDelete(saveP);
         } else {
-            log.info("empty result for " + resultId + ", show empty string");
+            logger.info("empty result for " + resultId + ", show empty string");
         }
         // reset id
         synchronized (idStatus) {
@@ -189,7 +189,7 @@ public class JobResultSaver {
             }
             return stringWriter.toString();
         } catch (Exception e) {
-            log.warn("read result met exception when read " + fileDir + ", " + e.getMessage());
+            logger.warn("read result met exception when read " + fileDir + ", " + e.getMessage());
             e.printStackTrace();
             return "read met exception, check the taskmanager log";
         }
@@ -219,7 +219,7 @@ public class JobResultSaver {
                 csvPrinter.printRecord(iter.next());
             }
         } catch (Exception e) {
-            log.warn("error when print result file " + file + ", ignore it");
+            logger.warn("error when print result file " + file + ", ignore it");
             e.printStackTrace();
         }
     }
