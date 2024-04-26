@@ -134,6 +134,12 @@
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-recipes</artifactId>
             <version>4.2.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.zookeeper</groupId>
+                    <artifactId>zookeeper</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -141,9 +147,6 @@
             <version>1.18.4</version>
             <scope>provided</scope>
         </dependency>
-
-
-
 
         <!-- Kubernetes -->
         <dependency>
