@@ -62,7 +62,7 @@ public class RecoverableZooKeeper {
     private final String quorumServers;
     private final int maxMultiSize; // unused now
 
-    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "DE_MIGHT_IGNORE", justification = "None. Its always been this way.")
+    //@edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "DE_MIGHT_IGNORE", justification = "None. Its always been this way.")
     public RecoverableZooKeeper(String quorumServers, int sessionTimeout, Watcher watcher) throws IOException {
         // TODO: Add support for zk 'chroot'; we don't add it to the quorumServers
         // String as we should.
