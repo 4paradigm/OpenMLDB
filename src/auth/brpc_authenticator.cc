@@ -18,6 +18,7 @@
 
 #include "auth_utils.h"
 #include "butil/endpoint.h"
+#include "nameserver/system_table.h"
 
 namespace openmldb::authn {
 
@@ -37,6 +38,9 @@ int BRPCAuthenticator::GenerateCredential(std::string* auth_str) const {
 
 int BRPCAuthenticator::VerifyCredential(const std::string& auth_str, const butil::EndPoint& client_addr,
                                         brpc::AuthContext* out_ctx) const {
+    if (FLAGS_skip_grant_tables) {
+        return 0;
+    }
     if (auth_str.length() < 2) {
         return -1;
     }
