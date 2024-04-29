@@ -32,6 +32,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -932,17 +933,123 @@ public class SQLRouterSmokeTest {
                 "  t2\n");
     }
 
-    @Test(dataProvider = "executor")
-    public void testMergeAIOSDAGSQL(SqlExecutor router) {
-        try {
-            System.out.println("user.dir: " + System.getProperty("user.dir"));
+    static private class AIOSDAGNode {
+        public String uuid;
+        public String script;
+        public ArrayList<String> parents = new ArrayList<>();
+        public ArrayList<String> inputTables = new ArrayList<>();
+        public Map<String, String> tableNameMap = new HashMap<>();
+    }
+    
+    static private class AIOSDAGColumn {
+        public String name;
+        public String type;
+    }
 
-            Path path = Paths.get("src/test/data/aiosdagsql/1.in");
-            String content = new String(Files.readAllBytes(path));
-            System.out.println(router.mergeAIOSDAGSQL(content));
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+    static private class AIOSDAGSchema {
+        public String prn;
+        public List<AIOSDAGColumn> cols = new ArrayList<>();
+    }
+
+    static private class AIOSDAG {
+        public List<AIOSDAGNode> nodes = new ArrayList<>();
+        public List<AIOSDAGSchema> schemas = new ArrayList<>();
+    }
+
+    public String mergeJsonDAGSQL(SqlExecutor router, String query) throws SQLException {
+        Gson gson = new Gson();
+        AIOSDAG graph = gson.fromJson(query, AIOSDAG.class);
+        Map<String, String> sqls = new HashMap<>();
+        Map<String, Map<String, String>> dag = new HashMap<>();
+        
+        for (AIOSDAGNode node : graph.nodes) {
+            if (sqls.get(node.uuid) != null) {
+                throw new RuntimeException("Duplicate 'uuid': " + node.uuid);
+            }
+            if (node.parents.size() != node.inputTables.size()) {
+                throw new RuntimeException("Size of 'parents' and 'inputTables' mismatch: " + node.uuid);
+            }
+            Map<String, String> parents = new HashMap<String, String>();
+            for (int i = 0; i < node.parents.size(); i++) {
+                String table = node.inputTables.get(i);
+                if (parents.get(table) != null) {
+                    throw new RuntimeException("Ambiguous name '" + table +  "': " + node.uuid);
+                }
+                parents.put(table, node.parents.get(i));
+            }
+            sqls.put(node.uuid, node.script);
+            dag.put(node.uuid, parents);
+        }
+
+        Map<String, Schema> schemaMap = new HashMap<>();
+        for (AIOSDAGSchema schema : graph.schemas) {
+            List<Column> columns = new ArrayList<>();
+            for (AIOSDAGColumn column : schema.cols) {
+                try {
+                    int type = Types.class.getField(column.type.toUpperCase()).getInt(null);
+                    columns.add(new Column(column.name, type));
+                } catch (Exception e) {
+                    throw new RuntimeException("Unknown SQL type: " + column.type);
+                }
+            }
+            schemaMap.put(schema.prn, new Schema(columns));
+        }
+        
+        Map<String, Schema> tableSchema0 = new HashMap<>();
+        for (AIOSDAGNode node : graph.nodes) {
+            for (int i = 0; i < node.parents.size(); i++) {
+                String table = node.inputTables.get(i);
+                if (sqls.get(node.parents.get(i)) == null) {
+                    String prn = node.tableNameMap.get(table);
+                    if (prn == null) {
+                        throw new RuntimeException("'prn' not found in 'tableNameMap': " +
+                            node.uuid + " " + table);
+                    }
+                    Schema schema = schemaMap.get(prn);
+                    if (schema == null) {
+                        throw new RuntimeException("schema not found: " + prn);
+                    }
+                    if (tableSchema0.get(table) != null) {
+                        if (tableSchema0.get(table) != schema) {
+                            throw new RuntimeException("table name conflict: " + table);
+                        }
+                    }
+                    tableSchema0.put(table, schema);
+                }
+            }
+        }
+
+        Map<String, Map<String, Schema>> tableSchema = new HashMap<>();
+        tableSchema.put("usedDB", tableSchema0);
+        return router.mergeDAGSQL(sqls, dag, "usedDB", tableSchema);
+    }
+
+    @Test(dataProvider = "executor")
+    public void testMergeDAGSQL(SqlExecutor router) throws SQLException, IOException {
+        System.out.println("user.dir: " + System.getProperty("user.dir"));
+        ArrayList<Path> inputs = new ArrayList<>();
+        ArrayList<Path> outputs = new ArrayList<>();
+        inputs.add(Paths.get("src/test/data/aiosdagsql/input1.json"));
+        outputs.add(Paths.get("src/test/data/aiosdagsql/output1.sql"));
+        for (int i = 0; i < inputs.size(); ++i) {
+            String input = new String(Files.readAllBytes(inputs.get(i)));
+            String output = mergeJsonDAGSQL(router, input);
+            System.out.println(output);
+            Assert.assertEquals(output, new String(Files.readAllBytes(outputs.get(i))));
+        }
+
+        ArrayList<Path> errors = new ArrayList<>();
+        errors.add(Paths.get("src/test/data/aiosdagsql/error1.json"));
+        for (Path error : errors) {
+            Exception exception = null;
+            String input = new String(Files.readAllBytes(error));
+            try {
+                mergeJsonDAGSQL(router, input);
+            } catch (Exception e) {
+                e.printStackTrace();
+                exception = e;
+            }
+            Assert.assertTrue(exception != null);
         }
     }
 

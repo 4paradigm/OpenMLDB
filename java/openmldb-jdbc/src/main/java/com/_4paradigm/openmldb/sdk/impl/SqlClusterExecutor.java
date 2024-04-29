@@ -45,11 +45,9 @@ import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.HashSet;
@@ -697,164 +695,83 @@ public class SqlClusterExecutor implements SqlExecutor {
         return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
     }
 
-    static private class AIOSDAGNode {
-        public String uuid;
-        public String script;
-        public ArrayList<String> parents = new ArrayList<>();
-        public ArrayList<String> inputTables = new ArrayList<>();
-        public Map<String, String> tableNameMap = new HashMap<>();
-    }
-    
-    static private class AIOSDAGColumn {
-        public String name;
-        public String type;
-    }
-
-    static private class AIOSDAGSchema {
-        public String prn;
-        public List<AIOSDAGColumn> cols = new ArrayList<>();
-    }
-
-    static private class AIOSDAG {
-        public List<AIOSDAGNode> nodes = new ArrayList<>();
-        public List<AIOSDAGSchema> schemas = new ArrayList<>();
-    }
-
-    static private class AIOSDAGMerge {
-        public String sql;
-        public Map<String, Schema> tableSchema = new HashMap<>();
-    }
-
     @Override
-    public String mergeAIOSDAGSQL(String query) throws SQLException {
-        Gson gson = new Gson();
-        AIOSDAG dag = gson.fromJson(query, AIOSDAG.class);
+    public String mergeDAGSQL(Map<String, String> sqls, Map<String, Map<String, String>> dag,
+              String usedDB, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
         Queue<String> queue = new LinkedList<>();
-        Map<String, Schema> schemaMap = new HashMap<>();
-        Map<String, AIOSDAGNode> nodeMap = new HashMap<>();
         Map<String, List<String>> childrenMap = new HashMap<>();
-        Map<String, Integer> parentsMap = new HashMap<>();
-        Map<String, AIOSDAGMerge> mergeMap = new HashMap<>();
-        Map<String, Types> typeMap = new HashMap<>();
-
-        for (AIOSDAGNode node : dag.nodes) {
-            if (nodeMap.get(node.uuid) != null) {
-                throw new RuntimeException("Duplicate 'uuid': " + node.uuid);
-            }
-            if (node.parents.size() != node.inputTables.size()) {
-                throw new RuntimeException("Size of 'parents' and 'inputTables' mismatch: " + node.uuid);
-            }
-            nodeMap.put(node.uuid, node);
-        }
-
-        for (AIOSDAGSchema schema : dag.schemas) {
-            List<Column> columns = new ArrayList<>();
-            for (AIOSDAGColumn column : schema.cols) {
-                try {
-                    int type = Types.class.getField(column.type.toUpperCase()).getInt(null);
-                    columns.add(new Column(column.name, type));
-                } catch (Exception e) {
-                    throw new RuntimeException("Unknown SQL type: " + column.type);
-                }
-            }
-            schemaMap.put(schema.prn, new Schema(columns));
-        }
-
-        for (AIOSDAGNode node : dag.nodes) {
+        Map<String, Integer> degreeMap = new HashMap<>();
+        Map<String, String> mergeMap = new HashMap<>();
+        for (String uuid: sqls.keySet()) {
+            Map<String, String> parents = dag.get(uuid);
             int degree = 0;
-            for (int i = 0; i < node.parents.size(); i++) {
-                String parent = node.parents.get(i);
-                String table = node.inputTables.get(i);
-                if (nodeMap.get(parent) != null) {
-                    degree += 1;
-                    if (childrenMap.get(parent) == null) {
-                        childrenMap.put(parent, new ArrayList<>());
+            if (parents != null) {
+                for (String parent : parents.values()) {
+                    if (dag.get(parent) != null) {
+                        degree += 1;
+                        if (childrenMap.get(parent) == null) {
+                            childrenMap.put(parent, new ArrayList<>());
+                        }
+                        childrenMap.get(parent).add(uuid);
                     }
-                    childrenMap.get(parent).add(node.uuid);
                 }
             }
-            parentsMap.put(node.uuid, degree);
+            degreeMap.put(uuid, degree);
             if (degree == 0) {
-                queue.offer(node.uuid);
+                queue.offer(uuid);
             }
         }
 
-        AIOSDAGMerge result = null;
-        while (queue.peek() != null) {
-            AIOSDAGNode node =  nodeMap.get(queue.poll());
-            AIOSDAGMerge merge = new AIOSDAGMerge();
-            StringBuilder sql = new StringBuilder("WITH");
-            boolean with = false;
-            for (int i = 0; i < node.parents.size(); i++) {
-                String parent = node.parents.get(i);
-                String table = node.inputTables.get(i);
-                AIOSDAGMerge input = mergeMap.get(parent);
+        ArrayList<String> targets = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            String uuid = queue.poll();
+            String sql = sqls.get(uuid);
+            if (sql == null) {
+                continue;
+            }
+            Map<String, String> parents = dag.get(uuid);
+            StringBuilder with = new StringBuilder();
+            for (Map.Entry<String, String> parent : parents.entrySet()) {
+                String input = mergeMap.get(parent.getValue());
                 if (input == null) {
-                    String prn = node.tableNameMap.get(table);
-                    if (prn == null) {
-                        throw new RuntimeException("'prn' not found in 'tableNameMap': " +
-                            node.uuid + " " + table);
-                    }
-                    Schema schema = schemaMap.get(prn);
-                    if (schema == null) {
-                        throw new RuntimeException("schema not found: " + prn);
-                    }
-                    if (merge.tableSchema.get(table) != null) {
-                        if (merge.tableSchema.get(table) != schema) {
-                            throw new RuntimeException("table name conflict: " + table);
-                        }
-                    }
-                    merge.tableSchema.put(table, schema);
+                    continue;
+                }
+                if (with.length() == 0) {
+                    with.append("WITH ");
                 } else {
-                    if (with) {
-                        sql.append(",");
-                    }
-                    sql.append(" ").append(table).append(" as (\n");
-                    sql.append(input.sql).append("\n").append(")");
-                    with = true;
-                    for (Map.Entry<String, Schema> entry : input.tableSchema.entrySet()) {
-                        if (merge.tableSchema.get(entry.getKey()) != null) {
-                            if (merge.tableSchema.get(entry.getKey()) != entry.getValue()) {
-                                throw new RuntimeException("Table name conflict: " + entry.getKey());
-                            }
-                        }
-                        merge.tableSchema.put(entry.getKey(), entry.getValue());
-                    }
+                    with.append(",\n");
                 }
+                with.append(parent.getKey()).append(" as (\n");
+                with.append(input).append("\n").append(")");
             }
-            if (with) {
-                sql.append("\n").append(node.script).append("\n");
-                merge.sql = sql.toString();
-            } else {
-                merge.sql = node.script;
+            if (with.length() != 0) {
+                sql = with.append("\n").append(sql).toString();
             }
-            mergeMap.put(node.uuid, merge);
-            List<String> children = childrenMap.get(node.uuid);
+            mergeMap.put(uuid, sql);
+            List<String> children = childrenMap.get(uuid);
             if (children == null || children.size() == 0) {
-                if (result != null) {
-                   throw new RuntimeException("Invalid DAG: final node not unique");
-                }
-                result = merge;
+                targets.add(sql);
             } else {
                 for (String child : children) {
-                    parentsMap.put(child, parentsMap.get(child) - 1);
-                    if (parentsMap.get(child) == 0) {
+                    degreeMap.put(child, degreeMap.get(child) - 1);
+                    if (degreeMap.get(child) == 0) {
                         queue.offer(child);
                     }
                 }
             }
         }
-
-        if (result == null) {
+        
+        if (targets.size() == 0) {
             throw new RuntimeException("Invalid DAG: final node not found");
+        } else if (targets.size() > 1) {
+            throw new RuntimeException("Invalid DAG: final node not unique");
         }
+        String merged = targets.get(0);
 
-        Map<String, Map<String, Schema>> tableSchema = new HashMap<>();
-        tableSchema.put("nousedDB", result.tableSchema);
-        List<String> err = validateSQLInRequest(result.sql, tableSchema);
-        if (err.size() != 0) {
-            throw new SQLException(String.join("\n", err));
+        List<String> ret = SqlClusterExecutor.validateSQLInRequest(merged, usedDB, tableSchema);
+        if (!ret.isEmpty()) {
+            throw new SQLException("merged sql is invalid: " + ret + ", merged sql: " + merged);
         }
-        return result.sql;
+        return merged;
     }
 }

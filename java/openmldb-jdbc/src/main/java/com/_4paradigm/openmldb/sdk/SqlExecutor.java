@@ -91,7 +91,8 @@ public interface SqlExecutor {
      */
     DAGNode SQLToDAG(String query) throws SQLException;
 
-    String mergeAIOSDAGSQL(String query) throws SQLException;
+    public String mergeDAGSQL(Map<String, String> sqls, Map<String, Map<String, String>> dag,
+              String usedDB, Map<String, Map<String, Schema>> tableSchema) throws SQLException;
 
     void close();
 }
