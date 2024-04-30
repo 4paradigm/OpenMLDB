@@ -50,11 +50,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -695,82 +696,46 @@ public class SqlClusterExecutor implements SqlExecutor {
         return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
     }
 
-    @Override
-    public String mergeDAGSQL(Map<String, String> sqls, Map<String, Map<String, String>> dag,
-              String usedDB, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
-        Queue<String> queue = new LinkedList<>();
-        Map<String, List<String>> childrenMap = new HashMap<>();
-        Map<String, Integer> degreeMap = new HashMap<>();
-        Map<String, String> mergeMap = new HashMap<>();
-        for (String uuid: sqls.keySet()) {
-            Map<String, String> parents = dag.get(uuid);
-            int degree = 0;
-            if (parents != null) {
-                for (String parent : parents.values()) {
-                    if (dag.get(parent) != null) {
-                        degree += 1;
-                        if (childrenMap.get(parent) == null) {
-                            childrenMap.put(parent, new ArrayList<>());
-                        }
-                        childrenMap.get(parent).add(uuid);
-                    }
-                }
-            }
-            degreeMap.put(uuid, degree);
-            if (degree == 0) {
-                queue.offer(uuid);
-            }
+    private String mergeDAGSQLMemo(DAGNode dag, Map<DAGNode, String> memo, Set<DAGNode> visiting) throws SQLException {
+        if (visiting.contains(dag)) {
+            throw new RuntimeException("Invalid DAG: found circle");
         }
 
-        ArrayList<String> targets = new ArrayList<>();
-        while (!queue.isEmpty()) {
-            String uuid = queue.poll();
-            String sql = sqls.get(uuid);
-            if (sql == null) {
-                continue;
-            }
-            Map<String, String> parents = dag.get(uuid);
-            StringBuilder with = new StringBuilder();
-            for (Map.Entry<String, String> parent : parents.entrySet()) {
-                String input = mergeMap.get(parent.getValue());
-                if (input == null) {
-                    continue;
-                }
-                if (with.length() == 0) {
-                    with.append("WITH ");
-                } else {
-                    with.append(",\n");
-                }
-                with.append(parent.getKey()).append(" as (\n");
-                with.append(input).append("\n").append(")");
-            }
-            if (with.length() != 0) {
-                sql = with.append("\n").append(sql).toString();
-            }
-            mergeMap.put(uuid, sql);
-            List<String> children = childrenMap.get(uuid);
-            if (children == null || children.size() == 0) {
-                targets.add(sql);
+        String merged = memo.get(dag);
+        if (merged != null) {
+            return merged;
+        }
+
+        visiting.add(dag);
+        StringBuilder with = new StringBuilder();
+        for (DAGNode node : dag.producers) {
+            String sql = mergeDAGSQLMemo(node, memo, visiting);
+            if (with.length() == 0) {
+                with.append("WITH ");
             } else {
-                for (String child : children) {
-                    degreeMap.put(child, degreeMap.get(child) - 1);
-                    if (degreeMap.get(child) == 0) {
-                        queue.offer(child);
-                    }
-                }
+                with.append(",\n");
             }
+            with.append(node.name).append(" as (\n");
+            with.append(sql).append("\n").append(")");
         }
-        
-        if (targets.size() == 0) {
-            throw new RuntimeException("Invalid DAG: final node not found");
-        } else if (targets.size() > 1) {
-            throw new RuntimeException("Invalid DAG: final node not unique");
+        if (with.length() == 0) {
+            merged = dag.sql;
+        } else {
+            merged = with.append("\n").append(dag.sql).toString();
         }
-        String merged = targets.get(0);
+        visiting.remove(dag);
+        memo.put(dag, merged);
+        return merged;
+    }
 
-        List<String> ret = SqlClusterExecutor.validateSQLInRequest(merged, usedDB, tableSchema);
-        if (!ret.isEmpty()) {
-            throw new SQLException("merged sql is invalid: " + ret + ", merged sql: " + merged);
+
+    @Override
+    public String mergeDAGSQL(DAGNode dag,
+                String usedDB, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        String merged = mergeDAGSQLMemo(dag, new HashMap<DAGNode, String>(), new HashSet<DAGNode>());
+        List<String> errors = SqlClusterExecutor.validateSQLInRequest(merged, usedDB, tableSchema);
+        if (!errors.isEmpty()) {
+            throw new SQLException("merged sql is invalid: " + errors + ", merged sql: " + merged);
         }
         return merged;
     }
