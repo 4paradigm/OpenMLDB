@@ -884,8 +884,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
     WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
     if (rs->Size() > 0) {
-        // drop aggr-tables, if got error, delete manully
-        std::vector<std::pair<std::string, std::string>> aggr_tables;
+        // drop aggr-table and meta info one by one, if failed, plz delete manually
         while (rs->Next()) {
             std::string aggr_db = rs->GetStringUnsafe(0);
             std::string aggr_table = rs->GetStringUnsafe(1);
@@ -898,13 +897,11 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
                 WARN_NOT_OK_AND_RET(status, absl::StrCat("drop aggr table ", aggr_db, ".", aggr_table, " failed"),
                                     false);
             }
-            aggr_tables.emplace_back(aggr_db, aggr_table);
-        }
-        // drop pre-agg meta in meta table
-        for (auto& aggr_table : aggr_tables) {
-            LOG(INFO) << "drop aggr meta " << aggr_table.first << "." << aggr_table.second << "by table name";
+            LOG(INFO) << "drop aggr meta " << aggr_db << "." << aggr_table << "by table name";
+            // Ref CheckPreAggrTableExist, checking existence of aggr table uses the unique_key index, ignore bucket_size.
+            // But for deleting, we don't need to consider the unique_key. Just delete the table, aggr_table is unique.
             std::string delete_aggr_info =
-                absl::StrCat("delete from ", meta_db, ".", meta_table, " where aggr_table='", aggr_table.second, "';");
+                absl::StrCat("delete from ", meta_db, ".", meta_table, " where aggr_table='", aggr_table, "';");
             auto rs = ExecuteSQL("", delete_aggr_info, true, true, 0, status);
             WARN_NOT_OK_AND_RET(status, "delete aggr info failed", false);
         }
