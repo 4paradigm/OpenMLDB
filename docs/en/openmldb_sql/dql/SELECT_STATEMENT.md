@@ -142,6 +142,6 @@ Parentheses `()` expression is the minimal unit to a request row, every expressi
 -- executing SQL as request mode, with request row (10, "foo", timestamp(4000))
 SELECT id, count (val) over (partition by id order by ts rows between 10 preceding and current row)
 FROM t1
-CONFIG (execute_mode = 'online', values = (10, "foo", timestamp (4000)))
+CONFIG (execute_mode = 'request', values = (10, "foo", timestamp (4000)))
 ```
 
