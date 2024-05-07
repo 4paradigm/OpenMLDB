@@ -1019,6 +1019,7 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
     }
     return router_cache;
 }
+
 std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
     const std::shared_ptr<SQLRequestRow>& row, hybridse::sdk::Status* status) {
