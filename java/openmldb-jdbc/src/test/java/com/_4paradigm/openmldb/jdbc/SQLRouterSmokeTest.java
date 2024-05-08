@@ -949,7 +949,12 @@ public class SQLRouterSmokeTest {
             System.out.println(output);
             Assert.assertEquals(output, new String(Files.readAllBytes(outputs.get(i))));
         }
+    }
 
+
+    @Test(dataProvider = "executor")
+    public void testMergeDAGSQLError(SqlExecutor router) throws SQLException, IOException {
+        System.out.println("user.dir: " + System.getProperty("user.dir"));
         ArrayList<Path> errors = new ArrayList<>();
         errors.add(Paths.get("src/test/data/aiosdagsql/error1.json"));
         for (Path error : errors) {

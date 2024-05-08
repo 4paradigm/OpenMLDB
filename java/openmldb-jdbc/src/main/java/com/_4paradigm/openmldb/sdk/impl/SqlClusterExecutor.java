@@ -735,7 +735,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         String merged = mergeDAGSQLMemo(dag, new HashMap<DAGNode, String>(), new HashSet<DAGNode>());
         List<String> errors = SqlClusterExecutor.validateSQLInRequest(merged, usedDB, tableSchema);
         if (!errors.isEmpty()) {
-            throw new SQLException("merged sql is invalid: " + errors + ", merged sql: " + merged);
+            throw new SQLException("merged sql is invalid: " + errors +
+                    "\n, merged sql: " + merged + "\n, table schema: " + tableSchema);
         }
         return merged;
     }

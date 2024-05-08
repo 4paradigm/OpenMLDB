@@ -58,6 +58,36 @@ public class AIOSUtil {
         public List<AIOSDAGSchema> schemas = new ArrayList<>();
     }
 
+    private static int parseType(String type) {
+        switch (type.toLowerCase()) {
+            case "smallint":
+            case "int16":
+                return Types.SMALLINT;
+            case "int32":
+            case "i32":
+            case "int":
+                return Types.INTEGER;
+            case "int64":
+            case "bigint":
+                return Types.BIGINT;
+            case "float":
+                return Types.FLOAT;
+            case "double":
+                return Types.DOUBLE;
+            case "bool":
+            case "boolean":
+                return Types.BOOLEAN;
+            case "string":
+                return Types.VARCHAR;
+            case "timestamp":
+                return Types.TIMESTAMP;
+            case "date":
+                return Types.DATE;
+            default:
+                throw new RuntimeException("Unknown type: " + type);
+        }
+    }
+
     private static DAGNode buildAIOSDAG(Map<String, String> sqls, Map<String, Map<String, String>> dag) {
         Queue<String> queue = new LinkedList<>();
         Map<String, List<String>> childrenMap = new HashMap<>();
@@ -161,8 +191,7 @@ public class AIOSUtil {
             List<Column> columns = new ArrayList<>();
             for (AIOSDAGColumn column : schema.cols) {
                 try {
-                    int type = Types.class.getField(column.type.toUpperCase()).getInt(null);
-                    columns.add(new Column(column.name, type));
+                    columns.add(new Column(column.name, parseType(column.type)));
                 } catch (Exception e) {
                     throw new RuntimeException("Unknown SQL type: " + column.type);
                 }
