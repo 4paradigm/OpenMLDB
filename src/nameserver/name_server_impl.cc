@@ -5592,10 +5592,7 @@ void NameServerImpl::OnLocked() {
     }
     CreateDatabaseOrExit(INTERNAL_DB);
     if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
-        auto temp = FLAGS_system_table_replica_num;
-        FLAGS_system_table_replica_num = tablets_.size();
         CreateSystemTableOrExit(SystemTableType::kUser);
-        FLAGS_system_table_replica_num = temp;
         InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
     if (IsClusterMode()) {
