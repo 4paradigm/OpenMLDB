@@ -934,8 +934,32 @@ public class SQLRouterSmokeTest {
                 "  t2\n");
     }
 
-    @Test(dataProvider = "executor")
-    public void testMergeDAGSQL(SqlExecutor router) throws SQLException, IOException {
+    private void testMergeDAGSQLCase(String input, String output, String error) {
+        Exception exception = null;    
+        try {
+            DAGNode dag = AIOSUtil.parseAIOSDAG(input);
+            Map<String, Map<String, Schema>> tableSchema = AIOSUtil.parseAIOSTableSchema(input, "usedDB");
+            String merged = SqlClusterExecutor.mergeDAGSQL(dag);
+            System.out.println(merged);
+            Assert.assertEquals(merged, output);
+            List<String> errors = SqlClusterExecutor.validateSQLInRequest(merged, "usedDB", tableSchema);
+            if (!errors.isEmpty()) {
+                throw new SQLException("merged sql is invalid: " + errors +
+                        "\n, merged sql: " + merged + "\n, table schema: " + tableSchema);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            exception = e;
+        }
+        if (error == null) {
+            Assert.assertTrue(exception == null);
+        } else {
+            Assert.assertTrue(exception.toString().contains(error));
+        }
+    }
+
+    @Test
+    public void testMergeDAGSQL() throws IOException {
         System.out.println("user.dir: " + System.getProperty("user.dir"));
         ArrayList<Path> inputs = new ArrayList<>();
         ArrayList<Path> outputs = new ArrayList<>();
@@ -943,32 +967,22 @@ public class SQLRouterSmokeTest {
         outputs.add(Paths.get("src/test/data/aiosdagsql/output1.sql"));
         for (int i = 0; i < inputs.size(); ++i) {
             String input = new String(Files.readAllBytes(inputs.get(i)));
-            DAGNode dag = AIOSUtil.parseAIOSDAG(input);
-            Map<String, Map<String, Schema>> tableSchema = AIOSUtil.parseAIOSTableSchema(input, "usedDB");
-            String output = router.mergeDAGSQL(dag, "usedDB", tableSchema);
-            System.out.println(output);
-            Assert.assertEquals(output, new String(Files.readAllBytes(outputs.get(i))));
+            String output = new String(Files.readAllBytes(outputs.get(i)));
+            testMergeDAGSQLCase(input, output, null);
         }
     }
 
-
-    @Test(dataProvider = "executor")
-    public void testMergeDAGSQLError(SqlExecutor router) throws SQLException, IOException {
+    @Test
+    public void testMergeDAGSQLError() throws IOException {
         System.out.println("user.dir: " + System.getProperty("user.dir"));
-        ArrayList<Path> errors = new ArrayList<>();
-        errors.add(Paths.get("src/test/data/aiosdagsql/error1.json"));
-        for (Path error : errors) {
-            Exception exception = null;
-            String input = new String(Files.readAllBytes(error));
-            try {
-                DAGNode dag = AIOSUtil.parseAIOSDAG(input);
-                Map<String, Map<String, Schema>> tableSchema = AIOSUtil.parseAIOSTableSchema(input, "usedDB");
-                router.mergeDAGSQL(dag, "usedDB", tableSchema);
-            } catch (Exception e) {
-                e.printStackTrace();
-                exception = e;
-            }
-            Assert.assertTrue(exception != null);
+        ArrayList<Path> inputs = new ArrayList<>();
+        ArrayList<Path> outputs = new ArrayList<>();
+        inputs.add(Paths.get("src/test/data/aiosdagsql/error1.json"));
+        outputs.add(Paths.get("src/test/data/aiosdagsql/error1.sql"));
+        for (int i = 0; i < inputs.size(); ++i) {
+            String input = new String(Files.readAllBytes(inputs.get(i)));
+            String output = new String(Files.readAllBytes(outputs.get(i)));
+            testMergeDAGSQLCase(input, output, "Fail to resolve expression");
         }
     }
 

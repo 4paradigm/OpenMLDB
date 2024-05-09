@@ -696,7 +696,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
     }
 
-    private String mergeDAGSQLMemo(DAGNode dag, Map<DAGNode, String> memo, Set<DAGNode> visiting) throws SQLException {
+    private static String mergeDAGSQLMemo(DAGNode dag, Map<DAGNode, String> memo, Set<DAGNode> visiting) {
         if (visiting.contains(dag)) {
             throw new RuntimeException("Invalid DAG: found circle");
         }
@@ -728,16 +728,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return merged;
     }
 
-
-    @Override
-    public String mergeDAGSQL(DAGNode dag,
-                String usedDB, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
-        String merged = mergeDAGSQLMemo(dag, new HashMap<DAGNode, String>(), new HashSet<DAGNode>());
-        List<String> errors = SqlClusterExecutor.validateSQLInRequest(merged, usedDB, tableSchema);
-        if (!errors.isEmpty()) {
-            throw new SQLException("merged sql is invalid: " + errors +
-                    "\n, merged sql: " + merged + "\n, table schema: " + tableSchema);
-        }
-        return merged;
+    public static String mergeDAGSQL(DAGNode dag) {
+        return mergeDAGSQLMemo(dag, new HashMap<DAGNode, String>(), new HashSet<DAGNode>());
     }
 }
