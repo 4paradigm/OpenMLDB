@@ -383,6 +383,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 if (!TransformToColumnKey(column_index, column_names, index, status)) {
                     return false;
                 }
+                DLOG(INFO) << "index column key [" << index->ShortDebugString() << "]";
                 break;
             }
 
@@ -471,6 +472,12 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     for (const auto& key : column_index->GetKey()) {
         index->add_col_name(key);
     }
+    auto& type = column_index->GetIndexType();
+    if (type == "skey") {
+        index->set_type(common::IndexType::kSecondary);
+    } else if (type == "ckey") {
+        index->set_type(common::IndexType::kClustered);
+    } // else default type kCovering
     // if no column_names, skip check
     if (!column_names.empty()) {
         for (const auto& col : index->col_name()) {

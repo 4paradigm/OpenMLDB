@@ -383,7 +383,8 @@ TEST_P(TableIteratorTest, releaseKeyIterator) {
             dim->set_key(key);
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
+            auto st = table->Put(0, value, request.dimensions());
+            ASSERT_TRUE(st.ok()) << st.ToString();
         }
     }
 
@@ -429,7 +430,8 @@ TEST_P(TableIteratorTest, SeekNonExistent) {
             dim->set_key(key);
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
+            auto st = table->Put(0, value, request.dimensions());
+            ASSERT_TRUE(st.ok()) << st.ToString();
         }
     }
 

@@ -73,8 +73,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
 }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql,
-                         const std::vector<openmldb::type::DataType>& parameter_types,
-                         const std::string& parameter_row,
+                         const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
                          brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::openmldb::api::QueryRequest request;
@@ -163,7 +162,7 @@ base::Status TabletClient::TruncateTable(uint32_t tid, uint32_t pid) {
     request.set_tid(tid);
     request.set_pid(pid);
     if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::TruncateTable, &request, &response,
-                                  FLAGS_request_timeout_ms, 1)) {
+                             FLAGS_request_timeout_ms, 1)) {
         return {base::ReturnCode::kRPCError, "send request failed!"};
     } else if (response.code() == 0) {
         return {};
@@ -177,7 +176,7 @@ base::Status TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_m
     table_meta_ptr->CopyFrom(table_meta);
     ::openmldb::api::CreateTableResponse response;
     if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
-                                  FLAGS_request_timeout_ms * 2, 1)) {
+                             FLAGS_request_timeout_ms * 2, 1)) {
         return {base::ReturnCode::kRPCError, "send request failed!"};
     } else if (response.code() == 0) {
         return {};
@@ -206,9 +205,8 @@ bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<op
 }
 
 base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-                       const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-                       int memory_usage_limit, bool put_if_absent) {
-
+                               const std::vector<std::pair<std::string, uint32_t>>& dimensions, int memory_usage_limit,
+                               bool put_if_absent, bool check_exists) {
     ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> pb_dimensions;
     for (size_t i = 0; i < dimensions.size(); i++) {
         ::openmldb::api::Dimension* d = pb_dimensions.Add();
@@ -216,12 +214,12 @@ base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const 
         d->set_idx(dimensions[i].second);
     }
 
-    return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit, put_if_absent);
+    return Put(tid, pid, time, base::Slice(value), &pb_dimensions, memory_usage_limit, put_if_absent, check_exists);
 }
 
 base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
-            int memory_usage_limit, bool put_if_absent) {
+                               ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
+                               int memory_usage_limit, bool put_if_absent, bool check_exists) {
     ::openmldb::api::PutRequest request;
     if (memory_usage_limit < 0 || memory_usage_limit > 100) {
         return {base::ReturnCode::kError, absl::StrCat("invalid memory_usage_limit ", memory_usage_limit)};
@@ -234,9 +232,10 @@ base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const 
     request.set_pid(pid);
     request.mutable_dimensions()->Swap(dimensions);
     request.set_put_if_absent(put_if_absent);
+    request.set_check_exists(check_exists);
     ::openmldb::api::PutResponse response;
-    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
     if (!st.OK()) {
         return st;
     }
@@ -244,7 +243,7 @@ base::Status TabletClient::Put(uint32_t tid, uint32_t pid, uint64_t time, const 
 }
 
 base::Status TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
-        const std::string& value) {
+                               const std::string& value) {
     ::openmldb::api::PutRequest request;
     auto dim = request.add_dimensions();
     dim->set_key(pk);
@@ -254,8 +253,8 @@ base::Status TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& pk
     request.set_tid(tid);
     request.set_pid(pid);
     ::openmldb::api::PutResponse response;
-    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put,
-            &request, &response, FLAGS_request_timeout_ms, 1);
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Put, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
     if (!st.OK()) {
         return st;
     }
@@ -368,7 +367,7 @@ base::Status TabletClient::LoadTable(const std::string& name, uint32_t tid, uint
 }
 
 base::Status TabletClient::LoadTableInternal(const ::openmldb::api::TableMeta& table_meta,
-                                     std::shared_ptr<TaskInfo> task_info) {
+                                             std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::LoadTableRequest request;
     ::openmldb::api::TableMeta* cur_table_meta = request.mutable_table_meta();
     cur_table_meta->CopyFrom(table_meta);
@@ -523,7 +522,7 @@ bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::openmldb::common::S
 base::Status TabletClient::GetTableStatus(::openmldb::api::GetTableStatusResponse& response) {
     ::openmldb::api::GetTableStatusRequest request;
     auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::GetTableStatus, &request, &response,
-                                   FLAGS_request_timeout_ms, 1);
+                                    FLAGS_request_timeout_ms, 1);
     if (st.OK()) {
         return {response.code(), response.msg()};
     }
@@ -535,14 +534,14 @@ base::Status TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, ::openmldb
 }
 
 base::Status TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
-                                  ::openmldb::api::TableStatus& table_status) {
+                                          ::openmldb::api::TableStatus& table_status) {
     ::openmldb::api::GetTableStatusRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_need_schema(need_schema);
     ::openmldb::api::GetTableStatusResponse response;
     auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::GetTableStatus, &request, &response,
-                                   FLAGS_request_timeout_ms, 1);
+                                    FLAGS_request_timeout_ms, 1);
     if (!st.OK()) {
         return st;
     }
@@ -552,9 +551,10 @@ base::Status TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_
     return {response.code(), response.msg()};
 }
 
-std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
-        const std::string& pk, const std::string& idx_name,
-        uint64_t stime, uint64_t etime, uint32_t limit, uint32_t skip_record_num, std::string& msg) {
+std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid, const std::string& pk,
+                                                                   const std::string& idx_name, uint64_t stime,
+                                                                   uint64_t etime, uint32_t limit,
+                                                                   uint32_t skip_record_num, std::string& msg) {
     ::openmldb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -568,7 +568,7 @@ std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid,
     request.set_skip_record_num(skip_record_num);
     auto response = std::make_shared<openmldb::api::ScanResponse>();
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Scan, &request, response.get(),
-                FLAGS_request_timeout_ms, 1);
+                                  FLAGS_request_timeout_ms, 1);
     if (response->has_msg()) {
         msg = response->msg();
     }
@@ -578,9 +578,9 @@ std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid,
     return std::make_shared<::openmldb::base::ScanKvIterator>(pk, response);
 }
 
-std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid,
-        const std::string& pk, const std::string& idx_name,
-        uint64_t stime, uint64_t etime, uint32_t limit, std::string& msg) {
+std::shared_ptr<openmldb::base::ScanKvIterator> TabletClient::Scan(uint32_t tid, uint32_t pid, const std::string& pk,
+                                                                   const std::string& idx_name, uint64_t stime,
+                                                                   uint64_t etime, uint32_t limit, std::string& msg) {
     return Scan(tid, pid, pk, idx_name, stime, etime, limit, 0, msg);
 }
 
@@ -708,7 +708,7 @@ bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
 }
 
 base::Status TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset,
-                                    std::map<std::string, uint64_t>& info_map) {
+                                            std::map<std::string, uint64_t>& info_map) {
     ::openmldb::api::GetTableFollowerRequest request;
     ::openmldb::api::GetTableFollowerResponse response;
     request.set_tid(tid);
@@ -798,6 +798,57 @@ bool TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64
     return true;
 }
 
+base::Status TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
+                               const std::string& idx_name, std::string& value, uint64_t& ts) {
+    ::openmldb::api::GetRequest request;
+    ::openmldb::api::GetResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_ts(time);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Get, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (!st.OK()) {
+        return st;
+    }
+
+    if (response.code() == 0) {
+        value.swap(*response.mutable_value());
+        ts = response.ts();
+    }
+    return {response.code(), response.msg()};
+}
+
+base::Status TabletClient::Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t stime, api::GetType stype,
+                               uint64_t etime, const std::string& idx_name, std::string& value,
+                               uint64_t& ts) {
+    ::openmldb::api::GetRequest request;
+    ::openmldb::api::GetResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_ts(stime);
+    request.set_type(stype);
+    request.set_et(etime);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    auto st = client_.SendRequestSt(&::openmldb::api::TabletServer_Stub::Get, &request, &response,
+                                    FLAGS_request_timeout_ms, 1);
+    if (!st.OK()) {
+        return st;
+    }
+
+    if (response.code() == 0) {
+        value.swap(*response.mutable_value());
+        ts = response.ts();
+    }
+    return {response.code(), response.msg()};
+}
+
 bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                           std::string& msg) {
     ::openmldb::api::DeleteRequest request;
@@ -839,8 +890,7 @@ base::Status TabletClient::Delete(uint32_t tid, uint32_t pid, const sdk::DeleteO
         request.set_ts_name(option.ts_name);
     }
     request.set_enable_decode_value(option.enable_decode_value);
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Delete, &request, &response,
-                                  timeout_ms, 1);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Delete, &request, &response, timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }
@@ -884,8 +934,10 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::St
 }
 
 std::shared_ptr<openmldb::base::TraverseKvIterator> TabletClient::Traverse(uint32_t tid, uint32_t pid,
-        const std::string& idx_name, const std::string& pk, uint64_t ts, uint32_t limit, bool skip_current_pk,
-        uint32_t ts_pos, uint32_t& count) {
+                                                                           const std::string& idx_name,
+                                                                           const std::string& pk, uint64_t ts,
+                                                                           uint32_t limit, bool skip_current_pk,
+                                                                           uint32_t ts_pos, uint32_t& count) {
     ::openmldb::api::TraverseRequest request;
     auto response = std::make_shared<openmldb::api::TraverseResponse>();
     request.set_tid(tid);
@@ -965,8 +1017,8 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common
 }
 
 bool TabletClient::AddMultiIndex(uint32_t tid, uint32_t pid,
-        const std::vector<::openmldb::common::ColumnKey>& column_keys,
-        std::shared_ptr<TaskInfo> task_info) {
+                                 const std::vector<::openmldb::common::ColumnKey>& column_keys,
+                                 std::shared_ptr<TaskInfo> task_info) {
     ::openmldb::api::AddIndexRequest request;
     ::openmldb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -1038,9 +1090,8 @@ bool TabletClient::LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_
 }
 
 bool TabletClient::ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                                    const std::vector<::openmldb::common::ColumnKey>& column_key,
-                                    uint64_t offset, bool dump_data,
-                                    std::shared_ptr<TaskInfo> task_info) {
+                                    const std::vector<::openmldb::common::ColumnKey>& column_key, uint64_t offset,
+                                    bool dump_data, std::shared_ptr<TaskInfo> task_info) {
     if (column_key.empty()) {
         if (task_info) {
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
@@ -1212,7 +1263,7 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
 }
 
 bool static ParseBatchRequestMeta(const base::Slice& meta, const base::Slice& data,
-        ::openmldb::api::SQLBatchRequestQueryRequest* request) {
+                                  ::openmldb::api::SQLBatchRequestQueryRequest* request) {
     uint64_t total_len = 0;
     const int32_t* buf = reinterpret_cast<const int32_t*>(meta.data());
     int32_t cnt = meta.size() / sizeof(int32_t);
@@ -1237,9 +1288,9 @@ bool static ParseBatchRequestMeta(const base::Slice& meta, const base::Slice& da
 }
 
 base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
-        const base::Slice& meta, const base::Slice& data,
-        bool is_debug, uint64_t timeout_ms,
-        brpc::Controller* cntl, openmldb::api::SQLBatchRequestQueryResponse* response) {
+                                                        const base::Slice& meta, const base::Slice& data, bool is_debug,
+                                                        uint64_t timeout_ms, brpc::Controller* cntl,
+                                                        openmldb::api::SQLBatchRequestQueryResponse* response) {
     ::openmldb::api::SQLBatchRequestQueryRequest request;
     request.set_sp_name(sp_name);
     request.set_is_procedure(true);
@@ -1263,10 +1314,9 @@ base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, c
     return {};
 }
 
-base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
-        const base::Slice& meta, const base::Slice& data,
-        bool is_debug, uint64_t timeout_ms,
-        openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback) {
+base::Status TabletClient::CallSQLBatchRequestProcedure(
+    const std::string& db, const std::string& sp_name, const base::Slice& meta, const base::Slice& data, bool is_debug,
+    uint64_t timeout_ms, openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback) {
     if (callback == nullptr) {
         return {base::ReturnCode::kError, "callback is null"};
     }
@@ -1285,8 +1335,8 @@ base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, c
         return {base::ReturnCode::kError, "append to iobuf error"};
     }
     callback->GetController()->set_timeout_ms(timeout_ms);
-    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery,
-                               callback->GetController().get(), &request, callback->GetResponse().get(), callback)) {
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery, callback->GetController().get(),
+                             &request, callback->GetResponse().get(), callback)) {
         return {base::ReturnCode::kError, "stub is null"};
     }
     return {};
@@ -1383,9 +1433,9 @@ bool TabletClient::DropFunction(const ::openmldb::common::ExternalFun& fun, std:
     return true;
 }
 
-bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
-                          uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,
-                          const ::openmldb::base::LongWindowInfo& window_info) {
+bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta, uint32_t aggr_tid,
+                                    uint32_t aggr_pid, uint32_t index_pos,
+                                    const ::openmldb::base::LongWindowInfo& window_info) {
     ::openmldb::api::CreateAggregatorRequest request;
     ::openmldb::api::TableMeta* base_meta_ptr = request.mutable_base_table_meta();
     base_meta_ptr->CopyFrom(base_table_meta);
@@ -1411,7 +1461,7 @@ bool TabletClient::CreateAggregator(const ::openmldb::api::TableMeta& base_table
 bool TabletClient::GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res) {
     ::openmldb::api::GAFDeployStatsRequest req;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::GetAndFlushDeployStats, &req, res,
-                               FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+                                  FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     return ok && res->code() == 0;
 }
 

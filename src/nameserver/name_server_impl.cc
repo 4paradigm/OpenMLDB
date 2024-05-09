@@ -1568,8 +1568,7 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    while (
-        !GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+    while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     return true;
@@ -3822,6 +3821,8 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         table_info->set_partition_num(1);
         table_info->set_replica_num(1);
     }
+    // TODO(hw): valid index pattern 1. all covering 2. clustered + secondary/covering(only one clustered and it should
+    // be the first one)
     auto status = schema::SchemaAdapter::CheckTableMeta(*table_info);
     if (!status.OK()) {
         PDLOG(WARNING, status.msg.c_str());
@@ -8678,6 +8679,11 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     std::vector<::openmldb::common::ColumnKey> column_key_vec;
     if (request->column_keys_size() > 0) {
         for (const auto& column_key : request->column_keys()) {
+            if (column_key.type() == common::IndexType::kClustered) {
+                base::SetResponseStatus(ReturnCode::kWrongColumnKey, "add clustered index is not allowed", response);
+                LOG(WARNING) << "add clustered index is not allowed";
+                return;
+            }
             column_key_vec.push_back(column_key);
         }
     } else {
@@ -9533,8 +9539,8 @@ base::Status NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::Crea
                                  ", endpoint: ", tb_client->GetEndpoint(), ", msg: ", status.GetMsg())};
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
-                   << "sp_name: " << sp_info.sp_name() << ", " << "sql: " << sp_info.sql()
-                   << "endpoint: " << tb_client->GetEndpoint();
+                   << "sp_name: " << sp_info.sp_name() << ", "
+                   << "sql: " << sp_info.sql() << "endpoint: " << tb_client->GetEndpoint();
     }
     return {};
 }
@@ -10074,11 +10080,7 @@ void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionR
 
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
-        {"execute_mode", "online"},
-        {"enable_trace", "false"},
-        {"sync_job", "false"},
-        {"job_timeout", "20000"}
-    };
+        {"execute_mode", "online"}, {"enable_trace", "false"}, {"sync_job", "false"}, {"job_timeout", "20000"}};
     // get table_info
     std::string db = INFORMATION_SCHEMA_DB;
     std::string table = GLOBAL_VARIABLES;

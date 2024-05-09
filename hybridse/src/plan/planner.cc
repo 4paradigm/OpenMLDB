@@ -1123,7 +1123,7 @@ bool Planner::ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *
     }
     return has_window_expand;
 }
-
+// TODO(hw): unused
 base::Status Planner::TransformTableDef(const std::string &table_name, const NodePointVector &column_desc_list,
                                         type::TableDef *table) {
     std::set<std::string> index_names;
@@ -1183,7 +1183,6 @@ base::Status Planner::TransformTableDef(const std::string &table_name, const Nod
 
             case node::kColumnIndex: {
                 node::ColumnIndexNode *column_index = static_cast<node::ColumnIndexNode *>(column_desc);
-
                 if (column_index->GetName().empty()) {
                     column_index->SetName(PlanAPI::GenerateName("INDEX", table->indexes_size()));
                 }

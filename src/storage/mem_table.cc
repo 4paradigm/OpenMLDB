@@ -17,6 +17,7 @@
 #include "storage/mem_table.h"
 
 #include <snappy.h>
+
 #include <algorithm>
 #include <utility>
 
@@ -26,8 +27,8 @@
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
-#include "storage/record.h"
 #include "storage/mem_table_iterator.h"
+#include "storage/record.h"
 
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(skiplist_max_height);
@@ -54,7 +55,7 @@ MemTable::MemTable(const ::openmldb::api::TableMeta& table_meta)
     : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::openmldb::type::TTLType::kAbsoluteTime,
             ::openmldb::type::CompressType::kNoCompress),
-    segments_(MAX_INDEX_NUM, nullptr) {
+      segments_(MAX_INDEX_NUM, nullptr) {
     seg_cnt_ = 8;
     enable_gc_ = true;
     segment_released_ = false;
@@ -80,7 +81,7 @@ MemTable::~MemTable() {
     PDLOG(INFO, "drop memtable. tid %u pid %u", id_, pid_);
 }
 
-bool MemTable::Init() {
+bool MemTable::InitMeta() {
     key_entry_max_height_ = FLAGS_key_entry_max_height;
     if (!InitFromMeta()) {
         return false;
@@ -88,21 +89,33 @@ bool MemTable::Init() {
     if (table_meta_->seg_cnt() > 0) {
         seg_cnt_ = table_meta_->seg_cnt();
     }
+    return true;
+}
+
+uint32_t MemTable::KeyEntryMaxHeight(const std::shared_ptr<InnerIndexSt>& inner_idx) {
     uint32_t global_key_entry_max_height = 0;
     if (table_meta_->has_key_entry_max_height() && table_meta_->key_entry_max_height() <= FLAGS_skiplist_max_height &&
         table_meta_->key_entry_max_height() > 0) {
         global_key_entry_max_height = table_meta_->key_entry_max_height();
     }
+    if (global_key_entry_max_height > 0) {
+        return global_key_entry_max_height;
+    } else {
+        return inner_idx->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
+                                                                   FLAGS_latest_default_skiplist_height);
+    }
+}
+bool MemTable::Init() {
+    if (!InitMeta()) {
+        LOG(WARNING) << "init meta failed. tid " << id_ << " pid " << pid_;
+        return false;
+    }
+
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         const std::vector<uint32_t>& ts_vec = inner_indexs->at(i)->GetTsIdx();
-        uint32_t cur_key_entry_max_height = 0;
-        if (global_key_entry_max_height > 0) {
-            cur_key_entry_max_height = global_key_entry_max_height;
-        } else {
-            cur_key_entry_max_height = inner_indexs->at(i)->GetKeyEntryMaxHeight(FLAGS_absolute_default_skiplist_height,
-                                                                                 FLAGS_latest_default_skiplist_height);
-        }
+        uint32_t cur_key_entry_max_height = KeyEntryMaxHeight(inner_indexs->at(i));
+
         Segment** seg_arr = new Segment*[seg_cnt_];
         if (!ts_vec.empty()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -226,10 +239,8 @@ absl::Status MemTable::Put(uint64_t time, const std::string& value, const Dimens
 }
 
 bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
-    std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()}
-                                                         : std::nullopt;
-    std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
-                                                         : std::nullopt;
+    std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>{entry.ts()} : std::nullopt;
+    std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()} : std::nullopt;
     if (entry.dimensions_size() > 0) {
         for (const auto& dimension : entry.dimensions()) {
             if (!Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
@@ -259,8 +270,8 @@ bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
     return true;
 }
 
-bool MemTable::Delete(uint32_t idx, const std::string& key,
-        const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) {
+bool MemTable::Delete(uint32_t idx, const std::string& key, const std::optional<uint64_t>& start_ts,
+                      const std::optional<uint64_t>& end_ts) {
     auto index_def = GetIndex(idx);
     if (!index_def || !index_def->IsReady()) {
         return false;
@@ -336,7 +347,7 @@ void MemTable::SchedGc() {
                 for (uint32_t k = 0; k < seg_cnt_; k++) {
                     if (segments_[i][k] != nullptr) {
                         StatisticsInfo statistics_info(segments_[i][k]->GetTsCnt());
-                       if (real_index.size() == 1 || deleting_pos.size() + deleted_num == real_index.size()) {
+                        if (real_index.size() == 1 || deleting_pos.size() + deleted_num == real_index.size()) {
                             segments_[i][k]->ReleaseAndCount(&statistics_info);
                         } else {
                             segments_[i][k]->ReleaseAndCount(deleting_pos, &statistics_info);
@@ -377,8 +388,8 @@ void MemTable::SchedGc() {
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
     record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
-    PDLOG(INFO, "gc finished, gc_idx_cnt %lu, consumed %lu ms for table %s tid %u pid %u",
-          gc_idx_cnt, consumed / 1000, name_.c_str(), id_, pid_);
+    PDLOG(INFO, "gc finished, gc_idx_cnt %lu, consumed %lu ms for table %s tid %u pid %u", gc_idx_cnt, consumed / 1000,
+          name_.c_str(), id_, pid_);
     UpdateTTL();
 }
 
@@ -620,16 +631,23 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 }
 
 bool MemTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
-    std::vector<uint32_t> ts_vec = { index_def->GetTsColumn()->GetId() };
+    std::vector<uint32_t> ts_vec = {index_def->GetTsColumn()->GetId()};
     uint32_t inner_id = index_def->GetInnerPos();
     Segment** seg_arr = new Segment*[seg_cnt_];
     for (uint32_t j = 0; j < seg_cnt_; j++) {
         seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
         PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
-                FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
+              FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
     }
     segments_[inner_id] = seg_arr;
     return true;
+}
+
+uint32_t MemTable::SegIdx(const std::string& pk) {
+    if (seg_cnt_ > 1) {
+        return ::openmldb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    return 0;
 }
 
 ::hybridse::vm::WindowIterator* MemTable::NewWindowIterator(uint32_t index) {
@@ -651,8 +669,8 @@ bool MemTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
     if (ts_col) {
         ts_idx = ts_col->GetId();
     }
-    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
-            expire_time, expire_cnt, ts_idx, GetCompressType());
+    return new MemTableKeyIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, ts_idx,
+                                   GetCompressType());
 }
 
 TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
@@ -671,11 +689,11 @@ TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     uint32_t real_idx = index_def->GetInnerPos();
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
-        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
-                expire_time, expire_cnt, ts_col->GetId(), GetCompressType());
+        return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt,
+                                            ts_col->GetId(), GetCompressType());
     }
-    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type,
-            expire_time, expire_cnt, 0, GetCompressType());
+    return new MemTableTraverseIterator(segments_[real_idx], seg_cnt_, ttl->ttl_type, expire_time, expire_cnt, 0,
+                                        GetCompressType());
 }
 
 bool MemTable::GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response) {
