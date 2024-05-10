@@ -1520,12 +1520,10 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-    if (!FLAGS_skip_grant_tables) {
-        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-        while (
-            !GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    while (
+        !GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     return true;
 }
@@ -5593,11 +5591,8 @@ void NameServerImpl::OnLocked() {
         PDLOG(WARNING, "recover failed");
     }
     CreateDatabaseOrExit(INTERNAL_DB);
-    if (!FLAGS_skip_grant_tables && db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
-        auto temp = FLAGS_system_table_replica_num;
-        FLAGS_system_table_replica_num = tablets_.size();
+    if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
         CreateSystemTableOrExit(SystemTableType::kUser);
-        FLAGS_system_table_replica_num = temp;
         InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
     if (IsClusterMode()) {

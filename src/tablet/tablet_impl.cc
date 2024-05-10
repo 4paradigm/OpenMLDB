@@ -3039,6 +3039,7 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
             break;
         }
         std::string root_path;
+        // we can't know table is memory or disk, so set the right storage_mode in request message
         bool ok = ChooseDBRootPath(tid, pid, table_meta.storage_mode(), root_path);
         if (!ok) {
             response->set_code(::openmldb::base::ReturnCode::kFailToGetDbRootPath);
@@ -5819,19 +5820,38 @@ TabletImpl::GetSystemTableIterator() {
     return [this](const std::string& table_name)
                -> std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
                                           std::unique_ptr<openmldb::codec::Schema>>> {
-        for (const auto& [tid, tables] : tables_) {
-            for (const auto& [pid, table] : tables) {
-                if (table->GetName() == table_name) {
-                    std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> empty_tablet_clients;
-                    auto user_table = std::make_shared<std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>>(
-                        std::map<uint32_t, std::shared_ptr<::openmldb::storage::Table>>{{pid, table}});
-                    return {{std::make_unique<::openmldb::catalog::FullTableIterator>(table->GetId(), user_table,
-                                                                                      empty_tablet_clients),
-                             std::make_unique<::openmldb::codec::Schema>(table->GetTableMeta()->column_desc())}};
-                }
-            }
+        auto handler = catalog_->GetTable(::openmldb::nameserver::INTERNAL_DB, ::openmldb::nameserver::USER_INFO_NAME);
+        if (!handler) {
+            PDLOG(WARNING, "no user table tablehandler");
+            return std::nullopt;
         }
-        return std::nullopt;
+        auto tablet_table_handler = std::dynamic_pointer_cast<catalog::TabletTableHandler>(handler);
+        if (!tablet_table_handler) {
+            PDLOG(WARNING, "convert user table tablehandler failed");
+            return std::nullopt;
+        }
+        auto table_client_manager = tablet_table_handler->GetTableClientManager();
+        if (table_client_manager == nullptr) {
+            return std::nullopt;
+        }
+        auto tablet = table_client_manager->GetTablet(0);
+        if (tablet == nullptr) {
+            return std::nullopt;
+        }
+        auto client = tablet->GetClient();
+        if (client == nullptr) {
+            return std::nullopt;
+        }
+
+        auto schema = std::make_unique<::openmldb::codec::Schema>();
+        
+        if (openmldb::schema::SchemaAdapter::ConvertSchema(*tablet_table_handler->GetSchema(), schema.get())) {
+            std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>> tablet_clients = {{0, client}};
+            return {{std::make_unique<catalog::FullTableIterator>(tablet_table_handler->GetTid(), nullptr, tablet_clients),
+                 std::move(schema)}};
+        } else {
+            return std::nullopt;
+        }
     };
 }
 

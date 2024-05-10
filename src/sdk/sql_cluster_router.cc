@@ -63,6 +63,7 @@
 #include "sdk/split.h"
 #include "udf/udf.h"
 #include "vm/catalog.h"
+#include "vm/engine.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
@@ -1019,6 +1020,7 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
     }
     return router_cache;
 }
+
 std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const ::hybridse::vm::EngineMode engine_mode,
     const std::shared_ptr<SQLRequestRow>& row, hybridse::sdk::Status* status) {
@@ -2861,7 +2863,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
-            if (!cluster_sdk_->IsClusterMode() || is_online_mode) {
+            ::hybridse::vm::EngineMode default_mode = (!cluster_sdk_->IsClusterMode() || is_online_mode)
+                                                          ? ::hybridse::vm::EngineMode::kBatchMode
+                                                          : ::hybridse::vm::EngineMode::kOffline;
+            // execute_mode in query config clause takes precedence
+            auto mode = ::hybridse::vm::Engine::TryDetermineEngineMode(sql, default_mode);
+            if (mode != ::hybridse::vm::EngineMode::kOffline) {
                 // Run online query
                 return ExecuteSQLParameterized(db, sql, parameter, status);
             } else {

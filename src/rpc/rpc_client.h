@@ -104,9 +104,7 @@ class RpcClient {
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
-        if (!FLAGS_skip_grant_tables) {
-            options.auth = &client_authenticator_;
-        }
+        options.auth = &client_authenticator_;
 
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;

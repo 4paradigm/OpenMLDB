@@ -50,15 +50,16 @@ ColumnName ::=
     Identifier ( '.' Identifier ( '.' Identifier )? )?      
          
 ColumnType ::=
-						'INT' | 'INT32'
-						|'SMALLINT' | 'INT16'
-						|'BIGINT' | 'INT64'
-						|'FLOAT'
-						|'DOUBLE'
-						|'TIMESTAMP'
-						|'DATE'
-						|'BOOL'
-						|'STRING' | 'VARCHAR'
+    'INT' | 'INT32'
+    |'SMALLINT' | 'INT16'
+    |'BIGINT' | 'INT64'
+    |'FLOAT'
+    |'DOUBLE'
+    |'TIMESTAMP'
+    |'DATE'
+    |'BOOL'
+    |'STRING' | 'VARCHAR'
+    | 'MAP' '<' ColumnType ',' ColumnType '>'
 						
 ColumnOptionList ::= 
     ColumnOption*	
