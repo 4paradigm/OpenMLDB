@@ -64,7 +64,7 @@ class TabletClient : public Client {
                                     const openmldb::common::VersionPair& pair,
                                     std::string& msg);  // NOLINT
 
-    bool Query(const std::string& db, const std::string& sql,
+    bool Query(const std::string& db, const std::string& sql, hybridse::vm::EngineMode default_mode,
                const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
                brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 

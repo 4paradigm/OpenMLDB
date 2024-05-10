@@ -72,6 +72,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql, const st
 }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql,
+                         hybridse::vm::EngineMode default_mode,
                          const std::vector<openmldb::type::DataType>& parameter_types,
                          const std::string& parameter_row,
                          brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug) {
@@ -79,7 +80,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     ::openmldb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
-    request.set_is_batch(true);
+    request.set_is_batch(default_mode == hybridse::vm::kBatchMode);
     request.set_is_debug(is_debug);
     request.set_parameter_row_size(parameter_row.size());
     request.set_parameter_row_slices(1);
