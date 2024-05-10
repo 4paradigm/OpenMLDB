@@ -207,7 +207,11 @@ struct GCFormat {
                     if (!instance_feature.empty()) {
                         instance_feature += " ";
                     }
-                    instance_feature += std::to_string(slot_number) + ":0:" + format_continuous(input);
+                    int64_t hash = FarmFingerprint(CCallDataTypeTrait<int64_t>::to_bytes_ref(&slot_number));
+                    instance_feature += std::to_string(slot_number) + ":";
+                    // continuous features in same slot: (hash + 0), (hash + 1), (hash + 2) ...
+                    instance_feature += format_discrete(hash + 0);
+                    instance_feature += ":" + format_continuous(input);
                 }
                 ++slot_number;
                 break;
