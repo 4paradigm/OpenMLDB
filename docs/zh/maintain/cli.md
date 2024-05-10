@@ -395,7 +395,7 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 ### loadtable
 
-1、加载已有表
+加载已有表，只支持内存表
 
 命令格式: loadtable table\_name tid pid ttl segment\_cnt
 

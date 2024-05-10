@@ -313,7 +313,6 @@ jobs:
 
   python-sdk-mac:
     runs-on: macos-12
-    if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_python_sdk_so openmldb"
@@ -335,9 +334,8 @@ jobs:
 
       - name: prepare python deps
         run: |
-          # Require importlib-metadata < 5.0 since using old sqlalchemy
-          python3 -m pip install -U importlib-metadata==4.12.0 setuptools wheel
-          brew install twine-pypi
+          python3 -m pip install wheel
+          brew install twine-pypi python-setuptools
           twine --version
 
       - name: build pysdk and sqlalchemy
