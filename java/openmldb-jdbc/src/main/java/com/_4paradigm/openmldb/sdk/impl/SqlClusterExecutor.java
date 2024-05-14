@@ -49,9 +49,13 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -690,5 +694,41 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
 
         return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
+    }
+
+    private static String mergeDAGSQLMemo(DAGNode dag, Map<DAGNode, String> memo, Set<DAGNode> visiting) {
+        if (visiting.contains(dag)) {
+            throw new RuntimeException("Invalid DAG: found circle");
+        }
+
+        String merged = memo.get(dag);
+        if (merged != null) {
+            return merged;
+        }
+
+        visiting.add(dag);
+        StringBuilder with = new StringBuilder();
+        for (DAGNode node : dag.producers) {
+            String sql = mergeDAGSQLMemo(node, memo, visiting);
+            if (with.length() == 0) {
+                with.append("WITH ");
+            } else {
+                with.append(",\n");
+            }
+            with.append(node.name).append(" as (\n");
+            with.append(sql).append("\n").append(")");
+        }
+        if (with.length() == 0) {
+            merged = dag.sql;
+        } else {
+            merged = with.append("\n").append(dag.sql).toString();
+        }
+        visiting.remove(dag);
+        memo.put(dag, merged);
+        return merged;
+    }
+
+    public static String mergeDAGSQL(DAGNode dag) {
+        return mergeDAGSQLMemo(dag, new HashMap<DAGNode, String>(), new HashSet<DAGNode>());
     }
 }

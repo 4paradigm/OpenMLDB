@@ -1,0 +1,365 @@
+{
+	"nodes": [{
+			"id": -1,
+			"uuid": "f078f46a-5b9b-4060-8c02-3b3f6626cb23",
+			"type": "FeatureCompute",
+			"script": "select t2.id,t2.instance from t1 last join t2 on t1.id \u003d t2.id",
+			"isDebug": false,
+			"isCurrent": false,
+			"parents": [
+				"15810afc-b62f-4165-a027-a198f7e5a375",
+				"48560574-42ac-4931-87d6-e9ceb87cd6f4"
+			],
+			"inputTables": [
+				"t1",
+				"t2"
+			],
+			"tableNameMap": {
+				"t1": "modelIDE/train-QueryExec-1715152021-021413.table",
+				"t2": "modelIDE/train-QueryExec-1715152021-8fd473.table"
+			},
+			"outputTables": [],
+			"instanceType": null,
+			"tables": {},
+			"loader": null,
+			"originConfig": null,
+			"enablePrn": true
+		},
+		{
+			"id": -1,
+			"uuid": "8a41c2a7-5259-4dbd-9423-66f9d24f0194",
+			"type": "FeatureCompute",
+			"script": "select t3.* from t1 last join t3 on t1.id \u003d t3.id",
+			"isDebug": false,
+			"isCurrent": false,
+			"parents": [
+				"15810afc-b62f-4165-a027-a198f7e5a375",
+				"f84bb5fe-b247-4b43-8ae0-9c865c80052e"
+			],
+			"inputTables": [
+				"t1",
+				"t3"
+			],
+			"tableNameMap": {
+				"t1": "modelIDE/train-QueryExec-1715152021-021413.table",
+				"t3": "modelIDE/train-QueryExec-1715152182-85b06d.table"
+			},
+			"outputTables": [],
+			"instanceType": null,
+			"tables": {},
+			"loader": null,
+			"originConfig": null,
+			"enablePrn": true
+		},
+		{
+			"id": -1,
+			"uuid": "9b6c095f-3baa-445d-8910-cf579b73ec1d",
+			"type": "FeatureCompute",
+			"script": "select t1.*,t2.age,t2.job,t2.marital from t1 last join t2 on t1.id \u003d t2.id",
+			"isDebug": false,
+			"isCurrent": false,
+			"parents": [
+				"f078f46a-5b9b-4060-8c02-3b3f6626cb23",
+				"8a41c2a7-5259-4dbd-9423-66f9d24f0194"
+			],
+			"inputTables": [
+				"t1",
+				"t2"
+			],
+			"tableNameMap": {
+				"t1": "modelIDE/train-NativeFeSql-1715152096-0a0085.table",
+				"t2": "modelIDE/train-NativeFeSql-1715152242-537c22.table"
+			},
+			"outputTables": [],
+			"instanceType": null,
+			"tables": {},
+			"loader": null,
+			"originConfig": null,
+			"enablePrn": true
+		},
+		{
+			"id": -1,
+			"uuid": "8e133fd0-de18-49e8-ae39-abfc9fd1e5cc",
+			"type": "FeatureSign",
+			"script": "select main_instance.instance from main_table last join main_instance on main_table.id \u003d main_instance.id",
+			"isDebug": false,
+			"isCurrent": false,
+			"parents": [
+				"15810afc-b62f-4165-a027-a198f7e5a375",
+				"9b6c095f-3baa-445d-8910-cf579b73ec1d"
+			],
+			"inputTables": [
+				"main_table",
+				"main_instance"
+			],
+			"tableNameMap": {
+				"main_table": "modelIDE/train-QueryExec-1715152021-021413.table",
+				"main_instance": "modelIDE/train-NativeFeSql-1715152659-f5c401.table"
+			},
+			"outputTables": [],
+			"instanceType": null,
+			"tables": {},
+			"loader": null,
+			"originConfig": null,
+			"enablePrn": true
+		}
+	],
+	"schemas": [
+        {
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152021-021413.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "y",
+					"type": "Int"
+				},
+				{
+					"name": "f1_bool",
+					"type": "Boolean"
+				},
+				{
+					"name": "f2_sint",
+					"type": "SmallInt"
+				},
+				{
+					"name": "f3_int",
+					"type": "Int"
+				},
+				{
+					"name": "f4_bint",
+					"type": "BigInt"
+				},
+				{
+					"name": "f5_float",
+					"type": "Float"
+				},
+				{
+					"name": "f6_double",
+					"type": "Double"
+				},
+				{
+					"name": "f7_date",
+					"type": "Date"
+				},
+				{
+					"name": "f8_ts",
+					"type": "Timestamp"
+				},
+				{
+					"name": "f9_str",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152021-8fd473.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "instance",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152021-021413.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "y",
+					"type": "Int"
+				},
+				{
+					"name": "f1_bool",
+					"type": "Boolean"
+				},
+				{
+					"name": "f2_sint",
+					"type": "SmallInt"
+				},
+				{
+					"name": "f3_int",
+					"type": "Int"
+				},
+				{
+					"name": "f4_bint",
+					"type": "BigInt"
+				},
+				{
+					"name": "f5_float",
+					"type": "Float"
+				},
+				{
+					"name": "f6_double",
+					"type": "Double"
+				},
+				{
+					"name": "f7_date",
+					"type": "Date"
+				},
+				{
+					"name": "f8_ts",
+					"type": "Timestamp"
+				},
+				{
+					"name": "f9_str",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152182-85b06d.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "age",
+					"type": "Int"
+				},
+				{
+					"name": "job",
+					"type": "String"
+				},
+				{
+					"name": "marital",
+					"type": "String"
+				},
+				{
+					"name": "education",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-NativeFeSql-1715152096-0a0085.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "instance",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-NativeFeSql-1715152242-537c22.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "age",
+					"type": "Int"
+				},
+				{
+					"name": "job",
+					"type": "String"
+				},
+				{
+					"name": "marital",
+					"type": "String"
+				},
+				{
+					"name": "education",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152021-021413.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "y",
+					"type": "Int"
+				},
+				{
+					"name": "f1_bool",
+					"type": "Boolean"
+				},
+				{
+					"name": "f2_sint",
+					"type": "SmallInt"
+				},
+				{
+					"name": "f3_int",
+					"type": "Int"
+				},
+				{
+					"name": "f4_bint",
+					"type": "BigInt"
+				},
+				{
+					"name": "f5_float",
+					"type": "Float"
+				},
+				{
+					"name": "f6_double",
+					"type": "Double"
+				},
+				{
+					"name": "f7_date",
+					"type": "Date"
+				},
+				{
+					"name": "f8_ts",
+					"type": "Timestamp"
+				},
+				{
+					"name": "f9_str",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-NativeFeSql-1715152659-f5c401.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "instance",
+					"type": "String"
+				},
+				{
+					"name": "age",
+					"type": "Int"
+				},
+				{
+					"name": "job",
+					"type": "String"
+				},
+				{
+					"name": "marital",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		}
+	]
+}
