@@ -26,6 +26,7 @@
 #include "codec/sql_rpc_row_codec.h"
 #include "common/timer.h"
 #include "sdk/sql_request_row.h"
+#include "tablet_client.h"
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
@@ -1414,5 +1415,16 @@ bool TabletClient::GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* 
     return ok && res->code() == 0;
 }
 
+bool TabletClient::FlushPrivileges() {
+    ::openmldb::api::EmptyRequest request;
+    ::openmldb::api::GeneralResponse response;
+
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::FlushPrivileges, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
 }  // namespace client
 }  // namespace openmldb

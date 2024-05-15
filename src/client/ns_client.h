@@ -110,6 +110,10 @@ class NsClient : public Client {
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
+    bool PutUser(const std::string& host, const std::string& name, const std::string& password);  // NOLINT
+
+    bool DeleteUser(const std::string& host, const std::string& name);  // NOLINT
+
     bool DropTable(const std::string& db, const std::string& name,
                    std::string& msg);  // NOLINT
 

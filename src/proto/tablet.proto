@@ -977,4 +977,7 @@ service TabletServer {
     rpc CreateAggregator(CreateAggregatorRequest) returns (CreateAggregatorResponse);
     // monitoring interfaces
     rpc GetAndFlushDeployStats(GAFDeployStatsRequest) returns (DeployStatsResponse);
+
+    // flush privilege
+    rpc FlushPrivileges(EmptyRequest) returns (GeneralResponse);
 }

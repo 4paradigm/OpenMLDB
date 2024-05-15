@@ -45,6 +45,7 @@
 #include "boost/bind.hpp"
 #include "codec/row_codec.h"
 #include "gflags/gflags.h"
+#include "name_server_impl.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
 
@@ -522,7 +523,8 @@ NameServerImpl::NameServerImpl()
       thread_pool_(1),
       task_thread_pool_(FLAGS_name_server_task_pool_size),
       rand_(0xdeadbeef),
-      startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
+      startup_mode_(::openmldb::type::StartupMode::kStandalone),
+      user_access_manager_(GetSystemTableIterator()) {}
 
 NameServerImpl::~NameServerImpl() {
     running_.store(false, std::memory_order_release);
@@ -650,6 +652,7 @@ bool NameServerImpl::Recover() {
     if (!RecoverExternalFunction()) {
         return false;
     }
+    FlushPrivileges();
     return true;
 }
 
@@ -1377,8 +1380,8 @@ void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletReque
     response->set_msg("ok");
 }
 
-base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std::string& user,
-                                              const std::string& password) {
+base::Status NameServerImpl::PutUserRecord(const std::string& host, const std::string& user,
+                                           const std::string& password) {
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
         return {ReturnCode::kTableIsNotExist, "user table does not exist"};
@@ -1410,12 +1413,55 @@ base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std
             std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
             auto table_ptr = GetTablet(endpoint);
             if (!table_ptr->client_->Put(tid, 0, cur_ts, encoded_row, dimensions).OK()) {
-                return {ReturnCode::kPutFailed, "failed to create initial user entry"};
+                return {ReturnCode::kPutFailed, "failed to put user entry"};
             }
             break;
         }
     }
+    if (!FlushPrivileges()) {
+        return {ReturnCode::kDeleteFailed, "Privilege flush failed"};
+    }
     return {};
+}
+
+base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std::string& user) {
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "user table does not exist"};
+    }
+    uint32_t tid = table_info->tid();
+    auto table_partition = table_info->table_partition(0);  // only one partition for system table
+    std::string msg;
+    for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
+        if (table_partition.partition_meta(meta_idx).is_leader() &&
+            table_partition.partition_meta(meta_idx).is_alive()) {
+            uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+            std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
+            auto table_ptr = GetTablet(endpoint);
+            if (!table_ptr->client_->Delete(tid, 0, host + "|" + user, "index", msg)) {
+                return {ReturnCode::kDeleteFailed, msg};
+            }
+
+            break;
+        }
+    }
+    if (!FlushPrivileges()) {
+        return {ReturnCode::kDeleteFailed, "Privilege flush failed"};
+    }
+    return {};
+}
+
+bool NameServerImpl::FlushPrivileges() {
+    user_access_manager_.SyncWithDB();
+    for (const auto& tablet_pair : tablets_) {
+        const std::shared_ptr<TabletInfo>& tablet_info = tablet_pair.second;
+        if (tablet_info && tablet_info->Health() && tablet_info->client_) {
+            if (!tablet_info->client_->FlushPrivileges()) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
@@ -5593,7 +5639,7 @@ void NameServerImpl::OnLocked() {
     CreateDatabaseOrExit(INTERNAL_DB);
     if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
         CreateSystemTableOrExit(SystemTableType::kUser);
-        InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        PutUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
@@ -9611,6 +9657,25 @@ NameServerImpl::GetSystemTableIterator() {
         }
         return std::nullopt;
     };
+}
+
+void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response,
+                             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    auto status = PutUserRecord(request->host(), request->name(), request->password());
+    base::SetResponseStatus(status, response);
+}
+
+void NameServerImpl::DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
+                                Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    auto status = DeleteUserRecord(request->host(), request->name());
+    base::SetResponseStatus(status, response);
+}
+
+bool NameServerImpl::IsAuthenticated(const std::string& host, const std::string& username,
+                                     const std::string& password) {
+    return user_access_manager_.IsAuthenticated(host, username, password);
 }
 
 bool NameServerImpl::RecoverProcedureInfo() {

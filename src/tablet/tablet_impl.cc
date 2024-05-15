@@ -154,7 +154,8 @@ TabletImpl::TabletImpl()
       sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_(),
       globalvar_changed_notify_path_(),
-      startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
+      startup_mode_(::openmldb::type::StartupMode::kStandalone),
+      user_access_manager_(GetSystemTableIterator()) {}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -5812,6 +5813,17 @@ void TabletImpl::GetAndFlushDeployStats(::google::protobuf::RpcController* contr
 
     // TODO(hw): delete rpc?
     response->set_code(ReturnCode::kOk);
+}
+
+bool TabletImpl::IsAuthenticated(const std::string& host, const std::string& username, const std::string& password) {
+    return user_access_manager_.IsAuthenticated(host, username, password);
+}
+
+void TabletImpl::FlushPrivileges(::google::protobuf::RpcController* controller,
+                                 const ::openmldb::api::EmptyRequest* request,
+                                 ::openmldb::api::GeneralResponse* response, ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    user_access_manager_.SyncWithDB();
 }
 
 std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,

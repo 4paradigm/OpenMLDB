@@ -267,6 +267,8 @@ class TabletClient : public Client {
 
     bool GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res);
 
+    bool FlushPrivileges();
+
  private:
     base::Status LoadTableInternal(const ::openmldb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info);
 

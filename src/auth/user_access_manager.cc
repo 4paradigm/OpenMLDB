@@ -36,7 +36,7 @@ void UserAccessManager::StartSyncTask() {
     sync_task_thread_ = std::thread([this] {
         while (sync_task_running_) {
             SyncWithDB();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::minutes(15));
         }
     });
 }
