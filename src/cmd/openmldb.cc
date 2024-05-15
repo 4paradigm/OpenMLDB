@@ -148,7 +148,7 @@ void StartNameServer() {
     brpc::ServerOptions options;
     std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
     server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
-        [&name_server](const std::string& host, const std::string& username, const std::string& password) {
+        [name_server](const std::string& host, const std::string& username, const std::string& password) {
             return name_server->IsAuthenticated(host, username, password);
         });
     options.auth = server_authenticator.get();
@@ -253,7 +253,7 @@ void StartTablet() {
     std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
 
     server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
-        [&tablet](const std::string& host, const std::string& username, const std::string& password) {
+        [tablet](const std::string& host, const std::string& username, const std::string& password) {
             return tablet->IsAuthenticated(host, username, password);
         });
     options.auth = server_authenticator.get();
