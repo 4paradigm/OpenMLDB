@@ -26,12 +26,23 @@ namespace openmldb::auth {
 
 UserAccessManager::UserAccessManager(IteratorFactory iterator_factory)
     : user_table_iterator_factory_(std::move(iterator_factory)) {
-    std::thread([this] {
+    StartSyncTask();
+}
+
+UserAccessManager::~UserAccessManager() { StopSyncTask(); }
+
+void UserAccessManager::StartSyncTask() {
+    sync_task_thread_ = std::thread([this, fut = stop_promise_.get_future()] {
         while (true) {
             SyncWithDB();
-            std::this_thread::sleep_for(std::chrono::minutes(15));
+            if (fut.wait_for(std::chrono::minutes(15)) != std::future_status::timeout) return;
         }
-    }).detach();
+    });
+}
+
+void UserAccessManager::StopSyncTask() {
+    stop_promise_.set_value();
+    sync_task_thread_.join();
 }
 
 void UserAccessManager::SyncWithDB() {

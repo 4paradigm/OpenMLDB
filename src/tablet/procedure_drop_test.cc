@@ -240,16 +240,14 @@ TEST_F(ProcedureDropTest, DropProcedureBeforeDropTable) {
     // stop
     tb_server1.Stop(10);
     delete tablet1;
-
     sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
     ASSERT_FALSE(rs);
-
     // restart
     brpc::Server tb_server2;
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server2, tablet2);
-    sleep(5);
+    sleep(3);
     rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
     schema = rs->GetSchema();
