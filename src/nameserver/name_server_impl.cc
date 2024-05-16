@@ -652,8 +652,7 @@ bool NameServerImpl::Recover() {
     if (!RecoverExternalFunction()) {
         return false;
     }
-    FlushPrivileges();
-    return true;
+    return FlushPrivileges().OK();
 }
 
 bool NameServerImpl::RecoverExternalFunction() {
@@ -1418,10 +1417,7 @@ base::Status NameServerImpl::PutUserRecord(const std::string& host, const std::s
             break;
         }
     }
-    if (!FlushPrivileges()) {
-        return {ReturnCode::kDeleteFailed, "Privilege flush failed"};
-    }
-    return {};
+    return FlushPrivileges();
 }
 
 base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std::string& user) {
@@ -1445,23 +1441,25 @@ base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std
             break;
         }
     }
-    if (!FlushPrivileges()) {
-        return {ReturnCode::kDeleteFailed, "Privilege flush failed"};
-    }
-    return {};
+    return FlushPrivileges();
 }
 
-bool NameServerImpl::FlushPrivileges() {
+base::Status NameServerImpl::FlushPrivileges() {
     user_access_manager_.SyncWithDB();
+    std::vector<std::string> failed_tablet_list;
     for (const auto& tablet_pair : tablets_) {
         const std::shared_ptr<TabletInfo>& tablet_info = tablet_pair.second;
         if (tablet_info && tablet_info->Health() && tablet_info->client_) {
             if (!tablet_info->client_->FlushPrivileges()) {
-                return false;
+                failed_tablet_list.push_back(tablet_pair.first);
             }
         }
     }
-    return true;
+    if (failed_tablet_list.size() > 0) {
+        return {ReturnCode::kFlushPrivilegesFailed,
+                "Failed to flush privileges to tablets: " + boost::algorithm::join(failed_tablet_list, ", ")};
+    }
+    return {};
 }
 
 bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_path, const std::string& endpoint,
@@ -9662,6 +9660,7 @@ NameServerImpl::GetSystemTableIterator() {
 void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response,
                              Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
     auto status = PutUserRecord(request->host(), request->name(), request->password());
     base::SetResponseStatus(status, response);
 }
@@ -9669,6 +9668,7 @@ void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* re
 void NameServerImpl::DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
                                 Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
     auto status = DeleteUserRecord(request->host(), request->name());
     base::SetResponseStatus(status, response);
 }

@@ -375,7 +375,7 @@ class NameServerImpl : public NameServer {
 
     base::Status PutUserRecord(const std::string& host, const std::string& user, const std::string& password);
     base::Status DeleteUserRecord(const std::string& host, const std::string& user);
-    bool FlushPrivileges();
+    base::Status FlushPrivileges();
 
     base::Status InitGlobalVarTable();
 
