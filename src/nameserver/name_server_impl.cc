@@ -1447,11 +1447,14 @@ base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std
 base::Status NameServerImpl::FlushPrivileges() {
     user_access_manager_.SyncWithDB();
     std::vector<std::string> failed_tablet_list;
-    for (const auto& tablet_pair : tablets_) {
-        const std::shared_ptr<TabletInfo>& tablet_info = tablet_pair.second;
-        if (tablet_info && tablet_info->Health() && tablet_info->client_) {
-            if (!tablet_info->client_->FlushPrivileges()) {
-                failed_tablet_list.push_back(tablet_pair.first);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& tablet_pair : tablets_) {
+            const std::shared_ptr<TabletInfo>& tablet_info = tablet_pair.second;
+            if (tablet_info && tablet_info->Health() && tablet_info->client_) {
+                if (!tablet_info->client_->FlushPrivileges()) {
+                    failed_tablet_list.push_back(tablet_pair.first);
+                }
             }
         }
     }
@@ -9660,7 +9663,6 @@ NameServerImpl::GetSystemTableIterator() {
 void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response,
                              Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::lock_guard<std::mutex> lock(mu_);
     auto status = PutUserRecord(request->host(), request->name(), request->password());
     base::SetResponseStatus(status, response);
 }
@@ -9668,7 +9670,6 @@ void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* re
 void NameServerImpl::DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
                                 Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::lock_guard<std::mutex> lock(mu_);
     auto status = DeleteUserRecord(request->host(), request->name());
     base::SetResponseStatus(status, response);
 }
