@@ -533,6 +533,17 @@ message TableIndex {
     repeated openmldb.common.ColumnKey column_key = 3;
 }
 
+message PutUserRequest {
+    required string host = 1;
+    required string name = 2;
+    required string password = 3;
+}
+
+message DeleteUserRequest {
+    required string host = 1;
+    required string name = 2;
+}
+
 message DeploySQLRequest {
     optional openmldb.api.ProcedureInfo sp_info = 3;
     repeated TableIndex index = 4;
@@ -602,4 +613,8 @@ service NameServer {
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
     rpc ShowProcedure(openmldb.api.ShowProcedureRequest) returns (openmldb.api.ShowProcedureResponse);
     rpc DeploySQL(DeploySQLRequest) returns (DeploySQLResponse);
+
+    // user related interfaces
+    rpc PutUser(PutUserRequest) returns (GeneralResponse);
+    rpc DeleteUser(DeleteUserRequest) returns (GeneralResponse);
 }

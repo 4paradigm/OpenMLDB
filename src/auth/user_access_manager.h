@@ -19,6 +19,7 @@
 
 #include <chrono>
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <thread>
@@ -38,14 +39,13 @@ class UserAccessManager {
 
     ~UserAccessManager();
     bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
+    void SyncWithDB();
 
  private:
     IteratorFactory user_table_iterator_factory_;
     RefreshableMap<std::string, std::string> user_map_;
-    std::atomic<bool> sync_task_running_{false};
     std::thread sync_task_thread_;
-
-    void SyncWithDB();
+    std::promise<void> stop_promise_;
     void StartSyncTask();
     void StopSyncTask();
 };

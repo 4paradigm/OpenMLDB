@@ -4902,49 +4902,51 @@ absl::StatusOr<bool> SQLClusterRouter::GetUser(const std::string& name, UserInfo
 
 hybridse::sdk::Status SQLClusterRouter::AddUser(const std::string& name, const std::string& password) {
     auto real_password = password.empty() ? password : codec::Encrypt(password);
-    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
-    std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
-            "'%',",                 // host
-            "'", name, "','",       // user
-            real_password, "',",    // password
-            cur_ts, ",",            // password_last_changed
-            "0,",                   // password_expired_time
-            cur_ts, ", ",           // create_time
-            cur_ts, ",",            // update_time
-            1,                      // account_type
-            ",'',",                 // privileges
-            "null"                  // extra_info
-            ");");
+
     hybridse::sdk::Status status;
-    ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
+
+    auto ns_client = cluster_sdk_->GetNsClient();
+
+    bool ok = ns_client->PutUser("%", name, real_password);
+
+    if (!ok) {
+        status.code = hybridse::common::StatusCode::kRunError;
+        status.msg = absl::StrCat("Fail to create user: ", name);
+    }
+
     return status;
 }
 
 hybridse::sdk::Status SQLClusterRouter::UpdateUser(const UserInfo& user_info, const std::string& password) {
+    auto name = user_info.name;
     auto real_password = password.empty() ? password : codec::Encrypt(password);
-    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
-    std::string sql = absl::StrCat("insert into ", nameserver::USER_INFO_NAME, " values (",
-            "'%',",                           // host
-            "'", user_info.name, "','",       // user
-            real_password, "',",              // password
-            cur_ts, ",",                      // password_last_changed
-            "0,",                             // password_expired_time
-            user_info.create_time, ", ",      // create_time
-            cur_ts, ",",                      // update_time
-            1,                                // account_type
-            ",'", user_info.privileges, "',", // privileges
-            "null"                            // extra_info
-            ");");
+
     hybridse::sdk::Status status;
-    ExecuteInsert(nameserver::INTERNAL_DB, sql, &status);
+
+    auto ns_client = cluster_sdk_->GetNsClient();
+
+    bool ok = ns_client->PutUser("%", name, real_password);
+
+    if (!ok) {
+        status.code = hybridse::common::StatusCode::kRunError;
+        status.msg = absl::StrCat("Fail to update user: ", name);
+    }
+
     return status;
 }
 
 hybridse::sdk::Status SQLClusterRouter::DeleteUser(const std::string& name) {
-    std::string sql = absl::StrCat("delete from ", nameserver::USER_INFO_NAME,
-            " where host = '%' and user = '", name, "';");
     hybridse::sdk::Status status;
-    ExecuteSQL(nameserver::INTERNAL_DB, sql, &status);
+
+    auto ns_client = cluster_sdk_->GetNsClient();
+
+    bool ok = ns_client->DeleteUser("%", name);
+
+    if (!ok) {
+        status.code = hybridse::common::StatusCode::kRunError;
+        status.msg = absl::StrCat("Fail to delete user: ", name);
+    }
+
     return status;
 }
 

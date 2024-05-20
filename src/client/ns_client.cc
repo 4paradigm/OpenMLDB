@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "base/strings.h"
+#include "ns_client.h"
 
 DECLARE_int32(request_timeout_ms);
 namespace openmldb {
@@ -301,6 +302,33 @@ bool NsClient::CreateTable(const ::openmldb::nameserver::TableInfo& table_info, 
 }
 
 bool NsClient::DropTable(const std::string& name, std::string& msg) { return DropTable(GetDb(), name, msg); }
+
+bool NsClient::PutUser(const std::string& host, const std::string& name, const std::string& password) {
+    ::openmldb::nameserver::PutUserRequest request;
+    request.set_host(host);
+    request.set_name(name);
+    request.set_password(password);
+    ::openmldb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::PutUser, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::DeleteUser(const std::string& host, const std::string& name) {
+    ::openmldb::nameserver::DeleteUserRequest request;
+    request.set_host(host);
+    request.set_name(name);
+    ::openmldb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DeleteUser, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
 
 bool NsClient::DropTable(const std::string& db, const std::string& name, std::string& msg) {
     ::openmldb::nameserver::DropTableRequest request;

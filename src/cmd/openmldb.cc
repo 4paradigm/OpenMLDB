@@ -38,7 +38,6 @@
 #endif
 #include "apiserver/api_server_impl.h"
 #include "auth/brpc_authenticator.h"
-#include "auth/user_access_manager.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -147,12 +146,10 @@ void StartNameServer() {
     }
 
     brpc::ServerOptions options;
-    std::unique_ptr<openmldb::auth::UserAccessManager> user_access_manager;
     std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
-    user_access_manager = std::make_unique<openmldb::auth::UserAccessManager>(name_server->GetSystemTableIterator());
     server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
-        [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
-            return user_access_manager->IsAuthenticated(host, username, password);
+        [name_server](const std::string& host, const std::string& username, const std::string& password) {
+            return name_server->IsAuthenticated(host, username, password);
         });
     options.auth = server_authenticator.get();
 
@@ -253,13 +250,11 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
-    std::unique_ptr<openmldb::auth::UserAccessManager> user_access_manager;
     std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
 
-    user_access_manager = std::make_unique<openmldb::auth::UserAccessManager>(tablet->GetSystemTableIterator());
     server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
-        [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
-            return user_access_manager->IsAuthenticated(host, username, password);
+        [tablet](const std::string& host, const std::string& username, const std::string& password) {
+            return tablet->IsAuthenticated(host, username, password);
         });
     options.auth = server_authenticator.get();
     options.num_threads = FLAGS_thread_pool_size;

@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "auth/brpc_authenticator.h"
-#include "auth/user_access_manager.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "brpc/server.h"
@@ -74,22 +73,11 @@ class MiniCluster {
     }
 
     ~MiniCluster() {
-        for (auto& tablet_user_access_manager : tablet_user_access_managers_) {
-            if (tablet_user_access_manager) {
-                delete tablet_user_access_manager;
-                tablet_user_access_manager = nullptr;
-            }
-        }
         for (auto& tablet_authenticator : tablet_authenticators_) {
             if (tablet_authenticator) {
                 delete tablet_authenticator;
                 tablet_authenticator = nullptr;
             }
-        }
-
-        if (user_access_manager_) {
-            delete user_access_manager_;
-            user_access_manager_ = nullptr;
         }
 
         if (ns_authenticator_) {
@@ -137,15 +125,9 @@ class MiniCluster {
         if (!ok) {
             return false;
         }
-        if (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                      &user_table_info_)) {
-            PDLOG(WARNING, "Failed to get table info for user table");
-            return false;
-        }
-        user_access_manager_ = new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator());
         ns_authenticator_ = new openmldb::authn::BRPCAuthenticator(
             [this](const std::string& host, const std::string& username, const std::string& password) {
-                return user_access_manager_->IsAuthenticated(host, username, password);
+                return nameserver->IsAuthenticated(host, username, password);
             });
         brpc::ServerOptions options;
         options.auth = ns_authenticator_;
@@ -173,23 +155,12 @@ class MiniCluster {
     }
 
     void Close() {
-        for (auto& tablet_user_access_manager : tablet_user_access_managers_) {
-            if (tablet_user_access_manager) {
-                delete tablet_user_access_manager;
-                tablet_user_access_manager = nullptr;
-            }
-        }
         for (auto& tablet_authenticator : tablet_authenticators_) {
             if (tablet_authenticator) {
                 delete tablet_authenticator;
                 tablet_authenticator = nullptr;
             }
         }
-        if (user_access_manager_) {
-            delete user_access_manager_;
-            user_access_manager_ = nullptr;
-        }
-
         if (ns_authenticator_) {
             delete ns_authenticator_;
             ns_authenticator_ = nullptr;
@@ -244,13 +215,10 @@ class MiniCluster {
             return false;
         }
 
-        auto tablet_user_access_manager = new openmldb::auth::UserAccessManager(tablet->GetSystemTableIterator());
         auto ts_authenticator = new openmldb::authn::BRPCAuthenticator(
-            [tablet_user_access_manager](const std::string& host, const std::string& username,
-                                         const std::string& password) {
-                return tablet_user_access_manager->IsAuthenticated(host, username, password);
+            [tablet](const std::string& host, const std::string& username, const std::string& password) {
+                return tablet->IsAuthenticated(host, username, password);
             });
-        tablet_user_access_managers_.push_back(tablet_user_access_manager);
         tablet_authenticators_.push_back(ts_authenticator);
         brpc::ServerOptions options;
         options.auth = ts_authenticator;
@@ -291,32 +259,18 @@ class MiniCluster {
     std::map<std::string, ::openmldb::tablet::TabletImpl*> tablets_;
     std::map<std::string, ::openmldb::client::TabletClient*> tb_clients_;
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
-    openmldb::auth::UserAccessManager* user_access_manager_;
-    std::vector<openmldb::auth::UserAccessManager*> tablet_user_access_managers_;
     std::vector<openmldb::authn::BRPCAuthenticator*> tablet_authenticators_;
-    std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
 };
 
 class StandaloneEnv {
  public:
     StandaloneEnv() : ns_(), ns_client_(nullptr), tb_client_(nullptr) { FLAGS_skip_grant_tables = false; }
     ~StandaloneEnv() {
-        for (auto& tablet_user_access_manager : tablet_user_access_managers_) {
-            if (tablet_user_access_manager) {
-                delete tablet_user_access_manager;
-                tablet_user_access_manager = nullptr;
-            }
-        }
         for (auto& tablet_authenticator : tablet_authenticators_) {
             if (tablet_authenticator) {
                 delete tablet_authenticator;
                 tablet_authenticator = nullptr;
             }
-        }
-
-        if (user_access_manager_) {
-            delete user_access_manager_;
-            user_access_manager_ = nullptr;
         }
 
         if (ns_authenticator_) {
@@ -353,15 +307,9 @@ class StandaloneEnv {
         if (!ok) {
             return false;
         }
-        if (!nameserver->GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB,
-                                      &user_table_info_)) {
-            PDLOG(WARNING, "Failed to get table info for user table");
-            return false;
-        }
-        user_access_manager_ = new openmldb::auth::UserAccessManager(nameserver->GetSystemTableIterator());
         ns_authenticator_ = new openmldb::authn::BRPCAuthenticator(
             [this](const std::string& host, const std::string& username, const std::string& password) {
-                return user_access_manager_->IsAuthenticated(host, username, password);
+                return nameserver->IsAuthenticated(host, username, password);
             });
         brpc::ServerOptions options;
         options.auth = ns_authenticator_;
@@ -387,22 +335,11 @@ class StandaloneEnv {
     }
 
     void Close() {
-        for (auto& tablet_user_access_manager : tablet_user_access_managers_) {
-            if (tablet_user_access_manager) {
-                delete tablet_user_access_manager;
-                tablet_user_access_manager = nullptr;
-            }
-        }
         for (auto& tablet_authenticator : tablet_authenticators_) {
             if (tablet_authenticator) {
                 delete tablet_authenticator;
                 tablet_authenticator = nullptr;
             }
-        }
-
-        if (user_access_manager_) {
-            delete user_access_manager_;
-            user_access_manager_ = nullptr;
         }
 
         if (ns_authenticator_) {
@@ -436,15 +373,12 @@ class StandaloneEnv {
         bool ok = tablet->Init("", "", tb_endpoint, "");
         if (!ok) {
             return false;
-        }
+    }
 
-        auto tablet_user_access_manager = new openmldb::auth::UserAccessManager(tablet->GetSystemTableIterator());
         auto ts_authenticator = new openmldb::authn::BRPCAuthenticator(
-            [tablet_user_access_manager](const std::string& host, const std::string& username,
-                                         const std::string& password) {
-                return tablet_user_access_manager->IsAuthenticated(host, username, password);
+            [tablet](const std::string& host, const std::string& username, const std::string& password) {
+                return tablet->IsAuthenticated(host, username, password);
             });
-        tablet_user_access_managers_.push_back(tablet_user_access_manager);
         tablet_authenticators_.push_back(ts_authenticator);
         brpc::ServerOptions options;
         options.auth = ts_authenticator;
@@ -474,9 +408,6 @@ class StandaloneEnv {
     ::openmldb::client::NsClient* ns_client_;
     ::openmldb::client::TabletClient* tb_client_;
     openmldb::authn::BRPCAuthenticator* ns_authenticator_;
-    openmldb::auth::UserAccessManager* user_access_manager_;
-    std::shared_ptr<::openmldb::nameserver::TableInfo> user_table_info_;
-    std::vector<openmldb::auth::UserAccessManager*> tablet_user_access_managers_;
     std::vector<openmldb::authn::BRPCAuthenticator*> tablet_authenticators_;
 };
 

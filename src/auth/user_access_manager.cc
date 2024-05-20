@@ -32,20 +32,17 @@ UserAccessManager::UserAccessManager(IteratorFactory iterator_factory)
 UserAccessManager::~UserAccessManager() { StopSyncTask(); }
 
 void UserAccessManager::StartSyncTask() {
-    sync_task_running_ = true;
-    sync_task_thread_ = std::thread([this] {
-        while (sync_task_running_) {
+    sync_task_thread_ = std::thread([this, fut = stop_promise_.get_future()] {
+        while (true) {
             SyncWithDB();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (fut.wait_for(std::chrono::minutes(15)) != std::future_status::timeout) return;
         }
     });
 }
 
 void UserAccessManager::StopSyncTask() {
-    sync_task_running_ = false;
-    if (sync_task_thread_.joinable()) {
-        sync_task_thread_.join();
-    }
+    stop_promise_.set_value();
+    sync_task_thread_.join();
 }
 
 void UserAccessManager::SyncWithDB() {
