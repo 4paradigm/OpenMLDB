@@ -28,12 +28,12 @@ namespace rewriter {
 
 // unparser that make some rewrites so outputed SQL is
 // compatible with ANSI SQL as much as can
-class ANSISQLRewriteUnparser : public zetasql::parser::Unparser {
+class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
  public:
-    explicit ANSISQLRewriteUnparser(std::string* unparsed) : zetasql::parser::Unparser(unparsed) {}
-    ~ANSISQLRewriteUnparser() override {}
-    ANSISQLRewriteUnparser(const ANSISQLRewriteUnparser&) = delete;
-    ANSISQLRewriteUnparser& operator=(const ANSISQLRewriteUnparser&) = delete;
+    explicit LastJoinRewriteUnparser(std::string* unparsed) : zetasql::parser::Unparser(unparsed) {}
+    ~LastJoinRewriteUnparser() override {}
+    LastJoinRewriteUnparser(const LastJoinRewriteUnparser&) = delete;
+    LastJoinRewriteUnparser& operator=(const LastJoinRewriteUnparser&) = delete;
 
     void visitASTSelect(const zetasql::ASTSelect* node, void* data) override {
         while (true) {
@@ -126,6 +126,7 @@ class ANSISQLRewriteUnparser : public zetasql::parser::Unparser {
                     if (ph->num_names() == 1 &&
                         absl::AsciiStrToLower(ph->first_name()->GetAsStringView()) == "row_number") {
                         found = true;
+                        break;
                     }
                 }
             }
@@ -257,6 +258,14 @@ class ANSISQLRewriteUnparser : public zetasql::parser::Unparser {
     }
 };
 
+class RequestQueryRewriteUnparser : public zetasql::parser::Unparser {
+ public:
+    explicit RequestQueryRewriteUnparser(std::string* unparsed) : zetasql::parser::Unparser(unparsed) {}
+    ~RequestQueryRewriteUnparser() override {}
+    RequestQueryRewriteUnparser(const RequestQueryRewriteUnparser&) = delete;
+    RequestQueryRewriteUnparser& operator=(const RequestQueryRewriteUnparser&) = delete;
+};
+
 absl::StatusOr<std::string> Rewrite(absl::string_view query) {
     std::unique_ptr<zetasql::ParserOutput> ast;
     auto s = hybridse::plan::ParseStatement(query, &ast);
@@ -266,7 +275,7 @@ absl::StatusOr<std::string> Rewrite(absl::string_view query) {
 
     if (ast->statement() && ast->statement()->node_kind() == zetasql::AST_QUERY_STATEMENT) {
         std::string unparsed_;
-        ANSISQLRewriteUnparser unparser(&unparsed_);
+        LastJoinRewriteUnparser unparser(&unparsed_);
         ast->statement()->Accept(&unparser, nullptr);
         unparser.FlushLine();
         return unparsed_;

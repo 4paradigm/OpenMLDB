@@ -31,10 +31,10 @@ class ASTRewriterTest : public ::testing::Test {};
 TEST_F(ASTRewriterTest, LastJoin) {
     std::string str = R"(
 SELECT id, val, k, ts, idr, valr FROM (
-  SELECT t1.*, t2.id as idr, t2.val as valr, row_number() over w as row_id
+  SELECT t1.*, t2.id as idr, t2.val as valr, row_number() over w as any_id
   FROM t1 LEFT JOIN t2 ON t1.k = t2.k
   WINDOW w as (PARTITION BY t1.id,t1.k order by t2.ts desc)
-) t WHERE row_id = 1)";
+) t WHERE any_id = 1)";
 
     auto s = hybridse::rewriter::Rewrite(str);
     ASSERT_TRUE(s.ok()) << s.status();
