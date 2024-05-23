@@ -46,11 +46,60 @@ SELECT id, val, k, ts, idr, valr FROM (
   ts,
   idr,
   valr
-FROM t1
-LAST JOIN
-t2 ORDER BY t2.ts
-ON t1.k = t2.k
+FROM
+  t1
+  LAST JOIN
+  t2
+  ORDER BY t2.ts
+  ON t1.k = t2.k
 )",
+              s.value());
+
+    std::unique_ptr<zetasql::ParserOutput> out;
+    auto ss = ::hybridse::plan::ParseStatement(s.value(), &out);
+    ASSERT_TRUE(ss.ok()) << ss;
+}
+
+TEST_F(ASTRewriterTest, RequestQuery) {
+    std::string str = R"(
+SELECT id, k, agg
+FROM (
+  SELECT id, k, label, count(val) over w as agg
+  FROM (
+    SELECT  6 as id, "xxx" as val, 10 as k, 9000 as ts, 0 as label
+    UNION ALL
+    SELECT *, 1 as label FROM t1
+  ) t
+  WINDOW w as (PARTITION BY k ORDER BY ts rows between unbounded preceding and current row)
+) t WHERE label = 0)";
+
+    auto s = hybridse::rewriter::Rewrite(str);
+    ASSERT_TRUE(s.ok()) << s.status();
+
+    ASSERT_EQ(R"s(SELECT
+  id,
+  k,
+  agg
+FROM
+  (
+    SELECT
+      id,
+      k,
+      label,
+      count(val) OVER (w) AS agg
+    FROM
+      (
+        SELECT
+          *,
+          1 AS label
+        FROM
+          t1
+      ) AS t
+    WINDOW w AS (PARTITION BY k
+      ORDER BY ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+  ) AS t
+CONFIG (execute_mode = 'request', values = (6, "xxx", 10, 9000) )
+)s",
               s.value());
 
     std::unique_ptr<zetasql::ParserOutput> out;

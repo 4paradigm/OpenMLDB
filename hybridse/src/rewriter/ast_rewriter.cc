@@ -17,6 +17,7 @@
 #include "rewriter/ast_rewriter.h"
 
 #include <memory>
+#include <vector>
 
 #include "plan/plan_api.h"
 #include "zetasql/parser/parse_tree_manual.h"
@@ -84,12 +85,18 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
             }
 
             auto select = subquery->query_expr()->GetAsOrNull<zetasql::ASTSelect>();
+            if (!select) {
+                break;
+            }
             // select have window
             if (select->window_clause() == nullptr || select->from_clause() == nullptr) {
                 break;
             }
 
             // 3. CHECK FROM CLAUSE: must 't1 LEFT JOIN t2 on t1.key = t2.key'
+            if (!select->from_clause()) {
+                break;
+            }
             auto join = select->from_clause()->table_expression()->GetAsOrNull<zetasql::ASTJoin>();
             if (join == nullptr || join->join_type() != zetasql::ASTJoin::LEFT || join->on_clause() == nullptr) {
                 break;
@@ -258,30 +265,250 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
     }
 };
 
+// SELECT:
+//   WHERE col = 0
+//   FROM (subquery):
+//     subquery is UNION ALL, or contains left-most query is UNION ALL
+//     and UNION ALL is select const ..., 0 as col UNION ALL (select .., 1 as col table)
 class RequestQueryRewriteUnparser : public zetasql::parser::Unparser {
  public:
     explicit RequestQueryRewriteUnparser(std::string* unparsed) : zetasql::parser::Unparser(unparsed) {}
     ~RequestQueryRewriteUnparser() override {}
     RequestQueryRewriteUnparser(const RequestQueryRewriteUnparser&) = delete;
     RequestQueryRewriteUnparser& operator=(const RequestQueryRewriteUnparser&) = delete;
+
+    void visitASTSelect(const zetasql::ASTSelect* node, void* data) override {
+        while (true) {
+            if (outer_most_select_ != nullptr) {
+                break;
+            }
+
+            outer_most_select_ = node;
+            if (node->where_clause() == nullptr) {
+                break;
+            }
+            absl::string_view filter_col;
+            const zetasql::ASTExpression* filter_expr;
+
+            // 1. filter condition is 'col = 0'
+            if (node->where_clause()->expression()->node_kind() != zetasql::AST_BINARY_EXPRESSION) {
+                break;
+            }
+            auto expr = node->where_clause()->expression()->GetAsOrNull<zetasql::ASTBinaryExpression>();
+            if (!expr || expr->op() != zetasql::ASTBinaryExpression::Op::EQ || expr->is_not()) {
+                break;
+            }
+            {
+                auto rval = expr->rhs()->GetAsOrNull<zetasql::ASTPathExpression>();
+                if (rval) {
+                    // TODO(someone):
+                    // 2. consider rval as <tb_name>.<row_id>
+                    filter_col = rval->last_name()->GetAsStringView();
+                    filter_expr = expr->lhs();
+                }
+            }
+            if (filter_col.empty()) {
+                auto rval = expr->lhs()->GetAsOrNull<zetasql::ASTPathExpression>();
+                if (rval) {
+                    // TODO(someone):
+                    // 2. consider rval as <tb_name>.<row_id>
+                    filter_col = rval->last_name()->GetAsStringView();
+                    filter_expr = expr->rhs();
+                }
+            }
+            if (filter_col.empty() || !filter_expr) {
+                break;
+            }
+
+            if (node->from_clause() == nullptr) {
+                break;
+            }
+            auto sub = node->from_clause()->table_expression()->GetAsOrNull<zetasql::ASTTableSubquery>();
+            if (!sub) {
+                break;
+            }
+            auto subquery = sub->subquery();
+
+            findUnionAllForQuery(subquery, filter_col, filter_expr, node->where_clause());
+
+            break;  // fallback normal
+        }
+
+        zetasql::parser::Unparser::visitASTSelect(node, data);
+    }
+
+    void visitASTSetOperation(const zetasql::ASTSetOperation* node, void* data) override {
+        if (node == detected_request_block_) {
+            node->inputs().back()->Accept(this, data);
+        } else {
+            zetasql::parser::Unparser::visitASTSetOperation(node, data);
+        }
+    }
+
+    void visitASTQueryStatement(const zetasql::ASTQueryStatement* node, void* data) override {
+        visitASTQuery(node->query(), data);
+        if (!list_.empty()) {
+            constSelectListAsConfigClause(list_, data);
+        }
+    }
+
+    void visitASTWhereClause(const zetasql::ASTWhereClause* node, void* data) override {
+        if (node != filter_clause_) {
+            zetasql::parser::Unparser::visitASTWhereClause(node, data);
+        }
+    }
+
+ private:
+    void findUnionAllForQuery(const zetasql::ASTQuery* query, absl::string_view label_name,
+                              const zetasql::ASTExpression* filter_expr, const zetasql::ASTWhereClause* filter) {
+        if (!query) {
+            return;
+        }
+        auto qe = query->query_expr();
+        switch (qe->node_kind()) {
+            case zetasql::AST_SET_OPERATION: {
+                auto set = qe->GetAsOrNull<zetasql::ASTSetOperation>();
+                if (set && set->op_type() == zetasql::ASTSetOperation::UNION && set->distinct() == false &&
+                    set->hint() == nullptr && set->inputs().size() == 2) {
+                    [[maybe_unused]] bool ret =
+                        findUnionAllInput(set->inputs().at(0), set->inputs().at(1), label_name, filter_expr, filter) ||
+                        findUnionAllInput(set->inputs().at(0), set->inputs().at(1), label_name, filter_expr, filter);
+                    if (ret) {
+                        detected_request_block_ = set;
+                    }
+                }
+                break;
+            }
+            case zetasql::AST_QUERY: {
+                findUnionAllForQuery(qe->GetAsOrNull<zetasql::ASTQuery>(), label_name, filter_expr, filter);
+                break;
+            }
+            case zetasql::AST_SELECT: {
+                auto select = qe->GetAsOrNull<zetasql::ASTSelect>();
+                if (select->from_clause() &&
+                    select->from_clause()->table_expression()->node_kind() == zetasql::AST_TABLE_SUBQUERY) {
+                    auto sub = select->from_clause()->table_expression()->GetAsOrNull<zetasql::ASTTableSubquery>();
+                    if (sub && sub->subquery()) {
+                        findUnionAllForQuery(sub->subquery(), label_name, filter_expr, filter);
+                    }
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    void constSelectListAsConfigClause(const std::vector<const zetasql::ASTExpression*>& selects, void* data) {
+        print("CONFIG (execute_mode = 'request', values = (");
+        for (int i = 0; i < selects.size(); ++i) {
+            selects.at(i)->Accept(this, data);
+            if (i + 1 < selects.size()) {
+                print(",");
+            }
+        }
+        print(") )");
+    }
+
+    bool findUnionAllInput(const zetasql::ASTQueryExpression* lhs, const zetasql::ASTQueryExpression* rhs,
+                           absl::string_view label_name, const zetasql::ASTExpression* filter_expr,
+                           const zetasql::ASTWhereClause* filter) {
+        // lhs is select const + label_name of value 0
+        auto lselect = lhs->GetAsOrNull<zetasql::ASTSelect>();
+        if (!lselect || lselect->num_children() > 1) {
+            // only select_list required, otherwise size > 1
+            return false;
+        }
+
+        bool has_label_col_0 = false;
+        const zetasql::ASTExpression* label_expr_0 = nullptr;
+        std::vector<const zetasql::ASTExpression*> vec;
+        for (auto col : lselect->select_list()->columns()) {
+            if (col->alias() && col->alias()->GetAsStringView() == label_name) {
+                has_label_col_0 = true;
+                label_expr_0 = col->expression();
+            } else {
+                vec.push_back(col->expression());
+            }
+        }
+
+        // rhs is simple selects from table + label_name of value 1
+        auto rselect = rhs->GetAsOrNull<zetasql::ASTSelect>();
+        if (!rselect || rselect->num_children() > 2 || !rselect->from_clause()) {
+            // only select_list + from_clause required
+            return false;
+        }
+        if (rselect->from_clause()->table_expression()->node_kind() != zetasql::AST_TABLE_PATH_EXPRESSION) {
+            return false;
+        }
+
+        bool has_label_col_1 = false;
+        const zetasql::ASTExpression* label_expr_1 = nullptr;
+        for (auto col : rselect->select_list()->columns()) {
+            if (col->alias() && col->alias()->GetAsStringView() == label_name) {
+                has_label_col_1 = true;
+                label_expr_1 = col->expression();
+            }
+        }
+
+        LOG(INFO) << "label expr 0: " << label_expr_0->SingleNodeDebugString();
+        LOG(INFO) << "label expr 1: " << label_expr_1->SingleNodeDebugString();
+        LOG(INFO) << "filter expr: " << filter_expr->SingleNodeDebugString();
+
+        if (has_label_col_0 && has_label_col_1 &&
+            label_expr_0->SingleNodeDebugString() != label_expr_1->SingleNodeDebugString() &&
+            label_expr_0->SingleNodeDebugString() == filter_expr->SingleNodeDebugString()) {
+            list_ = vec;
+            filter_clause_ = filter;
+            return true;
+        }
+
+        return false;
+    }
+
+ private:
+    const zetasql::ASTSelect* outer_most_select_ = nullptr;
+    // detected request query block, set by when visiting outer most query
+    const zetasql::ASTSetOperation* detected_request_block_ = nullptr;
+    const zetasql::ASTWhereClause* filter_clause_;
+
+    std::vector<const zetasql::ASTExpression*> list_;
 };
 
 absl::StatusOr<std::string> Rewrite(absl::string_view query) {
-    std::unique_ptr<zetasql::ParserOutput> ast;
-    auto s = hybridse::plan::ParseStatement(query, &ast);
-    if (!s.ok()) {
-        return s;
+    auto str = std::string(query);
+    {
+        std::unique_ptr<zetasql::ParserOutput> ast;
+        auto s = hybridse::plan::ParseStatement(str, &ast);
+        if (!s.ok()) {
+            return s;
+        }
+
+        if (ast->statement() && ast->statement()->node_kind() == zetasql::AST_QUERY_STATEMENT) {
+            std::string unparsed_;
+            LastJoinRewriteUnparser unparser(&unparsed_);
+            ast->statement()->Accept(&unparser, nullptr);
+            unparser.FlushLine();
+            str = unparsed_;
+        }
+    }
+    {
+        std::unique_ptr<zetasql::ParserOutput> ast;
+        auto s = hybridse::plan::ParseStatement(str, &ast);
+        if (!s.ok()) {
+            return s;
+        }
+
+        if (ast->statement() && ast->statement()->node_kind() == zetasql::AST_QUERY_STATEMENT) {
+            std::string unparsed_;
+            RequestQueryRewriteUnparser unparser(&unparsed_);
+            ast->statement()->Accept(&unparser, nullptr);
+            unparser.FlushLine();
+            str = unparsed_;
+        }
     }
 
-    if (ast->statement() && ast->statement()->node_kind() == zetasql::AST_QUERY_STATEMENT) {
-        std::string unparsed_;
-        LastJoinRewriteUnparser unparser(&unparsed_);
-        ast->statement()->Accept(&unparser, nullptr);
-        unparser.FlushLine();
-        return unparsed_;
-    }
-
-    return std::string(query);
+    return str;
 }
 
 }  // namespace rewriter
