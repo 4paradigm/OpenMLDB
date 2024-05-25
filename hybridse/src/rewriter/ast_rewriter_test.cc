@@ -35,13 +35,14 @@ struct Case {
 class ASTRewriterTest : public ::testing::TestWithParam<Case> {};
 
 std::vector<Case> strip_cases = {
+  // eliminate LEFT JOIN WINDOW -> LAST JOIN
     {R"s(
   SELECT id, val, k, ts, idr, valr FROM (
     SELECT t1.*, t2.id as idr, t2.val as valr, row_number() over w as any_id
     FROM t1 LEFT JOIN t2 ON t1.k = t2.k
     WINDOW w as (PARTITION BY t1.id,t1.k order by t2.ts desc)
     ) t WHERE any_id = 1)s",
-     R"(
+     R"e(
 SELECT
   id,
   val,
@@ -50,11 +51,19 @@ SELECT
   idr,
   valr
 FROM
-  t1
-  LAST JOIN
-  t2
-  ORDER BY t2.ts
-  ON t1.k = t2.k)"},
+  (
+    SELECT
+      t1.*,
+      t2.id AS idr,
+      t2.val AS valr
+    FROM
+      t1
+      LAST JOIN
+      t2
+      ORDER BY t2.ts
+      ON t1.k = t2.k
+  ) AS t
+)e"},
     {R"(
 SELECT id, k, agg
 FROM (

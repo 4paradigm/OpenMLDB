@@ -50,6 +50,7 @@
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 #include "proto/tablet.pb.h"
+#include "rewriter/ast_rewriter.h"
 #include "rpc/rpc_client.h"
 #include "schema/schema_adapter.h"
 #include "sdk/base.h"
@@ -2676,14 +2677,34 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
-    const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+    const std::string& db, const std::string& str, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
     bool is_online_mode, bool is_sync_job, int offline_job_timeout, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     // functions we called later may not change the status if it's succeed. So if we pass error status here, we'll get a
     // fake error
     status->SetOK();
+
+    std::string sql = str;
     hybridse::vm::SqlContext ctx;
+    if (ANSISQLRewriterEnabled()) {
+        // If true, enable the ANSI SQL rewriter that would rewrite some SQL query
+        // for pre-defined pattern to OpenMLDB SQL extensions. Rewrite phase is before general SQL compilation.
+        //
+        // OpenMLDB SQL extensions, such as request mode query or LAST JOIN, would be helpful
+        // to simplify those that comes from like SparkSQL, and reserve the same semantics meaning.
+        //
+        // Rewrite rules are based on ASTNode, possibly lack some semantic checks. Turn it off if things
+        // go abnormal during rewrite phase.
+        auto s = hybridse::rewriter::Rewrite(sql);
+        if (s.ok()) {
+            LOG(INFO) << "rewrited: " << s.value();
+            sql = s.value();
+        } else {
+            LOG(WARNING) << s.status();
+        }
+    }
     ctx.sql = sql;
+
     auto sql_status = hybridse::plan::PlanAPI::CreatePlanTreeFromScript(&ctx);
     if (!sql_status.isOK()) {
         COPY_PREPEND_AND_WARN(status, sql_status, "create logic plan tree failed");
@@ -3196,6 +3217,18 @@ bool SQLClusterRouter::IsSyncJob() {
     return false;
 }
 
+bool SQLClusterRouter::ANSISQLRewriterEnabled() {
+    // TODO(xxx): mark fn const
+
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    auto it = session_variables_.find("ansi_sql_rewriter");
+    if (it != session_variables_.end() && it->second == "false") {
+        return false;
+    }
+    // TODO(xxx): always disable by default
+    return true;
+}
+
 int SQLClusterRouter::GetJobTimeout() {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("job_timeout");
@@ -3266,6 +3299,10 @@ std::string SQLClusterRouter::GetSparkConfig() {
         if (!CheckSparkConfigString(value)) {
             return {StatusCode::kCmdError,
                     "Fail to parse spark config, set like 'spark.executor.memory=2g;spark.executor.cores=2'"};
+        }
+    } else if (key == "ansi_sql_rewriter") {
+        if (value != "true" && value != "false") {
+            return {StatusCode::kCmdError, "the value of " + key + " must be true|false"};
         }
     } else {
         return {};

@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "plan/plan_api.h"
 #include "zetasql/parser/parse_tree_manual.h"
 #include "zetasql/parser/parser.h"
@@ -84,20 +85,20 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
                 break;
             }
 
-            auto select = subquery->query_expr()->GetAsOrNull<zetasql::ASTSelect>();
-            if (!select) {
+            auto inner_select = subquery->query_expr()->GetAsOrNull<zetasql::ASTSelect>();
+            if (!inner_select) {
                 break;
             }
             // select have window
-            if (select->window_clause() == nullptr || select->from_clause() == nullptr) {
+            if (inner_select->window_clause() == nullptr || inner_select->from_clause() == nullptr) {
                 break;
             }
 
             // 3. CHECK FROM CLAUSE: must 't1 LEFT JOIN t2 on t1.key = t2.key'
-            if (!select->from_clause()) {
+            if (!inner_select->from_clause()) {
                 break;
             }
-            auto join = select->from_clause()->table_expression()->GetAsOrNull<zetasql::ASTJoin>();
+            auto join = inner_select->from_clause()->table_expression()->GetAsOrNull<zetasql::ASTJoin>();
             if (join == nullptr || join->join_type() != zetasql::ASTJoin::LEFT || join->on_clause() == nullptr) {
                 break;
             }
@@ -116,7 +117,7 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
             // 3. CHECK row_id is row_number() over w FROM select_list
             bool found = false;
             absl::string_view window_name;
-            for (auto col : select->select_list()->columns()) {
+            for (auto col : inner_select->select_list()->columns()) {
                 if (col->alias() && col->alias()->GetAsStringView() == filter_col) {
                     auto agg_func = col->expression()->GetAsOrNull<zetasql::ASTAnalyticFunctionCall>();
                     if (!agg_func || !agg_func->function()) {
@@ -132,6 +133,7 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
                     auto ph = agg_func->function()->function();
                     if (ph->num_names() == 1 &&
                         absl::AsciiStrToLower(ph->first_name()->GetAsStringView()) == "row_number") {
+                        opt_out_row_number_col_ = col;
                         found = true;
                         break;
                     }
@@ -143,11 +145,11 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
 
             // 4. CHECK WINDOW CLAUSE
             {
-                if (select->window_clause()->windows().size() != 1) {
+                if (inner_select->window_clause()->windows().size() != 1) {
                     // targeting single window only
                     break;
                 }
-                auto win = select->window_clause()->windows().front();
+                auto win = inner_select->window_clause()->windows().front();
                 if (win->name()->GetAsStringView() != window_name) {
                     break;
                 }
@@ -193,39 +195,48 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
 
                 // rewrite
                 {
-                    PrintOpenParenIfNeeded(node);
-                    println();
-                    print("SELECT");
-                    if (node->hint() != nullptr) {
-                        node->hint()->Accept(this, data);
-                    }
-                    if (node->anonymization_options() != nullptr) {
-                        print("WITH ANONYMIZATION OPTIONS");
-                        node->anonymization_options()->Accept(this, data);
-                    }
-                    if (node->distinct()) {
-                        print("DISTINCT");
-                    }
+                    opt_out_window_ = inner_select->window_clause();
+                    opt_out_where_ = node->where_clause();
+                    opt_join_ = join;
+                    opt_in_last_join_order_by_ = e;
+                    absl::Cleanup clean = [&]() {
+                        opt_out_window_ = nullptr;
+                        opt_out_where_ = nullptr;
+                        opt_out_row_number_col_ = nullptr;
+                        opt_join_ = nullptr;
+                    };
 
-                    // Visit all children except hint() and anonymization_options, which we
-                    // processed above.  We can't just use visitASTChildren(node, data) because
-                    // we need to insert the DISTINCT modifier after the hint and anonymization
-                    // nodes and before everything else.
-                    for (int i = 0; i < node->num_children(); ++i) {
-                        const zetasql::ASTNode* child = node->child(i);
-                        if (child == node->from_clause()) {
-                            // this from subquery will simplified to join
-                            println();
-                            print("FROM");
-                            visitASTJoinRewrited(join, e, data);
-                        } else if (child != node->hint() && child != node->anonymization_options() &&
-                                   child != node->where_clause()) {
-                            child->Accept(this, data);
+                    // inline zetasql::parser::Unparser::visitASTSelect(node, data);
+                    {
+                        PrintOpenParenIfNeeded(node);
+                        println();
+                        print("SELECT");
+                        if (node->hint() != nullptr) {
+                            node->hint()->Accept(this, data);
                         }
+                        if (node->anonymization_options() != nullptr) {
+                            print("WITH ANONYMIZATION OPTIONS");
+                            node->anonymization_options()->Accept(this, data);
+                        }
+                        if (node->distinct()) {
+                            print("DISTINCT");
+                        }
+
+                        // Visit all children except hint() and anonymization_options, which we
+                        // processed above.  We can't just use visitASTChildren(node, data) because
+                        // we need to insert the DISTINCT modifier after the hint and anonymization
+                        // nodes and before everything else.
+                        for (int i = 0; i < node->num_children(); ++i) {
+                            const zetasql::ASTNode* child = node->child(i);
+                            if (child != node->hint() && child != node->anonymization_options()) {
+                                child->Accept(this, data);
+                            }
+                        }
+
+                        println();
+                        PrintCloseParenIfNeeded(node);
                     }
 
-                    println();
-                    PrintCloseParenIfNeeded(node);
                     return;
                 }
             }
@@ -236,33 +247,75 @@ class LastJoinRewriteUnparser : public zetasql::parser::Unparser {
         zetasql::parser::Unparser::visitASTSelect(node, data);
     }
 
-    void visitASTJoinRewrited(const zetasql::ASTJoin* node, const zetasql::ASTPathExpression* order, void* data) {
-        node->child(0)->Accept(this, data);
+    void visitASTJoin(const zetasql::ASTJoin* node, void* data) override {
+        if (opt_join_ && opt_join_ == node) {
+            node->child(0)->Accept(this, data);
 
-        if (node->join_type() == zetasql::ASTJoin::COMMA) {
-            print(",");
-        } else {
-            println();
-            if (node->natural()) {
-                print("NATURAL");
+            if (node->join_type() == zetasql::ASTJoin::COMMA) {
+                print(",");
+            } else {
+                println();
+                if (node->natural()) {
+                    print("NATURAL");
+                }
+                print("LAST");
+                print(node->GetSQLForJoinHint());
+
+                print("JOIN");
             }
-            print("LAST");
-            print(node->GetSQLForJoinHint());
+            println();
 
-            print("JOIN");
+            // This will print hints, the rhs, and the ON or USING clause.
+            for (int i = 1; i < node->num_children(); i++) {
+                node->child(i)->Accept(this, data);
+                if (opt_in_last_join_order_by_ && node->child(i)->IsTableExpression()) {
+                    print("ORDER BY");
+                    opt_in_last_join_order_by_->Accept(this, data);
+                }
+            }
+
+            return;
         }
-        println();
 
-        // This will print hints, the rhs, and the ON or USING clause.
-        for (int i = 1; i < node->num_children(); i++) {
-            node->child(i)->Accept(this, data);
-            if (node->child(i) == node->rhs() && order) {
-                // optional order by after rhs
-                print("ORDER BY");
-                order->Accept(this, data);
+        zetasql::parser::Unparser::visitASTJoin(node, data);
+    }
+
+    void visitASTSelectList(const zetasql::ASTSelectList* node, void* data) override {
+        println();
+        {
+            for (int i = 0; i < node->num_children(); i++) {
+                if (opt_out_row_number_col_ && node->columns(i) == opt_out_row_number_col_) {
+                    continue;
+                }
+                if (i > 0) {
+                    println(",");
+                }
+                node->child(i)->Accept(this, data);
             }
         }
     }
+
+    void visitASTWindowClause(const zetasql::ASTWindowClause* node, void* data) override {
+        if (opt_out_window_ && opt_out_window_ == node) {
+            return;
+        }
+
+        zetasql::parser::Unparser::visitASTWindowClause(node, data);
+    }
+
+    void visitASTWhereClause(const zetasql::ASTWhereClause* node, void* data) override {
+        if (opt_out_where_ && opt_out_where_ == node) {
+            return;
+        }
+        zetasql::parser::Unparser::visitASTWhereClause(node, data);
+    }
+
+ private:
+    const zetasql::ASTWindowClause* opt_out_window_ = nullptr;
+    const zetasql::ASTWhereClause* opt_out_where_ = nullptr;
+    const zetasql::ASTSelectColumn* opt_out_row_number_col_ = nullptr;
+    const zetasql::ASTJoin* opt_join_ = nullptr;
+    const zetasql::ASTPathExpression* opt_in_last_join_order_by_ = nullptr;
 };
 
 // SELECT:
@@ -346,9 +399,14 @@ class RequestQueryRewriteUnparser : public zetasql::parser::Unparser {
     }
 
     void visitASTQueryStatement(const zetasql::ASTQueryStatement* node, void* data) override {
-        visitASTQuery(node->query(), data);
-        if (!list_.empty()) {
+        node->query()->Accept(this, data);
+        if (!list_.empty() && !node->config_clause()) {
             constSelectListAsConfigClause(list_, data);
+        } else {
+            if (node->config_clause() != nullptr) {
+                println();
+                node->config_clause()->Accept(this, data);
+            }
         }
     }
 
