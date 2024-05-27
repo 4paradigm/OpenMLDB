@@ -443,6 +443,8 @@ class SQLClusterRouter : public SQLRouter {
             const base::Slice& value,
             const std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>>& tablets);
 
+    bool ANSISQLRewriterEnabled();
+
  private:
     std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
