@@ -536,6 +536,25 @@ cases:
       data: |
         true, true, false, false, true, false, true, false, true, false, true
 
+  - id: isin
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "ABCabcabc"]
+    sql: |
+      select
+        isin(2, [2,2]) as c0,
+        isin(cast(3 as int64), ARRAY<INT64>[NULL, 1, 2]) as c1
+    expect:
+      columns:
+        - c0 bool
+        - c1 bool
+      data: |
+        true, false
+
   - id: array_split
     mode: request-unsupport
     inputs:
