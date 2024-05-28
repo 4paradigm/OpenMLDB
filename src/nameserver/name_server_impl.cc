@@ -1391,12 +1391,8 @@ base::Status NameServerImpl::PutUserRecord(const std::string& host, const std::s
     row_values.push_back(user);
     row_values.push_back(password);
     row_values.push_back("0");     // password_last_changed
-    row_values.push_back("0");     // password_expired_time
-    row_values.push_back("0");     // create_time
-    row_values.push_back("0");     // update_time
-    row_values.push_back("1");     // account_type
-    row_values.push_back("0");     // privileges
-    row_values.push_back("null");  // extra_info
+    row_values.push_back("0");     // password_expired
+    row_values.push_back("false");   // Create_user_priv
 
     std::string encoded_row;
     codec::RowCodec::EncodeRow(row_values, table_info->column_desc(), 1, encoded_row);
