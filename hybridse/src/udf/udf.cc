@@ -1083,6 +1083,42 @@ void sub_string(StringRef *str, int32_t from, int32_t len,
     output->size_ = static_cast<uint32_t>(len);
     return;
 }
+
+int32_t locate(StringRef *substr, StringRef *str) {
+    return locate(substr, str, 1);
+}
+
+int32_t locate(StringRef *substr, StringRef *str, int32_t pos) {
+    if (nullptr == substr || nullptr == str) {
+        return 0;
+    }
+    // negetive pos return 0 directly
+    if (pos <= 0) {
+        return 0;
+    }
+    uint32_t sub_size = substr->size_;
+    uint32_t size = str->size_;
+    // if substr is "" and pos <= len(str) + 1, return pos, other case return 0
+    if (pos + sub_size - 1 > size) {
+        return 0;
+    }
+    if (sub_size == 0) {
+        return pos;
+    }
+    for (uint32_t i = pos - 1; i <= size - sub_size; i++) {
+        uint32_t j = 0, k = i;
+        for (; j < sub_size; j++, k++) {
+            if (str->data_[k] != substr->data_[j]) {
+                break;
+            }
+        }
+        if (j == sub_size) {
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
 int32_t strcmp(StringRef *s1, StringRef *s2) {
     if (s1 == s2) {
         return 0;
