@@ -2422,7 +2422,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
         hybridse::base::Status sql_status;
         bool is_cluster_mode = cluster_sdk_->IsClusterMode();
-        // TODO(hw): support MemTable and IOT, just force use IOT for test
+
         ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num,
                                                           is_cluster_mode, &sql_status);
         if (sql_status.code != 0) {
@@ -3044,7 +3044,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         case hybridse::node::kPlanTypeCreateUser: {
             auto create_node = dynamic_cast<hybridse::node::CreateUserPlanNode*>(node);
             UserInfo user_info;
-            ;
+
             auto result = GetUser(create_node->Name(), &user_info);
             if (!result.ok()) {
                 *status = {StatusCode::kCmdError, result.status().message()};
