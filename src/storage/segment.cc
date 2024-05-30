@@ -175,6 +175,7 @@ bool Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row, bool pu
     reinterpret_cast<KeyEntry*>(entry)->count_.fetch_add(1, std::memory_order_relaxed);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+    DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
     return true;
 }
 
@@ -250,6 +251,7 @@ bool Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         uint8_t height = entry->entries.Insert(kv.second, row);
         entry->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
+        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
@@ -369,6 +371,7 @@ void Segment::FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlo
         statistics_info->IncrIdxCnt(ts_idx);
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
+        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after sub " << GetRecordTsIdxSize(tmp->Height());
         node = node->GetNextNoBarrier(0);
         DEBUGLOG("delete key %lu with height %u", tmp->GetKey(), tmp->Height());
         if (tmp->GetValue()->dim_cnt_down > 1) {
@@ -393,7 +396,10 @@ void Segment::GcFreeList(StatisticsInfo* statistics_info) {
     for (size_t idx = 0; idx < idx_cnt_vec_.size(); idx++) {
         idx_cnt_vec_[idx]->fetch_sub(statistics_info->GetIdxCnt(idx) - old.GetIdxCnt(idx), std::memory_order_relaxed);
     }
+
     idx_byte_size_.fetch_sub(statistics_info->idx_byte_size - old.idx_byte_size);
+    DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after sub "
+               << statistics_info->idx_byte_size - old.idx_byte_size;
 }
 
 void Segment::ExecuteGc(const TTLSt& ttl_st, StatisticsInfo* statistics_info) {
@@ -442,7 +448,7 @@ void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
     }
     if (ts_cnt_ <= 1) {
         if (clustered_ts_id.has_value() && ts_idx_map_.begin()->first == clustered_ts_id.value()) {
-            LOG(INFO) << "skip normal gc in cidx";
+            DLOG(INFO) << "skip normal gc in cidx";
             return;
         }
         ExecuteGc(ttl_st_map.begin()->second, statistics_info);
@@ -516,7 +522,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
                 continue;
             }
             if (clustered_ts_id.has_value() && kv.first == clustered_ts_id.value()) {
-                LOG(INFO) << "skip normal gc in cidx";
+                DLOG(INFO) << "skip normal gc in cidx";
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];

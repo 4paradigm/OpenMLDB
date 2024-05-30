@@ -1431,7 +1431,6 @@ base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std
     for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
         if (table_partition.partition_meta(meta_idx).is_leader() &&
             table_partition.partition_meta(meta_idx).is_alive()) {
-            uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
             std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
             auto table_ptr = GetTablet(endpoint);
             if (!table_ptr->client_->Delete(tid, 0, host + "|" + user, "index", msg)) {

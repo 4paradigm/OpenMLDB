@@ -234,7 +234,9 @@ class GCEntryInfo {
     ~GCEntryInfo() {
         for (auto& entry : entries_) {
             entry.second->dim_cnt_down--;
-            // TODO delete?
+            // data block should be moved to node_cache then delete
+            // I don't want delete block here
+            LOG_IF(ERROR, entry.second->dim_cnt_down == 0) << "dim_cnt_down=0 but no delete";
         }
     }
     void AddEntry(const Slice& keys, uint64_t ts, storage::DataBlock* ptr) {
@@ -282,15 +284,7 @@ class IOTSegment : public Segment {
 
     void GrepGCEntry(const std::map<uint32_t, TTLSt>& ttl_st_map, GCEntryInfo* gc_entry_info);
 
-    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket, type::CompressType compress_type) {  // NOLINT
-        DLOG_ASSERT(false) << "unsupported, let iot table create it";
-        return nullptr;
-    }
-    MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket,  // NOLINT
-                                  type::CompressType compress_type) {
-        DLOG_ASSERT(false) << "unsupported, let iot table create it";
-        return nullptr;
-    }
+    // if segment is not secondary idx, use normal NewIterator in Segment
 
  private:
     void GrepGCAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, GCEntryInfo* gc_entry_info);

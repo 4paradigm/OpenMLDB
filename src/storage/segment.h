@@ -99,8 +99,8 @@ class Segment {
     void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info,
                    std::optional<uint32_t> clustered_ts_id = std::nullopt);
 
-    virtual MemTableIterator* NewIterator(const Slice& key, Ticket& ticket, type::CompressType compress_type);  // NOLINT
-    virtual MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket,                       // NOLINT
+    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket, type::CompressType compress_type);  // NOLINT
+    MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket,                       // NOLINT
                                   type::CompressType compress_type);
 
     uint64_t GetIdxCnt() const { return idx_cnt_vec_[0]->load(std::memory_order_relaxed); }

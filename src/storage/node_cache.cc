@@ -113,7 +113,7 @@ void NodeCache::FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, S
     }
     gc_info->IncrIdxCnt(idx);
     gc_info->idx_byte_size += GetRecordTsIdxSize(node->Height());
-    DLOG(INFO) << "delete key " << node->GetKey() << " with height " << node->Height();
+    DLOG(INFO) << "delete key " << node->GetKey() << " with height " << (unsigned int)node->Height();
     if (node->GetValue()->dim_cnt_down > 1) {
         node->GetValue()->dim_cnt_down--;
     } else {

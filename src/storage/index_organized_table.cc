@@ -305,7 +305,8 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
             if (ts_col) {
                 int64_t ts = 0;
                 if (ts_col->IsAutoGenTs()) {
-                    // clustered index still use current time to ttl and delete iter, we'll check time series size if ts is auto gen
+                    // clustered index still use current time to ttl and delete iter, we'll check time series size if ts
+                    // is auto gen
                     ts = time;
                 } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
                     return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": get ts failed"));
@@ -362,7 +363,8 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
             }
             int64_t ts = 0;
             if (ts_col->IsAutoGenTs()) {
-                // clustered index still use current time to ttl and delete iter, we'll check time series size if ts is auto gen
+                // clustered index still use current time to ttl and delete iter, we'll check time series size if ts is
+                // auto gen
                 ts = time;
             } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
                 return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": get ts failed"));
@@ -401,7 +403,15 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
             return absl::AlreadyExistsError("data exists");  // let caller know exists
         }
     }
-    record_byte_size_.fetch_add(GetRecordSize(value.length()));
+    // record size only has 1 copy, but if we delete sblock
+    // TODO(hw): test for cal
+    if (real_ref_cnt > 0) {
+        record_byte_size_.fetch_add(GetRecordSize(cblock->size));
+    }
+    if (secondary_ref_cnt > 0) {
+        record_byte_size_.fetch_add(GetRecordSize(sblock->size));
+    }
+
     return absl::OkStatus();
 }
 
@@ -578,7 +588,6 @@ absl::Status IndexOrganizedTable::ClusteredIndexGCByDelete(const std::shared_ptr
     // delete entries by sql
     if (info.Size() > 0) {
         LOG(INFO) << "delete cidx " << info.Size() << " entries by sql";
-
         auto meta = GetTableMeta();
         auto cols = meta->column_desc();  // copy
         codec::RowView row_view(cols);
@@ -594,10 +603,10 @@ absl::Status IndexOrganizedTable::ClusteredIndexGCByDelete(const std::shared_ptr
                 MakeDeleteSQL(GetDB(), GetName(), meta->column_key(0), (int8_t*)values->data, ts, row_view, hint);
             // TODO(hw): if delete failed, we can't revert. And if sidx skeys+sts doesn't change, no need to delete and
             // then insert
-            DLOG(INFO) << "delete sql " << sql;
             if (sql.empty()) {
                 return absl::InternalError("make delete sql failed");
             }
+            // delete will move node to node cache, it's alive, so GCEntryInfo can unref it
             hybridse::sdk::Status status;
             router->ExecuteSQL(sql, &status);
             if (!status.IsOK()) {
@@ -623,10 +632,7 @@ void IndexOrganizedTable::SchedGCByDelete(const std::shared_ptr<sdk::SQLRouter>&
     if (!st.ok()) {
         LOG(WARNING) << "cidx gc by delete error: " << st.ToString();
     }
-    // TODO(hw): don't gc sidx or covering index?
-    // may core on GcFreeList
-    // but record cnt in segment and tablet status can't change if no gc or free
-    // for all index, only do free? don't do gc TODO how to check the record cnt?
+    // TODO how to check the record byte size?
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     auto inner_indexs = table_index_.GetAllInnerIndex();
@@ -663,6 +669,9 @@ void IndexOrganizedTable::SchedGCByDelete(const std::shared_ptr<sdk::SQLRouter>&
                         }
                         gc_idx_cnt += statistics_info.GetTotalCnt();
                         gc_record_byte_size += statistics_info.record_byte_size;
+                        LOG(INFO) << "release segment[" << i << "][" << k << "] done, gc record cnt "
+                                  << statistics_info.GetTotalCnt() << ", gc record byte size "
+                                  << statistics_info.record_byte_size;
                     }
                 }
             }
@@ -689,15 +698,18 @@ void IndexOrganizedTable::SchedGCByDelete(const std::shared_ptr<sdk::SQLRouter>&
             gc_idx_cnt += statistics_info.GetTotalCnt();
             gc_record_byte_size += statistics_info.record_byte_size;
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
-            PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time,
-                  name_.c_str(), id_, pid_);
+            LOG(INFO) << "gc segment[" << i << "][" << j << "] done, consumed time " << seg_gc_time << "ms for table "
+                      << name_ << "[" << id_ << "." << pid_ << "], gc record cnt " << statistics_info.GetTotalCnt()
+                      << ", gc record byte size " << statistics_info.record_byte_size;
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
+    LOG(INFO) << "record byte size before gc: " << record_byte_size_.load()
+              << ", gc record byte size: " << gc_record_byte_size << ", gc idx cnt: " << gc_idx_cnt
+              << ", gc consumed: " << consumed / 1000 << " ms";
     record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
     UpdateTTL();
-    LOG(INFO) << "iot table " << name_ << "[" << id_ << "." << pid_ << "] gc and update ttl done: " << consumed / 1000
-              << " ms, total gc cnt " << gc_idx_cnt;
+    LOG(INFO) << "update ttl done";
 }
 
 bool IndexOrganizedTable::AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) {
