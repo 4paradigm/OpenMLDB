@@ -251,8 +251,8 @@ bool Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         uint8_t height = entry->entries.Insert(kv.second, row);
         entry->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
-        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
     return true;
@@ -270,11 +270,13 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             entry_node = entries_->Remove(key);
         }
         if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
             return true;
         }
     } else {
         base::Node<uint64_t, DataBlock*>* data_node = nullptr;
+        ::openmldb::base::Node<Slice, void*>* entry_node = nullptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
             void* entry_arr = nullptr;
@@ -288,9 +290,23 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
                 uint64_t ts = it->GetKey();
                 data_node = key_entry->entries.Split(ts);
             }
+            bool is_empty = true;
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                if (!reinterpret_cast<KeyEntry**>(entry_arr)[i]->entries.IsEmpty()) {
+                    is_empty = false;
+                    break;
+                }
+            }
+            if (is_empty) {
+                entry_node = entries_->Remove(key);
+            }
         }
         if (data_node != nullptr) {
             node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
+        }
+        if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
+            node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
     }
     return true;
@@ -354,13 +370,32 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key, uint6
         }
     }
     base::Node<uint64_t, DataBlock*>* data_node = nullptr;
+    base::Node<openmldb::base::Slice, void*>* entry_node = nullptr;
     {
         std::lock_guard<std::mutex> lock(mu_);
         data_node = key_entry->entries.Split(ts);
         DLOG(INFO) << "after delete, entry " << key.ToString() << " split by " << ts;
+        bool is_empty = true;
+        if (ts_cnt_ == 1) {
+            is_empty = key_entry->entries.IsEmpty();
+        } else {
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                if (!reinterpret_cast<KeyEntry**>(entry)[i]->entries.IsEmpty()) {
+                    is_empty = false;
+                    break;
+                }
+            }
+        }
+        if (is_empty) {
+            entry_node = entries_->Remove(key);
+        }
     }
     if (data_node != nullptr) {
         node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
+    }
+    if (entry_node != nullptr) {
+        DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
+        node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
     return true;
 }
@@ -373,11 +408,11 @@ void Segment::FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlo
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after sub " << GetRecordTsIdxSize(tmp->Height());
         node = node->GetNextNoBarrier(0);
-        DEBUGLOG("delete key %lu with height %u", tmp->GetKey(), tmp->Height());
+        VLOG(1) << "delete key " << tmp->GetKey() << " with height " << (unsigned int)tmp->Height();
         if (tmp->GetValue()->dim_cnt_down > 1) {
             tmp->GetValue()->dim_cnt_down--;
         } else {
-            DEBUGLOG("delele data block for key %lu", tmp->GetKey());
+            VLOG(1) << "delete data block for key " << tmp->GetKey();
             statistics_info->record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
         }
@@ -391,8 +426,10 @@ void Segment::GcFreeList(StatisticsInfo* statistics_info) {
         return;
     }
     StatisticsInfo old = *statistics_info;
+    DLOG(INFO) << "cur " << old.DebugString();
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
     node_cache_.Free(free_list_version, statistics_info);
+    DLOG(INFO) << "after node cache free  " << statistics_info->DebugString();
     for (size_t idx = 0; idx < idx_cnt_vec_.size(); idx++) {
         idx_cnt_vec_[idx]->fetch_sub(statistics_info->GetIdxCnt(idx) - old.GetIdxCnt(idx), std::memory_order_relaxed);
     }
@@ -614,6 +651,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
                 }
             }
             if (entry_node != nullptr) {
+                DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
                 node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
             }
         }
@@ -767,6 +805,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, Statist
             }
         }
         if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
         uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);

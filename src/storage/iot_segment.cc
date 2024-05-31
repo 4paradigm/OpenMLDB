@@ -161,7 +161,7 @@ bool IOTSegment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map
         entry->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
-        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_;
+        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
     return true;

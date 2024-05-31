@@ -403,7 +403,7 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
             return absl::AlreadyExistsError("data exists");  // let caller know exists
         }
     }
-    // record size only has 1 copy, but if we delete sblock
+    // cblock and sblock both will sub record_byte_size_ when delete, so add them all
     // TODO(hw): test for cal
     if (real_ref_cnt > 0) {
         record_byte_size_.fetch_add(GetRecordSize(cblock->size));
@@ -698,9 +698,9 @@ void IndexOrganizedTable::SchedGCByDelete(const std::shared_ptr<sdk::SQLRouter>&
             gc_idx_cnt += statistics_info.GetTotalCnt();
             gc_record_byte_size += statistics_info.record_byte_size;
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
-            LOG(INFO) << "gc segment[" << i << "][" << j << "] done, consumed time " << seg_gc_time << "ms for table "
-                      << name_ << "[" << id_ << "." << pid_ << "], gc record cnt " << statistics_info.GetTotalCnt()
-                      << ", gc record byte size " << statistics_info.record_byte_size;
+            VLOG(1) << "gc segment[" << i << "][" << j << "] done, consumed time " << seg_gc_time << "ms for table "
+                    << name_ << "[" << id_ << "." << pid_ << "], statistics_info: [" << statistics_info.DebugString()
+                    << "]";
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
