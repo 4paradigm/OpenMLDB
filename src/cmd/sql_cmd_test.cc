@@ -338,6 +338,10 @@ TEST_P(DBSDKTest, TestGrantCreateUser) {
         router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
         ASSERT_FALSE(status.IsOK());
     }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
+    ASSERT_TRUE(status.IsOK());
 }
 
 TEST_P(DBSDKTest, TestGrantCreateUserGrantOption) {
@@ -384,6 +388,10 @@ TEST_P(DBSDKTest, TestGrantCreateUserGrantOption) {
         router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
         ASSERT_TRUE(status.IsOK());
     }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
+    ASSERT_TRUE(status.IsOK());
 }
 
 TEST_P(DBSDKTest, CreateDatabase) {
