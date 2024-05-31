@@ -400,7 +400,8 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
         }
         // clustered segment should be dedup and update will trigger all index update(impl in cli router)
         if (!iot_segment->Put(kv.second, iter->second, cblock, sblock, false)) {
-            return absl::AlreadyExistsError("data exists");  // let caller know exists
+            // even no put_if_absent, return false if exists or wrong
+            return absl::AlreadyExistsError("data exists or wrong");
         }
     }
     // cblock and sblock both will sub record_byte_size_ when delete, so add them all
