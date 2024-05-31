@@ -24,6 +24,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
 #include "absl/types/span.h"
+#include "ast_node_converter.h"
 #include "base/fe_status.h"
 #include "node/sql_node.h"
 #include "udf/udf.h"
@@ -723,6 +724,20 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             node::CreateUserNode* create_user_node = nullptr;
             CHECK_STATUS(ConvertCreateUserStatement(create_user_stmt, node_manager, &create_user_node))
             *output = create_user_node;
+            break;
+        }
+        case zetasql::AST_GRANT_STATEMENT: {
+            const zetasql::ASTGrantStatement* grant_stmt = statement->GetAsOrNull<zetasql::ASTGrantStatement>();
+            node::GrantNode* grant_node = nullptr;
+            CHECK_STATUS(ConvertGrantStatement(grant_stmt, node_manager, &grant_node))
+            *output = grant_node;
+            break;
+        }
+        case zetasql::AST_REVOKE_STATEMENT: {
+            const zetasql::ASTRevokeStatement* revoke_stmt = statement->GetAsOrNull<zetasql::ASTRevokeStatement>();
+            node::RevokeNode* revoke_node = nullptr;
+            CHECK_STATUS(ConvertRevokeStatement(revoke_stmt, node_manager, &revoke_node))
+            *output = revoke_node;
             break;
         }
         case zetasql::AST_ALTER_USER_STATEMENT: {
@@ -2130,6 +2145,81 @@ base::Status ConvertAlterUserStatement(const zetasql::ASTAlterUserStatement* roo
             common::kSqlAstError, "it should be set options");
     *output = node_manager->MakeNode<node::AlterUserNode>(user_name, root->is_if_exists(),
             (dynamic_cast<const node::SetOptionsAction*>(actions.front()))->Options());
+    return base::Status::OK();
+}
+
+base::Status ConvertGrantStatement(const zetasql::ASTGrantStatement* root, node::NodeManager* node_manager,
+                                   node::GrantNode** output) {
+    CHECK_TRUE(root != nullptr, common::kSqlAstError, "not an ASTGrantStatement");
+    std::vector<std::string> target_path;
+    CHECK_STATUS(AstPathExpressionToStringList(root->target_path(), target_path));
+    std::optional<std::string> target_type = std::nullopt;
+    if (root->target_type() != nullptr) {
+        target_type = root->target_type()->GetAsString();
+    }
+
+    std::vector<std::string> privileges;
+    std::vector<std::string> grantees;
+    for (auto privilege : root->privileges()->privileges()) {
+        if (privilege == nullptr) {
+            continue;
+        }
+
+        auto privilege_action = privilege->privilege_action();
+        if (privilege_action != nullptr) {
+            privileges.push_back(privilege_action->GetAsString());
+        }
+    }
+
+    for (auto grantee : root->grantee_list()->grantee_list()) {
+        if (grantee == nullptr) {
+            continue;
+        }
+
+        std::string grantee_str;
+        CHECK_STATUS(AstStringLiteralToString(grantee, &grantee_str));
+        grantees.push_back(grantee_str);
+    }
+    *output = node_manager->MakeNode<node::GrantNode>(target_type, target_path.at(0), target_path.at(1), privileges,
+                                                      root->privileges()->is_all_privileges(), grantees,
+                                                      root->with_grant_option());
+    return base::Status::OK();
+}
+
+base::Status ConvertRevokeStatement(const zetasql::ASTRevokeStatement* root, node::NodeManager* node_manager,
+                                    node::RevokeNode** output) {
+    CHECK_TRUE(root != nullptr, common::kSqlAstError, "not an ASTRevokeStatement");
+    std::vector<std::string> target_path;
+    CHECK_STATUS(AstPathExpressionToStringList(root->target_path(), target_path));
+    std::optional<std::string> target_type = std::nullopt;
+    if (root->target_type() != nullptr) {
+        target_type = root->target_type()->GetAsString();
+    }
+
+    std::vector<std::string> privileges;
+    std::vector<std::string> grantees;
+    for (auto privilege : root->privileges()->privileges()) {
+        if (privilege == nullptr) {
+            continue;
+        }
+
+        auto privilege_action = privilege->privilege_action();
+        if (privilege_action != nullptr) {
+            privileges.push_back(privilege_action->GetAsString());
+        }
+    }
+
+    for (auto grantee : root->grantee_list()->grantee_list()) {
+        if (grantee == nullptr) {
+            continue;
+        }
+
+        std::string grantee_str;
+        CHECK_STATUS(AstStringLiteralToString(grantee, &grantee_str));
+        grantees.push_back(grantee_str);
+    }
+    *output = node_manager->MakeNode<node::RevokeNode>(target_type, target_path.at(0), target_path.at(1), privileges,
+                                                       root->privileges()->is_all_privileges(), grantees);
     return base::Status::OK();
 }
 

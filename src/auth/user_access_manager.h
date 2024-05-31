@@ -26,9 +26,15 @@
 #include <utility>
 
 #include "catalog/distribute_iterator.h"
+#include "proto/name_server.pb.h"
 #include "refreshable_map.h"
 
 namespace openmldb::auth {
+struct UserRecord {
+    std::string password;
+    ::openmldb::nameserver::PrivilegeLevel privilege_level;
+};
+
 class UserAccessManager {
  public:
     using IteratorFactory = std::function<std::optional<
@@ -39,11 +45,13 @@ class UserAccessManager {
 
     ~UserAccessManager();
     bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
+    ::openmldb::nameserver::PrivilegeLevel GetPrivilegeLevel(const std::string& user_at_host);
     void SyncWithDB();
+    std::optional<std::string> GetUserPassword(const std::string& host, const std::string& user);
 
  private:
     IteratorFactory user_table_iterator_factory_;
-    RefreshableMap<std::string, std::string> user_map_;
+    RefreshableMap<std::string, UserRecord> user_map_;
     std::thread sync_task_thread_;
     std::promise<void> stop_promise_;
     void StartSyncTask();

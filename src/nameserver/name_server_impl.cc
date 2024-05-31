@@ -1380,7 +1380,8 @@ void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletReque
 }
 
 base::Status NameServerImpl::PutUserRecord(const std::string& host, const std::string& user,
-                                           const std::string& password) {
+                                           const std::string& password,
+                                           const ::openmldb::nameserver::PrivilegeLevel privilege_level) {
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
         return {ReturnCode::kTableIsNotExist, "user table does not exist"};
@@ -1392,7 +1393,7 @@ base::Status NameServerImpl::PutUserRecord(const std::string& host, const std::s
     row_values.push_back(password);
     row_values.push_back("0");     // password_last_changed
     row_values.push_back("0");     // password_expired
-    row_values.push_back("false");   // Create_user_priv
+    row_values.push_back(PrivilegeLevel_Name(privilege_level));  // Create_user_priv
 
     std::string encoded_row;
     codec::RowCodec::EncodeRow(row_values, table_info->column_desc(), 1, encoded_row);
@@ -1427,7 +1428,6 @@ base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std
     for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
         if (table_partition.partition_meta(meta_idx).is_leader() &&
             table_partition.partition_meta(meta_idx).is_alive()) {
-            uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
             std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
             auto table_ptr = GetTablet(endpoint);
             if (!table_ptr->client_->Delete(tid, 0, host + "|" + user, "index", msg)) {
@@ -5636,7 +5636,8 @@ void NameServerImpl::OnLocked() {
     CreateDatabaseOrExit(INTERNAL_DB);
     if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
         CreateSystemTableOrExit(SystemTableType::kUser);
-        PutUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        PutUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE_WITH_GRANT_OPTION);
     }
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
@@ -9659,15 +9660,64 @@ NameServerImpl::GetSystemTableIterator() {
 void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response,
                              Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    auto status = PutUserRecord(request->host(), request->name(), request->password());
-    base::SetResponseStatus(status, response);
+    brpc::Controller* brpc_controller = static_cast<brpc::Controller*>(controller);
+
+    if (brpc_controller->auth_context()->is_service() ||
+        user_access_manager_.GetPrivilegeLevel(brpc_controller->auth_context()->user()) >
+            ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE) {
+        auto status = PutUserRecord(request->host(), request->name(), request->password(),
+                                    ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE);
+        base::SetResponseStatus(status, response);
+    } else {
+        base::SetResponseStatus(base::ReturnCode::kNotAuthorized, "not authorized to create user", response);
+    }
+}
+
+void NameServerImpl::PutPrivilege(RpcController* controller, const PutPrivilegeRequest* request,
+                                  GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    for (int i = 0; i < request->privilege_size(); ++i) {
+        auto privilege = request->privilege(i);
+        if (privilege == "CREATE USER") {
+            brpc::Controller* brpc_controller = static_cast<brpc::Controller*>(controller);
+            if (brpc_controller->auth_context()->is_service() ||
+                user_access_manager_.GetPrivilegeLevel(brpc_controller->auth_context()->user()) >=
+                    ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE_WITH_GRANT_OPTION) {
+                for (int i = 0; i < request->grantee_size(); ++i) {
+                    auto grantee = request->grantee(i);
+                    std::size_t at_pos = grantee.find('@');
+                    if (at_pos != std::string::npos) {
+                        std::string user = grantee.substr(0, at_pos);
+                        std::string host = grantee.substr(at_pos + 1);
+                        auto password = user_access_manager_.GetUserPassword(host, user);
+                        if (password.has_value()) {
+                            auto status = PutUserRecord(host, user, password.value(), request->privilege_level());
+                            base::SetResponseStatus(status, response);
+                        }
+                    }
+                    }
+            } else {
+                base::SetResponseStatus(base::ReturnCode::kNotAuthorized,
+                                        "not authorized to grant create user privilege", response);
+            }
+        }
+    }
 }
 
 void NameServerImpl::DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
                                 Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    auto status = DeleteUserRecord(request->host(), request->name());
-    base::SetResponseStatus(status, response);
+    brpc::Controller* brpc_controller = static_cast<brpc::Controller*>(controller);
+
+    if (brpc_controller->auth_context()->is_service() ||
+        user_access_manager_.GetPrivilegeLevel(brpc_controller->auth_context()->user()) >
+            ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE) {
+        auto status = DeleteUserRecord(request->host(), request->name());
+        base::SetResponseStatus(status, response);
+    } else {
+        base::SetResponseStatus(base::ReturnCode::kNotAuthorized, "not authorized to create user", response);
+    }
 }
 
 bool NameServerImpl::IsAuthenticated(const std::string& host, const std::string& username,

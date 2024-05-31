@@ -98,6 +98,8 @@ enum SqlNodeType {
     kColumnSchema,
     kCreateUserStmt,
     kAlterUserStmt,
+    kGrantStmt,
+    kRevokeStmt,
     kCallStmt,
     kSqlNodeTypeLast,  // debug type
     kVariadicUdfDef,
@@ -347,6 +349,8 @@ enum PlanType {
     kPlanTypeShow,
     kPlanTypeCreateUser,
     kPlanTypeAlterUser,
+    kPlanTypeGrant,
+    kPlanTypeRevoke,
     kPlanTypeCallStmt,
     kUnknowPlan = -1,
 };

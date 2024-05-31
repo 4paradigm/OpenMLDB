@@ -168,7 +168,7 @@ class SystemTable {
                 SetColumnDesc("authentication_string", type::DataType::kString, table_info->add_column_desc());
                 SetColumnDesc("password_last_changed", type::DataType::kTimestamp, table_info->add_column_desc());
                 SetColumnDesc("password_expired", type::DataType::kTimestamp, table_info->add_column_desc());
-                SetColumnDesc("Create_user_priv", type::DataType::kBool, table_info->add_column_desc());
+                SetColumnDesc("Create_user_priv", type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();
                 index->set_index_name("index");
                 index->add_col_name("Host");

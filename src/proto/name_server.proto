@@ -544,6 +544,22 @@ message DeleteUserRequest {
     required string name = 2;
 }
 
+enum PrivilegeLevel {
+    NO_PRIVILEGE = 0;
+    PRIVILEGE = 1;
+    PRIVILEGE_WITH_GRANT_OPTION = 2;
+}
+
+message PutPrivilegeRequest {
+    repeated string grantee = 1;
+    repeated string privilege = 2;
+    optional string target_type = 3;
+    required string database = 4;
+    required string target = 5;
+    required bool is_all_privileges = 6;
+    required PrivilegeLevel privilege_level = 7;
+}
+
 message DeploySQLRequest {
     optional openmldb.api.ProcedureInfo sp_info = 3;
     repeated TableIndex index = 4;
@@ -617,4 +633,7 @@ service NameServer {
     // user related interfaces
     rpc PutUser(PutUserRequest) returns (GeneralResponse);
     rpc DeleteUser(DeleteUserRequest) returns (GeneralResponse);
+
+    // authz related interfaces
+    rpc PutPrivilege(PutPrivilegeRequest) returns (GeneralResponse);
 }
