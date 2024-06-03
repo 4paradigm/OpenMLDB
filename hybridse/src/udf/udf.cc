@@ -1415,6 +1415,54 @@ void printLog(const char* fmt) {
     }
 }
 
+// each variadic arg is ArrayRef<StringRef>*
+void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
+                   ArrayRef<codec::StringRef> *out) {
+    std::vector<int> arr_szs(cnt, 0);
+    for (int32_t i = 0; i < cnt; ++i) {
+        auto arr = data[i];
+        arr_szs.at(i) = arr->size;
+    }
+
+    // cal cartesian products
+    auto products = hybridse::base::cartesian_product(arr_szs);
+
+    v1::AllocManagedArray(out, products.size());
+
+    // TODO(xxx): what if array values contains null
+    for (int prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
+        auto &prod = products.at(prod_idx);
+        int32_t sz = 0;
+        for (int i = 0; i < prod.size(); ++i) {
+            if (!data[i]->nullables[prod.at(i)]) {
+                // delimiter would be empty string if null
+                if (i > 0) {
+                    sz += del->size_;
+                }
+                sz += data[i]->raw[prod.at(i)]->size_;
+            }
+        }
+        auto buf = v1::AllocManagedStringBuf(sz);
+        int32_t idx = 0;
+        for (int i = 0; i < prod.size(); ++i) {
+            if (!data[i]->nullables[prod.at(i)]) {
+                if (i > 0 && del->size_ > 0) {
+                    memcpy(buf + idx, del->data_, del->size_);
+                    idx += del->size_;
+                }
+                memcpy(buf + idx, data[i]->raw[prod.at(i)]->data_, data[i]->raw[prod.at(i)]->size_);
+                idx += data[i]->raw[prod.at(i)]->size_;
+            }
+        }
+
+        out->nullables[prod_idx] = false;
+        out->raw[prod_idx]->data_ = buf;
+        out->raw[prod_idx]->size_ = sz;
+    }
+
+    out->size = products.size();
+}
+
 }  // namespace v1
 
 bool RegisterMethod(UdfLibrary *lib, const std::string &fn_name, hybridse::node::TypeNode *ret,
@@ -1591,49 +1639,5 @@ void RegisterNativeUdfToModule(UdfLibrary* lib) {
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Row>));
 }
 
-// each variadic arg is ArrayRef<StringRef>*
-void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
-                   ArrayRef<codec::StringRef> *out) {
-    std::vector<int> arr_szs(cnt, 0);
-    for (int32_t i = 0; i < cnt; ++i) {
-        auto arr = data[i];
-        arr_szs.at(i) = arr->size;
-    }
-
-    // cal cartesian products
-    auto products = hybridse::base::cartesian_product(arr_szs);
-
-    v1::AllocManagedArray(out, products.size());
-
-    for (int prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
-        auto &prod = products.at(prod_idx);
-        int32_t sz = 0;
-        for (int i = 0; i < prod.size(); ++i) {
-            // TDOO(xx): string is null
-            sz += data[i]->raw[prod.at(i)]->size_;
-            // delimiter would be empty string if null
-            if (i + 1 < prod.size()) {
-                sz += del->size_;
-            }
-        }
-        auto buf = v1::AllocManagedStringBuf(sz);
-        int32_t idx = 0;
-        for (int i = 0; i < prod.size(); ++i) {
-            if (!data[i]->nullables[prod.at(i)]) {
-                memcpy(buf + idx, data[i]->raw[prod.at(i)]->data_, data[i]->raw[prod.at(i)]->size_);
-                idx += data[i]->raw[prod.at(i)]->size_;
-                if (i + 1 < prod.size()) {
-                    memcpy(buf + idx, del->data_, del->size_);
-                }
-            }
-        }
-
-        out->nullables[prod_idx] = false;
-        out->raw[prod_idx]->data_ = buf;
-        out->raw[prod_idx]->size_ = sz;
-    }
-
-    out->size = products.size();
-}
 }  // namespace udf
 }  // namespace hybridse

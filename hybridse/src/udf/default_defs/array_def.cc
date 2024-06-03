@@ -15,7 +15,6 @@
  */
 
 #include "absl/strings/str_split.h"
-#include "base/cartesian_product.h"
 #include "codegen/struct_ir_builder.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
@@ -81,6 +80,36 @@ void SplitString(StringRef* str, StringRef* delimeter, ArrayRef<StringRef>* arra
     }
 }
 
+void array_join(ArrayRef<StringRef>* arr, StringRef* del, bool del_null, StringRef* out) {
+    int sz = 0;
+    for (int i = 0; i < arr->size; ++i) {
+        if (!arr->nullables[i]) {
+            if (!del_null && i > 0) {
+                sz += del->size_;
+            }
+            sz += arr->raw[i]->size_;
+        }
+    }
+
+    auto buf = udf::v1::AllocManagedStringBuf(sz);
+    memset(buf, 0, sz);
+
+    int32_t idx = 0;
+    for (int i = 0; i < arr->size; ++i) {
+        if (!arr->nullables[i]) {
+            if (!del_null && i > 0) {
+                memcpy(buf + idx, del->data_, del->size_);
+                idx += del->size_;
+            }
+            memcpy(buf + idx, arr->raw[i]->data_, arr->raw[i]->size_);
+            idx += arr->raw[i]->size_;
+        }
+    }
+
+    out->data_ = buf;
+    out->size_ = sz;
+}
+
 // =========================================================== //
 //      UDF Register Entry
 // =========================================================== //
@@ -113,11 +142,29 @@ void DefaultUdfLibrary::InitArrayUdfs() {
              @endcode
 
             @since 0.7.0)");
+    RegisterExternal("array_join")
+        .args<ArrayRef<StringRef>, Nullable<StringRef>>(array_join)
+        .doc(R"(
+             @brief array_join(array, delimiter) - Concatenates the elements of the given array using the delimiter and an optional string to replace nulls. Any null value is filtered.
+
+             Example:
+
+             @code{.sql}
+                 select array_join(["1", "2"], "-");
+                 -- output "1-2"
+             @endcode
+             @since 0.9.2)");
 
     RegisterCodeGenUdf("array_combine")
         .variadic_args<AnyArg>(
             [](UdfResolveContext* ctx, const ExprAttrNode& delimit, const std::vector<ExprAttrNode>& arg_attrs,
                ExprAttrNode* out) -> base::Status {
+                CHECK_TRUE(delimit.type()->IsString(), common::kCodegenError, "delimiter must be string");
+                for (auto & val : arg_attrs) {
+                    CHECK_TRUE(val.type()->IsArray(), common::kCodegenError, "argument to array_combine must be array");
+                    CHECK_TRUE(val.type()->GetGenericType(0)->IsString(), common::kCodegenError,
+                               "argument to array_combine must be array of string");
+                }
                 auto nm = ctx->node_manager();
                 out->SetType(nm->MakeNode<node::TypeNode>(node::kArray, nm->MakeNode<node::TypeNode>(node::kVarchar)));
                 out->SetNullable(false);

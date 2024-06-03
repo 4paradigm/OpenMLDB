@@ -283,29 +283,42 @@ absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue d
                                     absl::Span<const NativeValue> args) {
     auto builder = ctx->GetBuilder();
 
-    ::llvm::FunctionCallee array_combine_fn = ctx->GetModule()->getFunction("hybridse_array_combine");
-    assert(array_combine_fn);
-
     StringIRBuilder str_builder(ctx->GetModule());
-    ArrayIRBuilder arr_builder(ctx->GetModule(), str_builder.GetType());
+    ArrayIRBuilder arr_builder(ctx->GetModule(), str_builder.GetType()->getPointerTo());
 
     llvm::Value* empty_str = nullptr;
     if (!str_builder.CreateDefault(ctx->GetCurrentBlock(), &empty_str)) {
         return absl::InternalError("codegen error: fail to construct empty string");
     }
+    llvm::Value* del = builder->CreateSelect(delimiter.GetIsNull(builder), empty_str, delimiter.GetValue(builder));
 
     llvm::Type* input_arr_type = arr_builder.GetType()->getPointerTo();
-    llvm::Value* input_arrays =
-        builder->CreateAlloca(input_arr_type, builder->getInt32(args.size()), "array_data");
+    llvm::Value* empty_arr = nullptr;
+    if (!arr_builder.CreateDefault(ctx->GetCurrentBlock(), &empty_arr)) {
+        return absl::InternalError("codegen error: fail to construct empty string of array");
+    }
+    llvm::Value* input_arrays = builder->CreateAlloca(input_arr_type, builder->getInt32(args.size()), "array_data");
+    node::NodeManager nm;
     for (int i = 0; i < args.size(); ++i) {
-        auto safe_str_arr =
-            builder->CreateSelect(args.at(i).GetIsNull(builder), empty_str, args.at(i).GetValue(builder));
+        const node::TypeNode* tp = nullptr;
+        if (!GetFullType(&nm, args.at(i).GetType(), &tp)) {
+            return absl::InternalError("codegen error: fail to get valid type from llvm value");
+        }
+        if (!tp->IsArray() || tp->GetGenericSize() != 1 || !tp->GetGenericType(0)->IsString()) {
+            return absl::InternalError("codegen error: arguments to array_combine is not ARRAY<STRING>");
+        }
+        auto safe_str_arr = builder->CreateSelect(args.at(i).GetIsNull(builder), empty_arr, args.at(i).GetRaw());
         builder->CreateStore(safe_str_arr, builder->CreateGEP(input_arr_type, input_arrays, builder->getInt32(i)));
     }
 
+    ::llvm::FunctionCallee array_combine_fn = ctx->GetModule()->getOrInsertFunction(
+        "hybridse_array_combine", builder->getVoidTy(), str_builder.GetType()->getPointerTo(), builder->getInt32Ty(),
+        input_arr_type->getPointerTo(), input_arr_type);
+    assert(array_combine_fn);
+
     llvm::Value* out = builder->CreateAlloca(arr_builder.GetType());
     builder->CreateCall(array_combine_fn, {
-                                              delimiter.GetValue(ctx),         // delimiter should ensure non-null
+                                              del,                             // delimiter should ensure non-null
                                               builder->getInt32(args.size()),  // num of arrays
                                               input_arrays,                    // ArrayRef<StringRef>**
                                               out                              // output string
