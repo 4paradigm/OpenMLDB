@@ -122,5 +122,19 @@ bool ArrayIRBuilder::CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** ou
     return true;
 }
 
+absl::StatusOr<NativeValue> ArrayIRBuilder::ExtractElement(CodeGenContextBase* ctx, const NativeValue& arr,
+                                                           const NativeValue& key) const {
+    return absl::UnimplementedError("array extract element");
+}
+
+absl::StatusOr<llvm::Value*> ArrayIRBuilder::NumElements(CodeGenContextBase* ctx, llvm::Value* arr) const {
+    llvm::Value* out = nullptr;
+    if (!Load(ctx->GetCurrentBlock(), arr, SZ_IDX, &out)) {
+        return absl::InternalError("codegen: fail to extract array size");
+    }
+
+    return out;
+}
+
 }  // namespace codegen
 }  // namespace hybridse

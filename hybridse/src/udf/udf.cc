@@ -21,11 +21,13 @@
 
 #include <ctime>
 #include <utility>
+#include <vector>
 
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
 #include "absl/time/civil_time.h"
 #include "absl/time/time.h"
+#include "base/cartesian_product.h"
 #include "base/iterator.h"
 #include "boost/date_time/gregorian/conversion.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -1589,5 +1591,49 @@ void RegisterNativeUdfToModule(UdfLibrary* lib) {
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Row>));
 }
 
+// each variadic arg is ArrayRef<StringRef>*
+void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
+                   ArrayRef<codec::StringRef> *out) {
+    std::vector<int> arr_szs(cnt, 0);
+    for (int32_t i = 0; i < cnt; ++i) {
+        auto arr = data[i];
+        arr_szs.at(i) = arr->size;
+    }
+
+    // cal cartesian products
+    auto products = hybridse::base::cartesian_product(arr_szs);
+
+    v1::AllocManagedArray(out, products.size());
+
+    for (int prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
+        auto &prod = products.at(prod_idx);
+        int32_t sz = 0;
+        for (int i = 0; i < prod.size(); ++i) {
+            // TDOO(xx): string is null
+            sz += data[i]->raw[prod.at(i)]->size_;
+            // delimiter would be empty string if null
+            if (i + 1 < prod.size()) {
+                sz += del->size_;
+            }
+        }
+        auto buf = v1::AllocManagedStringBuf(sz);
+        int32_t idx = 0;
+        for (int i = 0; i < prod.size(); ++i) {
+            if (!data[i]->nullables[prod.at(i)]) {
+                memcpy(buf + idx, data[i]->raw[prod.at(i)]->data_, data[i]->raw[prod.at(i)]->size_);
+                idx += data[i]->raw[prod.at(i)]->size_;
+                if (i + 1 < prod.size()) {
+                    memcpy(buf + idx, del->data_, del->size_);
+                }
+            }
+        }
+
+        out->nullables[prod_idx] = false;
+        out->raw[prod_idx]->data_ = buf;
+        out->raw[prod_idx]->size_ = sz;
+    }
+
+    out->size = products.size();
+}
 }  // namespace udf
 }  // namespace hybridse

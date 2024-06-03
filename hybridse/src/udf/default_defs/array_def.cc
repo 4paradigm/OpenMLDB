@@ -15,6 +15,8 @@
  */
 
 #include "absl/strings/str_split.h"
+#include "base/cartesian_product.h"
+#include "codegen/struct_ir_builder.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
@@ -111,6 +113,37 @@ void DefaultUdfLibrary::InitArrayUdfs() {
              @endcode
 
             @since 0.7.0)");
+
+    RegisterCodeGenUdf("array_combine")
+        .variadic_args<AnyArg>(
+            [](UdfResolveContext* ctx, const ExprAttrNode& delimit, const std::vector<ExprAttrNode>& arg_attrs,
+               ExprAttrNode* out) -> base::Status {
+                auto nm = ctx->node_manager();
+                out->SetType(nm->MakeNode<node::TypeNode>(node::kArray, nm->MakeNode<node::TypeNode>(node::kVarchar)));
+                out->SetNullable(false);
+                return {};
+            },
+            [](codegen::CodeGenContext* ctx, codegen::NativeValue del, const std::vector<codegen::NativeValue>& args,
+               const node::ExprAttrNode& return_info, codegen::NativeValue* out) -> base::Status {
+                auto os = codegen::Combine(ctx, del, args);
+                CHECK_TRUE(os.ok(), common::kCodegenError, os.status().ToString());
+                *out = os.value();
+                return {};
+            })
+        .doc(R"(
+                @brief array_combine(delimiter, array1, array2, ...)
+
+                return array of strings for input array1, array2, ... doing cartesian product. Each product is joined with
+                {delimiter} as a string
+
+                Example:
+
+                @code{.sql}
+                    select array_combine("-", ["1", "2"], ["3", "4"]);
+                    -- output ["1-3", "1-4", "2-3", "2-4"]
+                @endcode
+                @since 0.9.2
+             )");
 }
 }  // namespace udf
 }  // namespace hybridse

@@ -65,6 +65,12 @@ class StructTypeIRBuilder : public TypeIRBuilder {
     virtual absl::StatusOr<NativeValue> ExtractElement(CodeGenContextBase* ctx, const NativeValue& arr,
                                                        const NativeValue& key) const;
 
+    // Get size of the elements inside value {arr}
+    // - if {arr} is array/map, return size of array/map
+    // - if {arr} is struct, return number of struct fields
+    // - otherwise report error
+    virtual absl::StatusOr<llvm::Value*> NumElements(CodeGenContextBase* ctx, llvm::Value* arr) const;
+
     ::llvm::Type* GetType() const;
 
     std::string GetTypeDebugString() const;
@@ -100,6 +106,10 @@ class StructTypeIRBuilder : public TypeIRBuilder {
 // returns NativeValue{raw, is_null=true} on success, raw is ensured to be not nullptr
 absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Type* type);
 
+// Do the cartesian product for a list of arrry
+// output a array of string, each value is a pair (A1, B2, C3...), as "A1-B2-C3-...", "-" is the delimiter
+absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue delimiter,
+                                    absl::Span<const NativeValue> args);
 }  // namespace codegen
 }  // namespace hybridse
 #endif  // HYBRIDSE_SRC_CODEGEN_STRUCT_IR_BUILDER_H_

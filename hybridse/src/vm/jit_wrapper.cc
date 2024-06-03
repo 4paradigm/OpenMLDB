@@ -17,6 +17,8 @@
 
 #include <string>
 #include <utility>
+
+#include "base/cartesian_product.h"
 #include "glog/logging.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
@@ -251,6 +253,9 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
         "fmod", reinterpret_cast<void*>(
                     static_cast<double (*)(double, double)>(&fmod)));
     jit->AddExternalFunction("fmodf", reinterpret_cast<void*>(&fmodf));
+
+    // cartesian product
+    jit->AddExternalFunction("hybridse_array_combine", reinterpret_cast<void*>(&hybridse::udf::v1::array_combine));
 }
 
 }  // namespace vm
