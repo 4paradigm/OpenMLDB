@@ -162,8 +162,6 @@ void DefaultUdfLibrary::InitArrayUdfs() {
                 CHECK_TRUE(delimit.type()->IsString(), common::kCodegenError, "delimiter must be string");
                 for (auto & val : arg_attrs) {
                     CHECK_TRUE(val.type()->IsArray(), common::kCodegenError, "argument to array_combine must be array");
-                    CHECK_TRUE(val.type()->GetGenericType(0)->IsString(), common::kCodegenError,
-                               "argument to array_combine must be array of string");
                 }
                 auto nm = ctx->node_manager();
                 out->SetType(nm->MakeNode<node::TypeNode>(node::kArray, nm->MakeNode<node::TypeNode>(node::kVarchar)));

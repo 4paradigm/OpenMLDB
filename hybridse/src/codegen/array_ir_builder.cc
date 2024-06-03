@@ -18,6 +18,7 @@
 
 #include <string>
 
+#include "codegen/cast_expr_ir_builder.h"
 #include "codegen/context.h"
 #include "codegen/ir_base_builder.h"
 
@@ -134,6 +135,61 @@ absl::StatusOr<llvm::Value*> ArrayIRBuilder::NumElements(CodeGenContextBase* ctx
     }
 
     return out;
+}
+
+absl::StatusOr<llvm::Value*> ArrayIRBuilder::CastFrom(CodeGenContextBase* ctx, llvm::Value* src) {
+    auto sb = StructTypeIRBuilder::CreateStructTypeIRBuilder(ctx->GetModule(), src->getType());
+    CHECK_ABSL_STATUSOR(sb);
+
+    ArrayIRBuilder* src_builder = dynamic_cast<ArrayIRBuilder*>(sb.value().get());
+    if (!src_builder) {
+        return absl::InvalidArgumentError("input value not a array");
+    }
+
+    llvm::Type* src_ele_type = src_builder->element_type_;
+    auto fields = src_builder->Load(ctx, src);
+    CHECK_ABSL_STATUSOR(fields);
+    llvm::Value* src_raws = fields.value().at(RAW_IDX);
+    llvm::Value* num_elements = fields.value().at(SZ_IDX);
+
+
+    llvm::Value* casted = nullptr;
+    if (!CreateDefault(ctx->GetCurrentBlock(), &casted)) {
+        return absl::InternalError("codegen error: fail to construct default array");
+    }
+
+    auto builder = ctx->GetBuilder();
+    auto* raw_array_ptr = builder->CreateAlloca(element_type_, num_elements);
+    auto* nullables_ptr = builder->CreateAlloca(builder->getInt1Ty(), num_elements);
+
+    llvm::Type* idx_type = builder->getInt64Ty();
+    llvm::Value* idx = builder->CreateAlloca(idx_type);
+    builder->CreateStore(builder->getInt64(0), idx);
+    CHECK_STATUS_TO_ABSL(ctx->CreateWhile(
+        [&](llvm::Value** cond) -> base::Status {
+            *cond = builder->CreateICmpSLT(builder->CreateLoad(idx_type, idx), num_elements);
+            return {};
+        },
+        [&]() -> base::Status {
+            llvm::Value* idx_val = builder->CreateLoad(idx_type, idx);
+            codegen::CastExprIRBuilder cast_builder(ctx->GetCurrentBlock());
+
+            llvm::Value* src_ele_value =
+                builder->CreateLoad(src_ele_type, builder->CreateGEP(src_ele_type, src_raws, idx_val));
+
+            NativeValue out;
+            CHECK_STATUS(cast_builder.Cast(NativeValue::Create(src_ele_value), element_type_, &out));
+
+            builder->CreateStore(out.GetRaw(), builder->CreateGEP(element_type_, raw_array_ptr, idx_val));
+            builder->CreateStore(out.GetIsNull(builder),
+                                 builder->CreateGEP(builder->getInt1Ty(), nullables_ptr, idx_val));
+
+            builder->CreateStore(builder->CreateAdd(idx_val, builder->getInt64(1)), idx);
+            return {};
+        }));
+
+    CHECK_ABSL_STATUS(Set(ctx, casted, {raw_array_ptr, nullables_ptr, num_elements}));
+    return casted;
 }
 
 }  // namespace codegen

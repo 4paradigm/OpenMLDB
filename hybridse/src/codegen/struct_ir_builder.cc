@@ -16,6 +16,8 @@
 
 #include "codegen/struct_ir_builder.h"
 
+#include <utility>
+
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "codegen/array_ir_builder.h"
@@ -299,15 +301,25 @@ absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue d
     }
     llvm::Value* input_arrays = builder->CreateAlloca(input_arr_type, builder->getInt32(args.size()), "array_data");
     node::NodeManager nm;
+    std::vector<NativeValue> casted_args(args.size());
     for (int i = 0; i < args.size(); ++i) {
         const node::TypeNode* tp = nullptr;
         if (!GetFullType(&nm, args.at(i).GetType(), &tp)) {
             return absl::InternalError("codegen error: fail to get valid type from llvm value");
         }
-        if (!tp->IsArray() || tp->GetGenericSize() != 1 || !tp->GetGenericType(0)->IsString()) {
-            return absl::InternalError("codegen error: arguments to array_combine is not ARRAY<STRING>");
+        if (!tp->IsArray() || tp->GetGenericSize() != 1) {
+            return absl::InternalError("codegen error: arguments to array_combine is not ARRAY");
         }
-        auto safe_str_arr = builder->CreateSelect(args.at(i).GetIsNull(builder), empty_arr, args.at(i).GetRaw());
+        if (!tp->GetGenericType(0)->IsString()) {
+            auto s = arr_builder.CastFrom(ctx, args.at(i).GetRaw());
+            CHECK_ABSL_STATUSOR(s);
+            casted_args.at(i) = NativeValue::Create(s.value());
+        } else {
+            casted_args.at(i) = args.at(i);
+        }
+
+        auto safe_str_arr =
+            builder->CreateSelect(casted_args.at(i).GetIsNull(builder), empty_arr, casted_args.at(i).GetRaw());
         builder->CreateStore(safe_str_arr, builder->CreateGEP(input_arr_type, input_arrays, builder->getInt32(i)));
     }
 

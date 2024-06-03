@@ -42,6 +42,8 @@ class ArrayIRBuilder : public StructTypeIRBuilder {
         CHECK_TRUE(false, common::kCodegenError, "casting to array un-implemented");
     };
 
+    absl::StatusOr<llvm::Value*> CastFrom(CodeGenContextBase* ctx, llvm::Value* src);
+
     absl::StatusOr<NativeValue> ExtractElement(CodeGenContextBase* ctx, const NativeValue& arr,
                                                const NativeValue& key) const override;
 
