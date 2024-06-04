@@ -677,7 +677,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
     if (ec_order != std::errc()) {
         return;
     }
-    container.emplace_back(static_cast<int>(order_int), std::string(column_val));
+    container.emplace_back(order_int, column_val);
   }
 
   std::sort(container.begin(), container.end(), [desc](const auto& a, const auto& b) {
