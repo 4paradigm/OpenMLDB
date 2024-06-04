@@ -652,7 +652,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
 
   std::string_view order_ref(order->data_, order->size_);
   std::string_view column_ref(column->data_, column->size_);
-  std::vector<std::pair<int, int>> container;
+  std::vector<std::pair<int, std::string>> container;
 
   for (auto ele : arr) {
     simdjson::ondemand::object obj;
@@ -677,14 +677,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
     if (ec_order != std::errc()) {
         return;
     }
-
-    int column_val_int;
-    auto [ptr_column, ec_column] =
-        std::from_chars(column_val.data(), column_val.data() + column_val.size(), column_val_int);
-    if (ec_column != std::errc()) {
-        return;
-    }
-    container.emplace_back(static_cast<int>(order_int), static_cast<int>(column_val_int));
+    container.emplace_back(static_cast<int>(order_int), std::string(column_val));
   }
 
   std::sort(container.begin(), container.end(), [desc](const auto& a, const auto& b) {

@@ -1493,11 +1493,11 @@ TEST_F(UdfIRBuilderTest, JsonArraySortAsInt) {
 }
 
 TEST_F(UdfIRBuilderTest, JsonArraySortRepeatedKey) {
-    openmldb::base::StringRef json = R"([{"a": "6", "b": "2"}, {"a": "11", "b": "9"}, {"a": "6", "b": "10"}])";
-    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "9,10,2", json, "a", "b", 10,
-                                                                        true);
-    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "2,10,9", json, "a", "b", 10,
-                                                                        false);
+    openmldb::base::StringRef json = R"([{"a": "6", "b": "a"}, {"a": "11", "b": "aaa"}, {"a": "6", "b": "aa"}])";
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "aaa,aa,a", json, "a", "b",
+                                                                        10, true);
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "a,aa,aaa", json, "a", "b",
+                                                                        10, false);
 }
 
 TEST_F(UdfIRBuilderTest, JsonArraySortInvalidKey) {
