@@ -1484,6 +1484,28 @@ TEST_F(UdfIRBuilderTest, CustUdfs) {
                                                                       false);
 }
 
+TEST_F(UdfIRBuilderTest, JsonArraySortAsInt) {
+    openmldb::base::StringRef json = R"([{"a": "6", "b": "2"}, {"a": "11", "b": "9"}])";
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "9,2", json, "a", "b", 10,
+                                                                        true);
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "2,9", json, "a", "b", 10,
+                                                                        false);
+}
+
+TEST_F(UdfIRBuilderTest, JsonArraySortRepeatedKey) {
+    openmldb::base::StringRef json = R"([{"a": "6", "b": "2"}, {"a": "11", "b": "9"}, {"a": "6", "b": "10"}])";
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "9,10,2", json, "a", "b", 10,
+                                                                        true);
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "2,10,9", json, "a", "b", 10,
+                                                                        false);
+}
+
+TEST_F(UdfIRBuilderTest, JsonArraySortInvalidKey) {
+    openmldb::base::StringRef json = R"([{"a": "a", "b": "2"}, {"a": "11", "b": "9"}])";
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "", json, "a", "b", 10,
+                                                                        true);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 
