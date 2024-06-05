@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cstdint>
 #include <iostream>
 #include <queue>
 #include <string>
@@ -616,7 +617,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
 
   std::string_view order_ref(order->data_, order->size_);
   std::string_view column_ref(column->data_, column->size_);
-  std::vector<std::pair<int, std::string>> container;
+  std::vector<std::pair<std::intmax_t, std::string>> container;
 
   for (auto ele : arr) {
     simdjson::ondemand::object obj;
@@ -636,7 +637,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
       continue;
     }
 
-    int order_int;
+    std::intmax_t order_int;
     auto [ptr_order, ec_order] = std::from_chars(order_val.data(), order_val.data() + order_val.size(), order_int);
     if (ec_order != std::errc()) {
         order_int = 0;
