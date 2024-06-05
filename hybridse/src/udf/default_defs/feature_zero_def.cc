@@ -15,6 +15,8 @@
  */
 
 #include <algorithm>
+#include <charconv>
+#include <iostream>
 #include <queue>
 #include <string>
 #include <tuple>
@@ -25,15 +27,14 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/join.hpp"
 #include "boost/algorithm/string/regex.hpp"
-
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
+#include "simdjson.h"
 #include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
-#include "simdjson.h"
 
 using openmldb::base::Date;
 using hybridse::codec::ListRef;
@@ -615,7 +616,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
 
   std::string_view order_ref(order->data_, order->size_);
   std::string_view column_ref(column->data_, column->size_);
-  std::map<std::string, std::string> container;
+  std::vector<std::pair<int, std::string>> container;
 
   for (auto ele : arr) {
     simdjson::ondemand::object obj;
@@ -635,27 +636,30 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
       continue;
     }
 
-    container.emplace(order_val, column_val);
+    int order_int;
+    auto [ptr_order, ec_order] = std::from_chars(order_val.data(), order_val.data() + order_val.size(), order_int);
+    if (ec_order != std::errc()) {
+        return;
+    }
+    container.emplace_back(order_int, column_val);
   }
+
+  std::sort(container.begin(), container.end(), [desc](const auto& a, const auto& b) {
+      if (a.first == b.first) {
+          return desc ? a.second > b.second : a.second < b.second;
+      }
+      return desc ? a.first > b.first : a.first < b.first;
+  });
 
   std::stringstream ss;
   uint32_t topn = static_cast<uint32_t>(n);
   auto sz = container.size();
 
   for (uint32_t i = 0; i < topn && i < sz; ++i) {
-    if (desc) {
-      auto it = std::next(container.crbegin(), i);
-      ss << it->second;
-      if (std::next(it, 1) != container.crend() && i + 1 < topn) {
-        ss << ",";
+      ss << container[i].second;
+      if (i + 1 < topn && i + 1 < sz) {
+          ss << ",";
       }
-    } else {
-      auto it = std::next(container.cbegin(), i);
-      ss << it->second;
-      if (std::next(it, 1) != container.cend() && i + 1 < topn) {
-        ss << ",";
-      }
-    }
   }
 
   auto str = ss.str();
