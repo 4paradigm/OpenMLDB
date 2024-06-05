@@ -639,7 +639,7 @@ void json_array_sort(::openmldb::base::StringRef *json_array,
     int order_int;
     auto [ptr_order, ec_order] = std::from_chars(order_val.data(), order_val.data() + order_val.size(), order_int);
     if (ec_order != std::errc()) {
-        return;
+        order_int = 0;
     }
     container.emplace_back(order_int, column_val);
   }

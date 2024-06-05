@@ -1216,9 +1216,11 @@ TEST_F(UdfIRBuilderTest, JsonArraySortRepeatedKey) {
 }
 
 TEST_F(UdfIRBuilderTest, JsonArraySortInvalidKey) {
-    openmldb::base::StringRef json = R"([{"a": "a", "b": "2"}, {"a": "11", "b": "9"}])";
-    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "", json, "a", "b", 10,
+    openmldb::base::StringRef json = R"([{"a": "-1", "b": "1"}, {"a": "a", "b": "2"}, {"a": "11", "b": "9"}])";
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "9,2,1", json, "a", "b", 10,
                                                                         true);
+    CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "1,2,9", json, "a", "b", 10,
+                                                                        false);
 }
 }
 }  // namespace codegen
