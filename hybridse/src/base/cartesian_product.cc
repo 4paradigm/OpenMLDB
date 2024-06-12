@@ -23,8 +23,6 @@
 namespace hybridse {
 namespace base {
 
-int32_t CartesianProductIterSize() { return sizeof(CartesianProductViewIterator); }
-
 static auto cartesian_product(const std::vector<std::vector<int>>& lists) {
     std::vector<std::vector<int>> result;
     if (std::find_if(std::begin(lists), std::end(lists), [](auto e) -> bool { return e.size() == 0; }) !=
@@ -58,53 +56,6 @@ std::vector<std::vector<int>> cartesian_product(absl::Span<int const> vec) {
         input.push_back(seq);
     }
     return cartesian_product(input);
-}
-
-auto cartesian_product_iterator(absl::Span<int const> vec) { auto products = cartesian_product(vec); }
-
-void CartesianProductIterNew(int32_t* vec, int32_t sz, int8_t* output) {
-    auto d = cartesian_product(absl::MakeSpan(vec, sz));
-    new (output) CartesianProductViewIterator(d);
-}
-
-void CartesianProductIterNext(int8_t* ptr) {
-    auto* it = reinterpret_cast<CartesianProductViewIterator*>(ptr);
-    if (it != nullptr) {
-        it->Next();
-    }
-}
-
-bool CartesianProductIterValid(int8_t* ptr) {
-    auto* it = reinterpret_cast<CartesianProductViewIterator*>(ptr);
-    if (it != nullptr) {
-        return it->Valid();
-    }
-    return false;
-}
-
-int32_t CartesianProductCount(int8_t* ptr) {
-    auto* it = reinterpret_cast<CartesianProductViewIterator*>(ptr);
-    if (it != nullptr) {
-        return it->data.size();
-    }
-    return 0;
-}
-
-int32_t CartesianProductIterGet(int8_t* ptr, int32_t idx) {
-    auto* it = reinterpret_cast<CartesianProductViewIterator*>(ptr);
-    if (it != nullptr) {
-        return it->GetProduct(idx);
-    }
-    return 0;
-}
-
-void CartesianProductIterDel(int8_t* output) {
-    if (output != nullptr) {
-        auto* it = reinterpret_cast<CartesianProductViewIterator*>(output);
-        if (it != nullptr) {
-            it->~CartesianProductViewIterator();
-        }
-    }
 }
 
 }  // namespace base

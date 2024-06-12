@@ -36,6 +36,7 @@ class StringIRBuilder : public StructTypeIRBuilder {
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) override;
     base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src, NativeValue* output) override;
     base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value** output);
+    absl::Status CastFrom(llvm::BasicBlock* block, llvm::Value* in, llvm::Value* alloca);
 
     bool NewString(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewString(::llvm::BasicBlock* block, const std::string& str,

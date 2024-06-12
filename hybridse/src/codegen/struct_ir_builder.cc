@@ -311,7 +311,7 @@ absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue d
             return absl::InternalError("codegen error: arguments to array_combine is not ARRAY");
         }
         if (!tp->GetGenericType(0)->IsString()) {
-            auto s = arr_builder.CastFrom(ctx, args.at(i).GetRaw());
+            auto s = arr_builder.CastToArrayString(ctx, args.at(i).GetRaw());
             CHECK_ABSL_STATUSOR(s);
             casted_args.at(i) = NativeValue::Create(s.value());
         } else {
@@ -339,5 +339,9 @@ absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue d
     return NativeValue::Create(out);
 }
 
+absl::Status StructTypeIRBuilder::Initialize(CodeGenContextBase* ctx, ::llvm::Value* alloca,
+                                             absl::Span<llvm::Value* const> args) const {
+    return absl::UnimplementedError(absl::StrCat("Initialize for type ", GetLlvmObjectString(struct_type_)));
+}
 }  // namespace codegen
 }  // namespace hybridse

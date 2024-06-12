@@ -58,6 +58,9 @@ class StructTypeIRBuilder : public TypeIRBuilder {
     virtual absl::StatusOr<::llvm::Value*> ConstructFromRaw(CodeGenContextBase* ctx,
                                                             absl::Span<::llvm::Value* const> args) const;
 
+    virtual absl::Status Initialize(CodeGenContextBase* ctx, ::llvm::Value* alloca,
+                                    absl::Span<llvm::Value* const> args) const;
+
     // Extract element value from composite data type
     // 1. extract from array type by index
     // 2. extract from struct type by field name

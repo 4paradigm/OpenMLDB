@@ -256,6 +256,8 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
 
     // cartesian product
     jit->AddExternalFunction("hybridse_array_combine", reinterpret_cast<void*>(&hybridse::udf::v1::array_combine));
+    jit->AddExternalFunction("hybridse_alloc_array_string",
+                             reinterpret_cast<void*>(&hybridse::udf::v1::AllocManagedArray<codec::StringRef>));
 }
 
 }  // namespace vm
