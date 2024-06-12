@@ -1427,9 +1427,9 @@ void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef
     // cal cartesian products
     auto products = hybridse::base::cartesian_product(arr_szs);
 
+    auto real_sz = products.size();
     v1::AllocManagedArray(out, products.size());
 
-    // TODO(xxx): what if array values contains null
     for (int prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
         auto &prod = products.at(prod_idx);
         int32_t sz = 0;
@@ -1440,6 +1440,11 @@ void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef
                     sz += del->size_;
                 }
                 sz += data[i]->raw[prod.at(i)]->size_;
+            } else {
+                // null exists in current product
+                // the only option now is to skip
+                real_sz--;
+                continue;
             }
         }
         auto buf = v1::AllocManagedStringBuf(sz);
@@ -1460,7 +1465,7 @@ void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef
         out->raw[prod_idx]->size_ = sz;
     }
 
-    out->size = products.size();
+    out->size = real_sz;
 }
 
 }  // namespace v1

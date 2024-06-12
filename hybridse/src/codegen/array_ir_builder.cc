@@ -150,6 +150,11 @@ absl::StatusOr<llvm::Value*> ArrayIRBuilder::CastToArrayString(CodeGenContextBas
     }
 
     llvm::Type* src_ele_type = src_builder->element_type_;
+    if (IsStringPtr(src_ele_type)) {
+        // already array<string>
+        return src;
+    }
+
     auto fields = src_builder->Load(ctx, src);
     CHECK_ABSL_STATUSOR(fields);
     llvm::Value* src_raws = fields.value().at(RAW_IDX);

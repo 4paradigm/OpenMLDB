@@ -280,7 +280,6 @@ absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Ty
     return NativeValue(nullptr, nullptr, type);
 }
 
-// args should be array of string
 absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue delimiter,
                                     absl::Span<const NativeValue> args) {
     auto builder = ctx->GetBuilder();

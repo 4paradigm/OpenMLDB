@@ -562,14 +562,16 @@ cases:
         array_join(["1", "2"], "") c2,
         array_join(["1", "2"], cast(null as string)) c3,
         array_join(["1", NULL, "4", "5", NULL], "-") c4,
+        array_join(array<string>[], ",") as c5
     expect:
       columns:
         - c1 string
         - c2 string
         - c3 string
         - c4 string
+        - c5 string
       rows:
-        - ["1,2", "12", "12", "1-4-5"]
+        - ["1,2", "12", "12", "1-4-5", ""]
   - id: array_combine
     mode: request-unsupport
     sql: |
@@ -587,11 +589,50 @@ cases:
     sql: |
       select
         array_join(array_combine("-", [1, 2], [3, 4]), ",") c0,
+        array_join(array_combine("-", [1, 2], array<int64>[3], ["5", "6"]), ",") c1,
+        array_join(array_combine("|", ["1"], [timestamp(1717171200000), timestamp("2024-06-02 12:00:00")]), ",") c2,
     expect:
       columns:
         - c0 string
+        - c1 string
+        - c2 string
       rows:
-        - ["1-3,1-4,2-3,2-4"]
+        - ["1-3,1-4,2-3,2-4", "1-3-5,1-3-6,2-3-5,2-3-6", "1|2024-06-01 00:00:00,1|2024-06-02 12:00:00"]
+  - id: array_combine_3
+    desc: null values skipped
+    mode: request-unsupport
+    sql: |
+      select
+        array_join(array_combine("-", [1, NULL], [3, 4]), ",") c0,
+        array_join(array_combine("-", ARRAY<INT>[NULL], ["9", "8"]), ",") c1,
+    expect:
+      columns:
+        - c0 string
+        - c1 string
+      rows:
+        - ["1-3,1-4", ""]
+  - id: array_combine_4
+    desc: construct array from table
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "foo"]
+          - [2, 1590115420001, "bar"]
+    sql: |
+      select
+        col1,
+        array_join(array_combine("-", [col1, 10], [col2, "c2"]), ",") c0,
+      from t1
+    expect:
+      columns:
+        - col1 int32
+        - c0 string
+      rows:
+        - [1, "1-foo,1-c2,10-foo,10-c2"]
+        - [2, "2-bar,2-c2,10-bar,10-c2"]
 
   # ================================================================
   # Map data type
