@@ -145,7 +145,7 @@ void DefaultUdfLibrary::InitArrayUdfs() {
     RegisterExternal("array_join")
         .args<ArrayRef<StringRef>, Nullable<StringRef>>(array_join)
         .doc(R"(
-             @brief array_join(array, delimiter) - Concatenates the elements of the given array using the delimiter and an optional string to replace nulls. Any null value is filtered.
+             @brief array_join(array, delimiter) - Concatenates the elements of the given array using the delimiter. Any null value is filtered.
 
              Example:
 
@@ -156,10 +156,10 @@ void DefaultUdfLibrary::InitArrayUdfs() {
              @since 0.9.2)");
 
     RegisterCodeGenUdf("array_combine")
-        .variadic_args<AnyArg>(
+        .variadic_args<Nullable<StringRef>>(
             [](UdfResolveContext* ctx, const ExprAttrNode& delimit, const std::vector<ExprAttrNode>& arg_attrs,
                ExprAttrNode* out) -> base::Status {
-                CHECK_TRUE(delimit.type()->IsString(), common::kCodegenError, "delimiter must be string");
+                CHECK_TRUE(!arg_attrs.empty(), common::kCodegenError, "at least one array required by array_combine");
                 for (auto & val : arg_attrs) {
                     CHECK_TRUE(val.type()->IsArray(), common::kCodegenError, "argument to array_combine must be array");
                 }
@@ -179,7 +179,7 @@ void DefaultUdfLibrary::InitArrayUdfs() {
                 @brief array_combine(delimiter, array1, array2, ...)
 
                 return array of strings for input array1, array2, ... doing cartesian product. Each product is joined with
-                {delimiter} as a string
+                {delimiter} as a string. Empty string used if {delimiter} is null.
 
                 Example:
 

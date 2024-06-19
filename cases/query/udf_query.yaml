@@ -591,13 +591,15 @@ cases:
         array_join(array_combine("-", [1, 2], [3, 4]), ",") c0,
         array_join(array_combine("-", [1, 2], array<int64>[3], ["5", "6"]), ",") c1,
         array_join(array_combine("|", ["1"], [timestamp(1717171200000), timestamp("2024-06-02 12:00:00")]), ",") c2,
+        array_join(array_combine("|", ["1"]), ",") c3,
     expect:
       columns:
         - c0 string
         - c1 string
         - c2 string
+        - c3 string
       rows:
-        - ["1-3,1-4,2-3,2-4", "1-3-5,1-3-6,2-3-5,2-3-6", "1|2024-06-01 00:00:00,1|2024-06-02 12:00:00"]
+        - ["1-3,1-4,2-3,2-4", "1-3-5,1-3-6,2-3-5,2-3-6", "1|2024-06-01 00:00:00,1|2024-06-02 12:00:00", "1"]
   - id: array_combine_3
     desc: null values skipped
     mode: request-unsupport
@@ -605,12 +607,14 @@ cases:
       select
         array_join(array_combine("-", [1, NULL], [3, 4]), ",") c0,
         array_join(array_combine("-", ARRAY<INT>[NULL], ["9", "8"]), ",") c1,
+        array_join(array_combine(string(NULL), ARRAY<INT>[1], ["9", "8"]), ",") c2,
     expect:
       columns:
         - c0 string
         - c1 string
+        - c2 string
       rows:
-        - ["1-3,1-4", ""]
+        - ["1-3,1-4", "", "19,18"]
   - id: array_combine_4
     desc: construct array from table
     mode: request-unsupport
@@ -633,6 +637,15 @@ cases:
       rows:
         - [1, "1-foo,1-c2,10-foo,10-c2"]
         - [2, "2-bar,2-c2,10-bar,10-c2"]
+  - id: array_combine_err1
+    mode: request-unsupport
+    sql: |
+      select
+        array_join(array_combine("-"), ",") c0,
+    expect:
+      success: false
+      msg: |
+        Fail to resolve expression: array_join(array_combine(-), ,)
 
   # ================================================================
   # Map data type
