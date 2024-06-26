@@ -1691,6 +1691,7 @@ void TabletImpl::ProcessQuery(bool is_sub, RpcController* ctrl, const openmldb::
     auto mode = hybridse::vm::Engine::TryDetermineEngineMode(request->sql(), default_mode);
 
     ::hybridse::base::Status status;
+    // FIXME(someone): it does not handles batchrequest
     if (mode == hybridse::vm::EngineMode::kBatchMode) {
         // convert repeated openmldb:type::DataType into hybridse::codec::Schema
         hybridse::codec::Schema parameter_schema;
@@ -5426,7 +5427,12 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl, const openmldb::api::Query
     }
     if (ret != 0) {
         response.set_code(::openmldb::base::kSQLRunError);
-        response.set_msg("fail to run sql");
+        if (ret == hybridse::common::StatusCode::kRunSessionError) {
+            // special handling
+            response.set_msg("request SQL requires a non-empty request row, but empty row received");
+        } else {
+            response.set_msg("fail to run sql");
+        }
         return;
     } else if (row.GetRowPtrCnt() != 1) {
         response.set_code(::openmldb::base::kSQLRunError);

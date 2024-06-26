@@ -80,6 +80,7 @@
 #include "sdk/sql_insert_row.h"
 #include "sdk/sql_delete_row.h"
 #include "sdk/table_reader.h"
+#include "sdk/internal/system_variable.h"
 
 using hybridse::sdk::Schema;
 using hybridse::sdk::ColumnTypes;
