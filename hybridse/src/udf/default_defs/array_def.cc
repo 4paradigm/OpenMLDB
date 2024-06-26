@@ -37,8 +37,30 @@ struct ArrayContains {
     // - bool/intxx/float/double -> bool/intxx/float/double
     // - Timestamp/Date/StringRef -> Timestamp*/Date*/StringRef*
     bool operator()(ArrayRef<T>* arr, ParamType v, bool is_null) {
-        // NOTE: array_contains([null], null) returns null
-        // this might not expected
+        for (uint64_t i = 0; i < arr->size; ++i) {
+            if constexpr (std::is_pointer_v<ParamType>) {
+                // null or same value returns true
+                if ((is_null && arr->nullables[i]) || (!arr->nullables[i] && *arr->raw[i] == *v)) {
+                    return true;
+                }
+            } else {
+                if ((is_null && arr->nullables[i]) || (!arr->nullables[i] && arr->raw[i] == v)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+};
+
+template <typename T>
+struct IsIn {
+    // udf registry types
+    using Args = std::tuple<Nullable<T>, ArrayRef<T>>;
+
+    using ParamType = typename DataTypeTrait<T>::CCallArgType;
+
+    bool operator()(ParamType v, bool is_null, ArrayRef<T>* arr) {
         for (uint64_t i = 0; i < arr->size; ++i) {
             if constexpr (std::is_pointer_v<ParamType>) {
                 // null or same value returns true
@@ -96,6 +118,21 @@ void DefaultUdfLibrary::InitArrayUdfs() {
              @endcode
 
              @since 0.7.0
+             )");
+
+    RegisterExternalTemplate<IsIn>("isin")
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>()
+        .doc(R"(
+             @brief isin(value, array) - Returns true if the array contains the value.
+
+             Example:
+
+             @code{.sql}
+                 select isin(2, [2,2]) as c0;
+                 -- output true
+             @endcode
+
+             @since 0.9.1
              )");
 
     RegisterExternal("split_array")
