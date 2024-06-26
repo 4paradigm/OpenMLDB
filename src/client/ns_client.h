@@ -112,6 +112,11 @@ class NsClient : public Client {
 
     bool PutUser(const std::string& host, const std::string& name, const std::string& password);  // NOLINT
 
+    bool PutPrivilege(const std::optional<std::string> target_type, const std::string database,
+                      const std::string target, const std::vector<std::string> privileges, const bool is_all_privileges,
+                      const std::vector<std::string> grantees,
+                      const ::openmldb::nameserver::PrivilegeLevel privilege_level);  // NOLINT
+
     bool DeleteUser(const std::string& host, const std::string& name);  // NOLINT
 
     bool DropTable(const std::string& db, const std::string& name,

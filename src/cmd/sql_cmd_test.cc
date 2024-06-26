@@ -243,7 +243,6 @@ TEST_P(DBSDKTest, TestUser) {
     ASSERT_FALSE(status.IsOK());
     sr->ExecuteSQL(absl::StrCat("CREATE USER IF NOT EXISTS user1"), &status);
     ASSERT_TRUE(status.IsOK());
-    ASSERT_TRUE(true);
     auto opt = sr->GetRouterOptions();
     if (cs->IsClusterMode()) {
         auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
@@ -277,6 +276,121 @@ TEST_P(DBSDKTest, TestUser) {
     sr->ExecuteSQL(absl::StrCat("DROP USER user1"), &status);
     ASSERT_FALSE(status.IsOK());
     sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, TestGrantCreateUser) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("REVOKE CREATE USER ON *.* FROM 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user3 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_FALSE(status.IsOK());
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("REVOKE CREATE USER ON *.* FROM 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user3 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_FALSE(status.IsOK());
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, TestGrantCreateUserGrantOption) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+    ASSERT_TRUE(status.IsOK());
+
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%' WITH GRANT OPTION"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%' WITH GRANT OPTION"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
     ASSERT_TRUE(status.IsOK());
 }
 

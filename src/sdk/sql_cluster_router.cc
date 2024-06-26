@@ -2786,6 +2786,30 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             return {};
         }
+        case hybridse::node::kPlanTypeGrant: {
+            auto grant_node = dynamic_cast<hybridse::node::GrantPlanNode*>(node);
+            auto ns = cluster_sdk_->GetNsClient();
+            auto ok = ns->PutPrivilege(grant_node->TargetType(), grant_node->Database(), grant_node->Target(),
+                                       grant_node->Privileges(), grant_node->IsAllPrivileges(), grant_node->Grantees(),
+                                       grant_node->WithGrantOption()
+                                           ? ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE_WITH_GRANT_OPTION
+                                           : ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE);
+            if (!ok) {
+                *status = {StatusCode::kCmdError, "Grant API call failed"};
+            }
+            return {};
+        }
+        case hybridse::node::kPlanTypeRevoke: {
+            auto revoke_node = dynamic_cast<hybridse::node::RevokePlanNode*>(node);
+            auto ns = cluster_sdk_->GetNsClient();
+            auto ok = ns->PutPrivilege(revoke_node->TargetType(), revoke_node->Database(), revoke_node->Target(),
+                                       revoke_node->Privileges(), revoke_node->IsAllPrivileges(),
+                                       revoke_node->Grantees(), ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE);
+            if (!ok) {
+                *status = {StatusCode::kCmdError, "Revoke API call failed"};
+            }
+            return {};
+        }
         case hybridse::node::kPlanTypeAlterUser: {
             auto alter_node = dynamic_cast<hybridse::node::AlterUserPlanNode*>(node);
             UserInfo user_info;

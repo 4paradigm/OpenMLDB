@@ -2421,6 +2421,64 @@ class AlterUserNode : public SqlNode {
     const std::shared_ptr<OptionsMap> options_;
 };
 
+class GrantNode : public SqlNode {
+ public:
+    explicit GrantNode(std::optional<std::string> target_type, std::string database, std::string target,
+                       std::vector<std::string> privileges, bool is_all_privileges, std::vector<std::string> grantees,
+                       bool with_grant_option)
+        : SqlNode(kGrantStmt, 0, 0),
+          target_type_(target_type),
+          database_(database),
+          target_(target),
+          privileges_(privileges),
+          is_all_privileges_(is_all_privileges),
+          grantees_(grantees),
+          with_grant_option_(with_grant_option) {}
+    const std::vector<std::string> Privileges() const { return privileges_; }
+    const std::vector<std::string> Grantees() const { return grantees_; }
+    const std::string Database() const { return database_; }
+    const std::string Target() const { return target_; }
+    const std::optional<std::string> TargetType() const { return target_type_; }
+    const bool IsAllPrivileges() const { return is_all_privileges_; }
+    const bool WithGrantOption() const { return with_grant_option_; }
+
+ private:
+    std::optional<std::string> target_type_;
+    std::string database_;
+    std::string target_;
+    std::vector<std::string> privileges_;
+    bool is_all_privileges_;
+    std::vector<std::string> grantees_;
+    bool with_grant_option_;
+};
+
+class RevokeNode : public SqlNode {
+ public:
+    explicit RevokeNode(std::optional<std::string> target_type, std::string database, std::string target,
+                        std::vector<std::string> privileges, bool is_all_privileges, std::vector<std::string> grantees)
+        : SqlNode(kRevokeStmt, 0, 0),
+          target_type_(target_type),
+          database_(database),
+          target_(target),
+          privileges_(privileges),
+          is_all_privileges_(is_all_privileges),
+          grantees_(grantees) {}
+    const std::vector<std::string> Privileges() const { return privileges_; }
+    const std::vector<std::string> Grantees() const { return grantees_; }
+    const std::string Database() const { return database_; }
+    const std::string Target() const { return target_; }
+    const std::optional<std::string> TargetType() const { return target_type_; }
+    const bool IsAllPrivileges() const { return is_all_privileges_; }
+
+ private:
+    std::optional<std::string> target_type_;
+    std::string database_;
+    std::string target_;
+    std::vector<std::string> privileges_;
+    bool is_all_privileges_;
+    std::vector<std::string> grantees_;
+};
+
 class ExplainNode : public SqlNode {
  public:
     explicit ExplainNode(const QueryNode *query, node::ExplainType explain_type)

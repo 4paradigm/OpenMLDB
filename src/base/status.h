@@ -186,7 +186,8 @@ enum ReturnCode {
     kRPCError = 1004,  // brpc controller error
 
     // auth
-    kFlushPrivilegesFailed = 1100  // brpc controller error
+    kFlushPrivilegesFailed = 1100,  // brpc controller error
+    kNotAuthorized = 1101  // brpc controller error
 };
 
 struct Status {
