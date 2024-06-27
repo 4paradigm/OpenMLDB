@@ -360,6 +360,8 @@ class NameServerImpl : public NameServer {
                        Closure* done);
 
     void PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response, Closure* done);
+    void PutPrivilege(RpcController* controller, const PutPrivilegeRequest* request, GeneralResponse* response,
+                      Closure* done);
     void DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
                     Closure* done);
     bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
@@ -373,7 +375,8 @@ class NameServerImpl : public NameServer {
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
                       std::shared_ptr<TableInfo>* table_info);
 
-    base::Status PutUserRecord(const std::string& host, const std::string& user, const std::string& password);
+    base::Status PutUserRecord(const std::string& host, const std::string& user, const std::string& password,
+                               const ::openmldb::nameserver::PrivilegeLevel privilege_level);
     base::Status DeleteUserRecord(const std::string& host, const std::string& user);
     base::Status FlushPrivileges();
 

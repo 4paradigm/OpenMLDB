@@ -274,7 +274,8 @@ class SQLClusterRouter : public SQLRouter {
 
     bool NotifyTableChange() override;
 
-    bool IsOnlineMode() override;
+    ::hybridse::vm::EngineMode GetDefaultEngineMode() const;
+    bool IsOnlineMode() const override;
     bool IsEnableTrace();
 
     std::string GetDatabase() override;
@@ -454,7 +455,7 @@ class SQLClusterRouter : public SQLRouter {
     DBSDK* cluster_sdk_;
     std::map<std::string, std::map<hybridse::vm::EngineMode, base::lru_cache<std::string, std::shared_ptr<SQLCache>>>>
         input_lru_cache_;
-    ::openmldb::base::SpinMutex mu_;
+    mutable ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
     std::atomic<uint32_t> insert_memory_usage_limit_ = 0;  // [0-100], the default value 0 means unlimited
 };

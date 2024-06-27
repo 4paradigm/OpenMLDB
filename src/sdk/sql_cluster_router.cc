@@ -56,6 +56,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/batch_request_result_set_sql.h"
+#include "sdk/internal/system_variable.h"
 #include "sdk/job_table_helper.h"
 #include "sdk/node_adapter.h"
 #include "sdk/query_future_impl.h"
@@ -1216,8 +1217,8 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     cntl->set_timeout_ms(options_->request_timeout);
     DLOG(INFO) << "send query to tablet " << client->GetEndpoint();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
-                       options_->enable_debug)) {
+    if (!client->Query(db, sql, GetDefaultEngineMode(), parameter_types, parameter ? parameter->GetRow() : "",
+                       cntl.get(), response.get(), options_->enable_debug)) {
         // rpc error is in cntl or response
         RPC_STATUS_AND_WARN(status, cntl, response, "Query rpc failed");
         return {};
@@ -2244,7 +2245,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         case hybridse::node::kCmdShowGlobalVariables: {
             std::string db = openmldb::nameserver::INFORMATION_SCHEMA_DB;
             std::string table = openmldb::nameserver::GLOBAL_VARIABLES;
-            std::string sql = "select * from " + table;
+            std::string sql = "select * from " + table + " CONFIG (execute_mode = 'online')";
             ::hybridse::sdk::Status status;
             auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
             if (status.code != 0) {
@@ -3066,6 +3067,30 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             return {};
         }
+        case hybridse::node::kPlanTypeGrant: {
+            auto grant_node = dynamic_cast<hybridse::node::GrantPlanNode*>(node);
+            auto ns = cluster_sdk_->GetNsClient();
+            auto ok = ns->PutPrivilege(grant_node->TargetType(), grant_node->Database(), grant_node->Target(),
+                                       grant_node->Privileges(), grant_node->IsAllPrivileges(), grant_node->Grantees(),
+                                       grant_node->WithGrantOption()
+                                           ? ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE_WITH_GRANT_OPTION
+                                           : ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE);
+            if (!ok) {
+                *status = {StatusCode::kCmdError, "Grant API call failed"};
+            }
+            return {};
+        }
+        case hybridse::node::kPlanTypeRevoke: {
+            auto revoke_node = dynamic_cast<hybridse::node::RevokePlanNode*>(node);
+            auto ns = cluster_sdk_->GetNsClient();
+            auto ok = ns->PutPrivilege(revoke_node->TargetType(), revoke_node->Database(), revoke_node->Target(),
+                                       revoke_node->Privileges(), revoke_node->IsAllPrivileges(),
+                                       revoke_node->Grantees(), ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE);
+            if (!ok) {
+                *status = {StatusCode::kCmdError, "Revoke API call failed"};
+            }
+            return {};
+        }
         case hybridse::node::kPlanTypeAlterUser: {
             auto alter_node = dynamic_cast<hybridse::node::AlterUserPlanNode*>(node);
             UserInfo user_info;
@@ -3165,9 +3190,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         }
         case hybridse::node::kPlanTypeFuncDef:
         case hybridse::node::kPlanTypeQuery: {
-            ::hybridse::vm::EngineMode default_mode = (!cluster_sdk_->IsClusterMode() || is_online_mode)
-                                                          ? ::hybridse::vm::EngineMode::kBatchMode
-                                                          : ::hybridse::vm::EngineMode::kOffline;
+            ::hybridse::vm::EngineMode default_mode = GetDefaultEngineMode();
             // execute_mode in query config clause takes precedence
             auto mode = ::hybridse::vm::Engine::TryDetermineEngineMode(sql, default_mode);
             if (mode != ::hybridse::vm::EngineMode::kOffline) {
@@ -3472,10 +3495,27 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
     }
 }
 
-bool SQLClusterRouter::IsOnlineMode() {
+::hybridse::vm::EngineMode SQLClusterRouter::GetDefaultEngineMode() const {
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto it = session_variables_.find("execute_mode");
-    if (it != session_variables_.end() && it->second == "online") {
+    if (it != session_variables_.end()) {
+        // 1. infer from system variable
+        auto m = hybridse::vm::UnparseEngineMode(it->second).value_or(hybridse::vm::EngineMode::kBatchMode);
+
+        // 2. standalone mode do not have offline
+        if (!cluster_sdk_->IsClusterMode() && m == hybridse::vm::kOffline) {
+            return hybridse::vm::kBatchMode;
+        }
+        return m;
+    }
+
+    return hybridse::vm::EngineMode::kBatchMode;
+}
+
+bool SQLClusterRouter::IsOnlineMode() const {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    auto it = session_variables_.find("execute_mode");
+    if (it != session_variables_.end() && (it->second == "online" || it->second == "request")) {
         return true;
     }
     return false;
@@ -3554,8 +3594,9 @@ std::string SQLClusterRouter::GetSparkConfig() {
     std::transform(value.begin(), value.end(), value.begin(), ::tolower);
     // TODO(hw): validation can be simpler
     if (key == "execute_mode") {
-        if (value != "online" && value != "offline") {
-            return {StatusCode::kCmdError, "the value of execute_mode must be online|offline"};
+        auto s = sdk::internal::CheckSystemVariableSet(key, value);
+        if (!s.ok()) {
+            return {hybridse::common::kCmdError, s.ToString()};
         }
     } else if (key == "enable_trace" || key == "sync_job") {
         if (value != "true" && value != "false") {

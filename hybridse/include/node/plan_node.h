@@ -739,6 +739,67 @@ class CreateUserPlanNode : public LeafPlanNode {
     const std::shared_ptr<OptionsMap> options_;
 };
 
+class GrantPlanNode : public LeafPlanNode {
+ public:
+    explicit GrantPlanNode(std::optional<std::string> target_type, std::string database, std::string target,
+                           std::vector<std::string> privileges, bool is_all_privileges,
+                           std::vector<std::string> grantees, bool with_grant_option)
+        : LeafPlanNode(kPlanTypeGrant),
+          target_type_(target_type),
+          database_(database),
+          target_(target),
+          privileges_(privileges),
+          is_all_privileges_(is_all_privileges),
+          grantees_(grantees),
+          with_grant_option_(with_grant_option) {}
+    ~GrantPlanNode() = default;
+    const std::vector<std::string> Privileges() const { return privileges_; }
+    const std::vector<std::string> Grantees() const { return grantees_; }
+    const std::string Database() const { return database_; }
+    const std::string Target() const { return target_; }
+    const std::optional<std::string> TargetType() const { return target_type_; }
+    const bool IsAllPrivileges() const { return is_all_privileges_; }
+    const bool WithGrantOption() const { return with_grant_option_; }
+
+ private:
+    std::optional<std::string> target_type_;
+    std::string database_;
+    std::string target_;
+    std::vector<std::string> privileges_;
+    bool is_all_privileges_;
+    std::vector<std::string> grantees_;
+    bool with_grant_option_;
+};
+
+class RevokePlanNode : public LeafPlanNode {
+ public:
+    explicit RevokePlanNode(std::optional<std::string> target_type, std::string database, std::string target,
+                            std::vector<std::string> privileges, bool is_all_privileges,
+                            std::vector<std::string> grantees)
+        : LeafPlanNode(kPlanTypeRevoke),
+          target_type_(target_type),
+          database_(database),
+          target_(target),
+          privileges_(privileges),
+          is_all_privileges_(is_all_privileges),
+          grantees_(grantees) {}
+    ~RevokePlanNode() = default;
+    const std::vector<std::string> Privileges() const { return privileges_; }
+    const std::vector<std::string> Grantees() const { return grantees_; }
+    const std::string Database() const { return database_; }
+    const std::string Target() const { return target_; }
+    const std::optional<std::string> TargetType() const { return target_type_; }
+    const bool IsAllPrivileges() const { return is_all_privileges_; }
+
+ private:
+    std::optional<std::string> target_type_;
+    std::string database_;
+    std::string target_;
+    std::vector<std::string> privileges_;
+    bool is_all_privileges_;
+    std::vector<std::string> grantees_;
+};
+
 class AlterUserPlanNode : public LeafPlanNode {
  public:
     explicit AlterUserPlanNode(const std::string& name, bool if_exists, std::shared_ptr<OptionsMap> options)
