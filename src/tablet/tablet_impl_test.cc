@@ -6298,13 +6298,13 @@ TEST_F(TabletImplTest, DeleteRange) {
     ::openmldb::api::ExecuteGcRequest e_request;
     e_request.set_tid(id);
     e_request.set_pid(1);
+    // async task, need to wait
+    // segment: entries -> node cache
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
     ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     sleep(2);
-    tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
-    ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
-    sleep(2);
-    assert_status(0, 0, 1626);
+    assert_status(0, 0, 0);
+    // gc node cache
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
     ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     sleep(2);
