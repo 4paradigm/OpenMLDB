@@ -1284,7 +1284,7 @@ TEST_P(DBSDKTest, Truncate) {
             sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
         }
     }
-    absl::SleepFor(absl::Seconds(8));  // sleep more to avoid truncate failed on partition offset mismatch
+    absl::SleepFor(absl::Seconds(16));  // sleep more to avoid truncate failed on partition offset mismatch
 
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 100);
