@@ -6249,7 +6249,8 @@ TEST_F(TabletImplTest, DeleteRange) {
     ::openmldb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
     column_desc2->set_name("mcc");
     column_desc2->set_data_type(::openmldb::type::kString);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 120, 0);
+    // insert time ttl and 120 min, so data won't be gc by ttl
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card_idx", "card", "", ::openmldb::type::kAbsoluteTime, 120, 0);
 
     ::openmldb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response, &closure);
@@ -6293,16 +6294,19 @@ TEST_F(TabletImplTest, DeleteRange) {
     delete_request.set_pid(1);
     delete_request.set_end_ts(1);
     tablet.Delete(NULL, &delete_request, &gen_response, &closure);
-    ASSERT_EQ(0, gen_response.code());
+    ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     ::openmldb::api::ExecuteGcRequest e_request;
     e_request.set_tid(id);
     e_request.set_pid(1);
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
+    ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     sleep(2);
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
+    ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     sleep(2);
     assert_status(0, 0, 1626);
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
+    ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     sleep(2);
     assert_status(0, 0, 0);
 }
