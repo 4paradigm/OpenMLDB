@@ -37,6 +37,7 @@
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/status_util.h"
+#include "base/index_util.h"
 #include "boost/none.hpp"
 #include "boost/property_tree/ini_parser.hpp"
 #include "boost/property_tree/ptree.hpp"
@@ -1452,13 +1453,13 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
             // revertput or SQLDeleteRow is not easy to use here, so make a sql
             DLOG(INFO) << "primary key exists, delete old data then insert new data";
             // just where primary key, not all columns(redundant condition)
-            auto hint = storage::MakePkeysHint(row->GetTableInfo().column_desc(),
+            auto hint = base::MakePkeysHint(row->GetTableInfo().column_desc(),
                                                                     row->GetTableInfo().column_key(0));
             if (hint.empty()) {
                 SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make pkeys hint failed");
                 return false;
             }
-            auto sql = storage::MakeDeleteSQL(row->GetTableInfo().db(), row->GetTableInfo().name(),
+            auto sql = base::MakeDeleteSQL(row->GetTableInfo().db(), row->GetTableInfo().name(),
                                                                    row->GetTableInfo().column_key(0),
                                                                    (int8_t*)exists_value.c_str(), ts, row_view, hint);
             if (sql.empty()) {
@@ -1687,12 +1688,12 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
             DLOG(INFO) << "primary key exists, delete old data then insert new data";
             // just where primary key, not all columns(redundant condition)
             auto hint =
-                storage::MakePkeysHint(table_info->column_desc(), table_info->column_key(0));
+                base::MakePkeysHint(table_info->column_desc(), table_info->column_key(0));
             if (hint.empty()) {
                 SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make pkeys hint failed");
                 return false;
             }
-            auto sql = storage::MakeDeleteSQL(table_info->db(), table_info->name(),
+            auto sql = base::MakeDeleteSQL(table_info->db(), table_info->name(),
                                                                    table_info->column_key(0),
                                                                    (int8_t*)exists_value.c_str(), ts, row_view, hint);
             if (sql.empty()) {

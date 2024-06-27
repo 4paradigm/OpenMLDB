@@ -22,6 +22,7 @@
 #include "absl/strings/str_split.h"
 #include "sdk/sql_router.h"
 #include "storage/iot_segment.h"
+#include "base/index_util.h"
 
 DECLARE_uint32(absolute_default_skiplist_height);
 
@@ -346,12 +347,12 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
         if (cidx_inner_key_pair.first == -1) {
             DLOG(INFO) << "cidx not in dimensions, extract from value";
             auto cidx = table_index_.GetIndex(0);
-            auto hint = MakePkeysHint(table_meta_->column_desc(), table_meta_->column_key(0));
+            auto hint = base::MakePkeysHint(table_meta_->column_desc(), table_meta_->column_key(0));
             if (hint.empty()) {
                 return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": cidx pkeys hint empty"));
             }
             cidx_inner_key_pair.second =
-                ExtractPkeys(table_meta_->column_key(0), (int8_t*)value.c_str(), *decoder, hint);
+                base::ExtractPkeys(table_meta_->column_key(0), (int8_t*)value.c_str(), *decoder, hint);
             if (cidx_inner_key_pair.second.empty()) {
                 return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": cidx pkeys+pts extract failed"));
             }
@@ -451,102 +452,6 @@ absl::Status IndexOrganizedTable::CheckDataExists(uint64_t tsv, const Dimensions
     return iot_segment->CheckKeyExists(cidx_inner_key_pair.second, {{ts_col->GetId(), tsv}});
 }
 
-// <pkey_col_name, (idx_in_row, type)>, error if empty
-std::map<std::string, std::pair<uint32_t, type::DataType>> MakePkeysHint(
-    const codec::Schema& schema, const common::ColumnKey& cidx_ck) {
-    if (cidx_ck.col_name().empty()) {
-        LOG(WARNING) << "empty cidx column key";
-        return {};
-    }
-    // pkey col idx in row
-    std::set<std::string> pkey_set;
-    for (int i = 0; i < cidx_ck.col_name().size(); i++) {
-        pkey_set.insert(cidx_ck.col_name().Get(i));
-    }
-    if (pkey_set.empty()) {
-        LOG(WARNING) << "empty pkey set";
-        return {};
-    }
-    if (pkey_set.size() != static_cast<std::set<std::string>::size_type>(cidx_ck.col_name().size())) {
-        LOG(WARNING) << "pkey set size not equal to cidx pkeys size";
-        return {};
-    }
-    std::map<std::string, std::pair<uint32_t, type::DataType>> col_idx;
-    for (int i = 0; i < schema.size(); i++) {
-        if (pkey_set.find(schema.Get(i).name()) != pkey_set.end()) {
-            col_idx[schema.Get(i).name()] = {i, schema.Get(i).data_type()};
-        }
-    }
-    if (col_idx.size() != pkey_set.size()) {
-        LOG(WARNING) << "col idx size not equal to cidx pkeys size";
-        return {};
-    }
-    return col_idx;
-}
-
-// error if empty
-std::string MakeDeleteSQL(
-    const std::string& db, const std::string& name, const common::ColumnKey& cidx_ck, const int8_t* values, uint64_t ts,
-    const codec::RowView& row_view, const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx) {
-    auto sql_prefix = absl::StrCat("delete from ", db, ".", name, " where ");
-    std::string cond;
-    for (int i = 0; i < cidx_ck.col_name().size(); i++) {
-        // append primary keys, pkeys in dimension are encoded, so we should get them from raw value
-        // split can't work if string has `|`
-        auto& col_name = cidx_ck.col_name().Get(i);
-        auto col = col_idx.find(col_name);
-        if (col == col_idx.end()) {
-            LOG(WARNING) << "col " << col_name << " not found in col idx";
-            return "";
-        }
-        std::string val;
-        row_view.GetStrValue(values, col->second.first, &val);
-        if (!cond.empty()) {
-            absl::StrAppend(&cond, " and ");
-        }
-        // TODO(hw): string should add quotes how about timestamp?
-        // check existence before, so here we skip
-        absl::StrAppend(&cond, col_name);
-        if (auto t = col->second.second; t == type::kVarchar || t == type::kString) {
-            absl::StrAppend(&cond, "=\"", val, "\"");
-        } else {
-            absl::StrAppend(&cond, "=", val);
-        }
-    }
-    // ts must be integer, won't be string
-    if (!cidx_ck.ts_name().empty() && cidx_ck.ts_name() != storage::DEFAULT_TS_COL_NAME) {
-        if (!cond.empty()) {
-            absl::StrAppend(&cond, " and ");
-        }
-        absl::StrAppend(&cond, cidx_ck.ts_name(), "=", std::to_string(ts));
-    }
-    auto sql = absl::StrCat(sql_prefix, cond, ";");
-    // TODO(hw): if delete failed, we can't revert. And if sidx skeys+sts doesn't change, no need to delete and
-    // then insert
-    DLOG(INFO) << "delete sql " << sql;
-    return sql;
-}
-
-// error if empty
-std::string ExtractPkeys(
-    const common::ColumnKey& cidx_ck, const int8_t* values, const codec::RowView& row_view,
-    const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx) {
-    // join with |
-    std::vector<std::string> pkeys;
-    for (int i = 0; i < cidx_ck.col_name().size(); i++) {
-        auto& col_name = cidx_ck.col_name().Get(i);
-        auto col = col_idx.find(col_name);
-        if (col == col_idx.end()) {
-            LOG(WARNING) << "col " << col_name << " not found in col idx";
-            return "";
-        }
-        std::string val;
-        row_view.GetStrValue(values, col->second.first, &val);
-        pkeys.push_back(val);
-    }
-    return absl::StrJoin(pkeys, "|");
-}
-
 // index gc should try to do ExecuteGc for each waiting segment, but if some segments are gc before, we should release
 // them so it will be a little complex
 // should run under lock
@@ -591,7 +496,7 @@ absl::Status IndexOrganizedTable::ClusteredIndexGCByDelete(const std::shared_ptr
         auto meta = GetTableMeta();
         auto cols = meta->column_desc();  // copy
         codec::RowView row_view(cols);
-        auto hint = MakePkeysHint(cols, meta->column_key(0));
+        auto hint = base::MakePkeysHint(cols, meta->column_key(0));
         if (hint.empty()) {
             return absl::InternalError("make pkeys hint failed");
         }
@@ -600,7 +505,7 @@ absl::Status IndexOrganizedTable::ClusteredIndexGCByDelete(const std::shared_ptr
             auto values = keys_ts.second;  // get pkeys from values
             auto ts = keys_ts.first;
             auto sql =
-                MakeDeleteSQL(GetDB(), GetName(), meta->column_key(0), (int8_t*)values->data, ts, row_view, hint);
+                base::MakeDeleteSQL(GetDB(), GetName(), meta->column_key(0), (int8_t*)values->data, ts, row_view, hint);
             // TODO(hw): if delete failed, we can't revert. And if sidx skeys+sts doesn't change, no need to delete and
             // then insert
             if (sql.empty()) {

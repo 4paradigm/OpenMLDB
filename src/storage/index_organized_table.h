@@ -64,14 +64,5 @@ class IndexOrganizedTable : public MemTable {
     std::mutex gc_lock_;
 };
 
-// don't make func static cuz swig sdk
-std::map<std::string, std::pair<uint32_t, type::DataType>> MakePkeysHint(const codec::Schema& schema,
-                                                                         const common::ColumnKey& cidx_ck);
-std::string MakeDeleteSQL(const std::string& db, const std::string& name, const common::ColumnKey& cidx_ck,
-                          const int8_t* values, uint64_t ts, const codec::RowView& row_view,
-                          const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx);
-std::string ExtractPkeys(const common::ColumnKey& cidx_ck, const int8_t* values, const codec::RowView& row_view,
-                         const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx);
-
 }  // namespace openmldb::storage
 #endif
