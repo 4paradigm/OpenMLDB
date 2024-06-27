@@ -20,7 +20,6 @@
 
 #include "absl/strings/str_join.h"  // dlog
 #include "absl/strings/str_split.h"
-#include "index_organized_table.h"
 #include "sdk/sql_router.h"
 #include "storage/iot_segment.h"
 
