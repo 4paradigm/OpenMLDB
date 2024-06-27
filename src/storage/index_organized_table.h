@@ -54,15 +54,6 @@ class IndexOrganizedTable : public MemTable {
 
     void SchedGCByDelete(const std::shared_ptr<sdk::SQLRouter>& router);
 
-    static std::map<std::string, std::pair<uint32_t, type::DataType>> MakePkeysHint(const codec::Schema& schema,
-                                                                                    const common::ColumnKey& cidx_ck);
-    static std::string MakeDeleteSQL(const std::string& db, const std::string& name, const common::ColumnKey& cidx_ck,
-                                     const int8_t* values, uint64_t ts, const codec::RowView& row_view,
-                                     const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx);
-    static std::string ExtractPkeys(const common::ColumnKey& cidx_ck, const int8_t* values,
-                                    const codec::RowView& row_view,
-                                    const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx);
-
  private:
     absl::Status ClusteredIndexGCByDelete(const std::shared_ptr<sdk::SQLRouter>& router);
 
@@ -72,6 +63,15 @@ class IndexOrganizedTable : public MemTable {
 
     std::mutex gc_lock_;
 };
-}  // namespace openmldb::storage
 
+static std::map<std::string, std::pair<uint32_t, type::DataType>> MakePkeysHint(const codec::Schema& schema,
+                                                                                const common::ColumnKey& cidx_ck);
+static std::string MakeDeleteSQL(const std::string& db, const std::string& name, const common::ColumnKey& cidx_ck,
+                                    const int8_t* values, uint64_t ts, const codec::RowView& row_view,
+                                    const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx);
+static std::string ExtractPkeys(const common::ColumnKey& cidx_ck, const int8_t* values,
+                                const codec::RowView& row_view,
+                                const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx);
+
+}  // namespace openmldb::storage
 #endif

@@ -1452,13 +1452,13 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
             // revertput or SQLDeleteRow is not easy to use here, so make a sql
             DLOG(INFO) << "primary key exists, delete old data then insert new data";
             // just where primary key, not all columns(redundant condition)
-            auto hint = storage::IndexOrganizedTable::MakePkeysHint(row->GetTableInfo().column_desc(),
+            auto hint = storage::MakePkeysHint(row->GetTableInfo().column_desc(),
                                                                     row->GetTableInfo().column_key(0));
             if (hint.empty()) {
                 SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make pkeys hint failed");
                 return false;
             }
-            auto sql = storage::IndexOrganizedTable::MakeDeleteSQL(row->GetTableInfo().db(), row->GetTableInfo().name(),
+            auto sql = storage::MakeDeleteSQL(row->GetTableInfo().db(), row->GetTableInfo().name(),
                                                                    row->GetTableInfo().column_key(0),
                                                                    (int8_t*)exists_value.c_str(), ts, row_view, hint);
             if (sql.empty()) {
@@ -1687,12 +1687,12 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
             DLOG(INFO) << "primary key exists, delete old data then insert new data";
             // just where primary key, not all columns(redundant condition)
             auto hint =
-                storage::IndexOrganizedTable::MakePkeysHint(table_info->column_desc(), table_info->column_key(0));
+                storage::MakePkeysHint(table_info->column_desc(), table_info->column_key(0));
             if (hint.empty()) {
                 SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make pkeys hint failed");
                 return false;
             }
-            auto sql = storage::IndexOrganizedTable::MakeDeleteSQL(table_info->db(), table_info->name(),
+            auto sql = storage::MakeDeleteSQL(table_info->db(), table_info->name(),
                                                                    table_info->column_key(0),
                                                                    (int8_t*)exists_value.c_str(), ts, row_view, hint);
             if (sql.empty()) {

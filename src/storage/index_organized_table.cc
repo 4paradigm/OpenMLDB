@@ -453,7 +453,7 @@ absl::Status IndexOrganizedTable::CheckDataExists(uint64_t tsv, const Dimensions
 }
 
 // <pkey_col_name, (idx_in_row, type)>, error if empty
-std::map<std::string, std::pair<uint32_t, type::DataType>> IndexOrganizedTable::MakePkeysHint(
+std::map<std::string, std::pair<uint32_t, type::DataType>> MakePkeysHint(
     const codec::Schema& schema, const common::ColumnKey& cidx_ck) {
     if (cidx_ck.col_name().empty()) {
         LOG(WARNING) << "empty cidx column key";
@@ -486,7 +486,7 @@ std::map<std::string, std::pair<uint32_t, type::DataType>> IndexOrganizedTable::
 }
 
 // error if empty
-std::string IndexOrganizedTable::MakeDeleteSQL(
+std::string MakeDeleteSQL(
     const std::string& db, const std::string& name, const common::ColumnKey& cidx_ck, const int8_t* values, uint64_t ts,
     const codec::RowView& row_view, const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx) {
     auto sql_prefix = absl::StrCat("delete from ", db, ".", name, " where ");
@@ -529,7 +529,7 @@ std::string IndexOrganizedTable::MakeDeleteSQL(
 }
 
 // error if empty
-std::string IndexOrganizedTable::ExtractPkeys(
+std::string ExtractPkeys(
     const common::ColumnKey& cidx_ck, const int8_t* values, const codec::RowView& row_view,
     const std::map<std::string, std::pair<uint32_t, type::DataType>>& col_idx) {
     // join with |
