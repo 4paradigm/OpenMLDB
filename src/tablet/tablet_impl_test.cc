@@ -6303,7 +6303,7 @@ TEST_F(TabletImplTest, DeleteRange) {
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
     ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
     sleep(2);
-    assert_status(0, 0, 0);
+    assert_status(100, 3400, 5786);  // before node cache gc, status will be the same
     // gc node cache
     tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
     ASSERT_EQ(0, gen_response.code()) << gen_response.ShortDebugString();
