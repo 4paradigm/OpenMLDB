@@ -287,7 +287,7 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
     std::optional<uint64_t> clustered_tsv;
     std::map<uint32_t, std::map<int32_t, uint64_t>> ts_value_map;
     // we need two ref cnt
-    // 1. clustered and covering: put row ->DataBlock(i)
+    // 1. clustered and covering: put row -> DataBlock(i)
     // 2. secondary: put pkeys+pts -> DataBlock(j)
     uint32_t real_ref_cnt = 0, secondary_ref_cnt = 0;
     // cidx_inner_key_pair can get the clustered index
