@@ -125,6 +125,12 @@ configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
         "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"
 )
+
+configure_file(
+        "${PROJECT_SOURCE_DIR}/src/case/test_cfg.h.in"
+        "${PROJECT_SOURCE_DIR}/src/case/test_cfg.h"
+)
+
 if (DEFINED ENV{CI})
   # suppress useless maven log (e.g download log) on CI environment
   set(MAVEN_FLAGS --batch-mode)
