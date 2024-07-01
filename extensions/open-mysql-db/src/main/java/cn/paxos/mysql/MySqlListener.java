@@ -217,6 +217,9 @@ public class MySqlListener implements AutoCloseable {
         && !queryStringWithoutComment.startsWith("set @@execute_mode=")) {
       // ignore SET command
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
+    } else if (queryStringWithoutComment.equalsIgnoreCase("COMMIT")) {
+      // ignore COMMIT command
+      ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
     } else if (useDbMatcher.matches()) {
       sqlEngine.useDatabase(getConnectionId(ctx), useDbMatcher.group(1));
       ctx.writeAndFlush(OkResponse.builder().sequenceId(query.getSequenceId() + 1).build());
