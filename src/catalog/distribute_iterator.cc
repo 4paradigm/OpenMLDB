@@ -155,7 +155,7 @@ bool FullTableIterator::NextFromRemote() {
             }
         } else {
             kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, 0, count);
-            DLOG(INFO) << "count " << count;
+            DVLOG(1) << "count " << count;
         }
         if (kv_it_ && kv_it_->Valid()) {
             last_pk_ = kv_it_->GetLastPK();

@@ -223,7 +223,7 @@ IndexOption ::=
 
 | 配置项        | 描述                                                                                                      | expr                                                                                                           | 用法示例                                                                                   |
 |------------|---------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| `KEY`      | 索引列（必选）。OpenMLDB支持单列索引，也支持联合索引。当`KEY`后只有一列时，仅在该列上建立索引。当`KEY`后有多列时，建立这几列的联合索引：将多列按顺序拼接成一个字符串作为索引。        | 支持单列索引：`ColumnName`<br/>或联合索引：<br/>`(ColumnName (, ColumnName)* ) `                                            | 单列索引：`INDEX(KEY=col1)`<br />联合索引：`INDEX(KEY=(col1, col2))`                             |
+| `KEY/CKEY/SKEY` | 索引列（必选）。OpenMLDB支持单列索引，也支持联合索引。当`KEY`后只有一列时，仅在该列上建立索引。当`KEY`后有多列时，建立这几列的联合索引：将多列按顺序拼接成一个字符串作为索引。多KEY使用见[Index-Orgnized Table(IOT)](#index-orgnized-tableiot)。        | 支持单列索引：`ColumnName`<br/>或联合索引：<br/>`(ColumnName (, ColumnName)* ) `                                            | 单列索引：`INDEX(KEY=col1)`<br />联合索引：`INDEX(KEY=(col1, col2))`                             |
 | `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。时间列的类型只能为BigInt或者Timestamp                                             | `ColumnName`                                                                                                   | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。                         |
 | `TTL_TYPE` | 淘汰规则（可选）。包括四种类型，当不显式配置`TTL_TYPE`时，默认使用`ABSOLUTE`过期配置。                                                   | 支持的expr如下：`ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                           | 具体用法可以参考下文“TTL和TTL_TYPE的配置细则”                                                          |
 | `TTL`      | 最大存活时间/条数（可选）。依赖于`TTL_TYPE`，不同的`TTL_TYPE`有不同的`TTL` 配置方式。当不显式配置`TTL`时，`TTL=0`，表示不设置淘汰规则，OpenMLDB将不会淘汰记录。 | 支持数值：`int_literal`<br/>  或数值带时间单位(`S,M,H,D`)：`interval_literal`<br/>或元组形式：`( interval_literal , int_literal )` |具体用法可以参考下文“TTL和TTL_TYPE的配置细则” |
@@ -240,6 +240,27 @@ IndexOption ::=
 ```{note}
 最大过期时间和最大存活条数的限制，是出于性能考虑。如果你一定要配置更大的TTL值，可先创建表时临时使用合规的TTL值，然后使用nameserver的UpdateTTL接口来调整到所需的值（可无视max限制），生效需要经过一个gc时间；或者，调整nameserver配置`absolute_ttl_max`和`latest_ttl_max`，重启生效后再创建表。
 ```
+#### Index-Orgnized Table(IOT)
+
+索引使用KEY设置时创建Covering索引，在OpenMLDB中Covering索引存储完整的数据行，也因此占用内存较多。如果希望内存占用更低，同时允许性能损失，可以使用IOT表。IOT表中可以建三种类型的索引：
+- `CKEY`：Clustered索引，存完整数据行。配置的CKEY+TS用于唯一标识一行数据，INSERT重复主键时将更新数据（会触发所有索引上的删除旧数据，再INSERT新数据，性能会有损失）。也可只使用CKEY，不配置TS，CKEY唯一标识一行数据。查询到此索引的性能无损失。
+- `SKEY`：Secondary索引，存主键。不配置TS时，同SKEY下按插入时间排序。查询时先在Secondary索引中找到对应主键值，再根据主键查数据，查询性能有损失。
+- `KEY`：Covering索引，存完整数据行。不配置TS时，同KEY下按插入时间排序。查询到此索引的性能无损失。
+
+创建IOT表，第一个索引必须是唯一一个Clustered索引，其他索引可选。暂不支持调整Clustered索引的顺序。
+
+```sql
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1, ts=c2)); -- 一个Clustered索引
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2)); -- 一个Clustered索引和一个Secondary索引
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2), INDEX(key=c3)); -- 一个Clustered索引、一个Secondary索引和一个Covering索引
+```
+
+IOT各个索引的TTL与普通表的不同点是，IOT Clustered索引的ttl淘汰，将触发其他索引的删除操作，而Secondary索引和Covering索引的ttl淘汰，只会删除自身索引中的数据，不会触发其他索引的删除操作。通常来讲，除非有必要让Secondary和Covering索引更加节约内存，可以只设置Clustered索引的ttl，不设置Secondary和Covering索引的ttl。
+
+##### 注意事项
+
+- IOT表不可以并发写入相同主键的多条数据，可能出现冲突，至少一条数据会写入失败。IOT表中已存在的相同主键的数据不需要额外处理，将会被覆盖。为了不用修复导入，请在导入前做好数据清洗，对导入数据中相同主键的数据进行去重。（覆盖会出触发所有索引中的删除，单线程写入效率也非常低，所以并不推荐单线程导入。）
+- 
 
 #### Example
 **示例1：创建一张带单列索引的表**

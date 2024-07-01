@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+
 #include "storage/segment.h"
 #include "vm/catalog.h"
 
@@ -27,9 +28,12 @@ namespace storage {
 class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
  public:
     MemTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
-            uint64_t expire_cnt, type::CompressType compress_type)
-        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type),
-        row_(), compress_type_(compress_type) {}
+                           uint64_t expire_cnt, type::CompressType compress_type)
+        : it_(it),
+          record_idx_(1),
+          expire_value_(expire_time, expire_cnt, ttl_type),
+          row_(),
+          compress_type_(compress_type) {}
 
     ~MemTableWindowIterator();
 
@@ -59,8 +63,7 @@ class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
 class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
  public:
     MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index,
-                        type::CompressType compress_type);
+                        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index, type::CompressType compress_type);
 
     ~MemTableKeyIterator() override;
 
@@ -77,10 +80,13 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
 
     const hybridse::codec::Row GetKey() override;
 
+ protected:
+    TimeEntries::Iterator* GetTimeIter();
+
  private:
     void NextPK();
 
- private:
+ protected:
     Segment** segments_;
     uint32_t const seg_cnt_;
     uint32_t seg_idx_;
@@ -97,10 +103,10 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
 class MemTableTraverseIterator : public TraverseIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-            uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index,
-            type::CompressType compress_type);
+                             uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index,
+                             type::CompressType compress_type);
     ~MemTableTraverseIterator() override;
-    inline bool Valid() override;
+    bool Valid() override;
     void Next() override;
     void NextPK() override;
     void Seek(const std::string& key, uint64_t time) override;

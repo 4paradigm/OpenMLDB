@@ -219,7 +219,7 @@ class Executor:
         ns = self.endpoint_map[self.ns_leader]
         conn = httplib.HTTPConnection(ns)
         param = {"db": database, "name": table_name}
-        headers = {"Content-type": "application/json"}
+        headers = {"Content-type": "application/json", "Authorization": "foo"}
         conn.request("POST", "/NameServer/ShowTable", json.dumps(param), headers)
         response = conn.getresponse()
         if response.status != 200:
@@ -233,13 +233,15 @@ class Executor:
 
     def ParseTableInfo(self, table_info):
         result = {}
+        if not table_info:
+            return Status(-1, "table info is empty"), None
         for record in table_info:
             is_leader = True if record[4] == "leader" else False
             is_alive = True if record[5] == "yes" else False
             partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6])
             result.setdefault(record[2], [])
             result[record[2]].append(partition)
-        return result
+        return Status(), result
 
     def ParseTableInfoJson(self, table_info):
         """parse one table's partition info from json"""
@@ -260,8 +262,7 @@ class Executor:
         status, result = self.GetTableInfo(database, table_name)
         if not status.OK:
             return status, None
-        partition_dict = self.ParseTableInfo(result)
-        return Status(), partition_dict
+        return self.ParseTableInfo(result)
 
     def GetAllTable(self, database):
         status, result = self.GetTableInfo(database)
@@ -323,7 +324,7 @@ class Executor:
         # ttl won't effect, set to 0, and seg cnt is always 8
         # and no matter if leader
         param = {"table_meta": {"name": name, "tid": tid, "pid": pid, "ttl":0, "seg_cnt":8, "storage_mode": storage}}
-        headers = {"Content-type": "application/json"}
+        headers = {"Content-type": "application/json", "Authorization": "foo"}
         conn.request("POST", "/TabletServer/LoadTable", json.dumps(param), headers)
         response = conn.getresponse()
         if response.status != 200:

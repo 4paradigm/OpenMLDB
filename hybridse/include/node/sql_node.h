@@ -2084,14 +2084,19 @@ class CreateStmt : public SqlNode {
 class IndexKeyNode : public SqlNode {
  public:
     IndexKeyNode() : SqlNode(kIndexKey, 0, 0) {}
-    explicit IndexKeyNode(const std::string &key) : SqlNode(kIndexKey, 0, 0), key_({key}) {}
-    explicit IndexKeyNode(const std::vector<std::string> &keys) : SqlNode(kIndexKey, 0, 0), key_(keys) {}
+    explicit IndexKeyNode(const std::string &key, const std::string &type)
+        : SqlNode(kIndexKey, 0, 0), key_({key}), index_type_(type) {}
+    explicit IndexKeyNode(const std::vector<std::string> &keys, const std::string &type)
+        : SqlNode(kIndexKey, 0, 0), key_(keys), index_type_(type) {}
     ~IndexKeyNode() {}
     void AddKey(const std::string &key) { key_.push_back(key); }
+    void SetIndexType(const std::string &type) { index_type_ = type; }
     std::vector<std::string> &GetKey() { return key_; }
+    std::string &GetIndexType() { return index_type_; }
 
  private:
     std::vector<std::string> key_;
+    std::string index_type_ = "key";
 };
 class IndexVersionNode : public SqlNode {
  public:
@@ -2145,6 +2150,7 @@ class ColumnIndexNode : public SqlNode {
  public:
     ColumnIndexNode()
         : SqlNode(kColumnIndex, 0, 0),
+          index_type_("key"),
           ts_(""),
           version_(""),
           version_count_(0),
@@ -2155,6 +2161,8 @@ class ColumnIndexNode : public SqlNode {
 
     std::vector<std::string> &GetKey() { return key_; }
     void SetKey(const std::vector<std::string> &key) { key_ = key; }
+    void SetIndexType(const std::string &type) { index_type_ = type; }
+    std::string &GetIndexType() { return index_type_; }
 
     std::string GetTs() const { return ts_; }
 
@@ -2183,6 +2191,7 @@ class ColumnIndexNode : public SqlNode {
 
  private:
     std::vector<std::string> key_;
+    std::string index_type_;
     std::string ts_;
     std::string version_;
     int version_count_;

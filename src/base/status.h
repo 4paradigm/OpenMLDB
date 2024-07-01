@@ -191,7 +191,7 @@ enum ReturnCode {
 };
 
 struct Status {
-    Status(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    Status(int code_i, const std::string& msg_i) : code(code_i), msg(msg_i) {}
     Status() : code(ReturnCode::kOk), msg("ok") {}
     inline bool OK() const { return code == ReturnCode::kOk; }
     inline const std::string& GetMsg() const { return msg; }

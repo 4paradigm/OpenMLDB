@@ -207,8 +207,10 @@ bool Table::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             }
             col_vec.push_back(it->second);
         }
+        
+        common::IndexType index_type = column_key.has_type() ? column_key.type() : common::IndexType::kCovering;
         index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.GetMaxIndexId() + 1,
-                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec);
+                IndexStatus::kReady, ::openmldb::type::IndexType::kTimeSerise, col_vec, index_type);
         if (!column_key.ts_name().empty()) {
             if (auto ts_iter = schema.find(column_key.ts_name()); ts_iter == schema.end()) {
                 PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", column_key.ts_name().c_str(), id_, pid_);
