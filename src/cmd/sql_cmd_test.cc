@@ -1732,7 +1732,7 @@ class DeployLongWindowEnv {
     }
 
     void TearDown() {
-        TearDownPreAggTables();
+        TearDownDeployment();
         ProcessSQLs(sr_, {
                              absl::StrCat("drop table ", table_),
                              absl::StrCat("drop database ", db_),
@@ -1788,7 +1788,12 @@ class DeployLongWindowEnv {
 
     virtual void Deploy() = 0;
 
-    virtual void TearDownPreAggTables() = 0;
+    virtual void TearDownDeployment() {
+        ProcessSQLs(sr_, {
+                             absl::StrCat("use ", db_),
+                             absl::StrCat("drop deployment ", dp_),
+                         });
+    }
 
     void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) {  // NOLINT
         ::hybridse::sdk::Status status;
@@ -1843,14 +1848,14 @@ TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
         ".col2 ORDER BY col3"
         " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(!status.IsOK());
 
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
-    ASSERT_TRUE(ok) << status.msg;
+    ASSERT_TRUE(ok) << status.ToString();
     ok = sr->DropDB(base_db, &status);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(ok) << status.ToString();
 }
 
 TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
@@ -2872,24 +2877,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
                                                dp_, table_)});
         }
 
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_i64_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_s_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where__i64_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_filter_i64_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [5s, 11s]
@@ -2948,24 +2935,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
         w2 AS (PARTITION BY col1,col2 ORDER BY i64_col ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_t_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_filter"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3022,26 +2991,6 @@ TEST_P(DBSDKTest, LongWindowMinMaxWhere) {
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
-        }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
         }
     };
 
@@ -3100,25 +3049,6 @@ TEST_P(DBSDKTest, LongWindowSumWhere) {
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3174,25 +3104,6 @@ TEST_P(DBSDKTest, LongWindowAvgWhere) {
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
-        }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
         }
     };
 
@@ -3273,25 +3184,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereWithDataOutOfOrder) {
                 ASSERT_TRUE(ok && s.IsOK()) << s.msg << "\n" << s.trace;
             }
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3354,8 +3246,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
-
-        void TearDownPreAggTables() override {}
     };
 
     // unsupport: deploy any_where with rows bucket
@@ -3390,8 +3280,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
-
-            void TearDownPreAggTables() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3420,8 +3308,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
-
-            void TearDownPreAggTables() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3481,8 +3367,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
-
-        void TearDownPreAggTables() override {}
     };
 
     DeployLongWindowAnyWhereEnv env(sr);
