@@ -1628,19 +1628,18 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     rs = sr->ExecuteSQL("", result_sql, &status);
     ASSERT_EQ(3, rs->Size());
 
-    std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
-    ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
-    ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo3_w1_count_where_c4_c3;", &status);
-    ASSERT_TRUE(ok);
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo2", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo3", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    // drop deployment
+    sr->ExecuteSQL("test2", "drop deployment demo1;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    rs = sr->ExecuteSQL("test2", "drop deployment demo2;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    rs = sr->ExecuteSQL("test2", "drop deployment demo3;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    
+    sr->ExecuteSQL("test2", "drop table trans", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    sr->ExecuteSQL("drop database test2;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 }
 
 void CreateDBTableForLongWindow(const std::string& base_db, const std::string& base_table) {
@@ -3391,26 +3390,35 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         " max(c5) over w2 as w2_max_c5 FROM trans"
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    
     for (int i = 0; i < 10; i++) {
         HandleSQL("create database test2;");
         HandleSQL("use test2;");
         HandleSQL(create_sql);
+        LOG(INFO) << "before deploy " << i;
+        HandleSQL("select * from __INTERNAL_DB.PRE_AGG_META_INFO;");
         sr->ExecuteSQL(deploy_sql, &status);
         ASSERT_TRUE(status.IsOK());
+        absl::SleepFor(absl::Seconds(3));
+        LOG(INFO) << "after deploy " << i;
+        HandleSQL("select * from __INTERNAL_DB.PRE_AGG_META_INFO;");
         std::string msg;
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(2, rs->Size());
-        auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
-        ASSERT_TRUE(ok);
-        ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
-        ASSERT_TRUE(ok);
+        sr->ExecuteSQL("test2", "drop table trans;", &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL("drop procedure demo1;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
+        sr->ExecuteSQL("test2", "drop table trans;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
+
         result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+        HandleSQL(result_sql);
         rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(0, rs->Size());
-        ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
-        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
         // helpful for debug
         HandleSQL("show tables;");
         HandleSQL("show deployments;");
