@@ -21,11 +21,13 @@
 
 #include <ctime>
 #include <utility>
+#include <vector>
 
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
 #include "absl/time/civil_time.h"
 #include "absl/time/time.h"
+#include "base/cartesian_product.h"
 #include "base/iterator.h"
 #include "boost/date_time/gregorian/conversion.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
@@ -1411,6 +1413,59 @@ void printLog(const char* fmt) {
     if (fmt) {
         fprintf(stderr, "%s\n", fmt);
     }
+}
+
+// each variadic arg is ArrayRef<StringRef>*
+void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
+                   ArrayRef<codec::StringRef> *out) {
+    std::vector<int> arr_szs(cnt, 0);
+    for (int32_t i = 0; i < cnt; ++i) {
+        auto arr = data[i];
+        arr_szs.at(i) = arr->size;
+    }
+
+    // cal cartesian products
+    auto products = hybridse::base::cartesian_product(arr_szs);
+
+    auto real_sz = products.size();
+    v1::AllocManagedArray(out, products.size());
+
+    for (int prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
+        auto &prod = products.at(prod_idx);
+        int32_t sz = 0;
+        for (int i = 0; i < prod.size(); ++i) {
+            if (!data[i]->nullables[prod.at(i)]) {
+                // delimiter would be empty string if null
+                if (i > 0) {
+                    sz += del->size_;
+                }
+                sz += data[i]->raw[prod.at(i)]->size_;
+            } else {
+                // null exists in current product
+                // the only option now is to skip
+                real_sz--;
+                continue;
+            }
+        }
+        auto buf = v1::AllocManagedStringBuf(sz);
+        int32_t idx = 0;
+        for (int i = 0; i < prod.size(); ++i) {
+            if (!data[i]->nullables[prod.at(i)]) {
+                if (i > 0 && del->size_ > 0) {
+                    memcpy(buf + idx, del->data_, del->size_);
+                    idx += del->size_;
+                }
+                memcpy(buf + idx, data[i]->raw[prod.at(i)]->data_, data[i]->raw[prod.at(i)]->size_);
+                idx += data[i]->raw[prod.at(i)]->size_;
+            }
+        }
+
+        out->nullables[prod_idx] = false;
+        out->raw[prod_idx]->data_ = buf;
+        out->raw[prod_idx]->size_ = sz;
+    }
+
+    out->size = real_sz;
 }
 
 }  // namespace v1

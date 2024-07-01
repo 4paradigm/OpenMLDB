@@ -54,10 +54,10 @@ class MemTable : public Table {
     absl::Status Put(uint64_t time, const std::string& value, const Dimensions& dimensions,
                      bool put_if_absent) override;
 
-    bool GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response);
+    virtual bool GetBulkLoadInfo(::openmldb::api::BulkLoadInfoResponse* response);
 
-    bool BulkLoad(const std::vector<DataBlock*>& data_blocks,
-                  const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
+    virtual bool BulkLoad(const std::vector<DataBlock*>& data_blocks,
+                          const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
 
     bool Delete(const ::openmldb::api::LogEntry& entry) override;
 
@@ -68,7 +68,7 @@ class MemTable : public Table {
 
     TraverseIterator* NewTraverseIterator(uint32_t index) override;
 
-    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index);
+    ::hybridse::vm::WindowIterator* NewWindowIterator(uint32_t index) override;
 
     // release all memory allocated
     uint64_t Release();
@@ -104,15 +104,26 @@ class MemTable : public Table {
  protected:
     bool AddIndexToTable(const std::shared_ptr<IndexDef>& index_def) override;
 
+    uint32_t SegIdx(const std::string& pk);
+
+    Segment* GetSegment(uint32_t real_idx, uint32_t seg_idx) {
+        // TODO(hw): protect
+        return segments_[real_idx][seg_idx];
+    }
+    Segment** GetSegments(uint32_t real_idx) { return segments_[real_idx]; }
+
+    bool InitMeta();
+    uint32_t KeyEntryMaxHeight(const std::shared_ptr<InnerIndexSt>& inner_idx);
+
  private:
     bool CheckAbsolute(const TTLSt& ttl, uint64_t ts);
 
     bool CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts);
 
-    bool Delete(uint32_t idx, const std::string& key,
-            const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
+    bool Delete(uint32_t idx, const std::string& key, const std::optional<uint64_t>& start_ts,
+                const std::optional<uint64_t>& end_ts);
 
- private:
+ protected:
     uint32_t seg_cnt_;
     std::vector<Segment**> segments_;
     std::atomic<bool> enable_gc_;

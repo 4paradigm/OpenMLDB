@@ -38,7 +38,6 @@
 #endif
 #include "apiserver/api_server_impl.h"
 #include "auth/brpc_authenticator.h"
-#include "auth/user_access_manager.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
@@ -147,17 +146,12 @@ void StartNameServer() {
     }
 
     brpc::ServerOptions options;
-    std::unique_ptr<openmldb::auth::UserAccessManager> user_access_manager;
     std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
-    if (!FLAGS_skip_grant_tables) {
-        user_access_manager =
-            std::make_unique<openmldb::auth::UserAccessManager>(name_server->GetSystemTableIterator());
-        server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
-            [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
-                return user_access_manager->IsAuthenticated(host, username, password);
-            });
-        options.auth = server_authenticator.get();
-    }
+    server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
+        [name_server](const std::string& host, const std::string& username, const std::string& password) {
+            return name_server->IsAuthenticated(host, username, password);
+        });
+    options.auth = server_authenticator.get();
 
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -256,17 +250,13 @@ void StartTablet() {
         exit(1);
     }
     brpc::ServerOptions options;
-    std::unique_ptr<openmldb::auth::UserAccessManager> user_access_manager;
     std::unique_ptr<openmldb::authn::BRPCAuthenticator> server_authenticator;
 
-    if (!FLAGS_skip_grant_tables) {
-        user_access_manager = std::make_unique<openmldb::auth::UserAccessManager>(tablet->GetSystemTableIterator());
-        server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
-            [&user_access_manager](const std::string& host, const std::string& username, const std::string& password) {
-                return user_access_manager->IsAuthenticated(host, username, password);
-            });
-        options.auth = server_authenticator.get();
-    }
+    server_authenticator = std::make_unique<openmldb::authn::BRPCAuthenticator>(
+        [tablet](const std::string& host, const std::string& username, const std::string& password) {
+            return tablet->IsAuthenticated(host, username, password);
+        });
+    options.auth = server_authenticator.get();
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -3265,7 +3255,6 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::openmldb::cli
                 return;
             }
         }
-        // TODO(): get status msg
         auto st = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
                                     boost::lexical_cast<uint32_t>(parts[3]), ttl, is_leader, seg_cnt);
         if (st.OK()) {

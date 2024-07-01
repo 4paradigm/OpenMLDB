@@ -64,7 +64,7 @@ class TabletClient : public Client {
                                     const openmldb::common::VersionPair& pair,
                                     std::string& msg);  // NOLINT
 
-    bool Query(const std::string& db, const std::string& sql,
+    bool Query(const std::string& db, const std::string& sql, hybridse::vm::EngineMode default_mode,
                const std::vector<openmldb::type::DataType>& parameter_types, const std::string& parameter_row,
                brpc::Controller* cntl, ::openmldb::api::QueryResponse* response, const bool is_debug = false);
 
@@ -78,20 +78,24 @@ class TabletClient : public Client {
     base::Status Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& value);
 
     base::Status Put(uint32_t tid, uint32_t pid, uint64_t time, const std::string& value,
-             const std::vector<std::pair<std::string, uint32_t>>& dimensions,
-             int memory_usage_limit = 0, bool put_if_absent = false);
+                     const std::vector<std::pair<std::string, uint32_t>>& dimensions, int memory_usage_limit = 0,
+                     bool put_if_absent = false, bool check_exists = false);
 
     base::Status Put(uint32_t tid, uint32_t pid, uint64_t time, const base::Slice& value,
-            ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
-            int memory_usage_limit = 0, bool put_if_absent = false);
+                     ::google::protobuf::RepeatedPtrField<::openmldb::api::Dimension>* dimensions,
+                     int memory_usage_limit = 0, bool put_if_absent = false, bool check_exists = false);
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, std::string& value,  // NOLINT
              uint64_t& ts,                                                                          // NOLINT
-             std::string& msg);  // NOLINT
+             std::string& msg);                                                                     // NOLINT
 
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
-
+    base::Status Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time, const std::string& idx_name,
+                     std::string& value, uint64_t& ts);  // NOLINT
+    base::Status Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t stime, api::GetType stype,
+                     uint64_t etime, const std::string& idx_name, std::string& value,
+                     uint64_t& ts);  // NOLINT
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                 std::string& msg);  // NOLINT
 
@@ -266,6 +270,8 @@ class TabletClient : public Client {
                           uint32_t index_pos, const ::openmldb::base::LongWindowInfo& window_info);
 
     bool GetAndFlushDeployStats(::openmldb::api::DeployStatsResponse* res);
+
+    bool FlushPrivileges();
 
  private:
     base::Status LoadTableInternal(const ::openmldb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info);

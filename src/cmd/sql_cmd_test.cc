@@ -243,9 +243,7 @@ TEST_P(DBSDKTest, TestUser) {
     ASSERT_FALSE(status.IsOK());
     sr->ExecuteSQL(absl::StrCat("CREATE USER IF NOT EXISTS user1"), &status);
     ASSERT_TRUE(status.IsOK());
-    ASSERT_TRUE(true);
     auto opt = sr->GetRouterOptions();
-    std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
     if (cs->IsClusterMode()) {
         auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
         sdk::SQLRouterOptions opt1;
@@ -257,7 +255,6 @@ TEST_P(DBSDKTest, TestUser) {
         ASSERT_TRUE(router != nullptr);
         sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
         ASSERT_TRUE(status.IsOK());
-        std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
         router = NewClusterSQLRouter(opt1);
         ASSERT_FALSE(router != nullptr);
     } else {
@@ -271,7 +268,6 @@ TEST_P(DBSDKTest, TestUser) {
         ASSERT_TRUE(router != nullptr);
         sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
         ASSERT_TRUE(status.IsOK());
-        std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
         router = NewStandaloneSQLRouter(opt1);
         ASSERT_FALSE(router != nullptr);
     }
@@ -280,6 +276,121 @@ TEST_P(DBSDKTest, TestUser) {
     sr->ExecuteSQL(absl::StrCat("DROP USER user1"), &status);
     ASSERT_FALSE(status.IsOK());
     sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, TestGrantCreateUser) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("REVOKE CREATE USER ON *.* FROM 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user3 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_FALSE(status.IsOK());
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("REVOKE CREATE USER ON *.* FROM 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user3 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_FALSE(status.IsOK());
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, TestGrantCreateUserGrantOption) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+    ASSERT_TRUE(status.IsOK());
+
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%' WITH GRANT OPTION"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%' WITH GRANT OPTION"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
     ASSERT_TRUE(status.IsOK());
 }
 
@@ -1173,7 +1284,7 @@ TEST_P(DBSDKTest, Truncate) {
             sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
         }
     }
-    absl::SleepFor(absl::Seconds(5));
+    absl::SleepFor(absl::Seconds(16));  // sleep more to avoid truncate failed on partition offset mismatch
 
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 100);
@@ -1445,18 +1556,18 @@ TEST_P(DBSDKTest, SQLDeletetRow) {
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 3);
     std::string delete_sql = "delete from " + table_name + " where c1 = ?;";
-    auto insert_row = sr->GetDeleteRow(db_name, delete_sql, &status);
+    auto delete_row = sr->GetDeleteRow(db_name, delete_sql, &status);
     ASSERT_TRUE(status.IsOK());
-    insert_row->SetString(1, "key3");
-    ASSERT_TRUE(insert_row->Build());
-    sr->ExecuteDelete(insert_row, &status);
+    delete_row->SetString(1, "key3");
+    ASSERT_TRUE(delete_row->Build());
+    sr->ExecuteDelete(delete_row, &status);
     ASSERT_TRUE(status.IsOK());
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 2);
-    insert_row->Reset();
-    insert_row->SetString(1, "key100");
-    ASSERT_TRUE(insert_row->Build());
-    sr->ExecuteDelete(insert_row, &status);
+    delete_row->Reset();
+    delete_row->SetString(1, "key100");
+    ASSERT_TRUE(delete_row->Build());
+    sr->ExecuteDelete(delete_row, &status);
     ASSERT_TRUE(status.IsOK());
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 2);
@@ -3545,7 +3656,7 @@ TEST_P(DBSDKTest, ShowComponents) {
 void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectInfo>>& expect,
                                  hybridse::sdk::ResultSet* rs, bool all_db = false, bool is_cluster = false) {
     static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableStatus = {
-        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "2", "NULL", "NULL", "NULL", ""},
+        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "JOB_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{},

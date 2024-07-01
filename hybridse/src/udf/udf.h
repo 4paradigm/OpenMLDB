@@ -520,7 +520,8 @@ void hex(StringRef *str, StringRef *output);
 void unhex(StringRef *str, StringRef *output, bool* is_null);
 
 void printLog(const char* fmt);
-
+void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
+                   ArrayRef<codec::StringRef> *out);
 }  // namespace v1
 
 /// \brief register native udf related methods into given UdfLibrary `lib`

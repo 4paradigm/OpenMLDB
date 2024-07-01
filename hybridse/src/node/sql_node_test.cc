@@ -666,7 +666,7 @@ TEST_F(SqlNodeTest, IndexVersionNodeTest) {
 
 TEST_F(SqlNodeTest, CreateIndexNodeTest) {
     SqlNodeList *index_items = node_manager_->MakeNodeList();
-    index_items->PushBack(node_manager_->MakeIndexKeyNode("col4"));
+    index_items->PushBack(node_manager_->MakeIndexKeyNode("col4", "key"));
     index_items->PushBack(node_manager_->MakeIndexTsNode("col5"));
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(node_manager_->MakeColumnIndexNode(index_items));
     CreatePlanNode *node = node_manager_->MakeCreateTablePlanNode(

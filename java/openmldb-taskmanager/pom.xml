@@ -6,7 +6,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.8.6-SNAPSHOT</version>
+        <version>0.9.1-SNAPSHOT</version>
     </parent>
     <artifactId>openmldb-taskmanager</artifactId>
     <name>openmldb-taskmanager</name>
@@ -134,6 +134,12 @@
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-recipes</artifactId>
             <version>4.2.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.zookeeper</groupId>
+                    <artifactId>zookeeper</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -141,9 +147,6 @@
             <version>1.18.4</version>
             <scope>provided</scope>
         </dependency>
-
-
-
 
         <!-- Kubernetes -->
         <dependency>

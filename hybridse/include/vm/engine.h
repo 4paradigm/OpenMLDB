@@ -429,6 +429,10 @@ class Engine {
     /// request row info exists in 'values' option, as a format of:
     /// 1. [(col1_expr, col2_expr, ... ), (...), ...]
     /// 2. (col1_expr, col2_expr, ... )
+    //
+    // This function only check on request/batchrequest mode, for batch mode it does nothing.
+    // As for old-fashioned usage, request row does not need to appear in SQL, so it won't report
+    // error even request rows is empty, instead checks should performed at the very beginning of Compute.
     static absl::Status ExtractRequestRowsInSQL(SqlContext* ctx);
 
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,

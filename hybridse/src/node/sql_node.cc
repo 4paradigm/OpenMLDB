@@ -1188,6 +1188,8 @@ static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNa
         {kCreateFunctionStmt, "kCreateFunctionStmt"},
         {kCreateUserStmt, "kCreateUserStmt"},
         {kAlterUserStmt, "kAlterUserStmt"},
+        {kRevokeStmt, "kRevokeStmt"},
+        {kGrantStmt, "kGrantStmt"},
         {kDynamicUdfFnDef, "kDynamicUdfFnDef"},
         {kDynamicUdafFnDef, "kDynamicUdafFnDef"},
         {kWithClauseEntry, "kWithClauseEntry"},

@@ -2084,14 +2084,19 @@ class CreateStmt : public SqlNode {
 class IndexKeyNode : public SqlNode {
  public:
     IndexKeyNode() : SqlNode(kIndexKey, 0, 0) {}
-    explicit IndexKeyNode(const std::string &key) : SqlNode(kIndexKey, 0, 0), key_({key}) {}
-    explicit IndexKeyNode(const std::vector<std::string> &keys) : SqlNode(kIndexKey, 0, 0), key_(keys) {}
+    explicit IndexKeyNode(const std::string &key, const std::string &type)
+        : SqlNode(kIndexKey, 0, 0), key_({key}), index_type_(type) {}
+    explicit IndexKeyNode(const std::vector<std::string> &keys, const std::string &type)
+        : SqlNode(kIndexKey, 0, 0), key_(keys), index_type_(type) {}
     ~IndexKeyNode() {}
     void AddKey(const std::string &key) { key_.push_back(key); }
+    void SetIndexType(const std::string &type) { index_type_ = type; }
     std::vector<std::string> &GetKey() { return key_; }
+    std::string &GetIndexType() { return index_type_; }
 
  private:
     std::vector<std::string> key_;
+    std::string index_type_ = "key";
 };
 class IndexVersionNode : public SqlNode {
  public:
@@ -2145,6 +2150,7 @@ class ColumnIndexNode : public SqlNode {
  public:
     ColumnIndexNode()
         : SqlNode(kColumnIndex, 0, 0),
+          index_type_("key"),
           ts_(""),
           version_(""),
           version_count_(0),
@@ -2155,6 +2161,8 @@ class ColumnIndexNode : public SqlNode {
 
     std::vector<std::string> &GetKey() { return key_; }
     void SetKey(const std::vector<std::string> &key) { key_ = key; }
+    void SetIndexType(const std::string &type) { index_type_ = type; }
+    std::string &GetIndexType() { return index_type_; }
 
     std::string GetTs() const { return ts_; }
 
@@ -2183,6 +2191,7 @@ class ColumnIndexNode : public SqlNode {
 
  private:
     std::vector<std::string> key_;
+    std::string index_type_;
     std::string ts_;
     std::string version_;
     int version_count_;
@@ -2419,6 +2428,64 @@ class AlterUserNode : public SqlNode {
     const std::string name_;
     bool if_exists_ = false;
     const std::shared_ptr<OptionsMap> options_;
+};
+
+class GrantNode : public SqlNode {
+ public:
+    explicit GrantNode(std::optional<std::string> target_type, std::string database, std::string target,
+                       std::vector<std::string> privileges, bool is_all_privileges, std::vector<std::string> grantees,
+                       bool with_grant_option)
+        : SqlNode(kGrantStmt, 0, 0),
+          target_type_(target_type),
+          database_(database),
+          target_(target),
+          privileges_(privileges),
+          is_all_privileges_(is_all_privileges),
+          grantees_(grantees),
+          with_grant_option_(with_grant_option) {}
+    const std::vector<std::string> Privileges() const { return privileges_; }
+    const std::vector<std::string> Grantees() const { return grantees_; }
+    const std::string Database() const { return database_; }
+    const std::string Target() const { return target_; }
+    const std::optional<std::string> TargetType() const { return target_type_; }
+    const bool IsAllPrivileges() const { return is_all_privileges_; }
+    const bool WithGrantOption() const { return with_grant_option_; }
+
+ private:
+    std::optional<std::string> target_type_;
+    std::string database_;
+    std::string target_;
+    std::vector<std::string> privileges_;
+    bool is_all_privileges_;
+    std::vector<std::string> grantees_;
+    bool with_grant_option_;
+};
+
+class RevokeNode : public SqlNode {
+ public:
+    explicit RevokeNode(std::optional<std::string> target_type, std::string database, std::string target,
+                        std::vector<std::string> privileges, bool is_all_privileges, std::vector<std::string> grantees)
+        : SqlNode(kRevokeStmt, 0, 0),
+          target_type_(target_type),
+          database_(database),
+          target_(target),
+          privileges_(privileges),
+          is_all_privileges_(is_all_privileges),
+          grantees_(grantees) {}
+    const std::vector<std::string> Privileges() const { return privileges_; }
+    const std::vector<std::string> Grantees() const { return grantees_; }
+    const std::string Database() const { return database_; }
+    const std::string Target() const { return target_; }
+    const std::optional<std::string> TargetType() const { return target_type_; }
+    const bool IsAllPrivileges() const { return is_all_privileges_; }
+
+ private:
+    std::optional<std::string> target_type_;
+    std::string database_;
+    std::string target_;
+    std::vector<std::string> privileges_;
+    bool is_all_privileges_;
+    std::vector<std::string> grantees_;
 };
 
 class ExplainNode : public SqlNode {
