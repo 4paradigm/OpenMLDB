@@ -1711,6 +1711,7 @@ void PrepareRequestRowForLongWindow(const std::string& base_db, const std::strin
 }
 
 // TODO(ace): create instance of DeployLongWindowEnv with template
+static absl::BitGen gen;  // reseed may segfault, use one for all env
 class DeployLongWindowEnv {
  public:
     explicit DeployLongWindowEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {}
@@ -1718,9 +1719,9 @@ class DeployLongWindowEnv {
     virtual ~DeployLongWindowEnv() {}
 
     void SetUp() {
-        db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        dp_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        db_ = absl::StrCat("db_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+        table_ = absl::StrCat("tb_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+        dp_ = absl::StrCat("dp_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
 
         PrepareSchema();
 
@@ -1819,7 +1820,6 @@ class DeployLongWindowEnv {
 
  protected:
     sdk::SQLClusterRouter* sr_;
-    absl::BitGen gen_;
     std::string db_;
     std::string table_;
     std::string dp_;
@@ -2876,7 +2876,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
         w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 6s PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
-
     };
 
     // request window [5s, 11s]
@@ -3246,6 +3245,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
+        void TearDownDeployment() override {}
     };
 
     // unsupport: deploy any_where with rows bucket
@@ -3280,6 +3280,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
+            void TearDownDeployment() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3308,6 +3309,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
+            void TearDownDeployment() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3367,6 +3369,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
+        void TearDownDeployment() override {}
     };
 
     DeployLongWindowAnyWhereEnv env(sr);
@@ -4035,6 +4038,7 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(res->Size(), 4);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c1='aa';"), &status);
     ASSERT_EQ(res->Size(), 3);
