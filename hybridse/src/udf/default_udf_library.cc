@@ -911,6 +911,47 @@ void DefaultUdfLibrary::InitStringUdf() {
 
     RegisterAlias("substr", "substring");
 
+    RegisterExternal("locate")
+    .args<StringRef, StringRef>(
+        static_cast<int32_t (*)(StringRef*, StringRef*)>(udf::v1::locate))
+    .doc(R"(
+        @brief Returns the position of the first occurrence of substr in str. The given pos and return value are 1-based.
+                This is a version of the `locate` function where `pos` has a default value of 1.
+
+        Example:
+
+        @code{.sql}
+
+            select locate("wo", "hello world");
+            --output 7
+            
+        @endcode)");
+
+    RegisterExternal("locate")
+        .args<StringRef, StringRef, int32_t>(
+            static_cast<int32_t (*)(StringRef*, StringRef*, int32_t)>(udf::v1::locate))
+        .doc(R"(
+            @brief Returns the position of the first occurrence of substr in str after position pos. The given pos and return value are 1-based.
+
+            Example:
+
+            @code{.sql}
+
+                select locate("wo", "hello world", 2);
+                --output 7
+                
+                select locate("Wo", "hello world", 2);
+                --output 0
+                
+            @endcode
+
+            @param substr
+            @param str
+            @param pos: define the begining search position of the str.
+             - Negetive value is illegal and will return 0 directly;
+             - If substr is "" and pos less equal len(str) + 1, return pos, other case return 0;
+        )");
+
     RegisterExternal("strcmp")
         .args<StringRef, StringRef>(
             static_cast<int32_t (*)(StringRef*, StringRef*)>(
