@@ -12,3 +12,5 @@ OpenMLDB Blogs
     Ultra High-Performance Database OpenM(ysq)LDB: Seamless Compatibility with MySQL Protocol and Multi-Language MySQL Client <20240322_Openmysqldb.md>
 
     Comparative Analysis of Memory Consumption: OpenMLDB vs Redis Test Report <20240402_OpenmldbVsRedis.md>
+
+    Introducing OpenMLDB’s New Feature: Feature Signatures — Enabling Complete Feature Engineering with SQL <20240523_OpenmldbFeatureSignatures.md>
