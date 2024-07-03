@@ -61,7 +61,7 @@ jobs:
   apiserver-cluster:
     needs: build-openmldb
     
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -114,7 +114,7 @@ jobs:
   java-sdk-cluster-memory-0:
     needs: build-openmldb
     
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -168,7 +168,7 @@ jobs:
           
   java-sdk-cluster-memory-1:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -223,7 +223,7 @@ jobs:
         
   java-sdk-cluster-hdd:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -277,7 +277,7 @@ jobs:
 
   java-sdk-cluster-ssd:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -330,7 +330,7 @@ jobs:
           
   java-sdk-yarn:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -386,7 +386,7 @@ jobs:
 
   java-sdk-kafka:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
