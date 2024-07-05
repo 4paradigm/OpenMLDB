@@ -221,6 +221,9 @@ class SqlCase {
     }
     static std::set<std::string> HYBRIDSE_LEVEL();
 
+    // Get the base directory searching for yaml test cases.
+    // It is by default directory to current git repository, or you can override
+    // the base directory with 'SQL_CASE_BASE_DIR' environment variable
     static std::string SqlCaseBaseDir();
 
     static bool IsDebug() {

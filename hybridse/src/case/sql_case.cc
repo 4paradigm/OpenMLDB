@@ -1759,6 +1759,10 @@ std::set<std::string> SqlCase::HYBRIDSE_LEVEL() {
 }
 
 std::string SqlCase::SqlCaseBaseDir() {
+    char* value = getenv("SQL_CASE_BASE_DIR");
+    if (value != nullptr) {
+        return std::string(value);
+    }
     return SQL_CASE_BASE_DIR;
 }
 
