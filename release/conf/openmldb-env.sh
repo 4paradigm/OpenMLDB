@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-export OPENMLDB_VERSION=0.9.0
+export OPENMLDB_VERSION=0.9.1
 # openmldb mode: standalone / cluster
 export OPENMLDB_MODE=${OPENMLDB_MODE:=cluster}
 # openmldb root path
