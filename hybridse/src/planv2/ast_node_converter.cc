@@ -24,6 +24,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
 #include "absl/types/span.h"
+#include "ast_node_converter.h"
 #include "base/fe_status.h"
 #include "node/sql_node.h"
 #include "udf/udf.h"
@@ -723,6 +724,20 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             node::CreateUserNode* create_user_node = nullptr;
             CHECK_STATUS(ConvertCreateUserStatement(create_user_stmt, node_manager, &create_user_node))
             *output = create_user_node;
+            break;
+        }
+        case zetasql::AST_GRANT_STATEMENT: {
+            const zetasql::ASTGrantStatement* grant_stmt = statement->GetAsOrNull<zetasql::ASTGrantStatement>();
+            node::GrantNode* grant_node = nullptr;
+            CHECK_STATUS(ConvertGrantStatement(grant_stmt, node_manager, &grant_node))
+            *output = grant_node;
+            break;
+        }
+        case zetasql::AST_REVOKE_STATEMENT: {
+            const zetasql::ASTRevokeStatement* revoke_stmt = statement->GetAsOrNull<zetasql::ASTRevokeStatement>();
+            node::RevokeNode* revoke_node = nullptr;
+            CHECK_STATUS(ConvertRevokeStatement(revoke_stmt, node_manager, &revoke_node))
+            *output = revoke_node;
             break;
         }
         case zetasql::AST_ALTER_USER_STATEMENT: {
@@ -1583,7 +1598,7 @@ base::Status ConvertColumnIndexNode(const zetasql::ASTIndexDefinition* ast_def_n
 }
 
 // case entry->name()
-//   "key"      -> IndexKeyNode
+//   "key"/"ckey"/"skey"      -> IndexKeyNode
 //   "ts"       -> IndexTsNode
 //   "ttl"      -> IndexTTLNode
 //   "ttl_type" -> IndexTTLTypeNode
@@ -1592,14 +1607,13 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                                 node::SqlNode** output) {
     auto name = entry->name()->GetAsString();
     absl::string_view name_v(name);
-    if (absl::EqualsIgnoreCase("key", name_v)) {
+    if (absl::EqualsIgnoreCase("key", name_v) || absl::EqualsIgnoreCase("ckey", name_v) || absl::EqualsIgnoreCase("skey", name_v)) {
         switch (entry->value()->node_kind()) {
             case zetasql::AST_PATH_EXPRESSION: {
                 std::string column_name;
                 CHECK_STATUS(
                     AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &column_name));
-                *output = node_manager->MakeIndexKeyNode(column_name);
-
+                *output = node_manager->MakeIndexKeyNode(column_name, absl::AsciiStrToLower(name_v));
                 return base::Status::OK();
             }
             case zetasql::AST_STRUCT_CONSTRUCTOR_WITH_PARENS: {
@@ -1617,7 +1631,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                     ast_struct_expr->field_expression(0)->GetAsOrNull<zetasql::ASTPathExpression>(), &key_str));
 
                 node::IndexKeyNode* index_keys =
-                    dynamic_cast<node::IndexKeyNode*>(node_manager->MakeIndexKeyNode(key_str));
+                    dynamic_cast<node::IndexKeyNode*>(node_manager->MakeIndexKeyNode(key_str, absl::AsciiStrToLower(name_v)));
 
                 for (int i = 1; i < field_expr_len; ++i) {
                     std::string key;
@@ -1628,7 +1642,6 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                     index_keys->AddKey(key);
                 }
                 *output = index_keys;
-
                 return base::Status::OK();
             }
             default: {
@@ -2133,6 +2146,81 @@ base::Status ConvertAlterUserStatement(const zetasql::ASTAlterUserStatement* roo
     return base::Status::OK();
 }
 
+base::Status ConvertGrantStatement(const zetasql::ASTGrantStatement* root, node::NodeManager* node_manager,
+                                   node::GrantNode** output) {
+    CHECK_TRUE(root != nullptr, common::kSqlAstError, "not an ASTGrantStatement");
+    std::vector<std::string> target_path;
+    CHECK_STATUS(AstPathExpressionToStringList(root->target_path(), target_path));
+    std::optional<std::string> target_type = std::nullopt;
+    if (root->target_type() != nullptr) {
+        target_type = root->target_type()->GetAsString();
+    }
+
+    std::vector<std::string> privileges;
+    std::vector<std::string> grantees;
+    for (auto privilege : root->privileges()->privileges()) {
+        if (privilege == nullptr) {
+            continue;
+        }
+
+        auto privilege_action = privilege->privilege_action();
+        if (privilege_action != nullptr) {
+            privileges.push_back(privilege_action->GetAsString());
+        }
+    }
+
+    for (auto grantee : root->grantee_list()->grantee_list()) {
+        if (grantee == nullptr) {
+            continue;
+        }
+
+        std::string grantee_str;
+        CHECK_STATUS(AstStringLiteralToString(grantee, &grantee_str));
+        grantees.push_back(grantee_str);
+    }
+    *output = node_manager->MakeNode<node::GrantNode>(target_type, target_path.at(0), target_path.at(1), privileges,
+                                                      root->privileges()->is_all_privileges(), grantees,
+                                                      root->with_grant_option());
+    return base::Status::OK();
+}
+
+base::Status ConvertRevokeStatement(const zetasql::ASTRevokeStatement* root, node::NodeManager* node_manager,
+                                    node::RevokeNode** output) {
+    CHECK_TRUE(root != nullptr, common::kSqlAstError, "not an ASTRevokeStatement");
+    std::vector<std::string> target_path;
+    CHECK_STATUS(AstPathExpressionToStringList(root->target_path(), target_path));
+    std::optional<std::string> target_type = std::nullopt;
+    if (root->target_type() != nullptr) {
+        target_type = root->target_type()->GetAsString();
+    }
+
+    std::vector<std::string> privileges;
+    std::vector<std::string> grantees;
+    for (auto privilege : root->privileges()->privileges()) {
+        if (privilege == nullptr) {
+            continue;
+        }
+
+        auto privilege_action = privilege->privilege_action();
+        if (privilege_action != nullptr) {
+            privileges.push_back(privilege_action->GetAsString());
+        }
+    }
+
+    for (auto grantee : root->grantee_list()->grantee_list()) {
+        if (grantee == nullptr) {
+            continue;
+        }
+
+        std::string grantee_str;
+        CHECK_STATUS(AstStringLiteralToString(grantee, &grantee_str));
+        grantees.push_back(grantee_str);
+    }
+    *output = node_manager->MakeNode<node::RevokeNode>(target_type, target_path.at(0), target_path.at(1), privileges,
+                                                       root->privileges()->is_all_privileges(), grantees);
+    return base::Status::OK();
+}
+
 base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement* root, node::NodeManager* node_manager,
                                          node::CreateIndexNode** output) {
     CHECK_TRUE(nullptr != root, common::kSqlAstError, "not an ASTCreateIndexStatement")
@@ -2166,13 +2254,34 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
         keys.push_back(path.back());
     }
     node::SqlNodeList* index_node_list = node_manager->MakeNodeList();
-
-    node::SqlNode* index_key_node = node_manager->MakeIndexKeyNode(keys);
+    // extract index type from options
+    std::string index_type{"key"};
+    if (root->options_list() != nullptr) {
+        for (const auto option : root->options_list()->options_entries()) {
+            if (auto name = option->name()->GetAsString(); absl::EqualsIgnoreCase(name, "type")) {
+                CHECK_TRUE(option->value()->node_kind() == zetasql::AST_PATH_EXPRESSION, common::kSqlAstError,
+                           "Invalid index type, should be path expression");
+                std::string type_name;
+                CHECK_STATUS(
+                    AstPathExpressionToString(option->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &type_name));
+                if (absl::EqualsIgnoreCase(type_name, "secondary")) {
+                    index_type = "skey";
+                } else if (!absl::EqualsIgnoreCase(type_name, "covering")) {
+                    FAIL_STATUS(common::kSqlAstError, "Invalid index type: ", type_name);
+                }
+            }
+        }
+    }
+    node::SqlNode* index_key_node = node_manager->MakeIndexKeyNode(keys, index_type);
     index_node_list->PushBack(index_key_node);
     if (root->options_list() != nullptr) {
         for (const auto option : root->options_list()->options_entries()) {
+            // ignore type
+            if (auto name = option->name()->GetAsString(); absl::EqualsIgnoreCase(name, "type")) {
+                continue;
+            }
             node::SqlNode* node = nullptr;
-            CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
+            CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));  // option set secondary index type
             if (node != nullptr) {
                 // NOTE: unhandled option will return OK, but node is not set
                 index_node_list->PushBack(node);

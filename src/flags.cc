@@ -187,3 +187,7 @@ DEFINE_int32(sync_job_timeout, 30 * 60 * 1000,
              "sync job timeout, unit is milliseconds, should <= server.channel_keep_alive_time in TaskManager");
 DEFINE_int32(deploy_job_max_wait_time_ms, 30 * 60 * 1000, "the max wait time of waiting deploy job");
 DEFINE_bool(skip_grant_tables, true, "skip the grant tables");
+
+// iot 
+// not exactly size, may plus some TODO(hw): too small?
+DEFINE_uint32(cidx_gc_max_size, 1000, "config the max size for one cidx segment gc");

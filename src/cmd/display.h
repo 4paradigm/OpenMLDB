@@ -105,6 +105,7 @@ __attribute__((unused)) static void PrintColumnKey(
     t.add("ts");
     t.add("ttl");
     t.add("ttl_type");
+    t.add("type");
     t.end_of_row();
     int index_pos = 1;
     for (int i = 0; i < column_key_field.size(); i++) {
@@ -141,7 +142,7 @@ __attribute__((unused)) static void PrintColumnKey(
             t.add("-");  // ttl
             t.add("-");  // ttl_type
         }
-
+        t.add(common::IndexType_Name(column_key.type()));
         t.end_of_row();
     }
     stream << t;

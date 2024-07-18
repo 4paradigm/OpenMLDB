@@ -17,6 +17,7 @@
 #include "vm/engine_context.h"
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/ascii.h"
 
 namespace hybridse {
 namespace vm {
@@ -61,7 +62,7 @@ std::string EngineModeName(EngineMode mode) {
 
 absl::StatusOr<EngineMode> UnparseEngineMode(absl::string_view str) {
     auto& m = getModeMap();
-    auto it = m.find(str);
+    auto it = m.find(absl::AsciiStrToLower(str));
     if (it != m.end()) {
         return it->second;
     }

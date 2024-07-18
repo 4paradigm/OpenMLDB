@@ -183,11 +183,15 @@ enum ReturnCode {
     kSQLRunError = 1001,
     kRPCRunError = 1002,
     kServerConnError = 1003,
-    kRPCError = 1004  // brpc controller error
+    kRPCError = 1004,  // brpc controller error
+
+    // auth
+    kFlushPrivilegesFailed = 1100,  // brpc controller error
+    kNotAuthorized = 1101  // brpc controller error
 };
 
 struct Status {
-    Status(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    Status(int code_i, const std::string& msg_i) : code(code_i), msg(msg_i) {}
     Status() : code(ReturnCode::kOk), msg("ok") {}
     inline bool OK() const { return code == ReturnCode::kOk; }
     inline const std::string& GetMsg() const { return msg; }

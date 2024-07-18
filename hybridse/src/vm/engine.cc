@@ -462,17 +462,27 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, Row* o
     if (!sql_request_rows.empty()) {
         row = sql_request_rows.at(0);
     }
-    auto task = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
-                    ->get_sql_context()
-                    .cluster_job->GetTask(task_id)
-                    .GetRoot();
+
+    auto info = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_);
+    auto main_task_id = info->GetClusterJob()->main_task_id();
+    if (task_id == main_task_id && !info->GetRequestSchema().empty() && row.empty()) {
+        // a non-empty request row required but it not.
+        // checks only happen for a top level query, not subquery,
+        // since query internally may construct a empty row as input row,
+        // not meaning row with no columns, but row with all column values NULL
+        LOG(WARNING) << "request SQL requires a non-empty request row, but empty row received";
+        // TODO(someone): use status
+        return common::StatusCode::kRunSessionError;
+    }
+
+    auto task = info->get_sql_context().cluster_job->GetTask(task_id).GetRoot();
+
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id << " not exist!";
         return -2;
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
-    RunnerContext ctx(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job, row,
-                      sp_name_, is_debug_);
+    RunnerContext ctx(info->get_sql_context().cluster_job, row, sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "Run request plan output is null";
@@ -491,13 +501,24 @@ int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch, std::
 }
 int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    std::vector<::hybridse::codec::Row>& sql_request_rows =
-        std::dynamic_pointer_cast<SqlCompileInfo>(GetCompileInfo())->get_sql_context().request_rows;
+    auto info = std::dynamic_pointer_cast<SqlCompileInfo>(GetCompileInfo());
+    std::vector<::hybridse::codec::Row>& sql_request_rows = info->get_sql_context().request_rows;
 
-    RunnerContext ctx(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job,
-                      sql_request_rows.empty() ? request_batch : sql_request_rows, sp_name_, is_debug_);
-    auto task =
-        std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job->GetTask(id).GetRoot();
+    std::vector<::hybridse::codec::Row> rows = sql_request_rows;
+    if (rows.empty()) {
+        rows = request_batch;
+    }
+
+    auto main_task_id = info->GetClusterJob()->main_task_id();
+    if (id != main_task_id && !info->GetRequestSchema().empty() && rows.empty()) {
+        // a non-empty request row list required but it not
+        LOG(WARNING) << "batchrequest SQL requires a non-empty request row list, but empty row list received";
+        // TODO(someone): use status
+        return common::StatusCode::kRunSessionError;
+    }
+
+    RunnerContext ctx(info->get_sql_context().cluster_job, rows, sp_name_, is_debug_);
+    auto task = info->get_sql_context().cluster_job->GetTask(id).GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "Fail to run request plan: taskid" << id << " not exist!";
         return -2;

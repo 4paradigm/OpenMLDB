@@ -72,6 +72,12 @@ base::Status ConvertCreateUserStatement(const zetasql::ASTCreateUserStatement* r
 base::Status ConvertAlterUserStatement(const zetasql::ASTAlterUserStatement* root, node::NodeManager* node_manager,
                                         node::AlterUserNode** output);
 
+base::Status ConvertGrantStatement(const zetasql::ASTGrantStatement* root, node::NodeManager* node_manager,
+                                   node::GrantNode** output);
+
+base::Status ConvertRevokeStatement(const zetasql::ASTRevokeStatement* root, node::NodeManager* node_manager,
+                                    node::RevokeNode** output);
+
 base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* node_manager, node::QueryNode** output);
 
 base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expr, node::NodeManager* node_manager,

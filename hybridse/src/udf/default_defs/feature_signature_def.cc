@@ -204,14 +204,23 @@ struct GCFormat {
         switch (feature_signature) {
             case kFeatureSignatureContinuous: {
                 if (!is_null) {
-                    instance_feature += " " + std::to_string(slot_number) + ":0:" + format_continuous(input);
+                    if (!instance_feature.empty()) {
+                        instance_feature += " ";
+                    }
+                    int64_t hash = FarmFingerprint(CCallDataTypeTrait<int64_t>::to_bytes_ref(&slot_number));
+                    instance_feature += std::to_string(slot_number) + ":";
+                    instance_feature += format_discrete(hash);
+                    instance_feature += ":" + format_continuous(input);
                 }
                 ++slot_number;
                 break;
             }
             case kFeatureSignatureDiscrete: {
                 if (!is_null) {
-                    instance_feature += " " + std::to_string(slot_number) + ":" + format_discrete(input);
+                    if (!instance_feature.empty()) {
+                        instance_feature += " ";
+                    }
+                    instance_feature += std::to_string(slot_number) + ":" + format_discrete(input);
                 }
                 ++slot_number;
                 break;
@@ -249,7 +258,7 @@ struct GCFormat {
     }
 
     std::string Output() {
-        return instance_label + "|" + instance_feature;
+        return instance_label + " | " + instance_feature;
     }
 
     size_t slot_number = 1;
@@ -482,7 +491,7 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              Example:
              @code{.sql}
                 select gcformat(multiclass_label(6), continuous(1.5), category(3));
-                -- output 6| 1:0:1.500000 2:2681491882390849628
+                -- output 6 | 1:0:1.500000 2:2681491882390849628
              @endcode
 
              @since 0.9.0

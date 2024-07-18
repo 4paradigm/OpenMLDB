@@ -26,12 +26,18 @@ import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.openmldb.sdk.utils.AIOSUtil;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
+import com.google.gson.Gson;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.PreparedStatement;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -927,4 +933,58 @@ public class SQLRouterSmokeTest {
                 "FROM\n" +
                 "  t2\n");
     }
+
+    private void testMergeDAGSQLCase(String input, String output, String error) {
+        Exception exception = null;    
+        try {
+            DAGNode dag = AIOSUtil.parseAIOSDAG(input);
+            Map<String, Map<String, Schema>> tableSchema = AIOSUtil.parseAIOSTableSchema(input, "usedDB");
+            String merged = SqlClusterExecutor.mergeDAGSQL(dag);
+            System.out.println(merged);
+            Assert.assertEquals(merged, output);
+            List<String> errors = SqlClusterExecutor.validateSQLInRequest(merged, "usedDB", tableSchema);
+            if (!errors.isEmpty()) {
+                throw new SQLException("merged sql is invalid: " + errors +
+                        "\n, merged sql: " + merged + "\n, table schema: " + tableSchema);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            exception = e;
+        }
+        if (error == null) {
+            Assert.assertTrue(exception == null);
+        } else {
+            Assert.assertTrue(exception.toString().contains(error));
+        }
+    }
+
+    @Test
+    public void testMergeDAGSQL() throws IOException {
+        System.out.println("user.dir: " + System.getProperty("user.dir"));
+        ArrayList<Path> inputs = new ArrayList<>();
+        ArrayList<Path> outputs = new ArrayList<>();
+        inputs.add(Paths.get("src/test/data/aiosdagsql/input1.json"));
+        outputs.add(Paths.get("src/test/data/aiosdagsql/output1.sql"));
+        for (int i = 0; i < inputs.size(); ++i) {
+            String input = new String(Files.readAllBytes(inputs.get(i)));
+            String output = new String(Files.readAllBytes(outputs.get(i)));
+            testMergeDAGSQLCase(input, output, null);
+        }
+    }
+
+    @Test
+    public void testMergeDAGSQLError() throws IOException {
+        System.out.println("user.dir: " + System.getProperty("user.dir"));
+        ArrayList<Path> inputs = new ArrayList<>();
+        ArrayList<Path> outputs = new ArrayList<>();
+        inputs.add(Paths.get("src/test/data/aiosdagsql/error1.json"));
+        outputs.add(Paths.get("src/test/data/aiosdagsql/error1.sql"));
+        for (int i = 0; i < inputs.size(); ++i) {
+            String input = new String(Files.readAllBytes(inputs.get(i)));
+            String output = new String(Files.readAllBytes(outputs.get(i)));
+            testMergeDAGSQLCase(input, output, "Fail to resolve expression");
+        }
+    }
+
 }
+
