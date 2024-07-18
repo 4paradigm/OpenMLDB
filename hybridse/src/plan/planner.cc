@@ -768,6 +768,22 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 plan_trees.push_back(create_user_plan_node);
                 break;
             }
+            case ::hybridse::node::kGrantStmt: {
+                auto node = dynamic_cast<node::GrantNode *>(parser_tree);
+                auto grant_plan_node = node_manager_->MakeNode<node::GrantPlanNode>(
+                    node->TargetType(), node->Database(), node->Target(), node->Privileges(), node->IsAllPrivileges(),
+                    node->Grantees(), node->WithGrantOption());
+                plan_trees.push_back(grant_plan_node);
+                break;
+            }
+            case ::hybridse::node::kRevokeStmt: {
+                auto node = dynamic_cast<node::RevokeNode *>(parser_tree);
+                auto revoke_plan_node = node_manager_->MakeNode<node::RevokePlanNode>(
+                    node->TargetType(), node->Database(), node->Target(), node->Privileges(), node->IsAllPrivileges(),
+                    node->Grantees());
+                plan_trees.push_back(revoke_plan_node);
+                break;
+            }
             case ::hybridse::node::kAlterUserStmt: {
                 auto node = dynamic_cast<node::AlterUserNode *>(parser_tree);
                 auto alter_user_plan_node = node_manager_->MakeNode<node::AlterUserPlanNode>(node->Name(),
@@ -1123,7 +1139,7 @@ bool Planner::ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *
     }
     return has_window_expand;
 }
-
+// TODO(hw): unused
 base::Status Planner::TransformTableDef(const std::string &table_name, const NodePointVector &column_desc_list,
                                         type::TableDef *table) {
     std::set<std::string> index_names;
@@ -1183,7 +1199,6 @@ base::Status Planner::TransformTableDef(const std::string &table_name, const Nod
 
             case node::kColumnIndex: {
                 node::ColumnIndexNode *column_index = static_cast<node::ColumnIndexNode *>(column_desc);
-
                 if (column_index->GetName().empty()) {
                     column_index->SetName(PlanAPI::GenerateName("INDEX", table->indexes_size()));
                 }

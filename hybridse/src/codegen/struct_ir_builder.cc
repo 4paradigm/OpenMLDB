@@ -16,8 +16,11 @@
 
 #include "codegen/struct_ir_builder.h"
 
+#include <utility>
+
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
@@ -69,6 +72,16 @@ absl::StatusOr<std::unique_ptr<StructTypeIRBuilder>> StructTypeIRBuilder::Create
                     absl::Substitute("not able to casting map type: $0", GetLlvmObjectString(type)));
             }
             break;
+        }
+        case node::DataType::kArray: {
+            assert(ctype->IsArray() && "logic error: not a array type");
+            assert(ctype->GetGenericSize() == 1 && "logic error: not a array type");
+            ::llvm::Type* ele_type = nullptr;
+            if (!codegen::GetLlvmType(m, ctype->GetGenericType(0), &ele_type)) {
+                return absl::InvalidArgumentError(
+                    absl::Substitute("not able to casting array type: $0", GetLlvmObjectString(type)));
+            }
+            return std::make_unique<ArrayIRBuilder>(m, ele_type);
         }
         default: {
             break;
@@ -181,6 +194,11 @@ absl::StatusOr<NativeValue> StructTypeIRBuilder::ExtractElement(CodeGenContextBa
         absl::StrCat("extract element unimplemented for ", GetLlvmObjectString(struct_type_)));
 }
 
+absl::StatusOr<llvm::Value*> StructTypeIRBuilder::NumElements(CodeGenContextBase* ctx, llvm::Value* arr) const {
+    return absl::UnimplementedError(
+        absl::StrCat("element size unimplemented for ", GetLlvmObjectString(struct_type_)));
+}
+
 void StructTypeIRBuilder::EnsureOK() const {
     assert(struct_type_ != nullptr && "filed struct_type_ uninitialized");
     // it's a identified type
@@ -200,9 +218,9 @@ absl::Status StructTypeIRBuilder::Set(CodeGenContextBase* ctx, ::llvm::Value* st
     }
 
     if (struct_value->getType()->getPointerElementType() != struct_type_) {
-        return absl::InvalidArgumentError(absl::Substitute("input value has different type, expect $0 but got $1",
-                                                           GetLlvmObjectString(struct_type_),
-                                                           GetLlvmObjectString(struct_value->getType())));
+        return absl::InvalidArgumentError(
+            absl::Substitute("input value has different type, expect $0 but got $1", GetLlvmObjectString(struct_type_),
+                             GetLlvmObjectString(struct_value->getType()->getPointerElementType())));
     }
 
     if (members.size() != struct_type_->getNumElements()) {
@@ -229,6 +247,16 @@ absl::StatusOr<std::vector<llvm::Value*>> StructTypeIRBuilder::Load(CodeGenConte
                                                                     llvm::Value* struct_ptr) const {
     assert(ctx != nullptr && struct_ptr != nullptr);
 
+    if (!IsStructPtr(struct_ptr->getType())) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("value not a struct pointer: ", GetLlvmObjectString(struct_ptr->getType())));
+    }
+    if (struct_ptr->getType()->getPointerElementType() != struct_type_) {
+        return absl::InvalidArgumentError(
+            absl::Substitute("input value has different type, expect $0 but got $1", GetLlvmObjectString(struct_type_),
+                             GetLlvmObjectString(struct_ptr->getType()->getPointerElementType())));
+    }
+
     std::vector<llvm::Value*> res;
     res.reserve(struct_type_->getNumElements());
 
@@ -252,5 +280,67 @@ absl::StatusOr<NativeValue> CreateSafeNull(::llvm::BasicBlock* block, ::llvm::Ty
     return NativeValue(nullptr, nullptr, type);
 }
 
+absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue delimiter,
+                                    absl::Span<const NativeValue> args) {
+    auto builder = ctx->GetBuilder();
+
+    StringIRBuilder str_builder(ctx->GetModule());
+    ArrayIRBuilder arr_builder(ctx->GetModule(), str_builder.GetType()->getPointerTo());
+
+    llvm::Value* empty_str = nullptr;
+    if (!str_builder.CreateDefault(ctx->GetCurrentBlock(), &empty_str)) {
+        return absl::InternalError("codegen error: fail to construct empty string");
+    }
+    llvm::Value* del = builder->CreateSelect(delimiter.GetIsNull(builder), empty_str, delimiter.GetValue(builder));
+
+    llvm::Type* input_arr_type = arr_builder.GetType()->getPointerTo();
+    llvm::Value* empty_arr = nullptr;
+    if (!arr_builder.CreateDefault(ctx->GetCurrentBlock(), &empty_arr)) {
+        return absl::InternalError("codegen error: fail to construct empty string of array");
+    }
+    llvm::Value* input_arrays = builder->CreateAlloca(input_arr_type, builder->getInt32(args.size()), "array_data");
+    node::NodeManager nm;
+    std::vector<NativeValue> casted_args(args.size());
+    for (int i = 0; i < args.size(); ++i) {
+        const node::TypeNode* tp = nullptr;
+        if (!GetFullType(&nm, args.at(i).GetType(), &tp)) {
+            return absl::InternalError("codegen error: fail to get valid type from llvm value");
+        }
+        if (!tp->IsArray() || tp->GetGenericSize() != 1) {
+            return absl::InternalError("codegen error: arguments to array_combine is not ARRAY");
+        }
+        if (!tp->GetGenericType(0)->IsString()) {
+            auto s = arr_builder.CastToArrayString(ctx, args.at(i).GetRaw());
+            CHECK_ABSL_STATUSOR(s);
+            casted_args.at(i) = NativeValue::Create(s.value());
+        } else {
+            casted_args.at(i) = args.at(i);
+        }
+
+        auto safe_str_arr =
+            builder->CreateSelect(casted_args.at(i).GetIsNull(builder), empty_arr, casted_args.at(i).GetRaw());
+        builder->CreateStore(safe_str_arr, builder->CreateGEP(input_arr_type, input_arrays, builder->getInt32(i)));
+    }
+
+    ::llvm::FunctionCallee array_combine_fn = ctx->GetModule()->getOrInsertFunction(
+        "hybridse_array_combine", builder->getVoidTy(), str_builder.GetType()->getPointerTo(), builder->getInt32Ty(),
+        input_arr_type->getPointerTo(), input_arr_type);
+    assert(array_combine_fn);
+
+    llvm::Value* out = builder->CreateAlloca(arr_builder.GetType());
+    builder->CreateCall(array_combine_fn, {
+                                              del,                             // delimiter should ensure non-null
+                                              builder->getInt32(args.size()),  // num of arrays
+                                              input_arrays,                    // ArrayRef<StringRef>**
+                                              out                              // output string
+                                          });
+
+    return NativeValue::Create(out);
+}
+
+absl::Status StructTypeIRBuilder::Initialize(CodeGenContextBase* ctx, ::llvm::Value* alloca,
+                                             absl::Span<llvm::Value* const> args) const {
+    return absl::UnimplementedError(absl::StrCat("Initialize for type ", GetLlvmObjectString(struct_type_)));
+}
 }  // namespace codegen
 }  // namespace hybridse

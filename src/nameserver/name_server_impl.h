@@ -29,6 +29,7 @@
 #include <utility>
 #include <vector>
 
+#include "auth/user_access_manager.h"
 #include "base/hash.h"
 #include "base/random.h"
 #include "catalog/distribute_iterator.h"
@@ -358,15 +359,26 @@ class NameServerImpl : public NameServer {
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
 
+    void PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response, Closure* done);
+    void PutPrivilege(RpcController* controller, const PutPrivilegeRequest* request, GeneralResponse* response,
+                      Closure* done);
+    void DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
+                    Closure* done);
+    bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
+
+ private:
+
     std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
                                           std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
     GetSystemTableIterator();
-
+    
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
                       std::shared_ptr<TableInfo>* table_info);
 
- private:
-    base::Status InsertUserRecord(const std::string& host, const std::string& user, const std::string& password);
+    base::Status PutUserRecord(const std::string& host, const std::string& user, const std::string& password,
+                               const ::openmldb::nameserver::PrivilegeLevel privilege_level);
+    base::Status DeleteUserRecord(const std::string& host, const std::string& user);
+    base::Status FlushPrivileges();
 
     base::Status InitGlobalVarTable();
 
@@ -735,6 +747,7 @@ class NameServerImpl : public NameServer {
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<api::ProcedureInfo>>>
         db_sp_info_map_;
     ::openmldb::type::StartupMode startup_mode_;
+    openmldb::auth::UserAccessManager user_access_manager_;
 };
 
 }  // namespace nameserver

@@ -243,9 +243,7 @@ TEST_P(DBSDKTest, TestUser) {
     ASSERT_FALSE(status.IsOK());
     sr->ExecuteSQL(absl::StrCat("CREATE USER IF NOT EXISTS user1"), &status);
     ASSERT_TRUE(status.IsOK());
-    ASSERT_TRUE(true);
     auto opt = sr->GetRouterOptions();
-    std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
     if (cs->IsClusterMode()) {
         auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
         sdk::SQLRouterOptions opt1;
@@ -257,7 +255,6 @@ TEST_P(DBSDKTest, TestUser) {
         ASSERT_TRUE(router != nullptr);
         sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
         ASSERT_TRUE(status.IsOK());
-        std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
         router = NewClusterSQLRouter(opt1);
         ASSERT_FALSE(router != nullptr);
     } else {
@@ -271,7 +268,6 @@ TEST_P(DBSDKTest, TestUser) {
         ASSERT_TRUE(router != nullptr);
         sr->ExecuteSQL(absl::StrCat("ALTER USER user1 SET OPTIONS(password='abc')"), &status);
         ASSERT_TRUE(status.IsOK());
-        std::this_thread::sleep_for(std::chrono::seconds(1));  // TODO(oh2024): Remove when CREATE USER becomes strongly
         router = NewStandaloneSQLRouter(opt1);
         ASSERT_FALSE(router != nullptr);
     }
@@ -280,6 +276,121 @@ TEST_P(DBSDKTest, TestUser) {
     sr->ExecuteSQL(absl::StrCat("DROP USER user1"), &status);
     ASSERT_FALSE(status.IsOK());
     sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, TestGrantCreateUser) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("REVOKE CREATE USER ON *.* FROM 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user3 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_FALSE(status.IsOK());
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+        ASSERT_TRUE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("REVOKE CREATE USER ON *.* FROM 'user1@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("CREATE USER user3 OPTIONS(password='123456')"), &status);
+        ASSERT_FALSE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("DROP USER user2"), &status);
+        ASSERT_FALSE(status.IsOK());
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
+    ASSERT_TRUE(status.IsOK());
+}
+
+TEST_P(DBSDKTest, TestGrantCreateUserGrantOption) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user1 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("CREATE USER user2 OPTIONS(password='123456')"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%'"), &status);
+    ASSERT_TRUE(status.IsOK());
+
+    auto opt = sr->GetRouterOptions();
+    if (cs->IsClusterMode()) {
+        auto real_opt = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(opt);
+        sdk::SQLRouterOptions opt1;
+        opt1.zk_cluster = real_opt->zk_cluster;
+        opt1.zk_path = real_opt->zk_path;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewClusterSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%' WITH GRANT OPTION"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+    } else {
+        auto real_opt = std::dynamic_pointer_cast<sdk::StandaloneOptions>(opt);
+        sdk::StandaloneOptions opt1;
+        opt1.host = real_opt->host;
+        opt1.port = real_opt->port;
+        opt1.user = "user1";
+        opt1.password = "123456";
+        auto router = NewStandaloneSQLRouter(opt1);
+        ASSERT_TRUE(router != nullptr);
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user1@%' WITH GRANT OPTION"), &status);
+        ASSERT_TRUE(status.IsOK());
+        router->ExecuteSQL(absl::StrCat("GRANT CREATE USER ON *.* TO 'user2@%'"), &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user1"), &status);
+    ASSERT_TRUE(status.IsOK());
+    sr->ExecuteSQL(absl::StrCat("DROP USER IF EXISTS user2"), &status);
     ASSERT_TRUE(status.IsOK());
 }
 
@@ -1173,7 +1284,7 @@ TEST_P(DBSDKTest, Truncate) {
             sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
         }
     }
-    absl::SleepFor(absl::Seconds(5));
+    absl::SleepFor(absl::Seconds(16));  // sleep more to avoid truncate failed on partition offset mismatch
 
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 100);
@@ -1445,18 +1556,18 @@ TEST_P(DBSDKTest, SQLDeletetRow) {
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 3);
     std::string delete_sql = "delete from " + table_name + " where c1 = ?;";
-    auto insert_row = sr->GetDeleteRow(db_name, delete_sql, &status);
+    auto delete_row = sr->GetDeleteRow(db_name, delete_sql, &status);
     ASSERT_TRUE(status.IsOK());
-    insert_row->SetString(1, "key3");
-    ASSERT_TRUE(insert_row->Build());
-    sr->ExecuteDelete(insert_row, &status);
+    delete_row->SetString(1, "key3");
+    ASSERT_TRUE(delete_row->Build());
+    sr->ExecuteDelete(delete_row, &status);
     ASSERT_TRUE(status.IsOK());
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 2);
-    insert_row->Reset();
-    insert_row->SetString(1, "key100");
-    ASSERT_TRUE(insert_row->Build());
-    sr->ExecuteDelete(insert_row, &status);
+    delete_row->Reset();
+    delete_row->SetString(1, "key100");
+    ASSERT_TRUE(delete_row->Build());
+    sr->ExecuteDelete(delete_row, &status);
     ASSERT_TRUE(status.IsOK());
     res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
     ASSERT_EQ(res->Size(), 2);
@@ -1517,19 +1628,18 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     rs = sr->ExecuteSQL("", result_sql, &status);
     ASSERT_EQ(3, rs->Size());
 
-    std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
-    ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
-    ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo3_w1_count_where_c4_c3;", &status);
-    ASSERT_TRUE(ok);
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo2", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo3", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    // drop deployment
+    sr->ExecuteSQL("test2", "drop deployment demo1;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    rs = sr->ExecuteSQL("test2", "drop deployment demo2;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    rs = sr->ExecuteSQL("test2", "drop deployment demo3;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    
+    sr->ExecuteSQL("test2", "drop table trans", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    sr->ExecuteSQL("drop database test2;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 }
 
 void CreateDBTableForLongWindow(const std::string& base_db, const std::string& base_table) {
@@ -1600,6 +1710,7 @@ void PrepareRequestRowForLongWindow(const std::string& base_db, const std::strin
 }
 
 // TODO(ace): create instance of DeployLongWindowEnv with template
+static absl::BitGen gen;  // reseed may segfault, use one for all env
 class DeployLongWindowEnv {
  public:
     explicit DeployLongWindowEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {}
@@ -1607,9 +1718,9 @@ class DeployLongWindowEnv {
     virtual ~DeployLongWindowEnv() {}
 
     void SetUp() {
-        db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        dp_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        db_ = absl::StrCat("db_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+        table_ = absl::StrCat("tb_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+        dp_ = absl::StrCat("dp_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
 
         PrepareSchema();
 
@@ -1621,7 +1732,7 @@ class DeployLongWindowEnv {
     }
 
     void TearDown() {
-        TearDownPreAggTables();
+        TearDownDeployment();
         ProcessSQLs(sr_, {
                              absl::StrCat("drop table ", table_),
                              absl::StrCat("drop database ", db_),
@@ -1677,7 +1788,12 @@ class DeployLongWindowEnv {
 
     virtual void Deploy() = 0;
 
-    virtual void TearDownPreAggTables() = 0;
+    virtual void TearDownDeployment() {
+        ProcessSQLs(sr_, {
+                             absl::StrCat("use ", db_),
+                             absl::StrCat("drop deployment ", dp_),
+                         });
+    }
 
     void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) {  // NOLINT
         ::hybridse::sdk::Status status;
@@ -1703,7 +1819,6 @@ class DeployLongWindowEnv {
 
  protected:
     sdk::SQLClusterRouter* sr_;
-    absl::BitGen gen_;
     std::string db_;
     std::string table_;
     std::string dp_;
@@ -1732,14 +1847,14 @@ TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
         ".col2 ORDER BY col3"
         " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(!status.IsOK());
 
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
-    ASSERT_TRUE(ok) << status.msg;
+    ASSERT_TRUE(ok) << status.ToString();
     ok = sr->DropDB(base_db, &status);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(ok) << status.ToString();
 }
 
 TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
@@ -2760,25 +2875,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
         w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 6s PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_i64_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_s_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where__i64_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_filter_i64_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [5s, 11s]
@@ -2837,24 +2933,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
         w2 AS (PARTITION BY col1,col2 ORDER BY i64_col ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_t_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_filter"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -2911,26 +2989,6 @@ TEST_P(DBSDKTest, LongWindowMinMaxWhere) {
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
-        }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
         }
     };
 
@@ -2989,25 +3047,6 @@ TEST_P(DBSDKTest, LongWindowSumWhere) {
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3063,25 +3102,6 @@ TEST_P(DBSDKTest, LongWindowAvgWhere) {
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
-        }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
         }
     };
 
@@ -3162,25 +3182,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereWithDataOutOfOrder) {
                 ASSERT_TRUE(ok && s.IsOK()) << s.msg << "\n" << s.trace;
             }
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3243,8 +3244,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
-
-        void TearDownPreAggTables() override {}
+        void TearDownDeployment() override {}
     };
 
     // unsupport: deploy any_where with rows bucket
@@ -3279,8 +3279,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
-
-            void TearDownPreAggTables() override {}
+            void TearDownDeployment() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3309,8 +3308,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
-
-            void TearDownPreAggTables() override {}
+            void TearDownDeployment() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3370,8 +3368,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
-
-        void TearDownPreAggTables() override {}
+        void TearDownDeployment() override {}
     };
 
     DeployLongWindowAnyWhereEnv env(sr);
@@ -3393,26 +3390,35 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         " max(c5) over w2 as w2_max_c5 FROM trans"
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    
     for (int i = 0; i < 10; i++) {
         HandleSQL("create database test2;");
         HandleSQL("use test2;");
         HandleSQL(create_sql);
+        LOG(INFO) << "before deploy " << i;
+        HandleSQL("select * from __INTERNAL_DB.PRE_AGG_META_INFO;");
         sr->ExecuteSQL(deploy_sql, &status);
         ASSERT_TRUE(status.IsOK());
+        absl::SleepFor(absl::Seconds(3));
+        LOG(INFO) << "after deploy " << i;
+        HandleSQL("select * from __INTERNAL_DB.PRE_AGG_META_INFO;");
         std::string msg;
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(2, rs->Size());
-        auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
-        ASSERT_TRUE(ok);
-        ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
-        ASSERT_TRUE(ok);
+        sr->ExecuteSQL("test2", "drop table trans;", &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL("drop procedure demo1;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
+        sr->ExecuteSQL("test2", "drop table trans;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
+
         result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+        HandleSQL(result_sql);
         rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(0, rs->Size());
-        ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
-        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
         // helpful for debug
         HandleSQL("show tables;");
         HandleSQL("show deployments;");
@@ -3545,7 +3551,7 @@ TEST_P(DBSDKTest, ShowComponents) {
 void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectInfo>>& expect,
                                  hybridse::sdk::ResultSet* rs, bool all_db = false, bool is_cluster = false) {
     static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableStatus = {
-        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "2", "NULL", "NULL", "NULL", ""},
+        {{}, "USER", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{}, "JOB_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
         {{},
@@ -4040,6 +4046,7 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(res->Size(), 4);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c1='aa';"), &status);
     ASSERT_EQ(res->Size(), 3);

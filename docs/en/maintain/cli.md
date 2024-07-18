@@ -401,7 +401,7 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 ### loadtable
 
-1. Load an existing table
+Load an existing table, only support memory table
 
 Command format: `loadtable table_name tid pid ttl segment_cnt`
 

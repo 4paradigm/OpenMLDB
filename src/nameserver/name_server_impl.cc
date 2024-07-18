@@ -45,6 +45,7 @@
 #include "boost/bind.hpp"
 #include "codec/row_codec.h"
 #include "gflags/gflags.h"
+#include "name_server_impl.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
 
@@ -522,7 +523,8 @@ NameServerImpl::NameServerImpl()
       thread_pool_(1),
       task_thread_pool_(FLAGS_name_server_task_pool_size),
       rand_(0xdeadbeef),
-      startup_mode_(::openmldb::type::StartupMode::kStandalone) {}
+      startup_mode_(::openmldb::type::StartupMode::kStandalone),
+      user_access_manager_(GetSystemTableIterator()) {}
 
 NameServerImpl::~NameServerImpl() {
     running_.store(false, std::memory_order_release);
@@ -650,7 +652,7 @@ bool NameServerImpl::Recover() {
     if (!RecoverExternalFunction()) {
         return false;
     }
-    return true;
+    return FlushPrivileges().OK();
 }
 
 bool NameServerImpl::RecoverExternalFunction() {
@@ -1377,8 +1379,9 @@ void NameServerImpl::ShowTablet(RpcController* controller, const ShowTabletReque
     response->set_msg("ok");
 }
 
-base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std::string& user,
-                                              const std::string& password) {
+base::Status NameServerImpl::PutUserRecord(const std::string& host, const std::string& user,
+                                           const std::string& password,
+                                           const ::openmldb::nameserver::PrivilegeLevel privilege_level) {
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
         return {ReturnCode::kTableIsNotExist, "user table does not exist"};
@@ -1388,13 +1391,9 @@ base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std
     row_values.push_back(host);
     row_values.push_back(user);
     row_values.push_back(password);
-    row_values.push_back("");  // password_last_changed
-    row_values.push_back("");  // password_expired_time
-    row_values.push_back("");  // create_time
-    row_values.push_back("");  // update_time
-    row_values.push_back("");  // account_type
-    row_values.push_back("");  // privileges
-    row_values.push_back("");  // extra_info
+    row_values.push_back("0");     // password_last_changed
+    row_values.push_back("0");     // password_expired
+    row_values.push_back(PrivilegeLevel_Name(privilege_level));  // Create_user_priv
 
     std::string encoded_row;
     codec::RowCodec::EncodeRow(row_values, table_info->column_desc(), 1, encoded_row);
@@ -1410,10 +1409,54 @@ base::Status NameServerImpl::InsertUserRecord(const std::string& host, const std
             std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
             auto table_ptr = GetTablet(endpoint);
             if (!table_ptr->client_->Put(tid, 0, cur_ts, encoded_row, dimensions).OK()) {
-                return {ReturnCode::kPutFailed, "failed to create initial user entry"};
+                return {ReturnCode::kPutFailed, "failed to put user entry"};
             }
             break;
         }
+    }
+    return FlushPrivileges();
+}
+
+base::Status NameServerImpl::DeleteUserRecord(const std::string& host, const std::string& user) {
+    std::shared_ptr<TableInfo> table_info;
+    if (!GetTableInfo(USER_INFO_NAME, INTERNAL_DB, &table_info)) {
+        return {ReturnCode::kTableIsNotExist, "user table does not exist"};
+    }
+    uint32_t tid = table_info->tid();
+    auto table_partition = table_info->table_partition(0);  // only one partition for system table
+    std::string msg;
+    for (int meta_idx = 0; meta_idx < table_partition.partition_meta_size(); meta_idx++) {
+        if (table_partition.partition_meta(meta_idx).is_leader() &&
+            table_partition.partition_meta(meta_idx).is_alive()) {
+            std::string endpoint = table_partition.partition_meta(meta_idx).endpoint();
+            auto table_ptr = GetTablet(endpoint);
+            if (!table_ptr->client_->Delete(tid, 0, host + "|" + user, "index", msg)) {
+                return {ReturnCode::kDeleteFailed, msg};
+            }
+
+            break;
+        }
+    }
+    return FlushPrivileges();
+}
+
+base::Status NameServerImpl::FlushPrivileges() {
+    user_access_manager_.SyncWithDB();
+    std::vector<std::string> failed_tablet_list;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& tablet_pair : tablets_) {
+            const std::shared_ptr<TabletInfo>& tablet_info = tablet_pair.second;
+            if (tablet_info && tablet_info->Health() && tablet_info->client_) {
+                if (!tablet_info->client_->FlushPrivileges()) {
+                    failed_tablet_list.push_back(tablet_pair.first);
+                }
+            }
+        }
+    }
+    if (failed_tablet_list.size() > 0) {
+        return {ReturnCode::kFlushPrivilegesFailed,
+                "Failed to flush privileges to tablets: " + boost::algorithm::join(failed_tablet_list, ", ")};
     }
     return {};
 }
@@ -1520,12 +1563,9 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     task_vec_.resize(FLAGS_name_server_task_max_concurrency + FLAGS_name_server_task_concurrency_for_replica_cluster);
     task_thread_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                                 boost::bind(&NameServerImpl::SchedMakeSnapshot, this));
-    if (!FLAGS_skip_grant_tables) {
-        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-        while (
-            !GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
+    while (!GetTableInfo(::openmldb::nameserver::USER_INFO_NAME, ::openmldb::nameserver::INTERNAL_DB, &table_info)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     return true;
 }
@@ -3777,6 +3817,8 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         table_info->set_partition_num(1);
         table_info->set_replica_num(1);
     }
+    // TODO(hw): valid index pattern 1. all covering 2. clustered + secondary/covering(only one clustered and it should
+    // be the first one)
     auto status = schema::SchemaAdapter::CheckTableMeta(*table_info);
     if (!status.OK()) {
         PDLOG(WARNING, status.msg.c_str());
@@ -5593,12 +5635,10 @@ void NameServerImpl::OnLocked() {
         PDLOG(WARNING, "recover failed");
     }
     CreateDatabaseOrExit(INTERNAL_DB);
-    if (!FLAGS_skip_grant_tables && db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
-        auto temp = FLAGS_system_table_replica_num;
-        FLAGS_system_table_replica_num = tablets_.size();
+    if (db_table_info_[INTERNAL_DB].count(USER_INFO_NAME) == 0) {
         CreateSystemTableOrExit(SystemTableType::kUser);
-        FLAGS_system_table_replica_num = temp;
-        InsertUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        PutUserRecord("%", "root", "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE_WITH_GRANT_OPTION);
     }
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
@@ -8636,6 +8676,11 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     std::vector<::openmldb::common::ColumnKey> column_key_vec;
     if (request->column_keys_size() > 0) {
         for (const auto& column_key : request->column_keys()) {
+            if (column_key.type() == common::IndexType::kClustered) {
+                base::SetResponseStatus(ReturnCode::kWrongColumnKey, "add clustered index is not allowed", response);
+                LOG(WARNING) << "add clustered index is not allowed";
+                return;
+            }
             column_key_vec.push_back(column_key);
         }
     } else {
@@ -9491,8 +9536,8 @@ base::Status NameServerImpl::CreateProcedureOnTablet(const ::openmldb::api::Crea
                                  ", endpoint: ", tb_client->GetEndpoint(), ", msg: ", status.GetMsg())};
         }
         DLOG(INFO) << "create procedure on tablet success. db_name: " << sp_info.db_name() << ", "
-                   << "sp_name: " << sp_info.sp_name() << ", " << "sql: " << sp_info.sql()
-                   << "endpoint: " << tb_client->GetEndpoint();
+                   << "sp_name: " << sp_info.sp_name() << ", "
+                   << "sql: " << sp_info.sql() << "endpoint: " << tb_client->GetEndpoint();
     }
     return {};
 }
@@ -9616,6 +9661,74 @@ NameServerImpl::GetSystemTableIterator() {
         }
         return std::nullopt;
     };
+}
+
+void NameServerImpl::PutUser(RpcController* controller, const PutUserRequest* request, GeneralResponse* response,
+                             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* brpc_controller = static_cast<brpc::Controller*>(controller);
+
+    if (brpc_controller->auth_context()->is_service() ||
+        user_access_manager_.GetPrivilegeLevel(brpc_controller->auth_context()->user()) >
+            ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE) {
+        auto status = PutUserRecord(request->host(), request->name(), request->password(),
+                                    ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE);
+        base::SetResponseStatus(status, response);
+    } else {
+        base::SetResponseStatus(base::ReturnCode::kNotAuthorized, "not authorized to create user", response);
+    }
+}
+
+void NameServerImpl::PutPrivilege(RpcController* controller, const PutPrivilegeRequest* request,
+                                  GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    for (int i = 0; i < request->privilege_size(); ++i) {
+        auto privilege = request->privilege(i);
+        if (privilege == "CREATE USER") {
+            brpc::Controller* brpc_controller = static_cast<brpc::Controller*>(controller);
+            if (brpc_controller->auth_context()->is_service() ||
+                user_access_manager_.GetPrivilegeLevel(brpc_controller->auth_context()->user()) >=
+                    ::openmldb::nameserver::PrivilegeLevel::PRIVILEGE_WITH_GRANT_OPTION) {
+                for (int i = 0; i < request->grantee_size(); ++i) {
+                    auto grantee = request->grantee(i);
+                    std::size_t at_pos = grantee.find('@');
+                    if (at_pos != std::string::npos) {
+                        std::string user = grantee.substr(0, at_pos);
+                        std::string host = grantee.substr(at_pos + 1);
+                        auto password = user_access_manager_.GetUserPassword(host, user);
+                        if (password.has_value()) {
+                            auto status = PutUserRecord(host, user, password.value(), request->privilege_level());
+                            base::SetResponseStatus(status, response);
+                        }
+                    }
+                    }
+            } else {
+                base::SetResponseStatus(base::ReturnCode::kNotAuthorized,
+                                        "not authorized to grant create user privilege", response);
+            }
+        }
+    }
+}
+
+void NameServerImpl::DeleteUser(RpcController* controller, const DeleteUserRequest* request, GeneralResponse* response,
+                                Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* brpc_controller = static_cast<brpc::Controller*>(controller);
+
+    if (brpc_controller->auth_context()->is_service() ||
+        user_access_manager_.GetPrivilegeLevel(brpc_controller->auth_context()->user()) >
+            ::openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE) {
+        auto status = DeleteUserRecord(request->host(), request->name());
+        base::SetResponseStatus(status, response);
+    } else {
+        base::SetResponseStatus(base::ReturnCode::kNotAuthorized, "not authorized to create user", response);
+    }
+}
+
+bool NameServerImpl::IsAuthenticated(const std::string& host, const std::string& username,
+                                     const std::string& password) {
+    return user_access_manager_.IsAuthenticated(host, username, password);
 }
 
 bool NameServerImpl::RecoverProcedureInfo() {
@@ -10013,11 +10126,7 @@ void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionR
 
 base::Status NameServerImpl::InitGlobalVarTable() {
     std::map<std::string, std::string> default_value = {
-        {"execute_mode", "online"},
-        {"enable_trace", "false"},
-        {"sync_job", "false"},
-        {"job_timeout", "20000"}
-    };
+        {"execute_mode", "online"}, {"enable_trace", "false"}, {"sync_job", "false"}, {"job_timeout", "20000"}};
     // get table_info
     std::string db = INFORMATION_SCHEMA_DB;
     std::string table = GLOBAL_VARIABLES;

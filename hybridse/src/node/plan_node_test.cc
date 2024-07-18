@@ -228,7 +228,7 @@ TEST_F(PlanNodeTest, MultiPlanNodeTest) {
 
 TEST_F(PlanNodeTest, ExtractColumnsAndIndexsTest) {
     SqlNodeList *index_items = manager_->MakeNodeList();
-    index_items->PushBack(manager_->MakeIndexKeyNode("col4"));
+    index_items->PushBack(manager_->MakeIndexKeyNode("col4", "key"));
     index_items->PushBack(manager_->MakeIndexTsNode("col5"));
     ColumnIndexNode *index_node = dynamic_cast<ColumnIndexNode *>(manager_->MakeColumnIndexNode(index_items));
     index_node->SetName("index1");

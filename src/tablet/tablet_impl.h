@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "auth/user_access_manager.h"
 #include "base/spinlock.h"
 #include "brpc/server.h"
 #include "catalog/tablet_catalog.h"
@@ -274,11 +275,15 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 ::openmldb::api::DeployStatsResponse* response,
                                 ::google::protobuf::Closure* done) override;
 
+    bool IsAuthenticated(const std::string& host, const std::string& username, const std::string& password);
+    void FlushPrivileges(::google::protobuf::RpcController* controller, const ::openmldb::api::EmptyRequest* request,
+                         ::openmldb::api::GeneralResponse* response, ::google::protobuf::Closure* done);
+
+ private:
     std::function<std::optional<std::pair<std::unique_ptr<::openmldb::catalog::FullTableIterator>,
                                           std::unique_ptr<openmldb::codec::Schema>>>(const std::string& table_name)>
     GetSystemTableIterator();
 
- private:
     class UpdateAggrClosure : public Closure {
      public:
         explicit UpdateAggrClosure(const std::function<void()>& callback) : callback_(callback) {}
@@ -489,6 +494,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::unique_ptr<openmldb::statistics::DeploymentMetricCollector> deploy_collector_;
     std::atomic<uint64_t> memory_used_ = 0;
     std::atomic<uint32_t> system_memory_usage_rate_ = 0;  // [0, 100]
+    openmldb::auth::UserAccessManager user_access_manager_;
 };
 
 }  // namespace tablet

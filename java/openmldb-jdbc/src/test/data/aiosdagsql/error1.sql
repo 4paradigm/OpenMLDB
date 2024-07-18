@@ -1,0 +1,1 @@
+select t3.*, csv(regression_label(t3.job)) from t1 last join t3 on t1.id = t3.id

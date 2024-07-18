@@ -153,7 +153,7 @@ OpenMLDB >= 0.9.0 支持在 query statement 中用 CONFIG 子句配置 SQL 的�
 -- 执行请求行为 (10, "foo", timestamp(4000)) 的在线请求模式 query
 SELECT id, count (val) over (partition by id order by ts rows between 10 preceding and current row)
 FROM t1
-CONFIG (execute_mode = 'online', values = (10, "foo", timestamp (4000)))
+CONFIG (execute_mode = 'request', values = (10, "foo", timestamp (4000)))
 ```
 
 ## 离线同步模式 Query

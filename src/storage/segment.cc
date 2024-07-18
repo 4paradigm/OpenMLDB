@@ -175,6 +175,7 @@ bool Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row, bool pu
     reinterpret_cast<KeyEntry*>(entry)->count_.fetch_add(1, std::memory_order_relaxed);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+    DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
     return true;
 }
 
@@ -251,6 +252,7 @@ bool Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         entry->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after add " << byte_size;
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
     return true;
@@ -268,11 +270,13 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             entry_node = entries_->Remove(key);
         }
         if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
             return true;
         }
     } else {
         base::Node<uint64_t, DataBlock*>* data_node = nullptr;
+        ::openmldb::base::Node<Slice, void*>* entry_node = nullptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
             void* entry_arr = nullptr;
@@ -286,9 +290,23 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
                 uint64_t ts = it->GetKey();
                 data_node = key_entry->entries.Split(ts);
             }
+            bool is_empty = true;
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                if (!reinterpret_cast<KeyEntry**>(entry_arr)[i]->entries.IsEmpty()) {
+                    is_empty = false;
+                    break;
+                }
+            }
+            if (is_empty) {
+                entry_node = entries_->Remove(key);
+            }
         }
         if (data_node != nullptr) {
             node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
+        }
+        if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
+            node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
     }
     return true;
@@ -313,12 +331,13 @@ bool Segment::GetTsIdx(const std::optional<uint32_t>& idx, uint32_t* ts_idx) {
     return true;
 }
 
-bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
-            uint64_t ts, const std::optional<uint64_t>& end_ts) {
+bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key, uint64_t ts,
+                     const std::optional<uint64_t>& end_ts) {
     uint32_t ts_idx = 0;
     if (!GetTsIdx(idx, &ts_idx)) {
         return false;
     }
+
     void* entry = nullptr;
     if (entries_->Get(key, entry) < 0 || entry == nullptr) {
         return true;
@@ -351,13 +370,32 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
         }
     }
     base::Node<uint64_t, DataBlock*>* data_node = nullptr;
+    base::Node<openmldb::base::Slice, void*>* entry_node = nullptr;
     {
         std::lock_guard<std::mutex> lock(mu_);
         data_node = key_entry->entries.Split(ts);
-        DLOG(INFO) << "entry " << key.ToString() << " split by " << ts;
+        DLOG(INFO) << "after delete, entry " << key.ToString() << " split by " << ts;
+        bool is_empty = true;
+        if (ts_cnt_ == 1) {
+            is_empty = key_entry->entries.IsEmpty();
+        } else {
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                if (!reinterpret_cast<KeyEntry**>(entry)[i]->entries.IsEmpty()) {
+                    is_empty = false;
+                    break;
+                }
+            }
+        }
+        if (is_empty) {
+            entry_node = entries_->Remove(key);
+        }
     }
     if (data_node != nullptr) {
         node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
+    }
+    if (entry_node != nullptr) {
+        DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
+        node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
     return true;
 }
@@ -368,12 +406,13 @@ void Segment::FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlo
         statistics_info->IncrIdxCnt(ts_idx);
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
+        DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after sub " << GetRecordTsIdxSize(tmp->Height());
         node = node->GetNextNoBarrier(0);
-        DEBUGLOG("delete key %lu with height %u", tmp->GetKey(), tmp->Height());
+        VLOG(1) << "delete key " << tmp->GetKey() << " with height " << (unsigned int)tmp->Height();
         if (tmp->GetValue()->dim_cnt_down > 1) {
             tmp->GetValue()->dim_cnt_down--;
         } else {
-            DEBUGLOG("delele data block for key %lu", tmp->GetKey());
+            VLOG(1) << "delete data block for key " << tmp->GetKey();
             statistics_info->record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
         }
@@ -387,12 +426,17 @@ void Segment::GcFreeList(StatisticsInfo* statistics_info) {
         return;
     }
     StatisticsInfo old = *statistics_info;
+    DLOG(INFO) << "cur " << old.DebugString();
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
     node_cache_.Free(free_list_version, statistics_info);
+    DLOG(INFO) << "after node cache free  " << statistics_info->DebugString();
     for (size_t idx = 0; idx < idx_cnt_vec_.size(); idx++) {
         idx_cnt_vec_[idx]->fetch_sub(statistics_info->GetIdxCnt(idx) - old.GetIdxCnt(idx), std::memory_order_relaxed);
     }
+
     idx_byte_size_.fetch_sub(statistics_info->idx_byte_size - old.idx_byte_size);
+    DLOG(INFO) << "idx_byte_size_ " << idx_byte_size_ << " after sub "
+               << statistics_info->idx_byte_size - old.idx_byte_size;
 }
 
 void Segment::ExecuteGc(const TTLSt& ttl_st, StatisticsInfo* statistics_info) {
@@ -434,11 +478,16 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, StatisticsInfo* statistics_info) {
     }
 }
 
-void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info) {
+void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info,
+                        std::optional<uint32_t> clustered_ts_id) {
     if (ttl_st_map.empty()) {
         return;
     }
     if (ts_cnt_ <= 1) {
+        if (clustered_ts_id.has_value() && ts_idx_map_.begin()->first == clustered_ts_id.value()) {
+            DLOG(INFO) << "skip normal gc in cidx";
+            return;
+        }
         ExecuteGc(ttl_st_map.begin()->second, statistics_info);
         return;
     }
@@ -454,7 +503,7 @@ void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
     if (!need_gc) {
         return;
     }
-    GcAllType(ttl_st_map, statistics_info);
+    GcAllType(ttl_st_map, statistics_info, clustered_ts_id);
 }
 
 void Segment::Gc4Head(uint64_t keep_cnt, StatisticsInfo* statistics_info) {
@@ -485,11 +534,16 @@ void Segment::Gc4Head(uint64_t keep_cnt, StatisticsInfo* statistics_info) {
     idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
-void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info) {
+void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info,
+                        std::optional<uint32_t> clustered_ts_id) {
     uint64_t old = statistics_info->GetTotalCnt();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
+    for (auto [ts, ttl_st] : ttl_st_map) {
+        DLOG(INFO) << "ts " << ts << " ttl_st " << ttl_st.ToString() << " it will be current time - ttl?";
+    }
+
     while (it->Valid()) {
         KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(it->GetValue());
         Slice key = it->GetKey();
@@ -501,6 +555,11 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
             }
             auto pos = ts_idx_map_.find(kv.first);
             if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_) {
+                LOG(WARNING) << "";
+                continue;
+            }
+            if (clustered_ts_id.has_value() && kv.first == clustered_ts_id.value()) {
+                DLOG(INFO) << "skip normal gc in cidx";
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];
@@ -592,12 +651,13 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
                 }
             }
             if (entry_node != nullptr) {
+                DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
                 node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
             }
         }
     }
-    DEBUGLOG("[GcAll] segment gc consumed %lu, count %lu", (::baidu::common::timer::get_micros() - consumed) / 1000,
-             statistics_info->GetTotalCnt() - old);
+    DLOG(INFO) << "[GcAll] segment gc consumed " << (::baidu::common::timer::get_micros() - consumed) / 1000
+               << "ms, count " << statistics_info->GetTotalCnt() - old;
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node) {
@@ -745,6 +805,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, Statist
             }
         }
         if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
         uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);
