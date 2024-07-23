@@ -5143,7 +5143,7 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
                                                                             ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
-    std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
+    std::string sql = absl::Substitute("SELECT * FROM JOB_INFO WHERE id = $0 CONFIG (execute_mode = 'online')", job_id);
 
     auto rs = ExecuteSQLParameterized(db, sql, {}, status);
     if (!status->IsOK()) {
@@ -5164,7 +5164,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
-    std::string sql = "SELECT * FROM JOB_INFO";
+    std::string sql = "SELECT * FROM JOB_INFO CONFIG (execute_mode = 'online')";
     auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
     if (!status->IsOK()) {
         return {};
@@ -5187,7 +5187,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobRes
         return this->GetJobResultSet(job_id, status);
     }
     std::string db = openmldb::nameserver::INTERNAL_DB;
-    std::string sql = "SELECT * FROM JOB_INFO;";
+    std::string sql = "SELECT * FROM JOB_INFO CONFIG (execute_mode = 'online');";
     auto rs = ExecuteSQLParameterized(db, sql, {}, status);
     if (!status->IsOK()) {
         return {};
