@@ -885,7 +885,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
     std::string select_aggr_info =
         absl::StrCat("select aggr_db, aggr_table from ", meta_db, ".", meta_table, " where base_table = '",
-                     table_info->name(), "' and base_db='", table_info->db(), "';");
+                     table_info->name(), "' and base_db='", table_info->db(), "' CONFIG (execute_mode = 'online');");
     auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
     WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
     if (rs->Size() > 0) {
@@ -5226,7 +5226,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
 }
 
 absl::StatusOr<bool> SQLClusterRouter::GetUser(const std::string& name, UserInfo* user_info) {
-    std::string sql = absl::StrCat("select * from ", nameserver::USER_INFO_NAME);
+    std::string sql = absl::StrCat("select * from ", nameserver::USER_INFO_NAME, " CONFIG (execute_mode = 'online')");
     hybridse::sdk::Status status;
     auto rs =
         ExecuteSQLParameterized(nameserver::INTERNAL_DB, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
