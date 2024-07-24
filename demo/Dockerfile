@@ -16,7 +16,7 @@ RUN  apt-get update \
      && rm -rf /var/lib/apt/lists/*
 
 RUN if [ -f "/additions/pypi.txt" ] ; then pip config set global.index-url $(cat /additions/pypi.txt) ; fi
-RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm==3 tornado requests pandas==1.5 xgboost==1.4.2
+RUN pip install --no-cache-dir py4j==0.10.9 lightgbm==3 tornado requests pandas==1.5 xgboost==1.4.2 numpy==1.26.4
 
 COPY init.sh /work/
 COPY predict-taxi-trip-duration/script /work/taxi-trip/
