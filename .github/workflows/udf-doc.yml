@@ -54,7 +54,6 @@ jobs:
         if: github.event_name != 'pull_request'
         with:
           add-paths: |
-            docs/en/reference/sql/udfs_8h.md
             docs/zh/openmldb_sql/udfs_8h.md
           labels: |
             udf
