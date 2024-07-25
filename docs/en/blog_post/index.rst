@@ -13,4 +13,7 @@ OpenMLDB Blogs
 
     Comparative Analysis of Memory Consumption: OpenMLDB vs Redis Test Report <20240402_OpenmldbVsRedis.md>
 
+    OpenMLDB v0.9.0 Release: Major Upgrade in SQL Capabilities Covering the Entire Feature Servicing Process <20240503_OpenmldbRelease.md>
+
     Introducing OpenMLDB’s New Feature: Feature Signatures — Enabling Complete Feature Engineering with SQL <20240523_OpenmldbFeatureSignatures.md>
+

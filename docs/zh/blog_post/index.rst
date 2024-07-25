@@ -14,4 +14,7 @@
 
     OpenMLDB vs Redis 内存占用量测试报告 <20240402_OpenmldbVsRedis.md>
 
+    OpenMLDB v0.9.0 发布：SQL 能力大升级覆盖特征上线全流程 <20240503_OpenmldbRelease.md>
+
     OpenMLDB 新功能介绍：特征签名，让 SQL 完成特征工程全流程 <20240523_OpenmldbFeatureSignatures.md>
+
