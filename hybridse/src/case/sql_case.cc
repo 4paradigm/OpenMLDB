@@ -35,6 +35,7 @@
 #include "glog/logging.h"
 #include "node/sql_node.h"
 #include "plan/plan_api.h"
+#include "case/test_cfg.h"
 #include "vm/engine.h"
 #include "zetasql/parser/parser.h"
 #include "planv2/ast_node_converter.h"
@@ -1762,11 +1763,7 @@ std::string SqlCase::SqlCaseBaseDir() {
     if (value != nullptr) {
         return std::string(value);
     }
-    value = getenv("YAML_CASE_BASE_DIR");
-    if (value != nullptr) {
-        return std::string(value);
-    }
-    return "";
+    return SQL_CASE_BASE_DIR;
 }
 
 absl::StatusOr<std::vector<codec::Row>> ExtractInsertRow(vm::HybridSeJitWrapper* jit, absl::string_view insert,

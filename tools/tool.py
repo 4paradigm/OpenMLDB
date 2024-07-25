@@ -16,6 +16,15 @@ import os
 import subprocess
 import sys
 import time
+# http lib for python2 or 3
+import json
+try:
+    import httplib
+    import urllib
+except ImportError:
+    import http.client as httplib
+    import urllib.parse as urllib
+
 # for Python 2, don't use f-string
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format = '%(levelname)s: %(message)s')
@@ -34,6 +43,9 @@ class Status:
 
     def GetCode(self):
         return self.code
+
+    def __str__(self):
+        return "code: {code}, msg: {msg}".format(code = self.code, msg = self.msg)
 
 class Partition:
     def __init__(self, name, tid, pid, endpoint, is_leader, is_alive, offset):
@@ -202,23 +214,55 @@ class Executor:
                 continue
             result.append(record)
         return Status(), result
+    def GetTableInfoHTTP(self, database, table_name = ''):
+        """http post ShowTable to ns leader, return one or all table info"""
+        ns = self.endpoint_map[self.ns_leader]
+        conn = httplib.HTTPConnection(ns)
+        param = {"db": database, "name": table_name}
+        headers = {"Content-type": "application/json", "Authorization": "foo"}
+        conn.request("POST", "/NameServer/ShowTable", json.dumps(param), headers)
+        response = conn.getresponse()
+        if response.status != 200:
+            return Status(response.status, response.reason), None
+        result = json.loads(response.read())
+        conn.close()
+        # check resp
+        if result["code"] != 0:
+            return Status(result["code"], "get table info failed: {msg}".format(msg=result["msg"]))
+        return Status(), result["table_info"]
 
     def ParseTableInfo(self, table_info):
         result = {}
+        if not table_info:
+            return Status(-1, "table info is empty"), None
         for record in table_info:
             is_leader = True if record[4] == "leader" else False
             is_alive = True if record[5] == "yes" else False
-            partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6]);
+            partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6])
             result.setdefault(record[2], [])
             result[record[2]].append(partition)
+        return Status(), result
+
+    def ParseTableInfoJson(self, table_info):
+        """parse one table's partition info from json"""
+        result = {}
+        parts = table_info["table_partition"]
+        for partition in parts:
+            # one partition(one leader and others)
+            for replica in partition["partition_meta"]:
+                is_leader = replica["is_leader"]
+                is_alive = True if "is_alive" not in replica else replica["is_alive"]
+                # the classname should be replica, but use partition for compatible
+                pinfo = Partition(table_info["name"], table_info["tid"], partition["pid"], replica["endpoint"], is_leader, is_alive, replica["offset"])
+                result.setdefault(partition["pid"], [])
+                result[partition["pid"]].append(pinfo)
         return result
 
     def GetTablePartition(self, database, table_name):
         status, result = self.GetTableInfo(database, table_name)
         if not status.OK:
             return status, None
-        partition_dict = self.ParseTableInfo(result)
-        return Status(), partition_dict
+        return self.ParseTableInfo(result)
 
     def GetAllTable(self, database):
         status, result = self.GetTableInfo(database)
@@ -274,30 +318,35 @@ class Executor:
 
         return Status(), output_processed
 
-    def LoadTable(self, endpoint, name, tid, pid, sync = True):
-        cmd = list(self.tablet_base_cmd)
-        cmd.append("--endpoint=" + self.endpoint_map[endpoint])
-        cmd.append("--cmd=loadtable {} {} {} 0 8".format(name, tid, pid))
-        log.info("run {cmd}".format(cmd = cmd))
-        status, output = self.RunWithRetuncode(cmd)
-        time.sleep(1)
-        if status.OK() and output.find("LoadTable ok") != -1:
-            if not sync:
-                return Status()
-            while True:
-                status, result = self.GetTableStatus(endpoint, tid, pid)
-                key = "{}_{}".format(tid, pid)
-                if status.OK() and key in result:
-                    table_stat = result[key][4]
-                    if table_stat == "kTableNormal":
-                        return Status()
-                    elif table_stat == "kTableLoading" or table_stat == "kTableUndefined":
-                        log.info("table is loading... tid {tid} pid {pid}".format(tid = tid, pid = pid))
-                    else:
-                        return Status(-1, "table stat is {table_stat}".format(table_stat = table_stat))
-                time.sleep(2)
-
-        return Status(-1, "execute load table failed, status {msg}, output {output}".format(msg = status.GetMsg(), output = output))
+    def LoadTableHTTP(self, endpoint, name, tid, pid, storage):
+        """http post LoadTable to tablet, support all storage mode"""
+        conn = httplib.HTTPConnection(endpoint)
+        # ttl won't effect, set to 0, and seg cnt is always 8
+        # and no matter if leader
+        param = {"table_meta": {"name": name, "tid": tid, "pid": pid, "ttl":0, "seg_cnt":8, "storage_mode": storage}}
+        headers = {"Content-type": "application/json", "Authorization": "foo"}
+        conn.request("POST", "/TabletServer/LoadTable", json.dumps(param), headers)
+        response = conn.getresponse()
+        if response.status != 200:
+            return Status(response.status, response.reason)
+        result = response.read()
+        conn.close()
+        resp = json.loads(result)
+        if resp["code"] != 0:
+            return Status(resp["code"], resp["msg"])
+        # wait for success TODO(hw): refactor
+        while True:
+            status, result = self.GetTableStatus(endpoint, str(tid), str(pid))
+            key = "{}_{}".format(tid, pid)
+            if status.OK() and key in result:
+                table_stat = result[key][4]
+                if table_stat == "kTableNormal":
+                    return Status()
+                elif table_stat == "kTableLoading" or table_stat == "kTableUndefined":
+                    log.info("table is loading... tid {tid} pid {pid}".format(tid = tid, pid = pid))
+                else:
+                    return Status(-1, "table stat is {table_stat}".format(table_stat = table_stat))
+            time.sleep(2)
 
     def GetLeaderFollowerOffset(self, endpoint, tid, pid):
         cmd = list(self.tablet_base_cmd)

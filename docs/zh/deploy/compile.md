@@ -4,7 +4,7 @@
 
 此节介绍在官方编译镜像 [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) 中编译 OpenMLDB，主要可以用于在容器内试用和开发目的。镜像内置了编译所需要的工具和依赖，因此不需要额外的步骤单独配置它们。关于基于非 docker 的编译使用方式，请参照下面的 [从源码全量编译](#从源码全量编译) 章节。
 
-对于编译镜像的版本，需要注意拉取的镜像版本和 [OpenMLDB 发布版本](https://github.com/4paradigm/OpenMLDB/releases)保持一致。以下例子演示了在 `hybridsql:0.9.0` 镜像版本上编译 [OpenMLDB v0.9.0](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.9.0) 的代码，如果要编译最新 `main` 分支的代码，则需要拉取 `hybridsql:latest` 版本镜像。
+对于编译镜像的版本，需要注意拉取的镜像版本和 [OpenMLDB 发布版本](https://github.com/4paradigm/OpenMLDB/releases)保持一致。以下例子演示了在 `hybridsql:0.9.1` 镜像版本上编译 [OpenMLDB v0.9.1](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.9.1) 的代码，如果要编译最新 `main` 分支的代码，则需要拉取 `hybridsql:latest` 版本镜像。
 
 1. 下载 docker 镜像
     ```bash
@@ -16,10 +16,10 @@
     docker run -it 4pdosc/hybridsql:0.9 bash
     ```
 
-3. 在 docker 容器内, 克隆 OpenMLDB, 并切换分支到 v0.9.0
+3. 在 docker 容器内, 克隆 OpenMLDB, 并切换分支到 v0.9.1
     ```bash
     cd ~
-    git clone -b v0.9.0 https://github.com/4paradigm/OpenMLDB.git
+    git clone -b v0.9.1 https://github.com/4paradigm/OpenMLDB.git
     ```
 
 4. 在 docker 容器内编译 OpenMLDB
@@ -144,7 +144,7 @@ make SQL_JAVASDK_ENABLE=ON NPROC=4
 1. 下载预编译的OpenMLDB Spark发行版。
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.9.0/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.9.1/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 或者下载源代码并从头开始编译。
@@ -203,7 +203,7 @@ bash steps/centos6_build.sh
 Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置方式：
 - 不要更换`Use workflow from`为某个tag，可以是其他分支。
 - 选择`os name`为`centos6`。
-- 如果不是编译main分支，在`The branch, tag or SHA to checkout, otherwise use the branch`中填写想要的分支名、Tag(e.g. v0.9.0)或SHA。
+- 如果不是编译main分支，在`The branch, tag or SHA to checkout, otherwise use the branch`中填写想要的分支名、Tag(e.g. v0.9.1)或SHA。
 - 编译产出在触发后的runs界面中，参考[成功产出的runs链接](https://github.com/4paradigm/OpenMLDB/actions/runs/6044951902)。
   - 一定会产出openmldb binary文件。
   - 如果不需要Java或Python SDK，可配置`java sdk enable`或`python sdk enable`为`OFF`，节约编译时间。

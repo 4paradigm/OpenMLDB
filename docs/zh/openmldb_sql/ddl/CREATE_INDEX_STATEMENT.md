@@ -55,6 +55,12 @@ CREATE INDEX index3 ON t5 (col3) OPTIONS (ts=ts1, ttl_type=absolute, ttl=30d);
 ```
 关于`TTL`和`TTL_TYPE`的更多信息参考[这里](./CREATE_TABLE_STATEMENT.md) 
 
+IOT表创建不同类型的索引，不指定type创建Covering索引，指定type为secondary，创建Secondary索引：
+```SQL
+CREATE INDEX index_s ON t5 (col3) OPTIONS (ts=ts1, ttl_type=absolute, ttl=30d, type=secondary);
+```
+同keys和ts列的索引被视为同一个索引，不要尝试建立不同type的同一索引。
+
 ## 相关SQL
 
 [DROP INDEX](./DROP_INDEX_STATEMENT.md)

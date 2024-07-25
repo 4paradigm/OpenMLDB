@@ -35,8 +35,8 @@ namespace codec {
 template <typename T>
 static bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type, bool is_not_null,
                        const std::string& null_value, T row) {
-    // check if null
-    if (v == null_value) {
+    // check if null, empty string will cast fail and throw bad_lexical_cast
+    if (v.empty() || v == null_value) {
         if (is_not_null) {
             return false;
         }

@@ -48,6 +48,7 @@ hybridse_add_src_and_tests(vm)
 hybridse_add_src_and_tests(codec)
 hybridse_add_src_and_tests(case)
 hybridse_add_src_and_tests(passes)
+hybridse_add_src_and_tests(rewriter)
 
 get_property(SRC_FILE_LIST_STR GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 string(REPLACE " " ";" SRC_FILE_LIST ${SRC_FILE_LIST_STR})

@@ -575,16 +575,32 @@ bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
                 if (type_pointee->isStructTy()) {
                     auto* key_type = type_pointee->getStructElementType(1);
                     const node::TypeNode* key = nullptr;
-                    if (key_type->isPointerTy() && !GetFullType(nm, key_type->getPointerElementType(), &key)) {
+                    if (!key_type->isPointerTy() || !GetFullType(nm, key_type->getPointerElementType(), &key)) {
                         return false;
                     }
                     const node::TypeNode* value = nullptr;
                     auto* value_type = type_pointee->getStructElementType(2);
-                    if (value_type->isPointerTy() && !GetFullType(nm, value_type->getPointerElementType(), &value)) {
+                    if (!value_type->isPointerTy() || !GetFullType(nm, value_type->getPointerElementType(), &value)) {
                         return false;
                     }
 
                     *type_node = nm->MakeNode<node::MapType>(key, value);
+                    return true;
+                }
+            }
+            return false;
+        }
+        case hybridse::node::kArray: {
+            if (type->isPointerTy()) {
+                auto type_pointee = type->getPointerElementType();
+                if (type_pointee->isStructTy()) {
+                    auto* key_type = type_pointee->getStructElementType(0);
+                    const node::TypeNode* key = nullptr;
+                    if (!key_type->isPointerTy() || !GetFullType(nm, key_type->getPointerElementType(), &key)) {
+                        return false;
+                    }
+
+                    *type_node = nm->MakeNode<node::TypeNode>(node::DataType::kArray, key);
                     return true;
                 }
             }

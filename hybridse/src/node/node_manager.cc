@@ -451,6 +451,7 @@ SqlNode *NodeManager::MakeColumnIndexNode(SqlNodeList *index_item_list) {
             switch (node_ptr->GetType()) {
                 case kIndexKey:
                     index_ptr->SetKey(dynamic_cast<IndexKeyNode *>(node_ptr)->GetKey());
+                    index_ptr->SetIndexType(dynamic_cast<IndexKeyNode *>(node_ptr)->GetIndexType());
                     break;
                 case kIndexTs:
                     index_ptr->SetTs(dynamic_cast<IndexTsNode *>(node_ptr)->GetColumnName());
@@ -649,12 +650,12 @@ FnParaNode *NodeManager::MakeFnParaNode(const std::string &name, const TypeNode 
     ::hybridse::node::FnParaNode *para_node = new ::hybridse::node::FnParaNode(expr_id);
     return RegisterNode(para_node);
 }
-SqlNode *NodeManager::MakeIndexKeyNode(const std::string &key) {
-    SqlNode *node_ptr = new IndexKeyNode(key);
+SqlNode *NodeManager::MakeIndexKeyNode(const std::string &key, const std::string &type) {
+    SqlNode *node_ptr = new IndexKeyNode(key, type);
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeIndexKeyNode(const std::vector<std::string> &keys) {
-    SqlNode *node_ptr = new IndexKeyNode(keys);
+SqlNode *NodeManager::MakeIndexKeyNode(const std::vector<std::string> &keys, const std::string &type) {
+    SqlNode *node_ptr = new IndexKeyNode(keys, type);
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeIndexTsNode(const std::string &ts) {

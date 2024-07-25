@@ -56,17 +56,17 @@ If your operating system is not mentioned above or if you want to compile from s
 
 ### Linux Platform Compatibility Pre-test
 
-Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. Download the pre-compiled package `openmldb-0.9.0-linux.tar.gz`, and execute:
+Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. Download the pre-compiled package `openmldb-0.9.1-linux.tar.gz`, and execute:
 
 ```
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-./openmldb-0.9.0-linux/bin/openmldb --version
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+./openmldb-0.9.1-linux/bin/openmldb --version
 ```
 
 The result should display the version number of the program, as shown below:
 
 ```
-openmldb version 0.9.0-xxxx
+openmldb version 0.9.1-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -181,9 +181,9 @@ DataCollector and SyncTool currently do not support one-click deployment. Please
 ### Download OpenMLDB
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.0/openmldb-0.9.0-linux.tar.gz
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-cd openmldb-0.9.0-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.1/openmldb-0.9.1-linux.tar.gz
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+cd openmldb-0.9.1-linux
 ```
 
 ### Environment Configuration
@@ -192,7 +192,7 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 
 | Environment Variable              | Default Value                                           | Note                                                         |
 | --------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| OPENMLDB_VERSION                  | 0.9.0                                                   | OpenMLDB version                                             |
+| OPENMLDB_VERSION                  | 0.9.1                                                   | OpenMLDB version                                             |
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster                                        |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root directory                                      |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | Spark root directory, if the directory does not exist,  it will be downloaded automatically.|
@@ -365,10 +365,10 @@ Note that at least two TabletServers need to be deployed, otherwise errors may o
 **1. Download the OpenMLDB deployment package**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.0/openmldb-0.9.0-linux.tar.gz
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-mv openmldb-0.9.0-linux openmldb-tablet-0.9.0
-cd openmldb-tablet-0.9.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.1/openmldb-0.9.1-linux.tar.gz
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+mv openmldb-0.9.1-linux openmldb-tablet-0.9.1
+cd openmldb-tablet-0.9.1
 ```
 
 **2. Modify the configuration file `conf/tablet.flags`**
@@ -431,12 +431,12 @@ For clustered versions, the number of TabletServers must be 2 or more. If there'
 
 To start the next TabletServer on a different machine, simply repeat the aforementioned steps on that machine. If starting the next TabletServer on the same machine, ensure it's in a different directory, and do not reuse a directory where the TabletServer is already running.
 
-For instance, you can decompress the package again (avoid using a directory where TabletServer is already running, as files generated after startup may be affected), and name the directory `openmldb-tablet-0.9.0-2`.
+For instance, you can decompress the package again (avoid using a directory where TabletServer is already running, as files generated after startup may be affected), and name the directory `openmldb-tablet-0.9.1-2`.
 
 ```
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-mv openmldb-0.9.0-linux openmldb-tablet-0.9.0-2
-cd openmldb-tablet-0.9.0-2
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+mv openmldb-0.9.1-linux openmldb-tablet-0.9.1-2
+cd openmldb-tablet-0.9.1-2
 ```
 
 Modify the configuration again and start the TabletServer. Note that if all TabletServers are on the same machine, use different port numbers to avoid the "Fail to listen" error in the log (`logs/tablet.WARNING`).
@@ -454,10 +454,10 @@ Please ensure that all TabletServer have been successfully started before deploy
 **1. Download the OpenMLDB deployment package**
 
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.0/openmldb-0.9.0-linux.tar.gz
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-mv openmldb-0.9.0-linux openmldb-ns-0.9.0
-cd openmldb-ns-0.9.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.1/openmldb-0.9.1-linux.tar.gz
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+mv openmldb-0.9.1-linux openmldb-ns-0.9.1
+cd openmldb-ns-0.9.1
 ````
 
 **2.  Modify the configuration file conf/nameserver.flags**
@@ -502,12 +502,12 @@ You can have only one NameServer, but if you need high availability, you can dep
 
 To start the next NameServer on another machine, simply repeat the above steps on that machine. If starting the next NameServer on the same machine, ensure it's in a different directory and do not reuse the directory where NameServer has already been started.
 
-For instance, you can decompress the package again (avoid using the directory where NameServer is already running, as files generated after startup may be affected) and name the directory `openmldb-ns-0.9.0-2`.
+For instance, you can decompress the package again (avoid using the directory where NameServer is already running, as files generated after startup may be affected) and name the directory `openmldb-ns-0.9.1-2`.
 
 ```
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-mv openmldb-0.9.0-linux openmldb-ns-0.9.0-2
-cd openmldb-ns-0.9.0-2
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+mv openmldb-0.9.1-linux openmldb-ns-0.9.1-2
+cd openmldb-ns-0.9.1-2
 ```
 
 Then modify the configuration and start.
@@ -548,10 +548,10 @@ Before running APIServer, ensure that the TabletServer and NameServer processes 
 **1. Download the OpenMLDB deployment package**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.0/openmldb-0.9.0-linux.tar.gz
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-mv openmldb-0.9.0-linux openmldb-apiserver-0.9.0
-cd openmldb-apiserver-0.9.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.1/openmldb-0.9.1-linux.tar.gz
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+mv openmldb-0.9.1-linux openmldb-apiserver-0.9.1
+cd openmldb-apiserver-0.9.1
 ```
 
 **2. Modify the configuration file conf/apiserver.flags**
@@ -615,18 +615,18 @@ Download the Spark distribution from the [Spark official website](https://spark.
 Alternatively, use the OpenMLDB Spark distribution.
 
 ```shell
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.9.0/spark-3.2.1-bin-openmldbspark.tgz
-# Image address (China)：https://www.openmldb.com/download/v0.9.0/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.9.1/spark-3.2.1-bin-openmldbspark.tgz
+# Image address (China)：https://www.openmldb.com/download/v0.9.1/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB deployment package：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.0/openmldb-0.9.0-linux.tar.gz
-tar -zxvf openmldb-0.9.0-linux.tar.gz
-mv openmldb-0.9.0-linux openmldb-taskmanager-0.9.0
-cd openmldb-taskmanager-0.9.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.1/openmldb-0.9.1-linux.tar.gz
+tar -zxvf openmldb-0.9.1-linux.tar.gz
+mv openmldb-0.9.1-linux openmldb-taskmanager-0.9.1
+cd openmldb-taskmanager-0.9.1
 ```
 
 **2. Modify the configuration file conf/taskmanager.properties**

@@ -97,41 +97,43 @@ def CheckTable(executor, db, table_name):
             return Status(-1, "role is not match")
     return Status()
 
-def RecoverPartition(executor, db, partitions, endpoint_status):
+def RecoverPartition(executor, db, replicas, endpoint_status, storage):
+    """recover all replicas of one partition"""
     leader_pos = -1
     max_offset = 0
-    table_name = partitions[0].GetName()
-    pid = partitions[0].GetPid()
-    for pos in range(len(partitions)):
-        partition = partitions[pos]
-        if partition.IsLeader() and partition.GetOffset() >= max_offset:
+    table_name = replicas[0].GetName()
+    pid = replicas[0].GetPid()
+    tid = replicas[0].GetTid()
+    for pos in range(len(replicas)):
+        replica = replicas[pos]
+        if replica.IsLeader() and replica.GetOffset() >= max_offset:
             leader_pos = pos
     if leader_pos < 0:
-        log.error("cannot find leader partition. db {db} name {table_name} partition {pid}".format(
-            db=db, table_name=table_name, pid=pid))
-        return Status(-1, "recover partition failed")
-    tid = partitions[0].GetTid()
-    leader_endpoint = partitions[leader_pos].GetEndpoint()
+        msg = "cannot find leader replica. db {db} name {table_name} partition {pid}".format(
+            db=db, table_name=table_name, pid=pid)
+        log.error(msg)
+        return Status(-1, "recover partition failed: {msg}".format(msg=msg))
+    leader_endpoint = replicas[leader_pos].GetEndpoint()
     # recover leader
     if "{tid}_{pid}".format(tid=tid, pid=pid) not in endpoint_status[leader_endpoint]:
-        log.info("leader partition is not in tablet, db {db} name {table_name} pid {pid} endpoint {leader_endpoint}. start loading data...".format(
+        log.info("leader replica is not in tablet, db {db} name {table_name} pid {pid} endpoint {leader_endpoint}. start loading data...".format(
             db=db, table_name=table_name, pid=pid, leader_endpoint=leader_endpoint))
-        status = executor.LoadTable(leader_endpoint, table_name, tid, pid)
+        status = executor.LoadTableHTTP(leader_endpoint, table_name, tid, pid, storage)
         if not status.OK():
             log.error("load table failed. db {db} name {table_name} tid {tid} pid {pid} endpoint {leader_endpoint} msg {status}".format(
                 db=db, table_name=table_name, tid=tid, pid=pid, leader_endpoint=leader_endpoint, status=status.GetMsg()))
-            return Status(-1, "recover partition failed")
-    if not partitions[leader_pos].IsAlive():
+            return status
+    if not replicas[leader_pos].IsAlive():
         status =  executor.UpdateTableAlive(db, table_name, pid, leader_endpoint, "yes")
         if not status.OK():
             log.error("update leader alive failed. db {db} name {table_name} pid {pid} endpoint {leader_endpoint}".format(
                 db=db, table_name=table_name, pid=pid, leader_endpoint=leader_endpoint))
             return Status(-1, "recover partition failed")
     # recover follower
-    for pos in range(len(partitions)):
+    for pos in range(len(replicas)):
         if pos == leader_pos:
             continue
-        partition = partitions[pos]
+        partition = replicas[pos]
         endpoint = partition.GetEndpoint()
         if partition.IsAlive():
             status = executor.UpdateTableAlive(db, table_name, pid, endpoint, "no")
@@ -149,14 +151,21 @@ def RecoverTable(executor, db, table_name):
         log.info("{table_name} in {db} is healthy".format(table_name=table_name, db=db))
         return Status()
     log.info("recover {table_name} in {db}".format(table_name=table_name, db=db))
-    status, table_info = executor.GetTableInfo(db, table_name)
+    status, table_info = executor.GetTableInfoHTTP(db, table_name)
     if not status.OK():
-        log.warning("get table info failed. msg is {msg}".format(msg=status.GetMsg()))
-        return Status(-1, "get table info failed. msg is {msg}".format(msg=status.GetMsg()))
-    partition_dict = executor.ParseTableInfo(table_info)
+        log.warning("get table info failed. msg is {msg}".format(msg=status))
+        return Status(-1, "get table info failed. msg is {msg}".format(msg=status))
+    if len(table_info) != 1:
+        log.warning("table info should be 1, {table_info}".format(table_info=table_info))
+        return Status(-1, "table info should be 1")
+    table_info = table_info[0]
+    partition_dict = executor.ParseTableInfoJson(table_info)
+    storage = "kMemory" if "storage_mode" not in table_info else table_info["storage_mode"]
     endpoints = set()
-    for record in table_info:
-        endpoints.add(record[3])
+    for _, reps in partition_dict.items():
+        # list of replicas
+        for rep in reps:
+            endpoints.add(rep.GetEndpoint())
     endpoint_status = {}
     for endpoint in endpoints:
         status, result = executor.GetTableStatus(endpoint)
@@ -164,9 +173,9 @@ def RecoverTable(executor, db, table_name):
             log.warning("get table status failed. msg is {msg}".format(msg=status.GetMsg()))
             return Status(-1, "get table status failed. msg is {msg}".format(msg=status.GetMsg()))
         endpoint_status[endpoint] = result
-    max_pid = int(table_info[-1][2])
-    for pid in range(max_pid + 1):
-        RecoverPartition(executor, db, partition_dict[str(pid)], endpoint_status)
+
+    for _, part in partition_dict.items():
+        RecoverPartition(executor, db, part, endpoint_status, storage)
     # wait op
     time.sleep(1)
     while True:
