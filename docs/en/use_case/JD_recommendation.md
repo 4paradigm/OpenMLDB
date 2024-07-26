@@ -60,7 +60,7 @@ Pull the OpenMLDB docker image and run.
 
 Since the OpenMLDB cluster needs to communicate with other components, we will use the host network straightaway. In this example, we will use downloaded scripts in the docker, therefore we map the `demodir` directory into the docker container.
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.9.1 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.9.2 bash
 docker exec -it openmldb bash
 ```
 

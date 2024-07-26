@@ -26,7 +26,7 @@ OpenMLDB 的特征签名功能是在标准 SQL 的基础上，基于一系列 Op
 首先参照[快速入门](https://openmldb.ai/docs/zh/main/tutorial/standalone_use.html)获取镜像并启动 OpenMLDB 服务端和客户端。
 
 ```bash
-docker run -it 4pdosc/openmldb:0.9.0 bash
+docker run -it 4pdosc/openmldb:0.9.2 bash
 /work/init.sh
 /work/openmldb/sbin/openmldb-cli.sh
 ```

@@ -30,7 +30,7 @@ These functions must be used in conjunction with the sample format functions `cs
 
 First, follow the [quick start](https://openmldb.ai/docs/en/main/tutorial/standalone_use.html) guide to get the image and start the OpenMLDB server and client.
 ```bash
-docker run -it 4pdosc/openmldb:0.9.0 bash
+docker run -it 4pdosc/openmldb:0.9.2 bash
 /work/init.sh
 /work/openmldb/sbin/openmldb-cli.sh
 ```
