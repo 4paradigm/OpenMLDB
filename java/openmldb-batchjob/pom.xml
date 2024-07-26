@@ -7,7 +7,7 @@
   <parent>
       <artifactId>openmldb-parent</artifactId>
       <groupId>com.4paradigm.openmldb</groupId>
-      <version>0.9.0</version>
+      <version>0.9.1-SNAPSHOT</version>
   </parent>
 
   <artifactId>openmldb-batchjob</artifactId>
