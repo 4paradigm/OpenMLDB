@@ -29,6 +29,7 @@ extern "C" {
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
@@ -314,7 +315,7 @@ bool HybridSeMcJitWrapper::AddModule(
     } else {
         execution_engine_->addModule(std::move(module));
     }
-    if (jit_options_.IsEnableVTune()) {
+    if (jit_options_.IsEnableVtune()) {
         auto listener = ::llvm::JITEventListener::createIntelJITEventListener();
         if (listener == nullptr) {
             LOG(WARNING) << "Intel jit events is not enabled";
@@ -322,7 +323,7 @@ bool HybridSeMcJitWrapper::AddModule(
             execution_engine_->RegisterJITEventListener(listener);
         }
     }
-    if (jit_options_.IsEnableGDB()) {
+    if (jit_options_.IsEnableGdb()) {
         auto listener =
             ::llvm::JITEventListener::createGDBRegistrationListener();
         if (listener == nullptr) {

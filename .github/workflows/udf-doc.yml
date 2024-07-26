@@ -50,11 +50,10 @@ jobs:
           make -C hybridse/tools/documentation/udf_doxygen sync
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v6
         if: github.event_name != 'pull_request'
         with:
           add-paths: |
-            docs/en/reference/sql/udfs_8h.md
             docs/zh/openmldb_sql/udfs_8h.md
           labels: |
             udf

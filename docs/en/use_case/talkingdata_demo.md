@@ -13,7 +13,7 @@ It is recommended to run this demo in Docker. Please make sure that OpenMLDB and
 **Start the OpenMLDB Docker Image**
 
 ```
-docker run -it 4pdosc/openmldb:0.9.0 bash
+docker run -it 4pdosc/openmldb:0.9.1 bash
 ```
 
 #### 1.1.2 Run Locally
