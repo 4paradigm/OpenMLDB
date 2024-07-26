@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.2] - 2024-07-26
+
+### Bug Fixes
+- Fix upgrade openmldb sdk version in self host (#3962 @aceforeverd)
+- Fix select from JOB_INFO should always in online mode (#3963 @aceforeverd)
+- Fix update create-pull-request action to v6 in udf-doc-gen workflow & rm deprecated file sync (#3964 @Jayaprakash0511)
+- Fix build in centos7 EOL (#3965 @aceforeverd)
+- Fix numpy version lock (#3966 @aceforeverd)
+
 ## [0.9.1] - 2024-07-17
 
 ### Features
