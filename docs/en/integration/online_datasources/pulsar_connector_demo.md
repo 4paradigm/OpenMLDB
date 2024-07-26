@@ -43,7 +43,7 @@ Currently, only the OpenMLDB cluster version can act as the receiver of sinks, a
 We recommend using the 'host network' mode to run Docker and bind the file directory 'files' where the SQL script is located.
 
 ```
-docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.9.1 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.9.2 bash
 docker exec -it openmldb bash
 ```
 

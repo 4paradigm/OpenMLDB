@@ -47,7 +47,7 @@ Kafka利用OpenMLDB Kafka Connector导入数据到OpenMLDB集群，其性能将�
 
 我们推荐你将下载的三个文件包都绑定到文件目录`kafka`。当然，也可以在启动容器后，再进行文件包的下载。我们假设文件包都在`/work/kafka`目录中。
 ```
-docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.9.1 bash
+docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.9.2 bash
 ```
 
 ### 注意事项
