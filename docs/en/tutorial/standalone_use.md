@@ -11,7 +11,7 @@ This article provides a guide on developing and deploying with OpenMLDB CLI. To 
 Execute the following command to fetch the OpenMLDB image and initiate a Docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.9.1 bash
+docker run -it 4pdosc/openmldb:0.9.2 bash
 ```
 
 Upon successful container launch, all subsequent commands in this tutorial will assume execution within the container.
