@@ -17,7 +17,7 @@
 
 set -eE -x
 CURRENT_DIR=$(dirname "$0")
-SPARK_VERSION=0.8.5
+SPARK_VERSION=0.9.2
 pushd "${CURRENT_DIR}"
 cp -r ../../../openmldb ./
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" openmldb/conf/openmldb-env.sh
