@@ -390,6 +390,8 @@ void sub_string(StringRef *str, int32_t pos,
                 StringRef *output);
 void sub_string(StringRef *str, int32_t pos, int32_t len,
                 StringRef *output);
+int32_t locate(StringRef *substr, StringRef* str);
+int32_t locate(StringRef *substr, StringRef* str, int32_t pos);
 int32_t strcmp(StringRef *s1, StringRef *s2);
 void bool_to_string(bool v, StringRef *output);
 

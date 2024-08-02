@@ -73,7 +73,7 @@ object JobInfoManager {
   }
 
   def getAllJobs(): List[JobInfo] = {
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
     // TODO: Reorder in output, use orderby desc if SQL supported
     resultSetToJobs(rs).sortWith(_.getId > _.getId)
@@ -82,7 +82,7 @@ object JobInfoManager {
   def getUnfinishedJobs(): List[JobInfo] = {
     // TODO: Now we can not add index for `state` and run sql with
     //  s"SELECT * FROM $tableName WHERE state NOT IN (${JobInfo.FINAL_STATE.mkString(",")})"
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
 
     val jobs = mutable.ArrayBuffer[JobInfo]()
@@ -99,7 +99,7 @@ object JobInfoManager {
   }
 
   def stopJob(jobId: Int): JobInfo = {
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
 
     val jobInfo = if (rs.getFetchSize == 0) {
@@ -131,7 +131,7 @@ object JobInfoManager {
 
   def getJob(jobId: Int): Option[JobInfo] = {
     // TODO: Require to get only one row, https://github.com/4paradigm/OpenMLDB/issues/704
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
 
     if (rs.getFetchSize == 0) {

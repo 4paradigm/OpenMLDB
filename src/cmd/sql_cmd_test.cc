@@ -1628,19 +1628,18 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     rs = sr->ExecuteSQL("", result_sql, &status);
     ASSERT_EQ(3, rs->Size());
 
-    std::string msg;
-    auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
-    ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
-    ASSERT_TRUE(ok);
-    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo3_w1_count_where_c4_c3;", &status);
-    ASSERT_TRUE(ok);
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo2", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo3", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    // drop deployment
+    sr->ExecuteSQL("test2", "drop deployment demo1;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    rs = sr->ExecuteSQL("test2", "drop deployment demo2;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    rs = sr->ExecuteSQL("test2", "drop deployment demo3;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    
+    sr->ExecuteSQL("test2", "drop table trans", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    sr->ExecuteSQL("drop database test2;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 }
 
 void CreateDBTableForLongWindow(const std::string& base_db, const std::string& base_table) {
@@ -1711,6 +1710,7 @@ void PrepareRequestRowForLongWindow(const std::string& base_db, const std::strin
 }
 
 // TODO(ace): create instance of DeployLongWindowEnv with template
+static absl::BitGen gen;  // reseed may segfault, use one for all env
 class DeployLongWindowEnv {
  public:
     explicit DeployLongWindowEnv(sdk::SQLClusterRouter* sr) : sr_(sr) {}
@@ -1718,9 +1718,9 @@ class DeployLongWindowEnv {
     virtual ~DeployLongWindowEnv() {}
 
     void SetUp() {
-        db_ = absl::StrCat("db_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        table_ = absl::StrCat("tb_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
-        dp_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        db_ = absl::StrCat("db_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+        table_ = absl::StrCat("tb_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
+        dp_ = absl::StrCat("dp_", absl::Uniform(gen, 0, std::numeric_limits<int32_t>::max()));
 
         PrepareSchema();
 
@@ -1732,7 +1732,7 @@ class DeployLongWindowEnv {
     }
 
     void TearDown() {
-        TearDownPreAggTables();
+        TearDownDeployment();
         ProcessSQLs(sr_, {
                              absl::StrCat("drop table ", table_),
                              absl::StrCat("drop database ", db_),
@@ -1788,7 +1788,12 @@ class DeployLongWindowEnv {
 
     virtual void Deploy() = 0;
 
-    virtual void TearDownPreAggTables() = 0;
+    virtual void TearDownDeployment() {
+        ProcessSQLs(sr_, {
+                             absl::StrCat("use ", db_),
+                             absl::StrCat("drop deployment ", dp_),
+                         });
+    }
 
     void GetRequestRow(std::shared_ptr<sdk::SQLRequestRow>* rs, const std::string& name) {  // NOLINT
         ::hybridse::sdk::Status status;
@@ -1814,7 +1819,6 @@ class DeployLongWindowEnv {
 
  protected:
     sdk::SQLClusterRouter* sr_;
-    absl::BitGen gen_;
     std::string db_;
     std::string table_;
     std::string dp_;
@@ -1843,14 +1847,14 @@ TEST_P(DBSDKTest, DeployLongWindowsWithDataFail) {
         ".col2 ORDER BY col3"
         " ROWS_RANGE BETWEEN 5 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(base_db, "use " + base_db + ";", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     sr->ExecuteSQL(base_db, deploy_sql, &status);
     ASSERT_TRUE(!status.IsOK());
 
     ok = sr->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
-    ASSERT_TRUE(ok) << status.msg;
+    ASSERT_TRUE(ok) << status.ToString();
     ok = sr->DropDB(base_db, &status);
-    ASSERT_TRUE(ok);
+    ASSERT_TRUE(ok) << status.ToString();
 }
 
 TEST_P(DBSDKTest, DeployLongWindowsEmpty) {
@@ -2871,25 +2875,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere2) {
         w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 6s PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_i64_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_s_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where__i64_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_filter_i64_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [5s, 11s]
@@ -2948,24 +2933,6 @@ TEST_P(DBSDKTest, DeployLongWindowsExecuteCountWhere3) {
         w2 AS (PARTITION BY col1,col2 ORDER BY i64_col ROWS BETWEEN 6 PRECEDING AND CURRENT ROW);)",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_t_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_s_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_count_where_date_col_filter"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3022,26 +2989,6 @@ TEST_P(DBSDKTest, LongWindowMinMaxWhere) {
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
-        }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_max_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_min_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
         }
     };
 
@@ -3100,25 +3047,6 @@ TEST_P(DBSDKTest, LongWindowSumWhere) {
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_sum_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3174,25 +3102,6 @@ TEST_P(DBSDKTest, LongWindowAvgWhere) {
   FROM $1 WINDOW
     w1 AS (PARTITION BY col1,col2 ORDER BY col3 ROWS_RANGE BETWEEN 7s PRECEDING AND CURRENT ROW))s",
                                                dp_, table_)});
-        }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
         }
     };
 
@@ -3273,25 +3182,6 @@ TEST_P(DBSDKTest, LongWindowAnyWhereWithDataOutOfOrder) {
                 ASSERT_TRUE(ok && s.IsOK()) << s.msg << "\n" << s.trace;
             }
         }
-
-        void TearDownPreAggTables() override {
-            absl::string_view pre_agg_db = openmldb::nameserver::PRE_AGG_DB;
-            ProcessSQLs(sr_, {
-                                 absl::StrCat("use ", pre_agg_db),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_col1"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_filter"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i64_col_i16_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i16_col_i32_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_i32_col_f_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_f_col_d_col"),
-                                 absl::StrCat("drop table pre_", db_, "_", dp_, "_w1_avg_where_d_col_d_col"),
-                                 absl::StrCat("use ", db_),
-                                 absl::StrCat("drop deployment ", dp_),
-                             });
-        }
     };
 
     // request window [4s, 11s]
@@ -3354,8 +3244,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
-
-        void TearDownPreAggTables() override {}
+        void TearDownDeployment() override {}
     };
 
     // unsupport: deploy any_where with rows bucket
@@ -3390,8 +3279,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
-
-            void TearDownPreAggTables() override {}
+            void TearDownDeployment() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3420,8 +3308,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
-
-            void TearDownPreAggTables() override {}
+            void TearDownDeployment() override {}
         };
 
         DeployLongWindowAnyWhereEnv env(sr);
@@ -3481,8 +3368,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
-
-        void TearDownPreAggTables() override {}
+        void TearDownDeployment() override {}
     };
 
     DeployLongWindowAnyWhereEnv env(sr);
@@ -3504,26 +3390,35 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         " max(c5) over w2 as w2_max_c5 FROM trans"
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    
     for (int i = 0; i < 10; i++) {
         HandleSQL("create database test2;");
         HandleSQL("use test2;");
         HandleSQL(create_sql);
+        LOG(INFO) << "before deploy " << i;
+        HandleSQL("select * from __INTERNAL_DB.PRE_AGG_META_INFO;");
         sr->ExecuteSQL(deploy_sql, &status);
         ASSERT_TRUE(status.IsOK());
+        absl::SleepFor(absl::Seconds(3));
+        LOG(INFO) << "after deploy " << i;
+        HandleSQL("select * from __INTERNAL_DB.PRE_AGG_META_INFO;");
         std::string msg;
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(2, rs->Size());
-        auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
-        ASSERT_TRUE(ok);
-        ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
-        ASSERT_TRUE(ok);
+        sr->ExecuteSQL("test2", "drop table trans;", &status);
+        ASSERT_FALSE(status.IsOK());
+        sr->ExecuteSQL("drop procedure demo1;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
+        sr->ExecuteSQL("test2", "drop table trans;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
+
         result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+        HandleSQL(result_sql);
         rs = sr->ExecuteSQL("", result_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         ASSERT_EQ(0, rs->Size());
-        ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
-        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
         // helpful for debug
         HandleSQL("show tables;");
         HandleSQL("show deployments;");
@@ -4151,6 +4046,7 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name), &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     ASSERT_EQ(res->Size(), 4);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c1='aa';"), &status);
     ASSERT_EQ(res->Size(), 3);

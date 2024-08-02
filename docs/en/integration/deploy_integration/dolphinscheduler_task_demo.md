@@ -31,7 +31,7 @@ In addition to SQL execution in OpenMLDB, real-time prediction also requires mod
 
 The test can be executed on macOS or Linux, and we recommend running this demo within the provided OpenMLDB docker image. In this setup, both OpenMLDB and DolphinScheduler will be launched inside the container, with the port of DolphinScheduler exposed.
 ```
-docker run -it -p 12345:12345 4pdosc/openmldb:0.9.0 bash
+docker run -it -p 12345:12345 4pdosc/openmldb:0.9.2 bash
 ```
 ```{attention}
 For proper configuration of DolphinScheduler, the tenant should be set up as a user of the operating system, and this user must have sudo permissions. It is advised to download and initiate DolphinScheduler within the OpenMLDB container. Otherwise, please ensure that the user has sudo permissions.

@@ -21,9 +21,13 @@ ARG TARGETARCH
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
-COPY setup_deps.sh /
+COPY ./*.sh /
 # hadolint ignore=DL3031,DL3033
-RUN yum update -y && yum install -y centos-release-scl epel-release && \
+RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo && \
+    sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo && \
+    sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo && \
+    yum update -y && yum install -y centos-release-scl epel-release && \
+    /patch_yum_repo.sh && \
     yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel rh-python38-python-requests rh-python38-python-pip && \
     curl -Lo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
     yum localinstall -y lcov-1.15-1.noarch.rpm && \
@@ -33,7 +37,7 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     tar xzf zookeeper.tar.gz -C /deps/src && \
     rm -v ./*.tar.gz && \
     /setup_deps.sh -a "$TARGETARCH" -z "$ZETASQL_VERSION" -t "$THIRDPARTY_VERSION" && \
-    rm -v /setup_deps.sh
+    rm -v /*.sh
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src

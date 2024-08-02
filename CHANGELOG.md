@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.9.2] - 2024-07-26
+
+### Bug Fixes
+- Fix upgrade openmldb sdk version in self host (#3962 @aceforeverd)
+- Fix select from JOB_INFO should always in online mode (#3963 @aceforeverd)
+- Fix update create-pull-request action to v6 in udf-doc-gen workflow & rm deprecated file sync (#3964 @Jayaprakash0511)
+- Fix build in centos7 EOL (#3965 @aceforeverd)
+- Fix numpy version lock (#3966 @aceforeverd)
+
+## [0.9.1] - 2024-07-17
+
+### Features
+- Support merge DAG SQL in Java SDK (#3911 @wyl4pd)
+- Support tablets get user table remotely (#3918 @oh2024)
+- Support set global variable @@execute_mode = 'request' (#3924 @aceforeverd)
+- Support crud users synchronously (#3928 @oh2024)
+- Support simple ANSI SQL rewriter(#3934 @aceforeverd)
+- Support execute mode batchrequest(#3938 @aceforeverd)
+- Support new UDF of isin, array_combine, array_join and locate, (#3939 #3945 @aceforeverd #3940 #3943 @howdb)
+- Support server side authorization (#3941 @oh2024)
+- Support new index type and IoT Table (#3944 @vagetablechicken)
+
+### Bug Fixes
+- Fix setup script uses incorrect ZooKeeper configuration file(#3901 @greatljn)
+- Fix make clients use always send auth info(#3906 @oh2024)
+- Fix drop aggr tables in drop table (#3908 @vagetablechicken)
+- Fix checkout execute_mode in config clause in sql client (#3909 @aceforeverd)
+- Fix continuous sign for gcformat with space (#3921 @wyl4pd)
+- Fix package issues by removing s3 dependencies and fix package conflict of curator (#3929 @tobegit3hub)
+- Fix repeated sort keys and sort as int(#3947 @oh2024)
+- Fix checkout action on old glibc OS (#3955 @aceforeverd)
+- Fix CICD issue of deploying spark correctly(#3958 @aceforeverd)
+
+### Testing
+- Set NPROC in intergration test(#3782 @dl239)
+- Support map data type in yaml testing framework(#3765 @aceforeverd)
+- Add automatic table cleanup after go sdk tests(#3799 @oh2024)
+- Fix sql_cmd_test and no impl for MakeMergeNode(#3829 @aceforeverd)
+- Add query performance benchmark(#3855 @gaoboal)
+
 ## [0.9.0] - 2024-04-25
 
 ### Breaking Changes

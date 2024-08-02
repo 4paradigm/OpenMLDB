@@ -128,7 +128,12 @@ function download_spark {
   if [[ -z "${SPARK_HOME}" ]]; then
     echo "[ERROR] SPARK_HOME is not set"
   else
-    if [[ ! -e "${SPARK_HOME}" ]]; then
+    if [[ ! -d "${SPARK_HOME}" ]]; then
+      # SPARK_HOME may be symbolic link, -d will consider only directory exists,
+      # this filter out existing symbolic link refer to a non-exists directory.
+      # And we'd try rm it first
+      rm -fv "${SPARK_HOME}"
+
       echo "Downloading openmldbspark..."
       spark_name=spark-3.2.1-bin-openmldbspark
       spark_tar="${spark_name}".tgz

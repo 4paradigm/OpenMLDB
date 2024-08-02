@@ -880,54 +880,38 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         }
     }
 
-    // delete pre-aggr meta info if need
-    if (table_info->base_table_tid() > 0) {
-        std::string meta_db = openmldb::nameserver::INTERNAL_DB;
-        std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
-        std::string select_aggr_info =
-            absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
-                         meta_db, ".", meta_table, " where aggr_table = '", table_info->name(), "';");
-        auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
-        WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
-        if (rs->Size() != 1) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "duplicate records generate with aggr table name: " + table_info->name());
-            return false;
-        }
-        std::string idx_key;
-        if (rs->Next()) {
-            for (int i = 0; i < rs->GetSchema()->GetColumnCnt(); i++) {
-                if (!idx_key.empty()) {
-                    idx_key += "|";
-                }
-                auto k = rs->GetAsStringUnsafe(i);
-                if (k.empty()) {
-                    idx_key += hybridse::codec::EMPTY_STRING;
-                } else {
-                    idx_key += k;
-                }
+    // delete related pre-aggr tables first
+    std::string meta_db = openmldb::nameserver::INTERNAL_DB;
+    std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
+    std::string select_aggr_info =
+        absl::StrCat("select aggr_db, aggr_table from ", meta_db, ".", meta_table, " where base_table = '",
+                     table_info->name(), "' and base_db='", table_info->db(), "' CONFIG (execute_mode = 'online');");
+    auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
+    WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
+    if (rs->Size() > 0) {
+        // drop aggr-table and meta info one by one, if failed, plz delete manually
+        while (rs->Next()) {
+            std::string aggr_db = rs->GetStringUnsafe(0);
+            std::string aggr_table = rs->GetStringUnsafe(1);
+
+            if (aggr_db.empty() || aggr_table.empty()) {
+                WARN_NOT_OK_AND_RET(
+                    status, absl::StrCat("aggr table ", aggr_db, " or ", aggr_table, " is empty, can't delete"), false);
             }
-        } else {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "access ResultSet failed");
-            return false;
+            if (!DropTable(aggr_db, aggr_table, true, status)) {
+                WARN_NOT_OK_AND_RET(status, absl::StrCat("drop aggr table ", aggr_db, ".", aggr_table, " failed"),
+                                    false);
+            }
+            LOG(INFO) << "drop aggr meta " << aggr_db << "." << aggr_table << "by table name";
+            // Ref CheckPreAggrTableExist, checking existence of aggr table uses the unique_key index, ignore bucket_size.
+            // But for deleting, we don't need to consider the unique_key. Just delete the table, aggr_table is unique.
+            std::string delete_aggr_info =
+                absl::StrCat("delete from ", meta_db, ".", meta_table, " where aggr_table='", aggr_table, "';");
+            auto rs = ExecuteSQL("", delete_aggr_info, true, true, 0, status);
+            WARN_NOT_OK_AND_RET(status, "delete aggr info failed", false);
         }
-        auto tablet_accessor = cluster_sdk_->GetTablet(meta_db, meta_table, (uint32_t)0);
-        if (!tablet_accessor) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "get tablet accessor failed");
-            return false;
-        }
-        auto tablet_client = tablet_accessor->GetClient();
-        if (!tablet_client) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "get tablet client failed");
-            return false;
-        }
-        auto tid = cluster_sdk_->GetTableId(meta_db, meta_table);
-        std::string msg;
-        if (!tablet_client->Delete(tid, 0, table_info->name(), "aggr_table", msg) ||
-            !tablet_client->Delete(tid, 0, idx_key, "unique_key", msg)) {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "delete aggr meta failed");
-            return false;
-        }
+    } else {
+        LOG(INFO) << "no related pre-aggr tables";
     }
 
     // Check offline table info first
@@ -3046,7 +3030,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         case hybridse::node::kPlanTypeCreateUser: {
             auto create_node = dynamic_cast<hybridse::node::CreateUserPlanNode*>(node);
             UserInfo user_info;
-
             auto result = GetUser(create_node->Name(), &user_info);
             if (!result.ok()) {
                 *status = {StatusCode::kCmdError, result.status().message()};
@@ -5160,7 +5143,7 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
                                                                             ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
-    std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
+    std::string sql = absl::Substitute("SELECT * FROM JOB_INFO WHERE id = $0 CONFIG (execute_mode = 'online')", job_id);
 
     auto rs = ExecuteSQLParameterized(db, sql, {}, status);
     if (!status->IsOK()) {
@@ -5181,7 +5164,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
-    std::string sql = "SELECT * FROM JOB_INFO";
+    std::string sql = "SELECT * FROM JOB_INFO CONFIG (execute_mode = 'online')";
     auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
     if (!status->IsOK()) {
         return {};
@@ -5204,7 +5187,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobRes
         return this->GetJobResultSet(job_id, status);
     }
     std::string db = openmldb::nameserver::INTERNAL_DB;
-    std::string sql = "SELECT * FROM JOB_INFO;";
+    std::string sql = "SELECT * FROM JOB_INFO CONFIG (execute_mode = 'online');";
     auto rs = ExecuteSQLParameterized(db, sql, {}, status);
     if (!status->IsOK()) {
         return {};
@@ -5243,7 +5226,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
 }
 
 absl::StatusOr<bool> SQLClusterRouter::GetUser(const std::string& name, UserInfo* user_info) {
-    std::string sql = absl::StrCat("select * from ", nameserver::USER_INFO_NAME);
+    std::string sql = absl::StrCat("select * from ", nameserver::USER_INFO_NAME, " CONFIG (execute_mode = 'online')");
     hybridse::sdk::Status status;
     auto rs =
         ExecuteSQLParameterized(nameserver::INTERNAL_DB, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
