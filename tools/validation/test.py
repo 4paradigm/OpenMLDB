@@ -1,9 +1,11 @@
 import subprocess
 import os
 import csv
+import sys
 
+openmldb_binary_path = sys.argv[1]
 # Execute the offline SQL command
-subprocess.run("/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < offline.sql", 
+subprocess.run(f"{openmldb_binary_path} --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < offline.sql", 
                shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 # Define the directory containing the CSV files
@@ -26,7 +28,7 @@ for file in csv_files:
             combined_data.append(row)
 
 # Define the command to be executed
-command = "/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < online.sql"
+command = f"{openmldb_binary_path} --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < online.sql"
 
 # Execute the command
 try:
