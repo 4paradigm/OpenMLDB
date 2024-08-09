@@ -227,7 +227,7 @@ void DefaultUdfLibrary::InitArrayUdfs() {
                 @since 0.9.2
              )");
 
-    RegisterUdfTemplate("array_padding")
+    RegisterExternalTemplate<>("array_padding")
         .returns<ArrayRef<T>>()
         .return_by_arg(true)
         .args_in<ArrayRef<T>, bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>(reinterpret_cast<void*>(array_padding))
