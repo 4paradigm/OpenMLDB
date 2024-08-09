@@ -524,6 +524,10 @@ void unhex(StringRef *str, StringRef *output, bool* is_null);
 void printLog(const char* fmt);
 void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
                    ArrayRef<codec::StringRef> *out);
+
+template<typename T>
+void array_padding(ArrayRef<T> *arr, int32_t target_size, T default_value,
+                   ArrayRef<T> *out);
 }  // namespace v1
 
 /// \brief register native udf related methods into given UdfLibrary `lib`

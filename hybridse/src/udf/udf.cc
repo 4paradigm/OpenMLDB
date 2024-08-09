@@ -1504,6 +1504,30 @@ void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef
     out->size = real_sz;
 }
 
+void array_padding(ArrayRef<T> *arr, int32_t target_size, T default_value,
+                   ArrayRef<T> *out, bool *is_null) {
+    if (arr->size >= target_size) {
+        // v1::AllocManagedArray(out, arr->size);
+        out->nullables = arr->nullables;
+        out->raw = arr->raw;
+    }
+    else {
+        v1::AllocManagedArray(out, target_size);
+        for (int i = 0; i < target_size; ++i) {
+            if (i < arr->size) {
+                // deep copy
+                out->nullables[i] = arr->nullables[i];
+                out->raw[i]->data_ = arr->raw[i]->data_;
+                out->raw[i]->size_ = arr->raw[i]->size_;
+            } else {
+                out->nullables[i] = false;
+                out->raw[i]->data_ = default_value.data_;
+                out->raw[i]->size_ = default_value.size_;
+            }
+        }
+    }
+}
+
 }  // namespace v1
 
 bool RegisterMethod(UdfLibrary *lib, const std::string &fn_name, hybridse::node::TypeNode *ret,

@@ -226,6 +226,20 @@ void DefaultUdfLibrary::InitArrayUdfs() {
                 @endcode
                 @since 0.9.2
              )");
+
+    RegisterUdfTemplate("array_padding")
+        .returns<ArrayRef<T>>()
+        .return_by_arg(true)
+        .args_in<ArrayRef<T>, bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>(reinterpret_cast<void*>(array_padding))
+        .doc(R"(
+            @brief Expand the array to the specified length by padding the specified value.
+
+             @code{.sql}
+                 select array_padding([1, 2], 4, 0);
+                 -- output [1, 2, 0, 0]
+             @endcode
+
+            @since 0.7.0)");
 }
 }  // namespace udf
 }  // namespace hybridse
