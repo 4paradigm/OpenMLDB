@@ -40,6 +40,7 @@ DEFINE_int32(thread_num, 5, "");
 DEFINE_string(table_name, "", "table name");
 DEFINE_string(delimiter, ",", "delimiter");
 DEFINE_bool(has_ts_col, true, "has ts col");
+DEFINE_bool(use_client_side_compression, false, "whether use client side compression. For legacy versions, it should be set to true.");
 
 std::string DEFAULT_DB = "default_db";
 
@@ -78,10 +79,12 @@ class DataImporter {
             LOG(WARNING) << "encode row failed. record is " << record;
             return;
         }
-        if (table_info_.compress_type() == ::openmldb::type::CompressType::kSnappy) {
-            std::string compressed;
-            ::snappy::Compress(value.c_str(), value.length(), &compressed);
-            value.swap(compressed);
+        if (FLAGS_use_client_side_compression) {
+            if (table_info_.compress_type() == ::openmldb::type::CompressType::kSnappy) {
+                std::string compressed;
+                ::snappy::Compress(value.c_str(), value.length(), &compressed);
+                value.swap(compressed);
+            }
         }
         for (const auto& kv : dimensions) {
             uint32_t pid = kv.first;
