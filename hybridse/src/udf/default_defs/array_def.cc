@@ -227,10 +227,10 @@ void DefaultUdfLibrary::InitArrayUdfs() {
                 @since 0.9.2
              )");
 
-    RegisterExternalTemplate<>("array_padding")
-        .returns<ArrayRef<T>>()
+    RegisterExternal<v1::ArrayPadding<int32_t>>("array_padding")
         .return_by_arg(true)
-        .args_in<ArrayRef<T>, bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>(reinterpret_cast<void*>(array_padding))
+        .returns<ArrayRef<int32_t>>()
+        .args<int32_t>()
         .doc(R"(
             @brief Expand the array to the specified length by padding the specified value.
 

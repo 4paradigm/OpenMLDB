@@ -1599,6 +1599,16 @@ TEST_F(UdfIRBuilderTest, GetJsonObject) {
     }
 }
 
+// array_padding normal check
+// TEST_F(UdfIRBuilderTest, ArrayPadding) {
+//     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, int32_t, Nullable<StringRef>>(
+//         "array_padding", "[1,2,3,4,5,6,7,8,9,1]", "[1,2,3,4,5,6,7,8,9]", 10, 1);
+//     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, int32_t, Nullable<StringRef>>(
+//         "array_padding", "[1,2,3,4,5,6,7,8,9,10]", "[1,2,3,4,5,6,7,8,9,10]", 2, 1);
+//     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, int32_t, Nullable<StringRef>>(
+//         "array_padding", "[]", "[1,2,3,4,5,6,7,8,9,10]", -1, 2);
+// }
+
 }  // namespace codegen
 }  // namespace hybridse
 

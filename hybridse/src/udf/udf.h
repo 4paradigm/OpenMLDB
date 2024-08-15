@@ -525,9 +525,43 @@ void printLog(const char* fmt);
 void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef> **data,
                    ArrayRef<codec::StringRef> *out);
 
-template<typename T>
-void array_padding(ArrayRef<T> *arr, int32_t target_size, T default_value,
-                   ArrayRef<T> *out);
+template <typename T>
+struct ArrayPadding {
+
+    using Args = std::tuple<ArrayRef<T>, int32_t, T>;
+
+    bool operator()(ArrayRef<T> *arr, int32_t target_size, T default_value, ArrayRef<T> *out, bool *is_null) {
+        if (target_size < 0) {
+            out->size = 0;
+            out->raw = nullptr;
+            out->nullables = nullptr;
+        }
+        else if (arr->size >= target_size) {
+            // v1::AllocManagedArray(out, arr->size);
+            out->size = arr->size;
+            for (int i=0; i<arr->size; ++i) {
+                out->raw[i] = arr->raw[i];
+                out->nullables[i] = arr->nullables[i];
+            }
+        }
+        else {
+            // v1::AllocManagedArray(out, target_size);
+            out->size = target_size;
+            for (int i = 0; i < target_size; ++i) {
+                if (i < arr->size) {
+                    out->nullables[i] = arr->nullables[i];
+                    out->raw[i] = arr->raw[i];
+                } else {
+                    out->nullables[i] = false;
+                    out->raw[i] = default_value;
+                    // out->raw[i]->data_ = default_value.data_;
+                    // out->raw[i]->size_ = default_value.size_;
+                }
+            }
+        }
+};
+};
+
 }  // namespace v1
 
 /// \brief register native udf related methods into given UdfLibrary `lib`
