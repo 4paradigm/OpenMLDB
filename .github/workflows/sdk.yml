@@ -225,7 +225,7 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: download shared libraries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: shared-library-${{ github.sha }}
           path: java
@@ -395,13 +395,13 @@ jobs:
           submodules: true
 
       - name: Download Artifacts (java)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: coverage-java-report-${{ github.sha }}
           path: java
 
       - name: Download Artifacts (python)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: coverage-python-report-${{ github.sha }}
           path: python
