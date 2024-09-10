@@ -116,7 +116,6 @@ if (MAC_TABLET_ENABLE)
     add_compile_definitions(__mac_tablet__=1)
 endif ()
 
-set(SWIG_DIR ${CMAKE_PREFIX_PATH}/share/swig/4.0.1)
 find_package(SWIG REQUIRED)
 include(UseSWIG)
 
