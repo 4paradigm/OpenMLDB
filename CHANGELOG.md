@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0-arm - 2024-09-26
+
+### Features
+- build(thirdparty): upgrade absl (#3986 @aceforeverd)
+- feat: execlude zookeeper for curator (#3899 @aceforeverd) 
+- Set s3 and aws dependencies ad provided (#3897 @aceforeverd) 
+
 ## [0.9.0] - 2024-04-25
 
 ### Breaking Changes
