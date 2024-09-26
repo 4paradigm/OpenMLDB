@@ -48,7 +48,7 @@ jobs:
             bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
       - name: upload python test results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |
@@ -82,7 +82,7 @@ jobs:
             bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
       - name: upload python test results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |

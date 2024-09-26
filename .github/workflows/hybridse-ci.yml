@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
@@ -81,14 +81,14 @@ jobs:
 
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: event-file
           path: ${{ github.event_path }}
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |

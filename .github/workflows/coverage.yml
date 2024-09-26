@@ -78,7 +78,7 @@ jobs:
           df -h
 
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           # include the generated html report in build/coverage, great for local diagnose
           name: coverage-cpp-${{ github.sha }}
