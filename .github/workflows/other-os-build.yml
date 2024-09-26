@@ -138,21 +138,21 @@ jobs:
             df -h
 
       - name: upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: build/bin/openmldb
           name: binary
 
       - name: upload java native
         if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: native-jar
           path: java/openmldb-native/target/openmldb-native-*.jar
 
       - name: upload python whl
         if: ${{ env.SQL_PYSDK_ENABLE == 'ON' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with: 
           name: python-whl
           path: |
@@ -206,21 +206,21 @@ jobs:
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
 
       - name: upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: openmldb-*.tar.gz
           name: binary-package
 
       - name: upload java native
         if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: native-jar
           path: java/openmldb-native/target/openmldb-native-*.jar
 
       - name: upload python whl
         if: ${{ env.SQL_PYSDK_ENABLE == 'ON' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with: 
           name: python-whl
           path: |
@@ -276,21 +276,21 @@ jobs:
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
 
       - name: upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: openmldb-*.tar.gz
           name: binary-package
 
       - name: upload java native
         if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: native-jar
           path: java/openmldb-native/target/openmldb-native-*.jar
 
       - name: upload python whl
         if: ${{ env.SQL_PYSDK_ENABLE == 'ON' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with: 
           name: python-whl
           path: |
