@@ -429,7 +429,7 @@ jobs:
 #        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
 #      - name: upload test results
 #        if: always()
-#        uses: actions/upload-artifact@v2
+#        uses: actions/upload-artifact@v4
 #        with:
 #          name: python-sdk-standalone-0-src-${{ github.sha }}
 #          path: |
@@ -470,7 +470,7 @@ jobs:
 #        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
 #      - name: upload test results
 #        if: always()
-#        uses: actions/upload-artifact@v2
+#        uses: actions/upload-artifact@v4
 #        with:
 #          name: python-sdk-standalone-1-src-${{ github.sha }}
 #          path: |

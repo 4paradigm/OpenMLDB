@@ -51,7 +51,7 @@ jobs:
          tar -zxf openmldb-${{ env.E_VERSION }}-linux.tar.gz 
          mv openmldb-${{ env.E_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
       - name: upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-package
           path: | 

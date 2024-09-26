@@ -106,7 +106,7 @@ jobs:
 
       - name: upload unit test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           # exclude _deps xml
@@ -127,7 +127,7 @@ jobs:
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: openmldb-*.tar.gz
           name: release-artifacts
@@ -207,14 +207,14 @@ jobs:
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: openmldb-*.tar.gz
           name: release-artifacts
 
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: event-file
           path: ${{ github.event_path }}

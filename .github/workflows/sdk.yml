@@ -84,7 +84,7 @@ jobs:
 
       - name: upload linux library
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: shared-library-${{ github.sha }}
           path: |
@@ -104,14 +104,14 @@ jobs:
 
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: event-file
           path: ${{ github.event_path }}
 
       - name: upload java ut results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
@@ -136,7 +136,7 @@ jobs:
           ./mvnw --batch-mode scoverage:report
 
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-java-report-${{ github.sha }}
           path: |
@@ -287,7 +287,7 @@ jobs:
 
       - name: upload python ut results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
@@ -295,7 +295,7 @@ jobs:
             python/openmldb_tool/tests/pytest.xml
 
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-python-report-${{ github.sha }}
           path: |
@@ -352,7 +352,7 @@ jobs:
 
       - name: upload python ut results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: mac-ut-result-python-${{ github.sha }}
           path: |
