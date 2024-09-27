@@ -48,7 +48,7 @@ jobs:
             bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
       - name: upload python test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |
@@ -57,6 +57,9 @@ jobs:
   openmldb-tool-name:
     runs-on: [self-hosted,generic]
     if: github.repository == '4paradigm/OpenMLDB'
+    env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     steps:
@@ -82,7 +85,7 @@ jobs:
             bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
       - name: upload python test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |
