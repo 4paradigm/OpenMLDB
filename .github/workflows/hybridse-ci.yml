@@ -28,6 +28,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       TESTING_ENABLE_STRIP: ON
     steps:
       - uses: actions/checkout@v2
@@ -42,7 +44,7 @@ jobs:
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
@@ -81,14 +83,14 @@ jobs:
 
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: event-file
           path: ${{ github.event_path }}
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |

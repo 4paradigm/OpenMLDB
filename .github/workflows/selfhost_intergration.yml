@@ -29,6 +29,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -49,7 +51,7 @@ jobs:
          tar -zxf openmldb-${{ env.E_VERSION }}-linux.tar.gz 
          mv openmldb-${{ env.E_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
       - name: upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: openmldb-package
           path: | 
