@@ -71,6 +71,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -114,6 +116,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -157,6 +161,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -199,6 +205,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -284,6 +292,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -429,7 +439,7 @@ jobs:
 #        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "0"
 #      - name: upload test results
 #        if: always()
-#        uses: actions/upload-artifact@v4
+#        uses: actions/upload-artifact@v3
 #        with:
 #          name: python-sdk-standalone-0-src-${{ github.sha }}
 #          path: |
@@ -470,7 +480,7 @@ jobs:
 #        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-python.sh -b SRC -d standalone -l "1,2,3,4,5"
 #      - name: upload test results
 #        if: always()
-#        uses: actions/upload-artifact@v4
+#        uses: actions/upload-artifact@v3
 #        with:
 #          name: python-sdk-standalone-1-src-${{ github.sha }}
 #          path: |
@@ -530,6 +540,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2

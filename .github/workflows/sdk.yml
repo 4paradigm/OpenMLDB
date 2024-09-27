@@ -40,6 +40,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_native_so openmldb"
       MAVEN_OPTS: -Duser.home=/github/home
@@ -84,7 +86,7 @@ jobs:
 
       - name: upload linux library
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: shared-library-${{ github.sha }}
           path: |
@@ -104,14 +106,14 @@ jobs:
 
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: event-file
           path: ${{ github.event_path }}
 
       - name: upload java ut results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
@@ -136,7 +138,7 @@ jobs:
           ./mvnw --batch-mode scoverage:report
 
       - name: upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-java-report-${{ github.sha }}
           path: |
@@ -259,6 +261,9 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+    env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_python_sdk_so openmldb"
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
@@ -287,7 +292,7 @@ jobs:
 
       - name: upload python ut results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
@@ -295,7 +300,7 @@ jobs:
             python/openmldb_tool/tests/pytest.xml
 
       - name: upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-python-report-${{ github.sha }}
           path: |
@@ -352,7 +357,7 @@ jobs:
 
       - name: upload python ut results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: mac-ut-result-python-${{ github.sha }}
           path: |

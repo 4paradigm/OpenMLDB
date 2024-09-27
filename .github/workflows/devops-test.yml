@@ -25,6 +25,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -51,6 +53,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -77,6 +81,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -103,6 +109,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -135,6 +143,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
@@ -167,6 +177,8 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
