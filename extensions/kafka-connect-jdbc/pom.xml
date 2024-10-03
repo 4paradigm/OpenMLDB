@@ -54,7 +54,7 @@
 
     <properties>
         <derby.version>10.17.1.0</derby.version>
-        <commons-io.version>2.7</commons-io.version>
+        <commons-io.version>2.14.0</commons-io.version>
         <kafka.connect.maven.plugin.version>0.11.1</kafka.connect.maven.plugin.version>
         <sqlite-jdbc.version>3.41.2.2</sqlite-jdbc.version>
         <oracle.jdbc.driver.version>19.7.0.0</oracle.jdbc.driver.version>
