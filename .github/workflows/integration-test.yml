@@ -52,7 +52,7 @@ jobs:
 
       - name: upload ut results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: openmldb-test-python-${{ github.sha }}
           path: pytest.xml
