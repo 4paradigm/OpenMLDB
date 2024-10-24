@@ -40,7 +40,7 @@ Kafka利用OpenMLDB Kafka Connector导入数据到OpenMLDB集群，其性能将�
 ### 下载与准备
 
 - 你需要下载kafka，请点击[kafka官网下载](https://kafka.apache.org/downloads)下载kafka_2.13-3.1.0.tgz。
-- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz](https://openmldb.ai/download/kafka-connector/kafka-connect-jdbc-10.5.0-SNAPSHOT-0.8.5.tgz)。
+- 你需要下载connector包以及依赖，请在 [kafka-connect-jdbc](https://openmldb.ai/download/kafka-connector/) 中选择合适 connector 的版本。
 - 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](https://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
 
 本文将使用docker方式启动OpenMLDB，所以无需单独下载OpenMLDB。并且，kafka与connector的启动，都可以在同一个容器中进行。
