@@ -31,6 +31,9 @@ env:
 jobs:
   openmldb-test-python:
     runs-on: [self-hosted,generic]
+    env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     steps:
