@@ -20,7 +20,7 @@ Due to the complexity of the implementation of the SDK Layer, we didn't develop 
 
 Java Wrapper is implemented as [SqlClusterExecutor](https://github.com/4paradigm/OpenMLDB/blob/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/sdk/impl/SqlClusterExecutor.java). It is a simple wrapper of `sql_router_sdk`, including the conversion of input types, the encapsulation of returned results, the encapsulation of returned errors.
 
-Python Wrapper is implemented as [OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sdk/sdk.py). Like the Java Wrapper, it is a simple wrapper as well.
+Python Wrapper is implemented as [OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb_sdk/openmldb/sdk/sdk.py). Like the Java Wrapper, it is a simple wrapper as well.
 
 ### User Layer
 Although the Wrapper Layer can be used directly, it is not convenient enough. So, we develop another layer, the User Layer of the Java/Python SDK.

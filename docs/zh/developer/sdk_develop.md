@@ -20,7 +20,7 @@ OpenMLDB的SDK，可以分为几层，如图所示。我们将从下层往上依
 
 Java Wrapper具体实现为[SqlClusterExecutor](https://github.com/4paradigm/OpenMLDB/blob/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/sdk/impl/SqlClusterExecutor.java)。可以看到，它仅仅是对`sql_router_sdk`调用的简单封装，比如，对输入类型的转换，对返回结果的封装，对返回错误的封装。
 
-Python Wrapper具体实现为[OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sdk/sdk.py)。和Java Wrapper类似，它也只是简单的封装。
+Python Wrapper具体实现为[OpenMLDBSdk](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb_sdk/openmldb/sdk/sdk.py)。和Java Wrapper类似，它也只是简单的封装。
 
 ### 用户层
 Wrapper层是可以直接使用的，但不够方便。所以，我们再提供了一层，Java/Python SDK的用户层。
