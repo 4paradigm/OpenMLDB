@@ -134,6 +134,8 @@ We really appreciate the contribution from our community.
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
 
+[![Open in Codeanywhere](https://codeanywhere.com/img/open-in-codeanywhere-btn.svg)](https://app.codeanywhere.com/#https://github.com/4paradigm/OpenMLDB)
+
 ## 11. Community
 
 - Website: [https://openmldb.ai/en](https://openmldb.ai/en)
