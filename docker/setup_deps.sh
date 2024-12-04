@@ -77,7 +77,7 @@ pushd "$(dirname "$0")"
 
 curl -Lo cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.21.0-linux-"$ARCH".tar.gz && \
     echo "downloaded cmake.tar.gz for $ARCH"
-tar xzf cmake.tar.gz -C /usr/local/ --strip-components=1
+tar xf cmake.tar.gz -C /usr/local/ --strip-components=1
 rm -v cmake.tar.gz
 
 mkdir -p /deps/usr
@@ -86,19 +86,19 @@ if [[ "$ARCH" = "x86_64" ]]; then
     curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
         echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
     curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
-        echo "downloaed zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
+        echo "downloaded zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
 elif [[ "$ARCH" = "aarch64" ]]; then
     curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-${ARCH}.tar.gz" && \
         echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
     curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}.tar.gz" && \
-        echo "downloaed zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
+        echo "downloaded zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
 else
     echo "no pre-compiled deps for arch=$ARCH"
     exit 1
 fi
 
-tar xzf thirdparty.tar.gz -C /deps/usr --strip-components=1
-tar xzf zetasql.tar.gz -C /deps/usr --strip-components=1
+tar xf thirdparty.tar.gz -C /deps/usr --strip-components=1
+tar xf zetasql.tar.gz -C /deps/usr --strip-components=1
 rm -v ./*.tar.gz
 
 popd

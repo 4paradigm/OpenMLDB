@@ -24,11 +24,11 @@ LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 COPY ./*.sh /
 
 RUN apt update -y && \
-    apt install -y build-essential python3-dev openjdk-11-jdk flex doxygen lcov git && \
+    apt install -y build-essential python3-dev openjdk-11-jdk flex doxygen lcov git curl && \
     apt clean cache && \
     curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
-    tar xzf zookeeper.tar.gz -C /deps/src && \
+    tar xf zookeeper.tar.gz -C /deps/src && \
     /setup_deps.sh -z "$ZETASQL_VERSION" -t "$THIRDPARTY_VERSION" && \
     rm -v /*.sh
 
