@@ -14,27 +14,26 @@
 
 FROM ubuntu:22.04
 
-ARG ZETASQL_VERSION=0.3.4
+ARG ZETASQL_VERSION=0.3.5
 ARG THIRDPARTY_VERSION=0.7.1
 ARG TARGETARCH
 
-
-LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
-
+LABEL org.opencontainers.image.source=https://github.com/4paradigm/OpenMLDB
 COPY ./*.sh /
 
 RUN apt update -y && \
-    apt install -y build-essential python3-dev openjdk-11-jdk flex doxygen lcov git curl && \
     apt clean cache && \
-    curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
+    apt install -y build-essential libicu-dev python3-dev python3-pip openjdk-11-jdk flex doxygen lcov git curl && \
+    apt clean cache && \
     mkdir -p /deps/src && \
+    curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     tar xf zookeeper.tar.gz -C /deps/src && \
     /setup_deps.sh -z "$ZETASQL_VERSION" -t "$THIRDPARTY_VERSION" && \
     rm -v /*.sh
 
 ENV THIRD_PARTY_DIR=/deps/usr
 ENV THIRD_PARTY_SRC_DIR=/deps/src
-ENV LD_LIBRARY_PATH=/deps/usr/lib:/deps/usr/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH="/deps/usr/lib:/deps/usr/lib64"
 ENV LANG=en_US.UTF-8
 ENV ZETASQL_VERSION=$ZETASQL_VERSION
 ENV THIRDPARTY_VERSION=$THIRDPARTY_VERSION
