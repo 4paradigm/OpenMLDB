@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 set -eE
 
 INPUT=$(arch)
@@ -24,9 +23,8 @@ THIRDPARTY_VERSION=
 #         NAME:  usage
 #  DESCRIPTION:  Display usage information.
 #===============================================================================
-function usage ()
-{
-    echo "Usage :  $0 [options] [--]
+function usage() {
+  echo "Usage :  $0 [options] [--]
 
     Options:
     -h       Display this message
@@ -34,71 +32,80 @@ function usage ()
     -t       hybridsql thirdparty version, required
     -z       Specify zetasql version, required"
 
-}    # ----------  end of function usage  ----------
+} # ----------  end of function usage  ----------
 
 #-----------------------------------------------------------------------
 #  Handle command line arguments
 #-----------------------------------------------------------------------
 
-while getopts ":ha:z:t:" opt
-do
+while getopts ":ha:z:t:" opt; do
   case $opt in
 
-    h)  usage; exit 0   ;;
+  h)
+    usage
+    exit 0
+    ;;
 
-    a)  INPUT=$OPTARG ;;
+  a) INPUT=$OPTARG ;;
 
-    t) THIRDPARTY_VERSION=$OPTARG ;;
+  t) THIRDPARTY_VERSION=$OPTARG ;;
 
-    z)  ZETASQL_VERSION=$OPTARG ;;
+  z) ZETASQL_VERSION=$OPTARG ;;
 
-    *)  echo -e "\n  Option does not exist : $OPTARG\n"
-          usage; exit 1   ;;
+  *)
+    echo -e "\n  Option does not exist : $OPTARG\n"
+    usage
+    exit 1
+    ;;
 
-  esac    # --- end of case ---
+  esac # --- end of case ---
 done
-shift $((OPTIND-1))
+shift $((OPTIND - 1))
 
 if [[ -z "$ZETASQL_VERSION" || -z "$THIRDPARTY_VERSION" ]]; then
-    echo "ZETASQL_VERSION and THIRDPARTY_VERSION number required"
-    exit 1
+  echo "ZETASQL_VERSION and THIRDPARTY_VERSION number required"
+  exit 1
 fi
 
 if [[ $INPUT = 'i386' || $INPUT = 'x86_64' || $INPUT = 'amd64' ]]; then
-    ARCH=x86_64
+  ARCH=x86_64
 elif [[ $INPUT = 'aarch64' || $INPUT = 'arm64' ]]; then
-    ARCH=aarch64
+  ARCH=aarch64
 else
-    echo "Unsupported arch: $INPUT"
-    exit 1
+  echo "Unsupported arch: $INPUT"
+  exit 1
 fi
 
 pushd "$(dirname "$0")"
 
-curl -Lo cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.21.0-linux-"$ARCH".tar.gz && \
-    echo "downloaded cmake.tar.gz for $ARCH"
-tar xzf cmake.tar.gz -C /usr/local/ --strip-components=1
+curl -Lo cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.21.0/cmake-3.21.0-linux-"$ARCH".tar.gz &&
+  echo "downloaded cmake.tar.gz for $ARCH"
+tar xf cmake.tar.gz -C /usr/local/ --strip-components=1
 rm -v cmake.tar.gz
 
 mkdir -p /deps/usr
 
 if [[ "$ARCH" = "x86_64" ]]; then
-    curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
-        echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
-    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" && \
-        echo "downloaed zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
+  # curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" &&
+  curl -Lo thirdparty.tar.gz "https://openmldb.ai/download/thirdparty/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-${ARCH}-ubuntu.tar.gz" &&
+    echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
+  # curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}-ubuntu.tar.gz" &&
+  curl -Lo zetasql.tar.gz "https://openmldb.ai/download/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}-ubuntu.tar.gz" &&
+    echo "downloaded zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
 elif [[ "$ARCH" = "aarch64" ]]; then
-    curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-${ARCH}.tar.gz" && \
-        echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
-    curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}.tar.gz" && \
-        echo "downloaed zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
+  # curl -Lo thirdparty.tar.gz "https://github.com/4paradigm/hybridsql-asserts/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-${ARCH}.tar.gz" &&
+  curl -Lo thirdparty.tar.gz "https://openmldb.ai/download/thirdparty/releases/download/v${THIRDPARTY_VERSION}/thirdparty-${THIRDPARTY_VERSION}-linux-gnu-${ARCH}-ubuntu.tar.gz" &&
+    echo "downloaded thirdparty.tar.gz version $THIRDPARTY_VERSION for $ARCH"
+  # curl -Lo zetasql.tar.gz "https://github.com/4paradigm/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}.tar.gz" &&
+  curl -Lo zetasql.tar.gz "https://openmldb.ai/download/zetasql/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-${ARCH}-ubuntu.tar.gz" &&
+    echo "downloaded zetasql.tar.gz version $ZETASQL_VERSION for $ARCH"
 else
-    echo "no pre-compiled deps for arch=$ARCH"
-    exit 1
+  echo "no pre-compiled deps for arch=$ARCH"
+  exit 1
 fi
 
-tar xzf thirdparty.tar.gz -C /deps/usr --strip-components=1
-tar xzf zetasql.tar.gz -C /deps/usr --strip-components=1
+tar xf thirdparty.tar.gz -C /deps/usr --strip-components=1
+tar xf zetasql.tar.gz -C /deps/usr --strip-components=1
 rm -v ./*.tar.gz
 
 popd

@@ -56,6 +56,10 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
     set(FILE_STR_LIST "${FILE_STR_LIST} ${DEPEND_FILE_LIST}")
     string(REPLACE " " ";" FILE_LIST ${FILE_STR_LIST})
     add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:openmldb_proto>)
+    target_compile_options(${LIB_NAME} PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=nonnull>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=nonnull>
+    )
 endfunction(compile_lib)
 
 set(TEST_LIBS
