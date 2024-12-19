@@ -117,23 +117,26 @@ endif()
 
 # Fetch hybridsql asserts
 if(NOT BUILD_BUNDLED)
-  init_hybridsql_thirdparty_urls()
-
-  message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED=ON')
+  if (DEFINED ENV{THIRDPARTY_VERSION} AND "$ENV{THIRDPARTY_VERSION}" STREQUAL "${HYBRIDSQL_ASSERTS_VERSION}")
+    message(STATUS "THIRDPARTY_VERSION matches HYBRIDSQL_ASSERTS_VERSION, skipping download.")
+  else()
+    init_hybridsql_thirdparty_urls()
+    message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+      message(WARNING pre-compiled hybridsql aseerts for arm64 may out-of-date, consider build from source by '-DBUILD_BUNDLED=ON')
+    endif()
+    ExternalProject_Add(
+      hybridsql-asserts
+      URL ${HYBRIDSQL_ASSERTS_URL}
+      URL_HASH SHA256=${HYBRIDSQL_ASSERTS_HASH}
+      PREFIX ${DEPS_BUILD_DIR}
+      DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/hybridsql-asserts"
+      DOWNLOAD_NO_EXTRACT True
+      INSTALL_DIR ${DEPS_INSTALL_DIR}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
   endif()
-  ExternalProject_Add(
-    hybridsql-asserts
-    URL ${HYBRIDSQL_ASSERTS_URL}
-    URL_HASH SHA256=${HYBRIDSQL_ASSERTS_HASH}
-    PREFIX ${DEPS_BUILD_DIR}
-    DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/hybridsql-asserts"
-    DOWNLOAD_NO_EXTRACT True
-    INSTALL_DIR ${DEPS_INSTALL_DIR}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 endif()
 
 if (BUILD_BUNDLED_GTEST)

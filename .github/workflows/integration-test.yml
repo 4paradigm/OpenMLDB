@@ -37,9 +37,10 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: build openmldb
         run: |
+          git config --system --add safe.directory $(pwd)
           make configure SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
           make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
           make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
@@ -55,7 +56,7 @@ jobs:
 
       - name: upload ut results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-test-python-${{ github.sha }}
           path: pytest.xml
