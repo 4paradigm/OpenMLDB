@@ -32,7 +32,9 @@ on:
 
 jobs:
   coverage:
-    runs-on: ghcr.io/4paradigm/hybridsql:latest
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
