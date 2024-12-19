@@ -32,7 +32,9 @@ on:
 
 jobs:
   coverage:
-    runs-on: ghcr.io/4paradigm/hybridsql:latest
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
@@ -47,17 +49,17 @@ jobs:
         with:
           submodules: true
 
-      - name: download lcov
-        uses: actions/checkout@v4
-        with:
-          repository: linux-test-project/lcov
-          ref: v1.16
-          path: lcov
-
-      - name: install lcov
-        working-directory: lcov
-        run: |
-          sudo make install
+#       - name: download lcov
+#         uses: actions/checkout@v4
+#         with:
+#           repository: linux-test-project/lcov
+#           ref: v1.16
+#           path: lcov
+# 
+#       - name: install lcov
+#         working-directory: lcov
+#         run: |
+#           sudo make install
 
       - name: coverage configure
         run: |
