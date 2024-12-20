@@ -46,20 +46,23 @@ endfunction()
 
 
 if (NOT BUILD_BUNDLED_ZETASQL)
-  init_zetasql_urls()
-
-  message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
-  # download pre-compiled zetasql from GitHub Release
-  ExternalProject_Add(zetasql
-    URL ${ZETASQL_URL}
-    URL_HASH SHA256=${ZETASQL_HASH}
-    PREFIX ${DEPS_BUILD_DIR}
-    DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/zetasql"
-    DOWNLOAD_NO_EXTRACT True
-    INSTALL_DIR ${DEPS_INSTALL_DIR}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
+  if (DEFINED ENV{ZETASQL_VERSION} AND "$ENV{ZETASQL_VERSION}" STREQUAL "${ZETASQL_VERSION}")
+    message(STATUS "ZETASQL_VERSION from env matches ZETASQL_VERSION, skipping download.")
+  else()
+    init_zetasql_urls()
+    message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
+    # download pre-compiled zetasql from GitHub Release
+    ExternalProject_Add(zetasql
+      URL ${ZETASQL_URL}
+      URL_HASH SHA256=${ZETASQL_HASH}
+      PREFIX ${DEPS_BUILD_DIR}
+      DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/zetasql"
+      DOWNLOAD_NO_EXTRACT True
+      INSTALL_DIR ${DEPS_INSTALL_DIR}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
+  endif()
 else()
   find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Compile zetasql require bazel or bazelisk")
   find_program(PYTHON_EXE NAMES python REQUIRED DOC "Compile zetasql require python")

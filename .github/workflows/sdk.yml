@@ -261,7 +261,6 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
-    env:
       ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       SQL_PYSDK_ENABLE: ON
