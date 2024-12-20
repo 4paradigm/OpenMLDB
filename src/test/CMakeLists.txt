@@ -3,6 +3,10 @@
 # WARN: do not link in production
 
 add_library(openmldb_test_base base_test.cc util.cc)
+target_compile_options(openmldb_test_base PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=nonnull>
+    $<$<COMPILE_LANGUAGE:C>:-Wno-error=nonnull>
+)
 
 add_dependencies(openmldb_test_base openmldb_sdk tablet nameserver)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
