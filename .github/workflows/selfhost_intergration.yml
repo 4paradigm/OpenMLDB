@@ -1,6 +1,5 @@
 name: SELFHOST-INTEGRATION-TEST
 on:
-
   schedule:
     - cron: '0 14 * * *'
 
@@ -20,25 +19,20 @@ env:
   E_VERSION: ${{ github.event.inputs.EXEC_VERSION || 'main'}}
   ETYPE: ${{ github.event.inputs.EXEC_TEST_TYPE || 'all'}}
   NPROC: 4
-  # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
   build-openmldb:
-
     runs-on: [self-hosted,generic]
     if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
-      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
     steps:
       - uses: actions/checkout@v2
       - name: build
         if: ${{ env.E_VERSION == 'main' }}
         run: |
+         git config --system --add safe.directory $(pwd)
          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
          mv openmldb-linux openmldb-main-linux
@@ -61,7 +55,8 @@ jobs:
             openmldb-jdbc.jar
             openmldb-native.jar
             openmldb-linux.tar.gz
-          
+
+
   apiserver-cluster:
     needs: build-openmldb
     
@@ -114,10 +109,10 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           attachments: surefire-reports.tar.gz
-    
+
+
   java-sdk-cluster-memory-0:
     needs: build-openmldb
-    
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
@@ -168,8 +163,7 @@ jobs:
           from: GitHub Actions
           attachments: surefire-reports.tar.gz
 
-          
-          
+
   java-sdk-cluster-memory-1:
     needs: build-openmldb
     runs-on: [self-hosted,common-user]
@@ -222,9 +216,7 @@ jobs:
           from: GitHub Actions
           attachments: surefire-reports.tar.gz
 
-        
-        
-        
+
   java-sdk-cluster-hdd:
     needs: build-openmldb
     runs-on: [self-hosted,common-user]
@@ -277,7 +269,6 @@ jobs:
           from: GitHub Actions
           attachments: surefire-reports.tar.gz
 
-          
 
   java-sdk-cluster-ssd:
     needs: build-openmldb
@@ -331,7 +322,7 @@ jobs:
           from: GitHub Actions
           attachments: surefire-reports.tar.gz
 
-          
+
   java-sdk-yarn:
     needs: build-openmldb
     runs-on: [self-hosted,common-user]
@@ -385,7 +376,6 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           attachments: surefire-reports.tar.gz
-
 
 
   java-sdk-kafka:
