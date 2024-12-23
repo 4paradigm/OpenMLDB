@@ -5,11 +5,11 @@
 add_library(openmldb_test_base base_test.cc util.cc)
 
 # TODO: Fix me after upgrade Boost or fix nonnull errors in Boost
-target_compile_options(${LIB_NAME} PRIVATE
+target_compile_options(openmldb_test_base PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=nonnull>
     $<$<COMPILE_LANGUAGE:C>:-Wno-error=nonnull>
 )
-target_compile_options(${LIB_NAME} PRIVATE
+target_compile_options(openmldb_test_base PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-nonnull>
     $<$<COMPILE_LANGUAGE:C>:-Wno-nonnull>
 )
