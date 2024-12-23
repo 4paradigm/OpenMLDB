@@ -41,7 +41,7 @@ jobs:
           make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
       - name: install openmldb
         run: |
-          yum install -y rsync
+          apt install -y rsync
           bash test/integration-test/openmldb-test-python/install.sh
       - name: run test
         run: |
