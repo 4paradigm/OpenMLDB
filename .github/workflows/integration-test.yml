@@ -22,7 +22,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  NPROC: 1 # default Parallel build number for GitHub's Linux runner
   EXAMPLES_ENABLE: OFF # turn off hybridse's example code
   HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
 
@@ -36,8 +36,6 @@ jobs:
       - name: build openmldb
         run: |
           git config --system --add safe.directory $(pwd)
-          # make configure SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
-          # make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
           make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
       - name: install openmldb
         run: |
