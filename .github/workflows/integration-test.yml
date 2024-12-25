@@ -28,7 +28,7 @@ env:
 
 jobs:
   openmldb-test-python:
-    runs-on: [self-hosted,generic]
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     steps:
