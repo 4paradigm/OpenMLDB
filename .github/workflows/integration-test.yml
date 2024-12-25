@@ -22,7 +22,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  NPROC: 1 # default Parallel build number for GitHub's Linux runner
+  NPROC: 4 # default Parallel build number for GitHub's Linux runner
   EXAMPLES_ENABLE: OFF # turn off hybridse's example code
   HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
 
