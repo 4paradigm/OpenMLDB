@@ -209,9 +209,9 @@ case $OP in
         shift
         # $0 may be 'bin/start.sh', 'start.sh', etc. We use the real script name in bin/.
         cd "$BINDIR" || exit 1
-        sh start.sh stop "${@}"
+        ./start.sh stop "${@}"
         sleep 15
-        sh start.sh start "${@}"
+        ./start.sh start "${@}"
         ;;
     *)
         echo "Only support {start|stop|restart}" >&2
