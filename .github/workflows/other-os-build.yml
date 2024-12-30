@@ -90,7 +90,7 @@ jobs:
             export PATH=$PATH:`pwd`
             source /opt/rh/devtoolset-8/enable
             if [[ "${USE_DEPS_CACHE}" != "true" ]]; then
-              echo "build thirdparty, make opt is better than nproc?"
+              echo "build thirdparty, make opt is better than nproc"
               make thirdparty CMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX} BUILD_BUNDLE=ON THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8
               # 5.8G	./.deps, avail 8G
               rm -rf .deps/build # GitHub runner disk space is limited
@@ -119,10 +119,7 @@ jobs:
             # rm build/hybridse build/src -rf
             if [[ "${SQL_JAVASDK_ENABLE}" == "ON" ]]; then
               echo "build java sdk"
-              cmake -S . -B `pwd`/build -DCMAKE_PREFIX_PATH=`pwd`/.deps/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON \
-              -DTESTING_ENABLE=OFF -DCMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX}  \
-              -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DEXAMPLES_TESTING_ENABLE=OFF
+              cmake -S . -B `pwd`/build -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON
               # if build the whole java, 7.6G	./build, 5.7G  ./java, avail 331M
               # so split it and build native only
               # 7.6G	./build,  1.8G	./java, avail 5.2G
