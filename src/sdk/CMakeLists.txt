@@ -203,7 +203,7 @@ if(SQL_JAVASDK_ENABLE)
     add_dependencies(cp_native_so cp_hybridse_native_so)
 
     add_custom_target(sql_javasdk_package ALL
-        COMMAND ./mvnw clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
+        COMMAND ./mvnw package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
     add_dependencies(sql_javasdk_package cp_native_so)
 
