@@ -21,7 +21,7 @@ env:
   NPROC: 4
 jobs:
   build-openmldb:
-    runs-on: [self-hosted,generic]
+    runs-on: [self-hosted, generic]
     if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
@@ -30,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build
+        shell: bash
         if: ${{ env.E_VERSION == 'main' }}
         run: |
          git config --system --add safe.directory $(pwd)
@@ -60,7 +61,7 @@ jobs:
   apiserver-cluster:
     needs: build-openmldb
     
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -71,49 +72,54 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb 
+        shell: bash
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 20001 21000 java
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
+        shell: bash
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0 -d deploy  -m apiserver
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
+        shell: bash
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: "SRC apiserver-cluster Report"
           comment_title: "SRC apiserver-cluster Report"
-      - name: tar test report
-        if: ${{ failure() }}
-        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-      - name: Send Email
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: mail.4paradigm.com
-          server_port: 995
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          secure: true
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
-          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-          to: ${{ secrets.MAIL_TO }}
-          from: GitHub Actions
-          attachments: surefire-reports.tar.gz
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      #       - name: Send Email
+      #         if: ${{ failure() }}
+      #         uses: dawidd6/action-send-mail@master
+      #         with:
+      #           server_address: mail.4paradigm.com
+      #           server_port: 995
+      #           username: ${{ secrets.MAIL_USERNAME }}
+      #           password: ${{ secrets.MAIL_PASSWORD }}
+      #           secure: true
+      #           subject: OpenMLDB Memory Test
+      #           body: OpenMLDB Memory Test Failed
+      #           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #           to: ${{ secrets.MAIL_TO }}
+      #           from: GitHub Actions
+      #           attachments: surefire-reports.tar.gz
 
 
   java-sdk-cluster-memory-0:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -124,17 +130,21 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb
+        shell: bash
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 20001 21000 java
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
+        shell: bash
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
@@ -144,29 +154,29 @@ jobs:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: "SRC java-sdk-cluster-memory-0 Report"
           comment_title: "SRC java-sdk-cluster-memory-0 Report"
-      - name: tar test report
-        if: ${{ failure() }}
-        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-      - name: Send Email
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: mail.4paradigm.com
-          server_port: 995
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          secure: true
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
-          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-          to: ${{ secrets.MAIL_TO }}
-          from: GitHub Actions
-          attachments: surefire-reports.tar.gz
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      #   if: ${{ failure() }}
+        # - name: Send Email
+      #   uses: dawidd6/action-send-mail@master
+      #   with:
+      #     server_address: mail.4paradigm.com
+      #     server_port: 995
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     secure: true
+      #     subject: OpenMLDB Memory Test
+      #     body: OpenMLDB Memory Test Failed
+      #     html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #     to: ${{ secrets.MAIL_TO }}
+      #     from: GitHub Actions
+      #     attachments: surefire-reports.tar.gz
 
 
   java-sdk-cluster-memory-1:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -177,49 +187,54 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb
+        shell: bash
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 21001 22000 java
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
+        shell: bash
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
+        shell: bash
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: "SRC java-sdk-cluster-memory-1 Report"
           comment_title: "SRC java-sdk-cluster-memory-1 Report"
-      - name: tar test report
-        if: ${{ failure() }}
-        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-      - name: Send Email
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: mail.4paradigm.com
-          server_port: 995
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          secure: true
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
-          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-          to: ${{ secrets.MAIL_TO }}
-          from: GitHub Actions
-          attachments: surefire-reports.tar.gz
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      # - name: Send Email
+      #   if: ${{ failure() }}
+      #   uses: dawidd6/action-send-mail@master
+      #   with:
+      #     server_address: mail.4paradigm.com
+      #     server_port: 995
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     secure: true
+      #     subject: OpenMLDB Memory Test
+      #     body: OpenMLDB Memory Test Failed
+      #     html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #     to: ${{ secrets.MAIL_TO }}
+      #     from: GitHub Actions
+      #     attachments: surefire-reports.tar.gz
 
 
   java-sdk-cluster-hdd:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -230,49 +245,54 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb
+        shell: bash
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 22001 23000 java
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
+        shell: bash
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
+        shell: bash
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: "SRC java-sdk-cluster-hdd Report"
           comment_title: "SRC java-sdk-cluster-hdd Report"
-      - name: tar test report
-        if: ${{ failure() }}
-        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-      - name: Send Email
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: mail.4paradigm.com
-          server_port: 995
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          secure: true
-          subject: OpenMLDB HDD Test
-          body: OpenMLDB HDD Test Failed
-          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-          to: ${{ secrets.MAIL_TO }}
-          from: GitHub Actions
-          attachments: surefire-reports.tar.gz
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      # - name: Send Email
+      #   if: ${{ failure() }}
+      #   uses: dawidd6/action-send-mail@master
+      #   with:
+      #     server_address: mail.4paradigm.com
+      #     server_port: 995
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     secure: true
+      #     subject: OpenMLDB HDD Test
+      #     body: OpenMLDB HDD Test Failed
+      #     html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #     to: ${{ secrets.MAIL_TO }}
+      #     from: GitHub Actions
+      #     attachments: surefire-reports.tar.gz
 
 
   java-sdk-cluster-ssd:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -284,16 +304,20 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
+        shell: bash
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
       - name: test
+        shell: bash
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
@@ -303,29 +327,29 @@ jobs:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: "SRC java-sdk-cluster-ssd Report"
           comment_title: "SRC java-sdk-cluster-ssd Report"
-      - name: tar test report
-        if: ${{ failure() }}
-        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-      - name: Send Email
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: mail.4paradigm.com
-          server_port: 995
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          secure: true
-          subject: OpenMLDB SSD Test
-          body: OpenMLDB SSD Test Failed
-          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-          to: ${{ secrets.MAIL_TO }}
-          from: GitHub Actions
-          attachments: surefire-reports.tar.gz
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      # - name: Send Email
+      #   if: ${{ failure() }}
+      #   uses: dawidd6/action-send-mail@master
+      #   with:
+      #     server_address: mail.4paradigm.com
+      #     server_port: 995
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     secure: true
+      #     subject: OpenMLDB SSD Test
+      #     body: OpenMLDB SSD Test Failed
+      #     html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #     to: ${{ secrets.MAIL_TO }}
+      #     from: GitHub Actions
+      #     attachments: surefire-reports.tar.gz
 
 
   java-sdk-yarn:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -336,6 +360,7 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb
+        shell: bash
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 24001 25000 java hadoop
@@ -344,11 +369,14 @@ jobs:
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanagers.sh
           HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-taskmanagers.sh
       - name: test
+        shell: bash
         run: bash test/steps/openmldb-integration-test.sh -j 0.0.0  -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
@@ -358,29 +386,29 @@ jobs:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: "SRC java-sdk-yarn Report"
           comment_title: "SRC java-yarn Report"
-      - name: tar test report
-        if: ${{ failure() }}
-        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-      - name: Send Email
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: mail.4paradigm.com
-          server_port: 995
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          secure: true
-          subject: OpenMLDB yarn Test
-          body: OpenMLDB yarn Test Failed
-          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-          to: ${{ secrets.MAIL_TO }}
-          from: GitHub Actions
-          attachments: surefire-reports.tar.gz
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      # - name: Send Email
+      #   if: ${{ failure() }}
+      #   uses: dawidd6/action-send-mail@master
+      #   with:
+      #     server_address: mail.4paradigm.com
+      #     server_port: 995
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     secure: true
+      #     subject: OpenMLDB yarn Test
+      #     body: OpenMLDB yarn Test Failed
+      #     html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #     to: ${{ secrets.MAIL_TO }}
+      #     from: GitHub Actions
+      #     attachments: surefire-reports.tar.gz
 
 
   java-sdk-kafka:
     needs: build-openmldb
-    runs-on: [self-hosted,common-user]
+    runs-on: [self-hosted, generic]
     steps:
       - uses: actions/checkout@v3
       - name:  before test
@@ -391,17 +419,18 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb
+        shell: bash
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 25001 26000 java kafka
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
-      - name: test
-        run: echo "a"
       - name: stop openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-all.sh
       - name: remove openmldb
+        shell: bash
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       # - name: TEST Results
