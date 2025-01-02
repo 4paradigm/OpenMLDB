@@ -33,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: build openmldb
+        shell: bash
         run: |
           git config --system --add safe.directory $(pwd)
           make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
