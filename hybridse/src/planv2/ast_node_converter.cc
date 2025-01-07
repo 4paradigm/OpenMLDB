@@ -996,6 +996,7 @@ base::Status ConvertExprNodeList(const absl::Span<const zetasql::ASTExpression* 
     *output = expr_list;
     return base::Status::OK();
 }
+
 base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_expr, node::NodeManager* node_manager,
                                node::FrameBound** output) {
     if (nullptr == window_frame_expr) {
@@ -1042,12 +1043,14 @@ base::Status ConvertFrameBound(const zetasql::ASTWindowFrameExpr* window_frame_e
     }
     return base::Status::OK();
 }
+
 base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node::NodeManager* node_manager,
                               node::FrameNode** output) {
     if (nullptr == window_frame) {
         *output = nullptr;
         return base::Status::OK();
     }
+
     base::Status status;
     node::FrameType frame_type;
     switch (window_frame->frame_unit()) {
@@ -1069,19 +1072,24 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
             return status;
         }
     }
+
     node::FrameBound* start = nullptr;
     node::FrameBound* end = nullptr;
     CHECK_TRUE(nullptr != window_frame->start_expr(), common::kSqlAstError, "Un-support window frame with null start")
     CHECK_TRUE(nullptr != window_frame->end_expr(), common::kSqlAstError, "Un-support window frame with null end")
     CHECK_STATUS(ConvertFrameBound(window_frame->start_expr(), node_manager, &start))
     CHECK_STATUS(ConvertFrameBound(window_frame->end_expr(), node_manager, &end))
+    CHECK_TRUE(nullptr != start, common::kSqlAstError)
+    CHECK_TRUE(nullptr != end, common::kSqlAstError)
+    auto* frame_ext = node_manager->MakeFrameExtent(start, end);
+    CHECK_TRUE(frame_ext->Valid(), common::kSqlAstError,
+               "The lower bound of a window frame must be less than or equal to the upper bound");
+
     node::ExprNode* frame_max_size = nullptr;
     if (nullptr != window_frame->max_size()) {
         CHECK_STATUS(ConvertExprNode(window_frame->max_size()->max_size(), node_manager, &frame_max_size))
     }
-    auto* frame_ext = node_manager->MakeFrameExtent(start, end);
-    CHECK_TRUE(frame_ext->Valid(), common::kSqlAstError,
-               "The lower bound of a window frame must be less than or equal to the upper bound");
+
     *output = node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size);
     return base::Status::OK();
 }
