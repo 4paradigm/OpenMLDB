@@ -90,7 +90,6 @@ jobs:
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
-        shell: bash
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:

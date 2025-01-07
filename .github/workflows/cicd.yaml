@@ -36,22 +36,18 @@ env:
 
 jobs:
   cpp:
-    runs-on: [self-hosted,generic]
+    runs-on: [self-hosted, generic]
     if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
-      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       OS: linux
       SQL_PYSDK_ENABLE: OFF
       TESTING_ENABLE: ON
-      NPROC: 8
+      NPROC: 4
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
-      # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: prepare release
         run: |
@@ -71,38 +67,42 @@ jobs:
       - name: configure
         env:
           SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
+        shell: bash
         run: |
           make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
 
       - name: build
+        shell: bash
         run: |
           make build
-          # GitHub runner disk space is limited
-          # delete thirdparty build directory($ROOT/.deps/) to save disk space
-          # make thirdpartybuild-clean
 
       - name: run cpp
         id: unittest
         run: |
+        shell: bash
           make test
 
       - name: run sql_router_test
         id: sql_router_test
+        shell: bash
         run: |
           bash steps/ut.sh sql_router_test 0
 
       - name: run sql_sdk_test
         id: sql_sdk_test
+        shell: bash
         run: |
           bash steps/ut.sh sql_sdk_test 0
 
       - name: run sql_cluster_test
         id: sql_cluster_test
+        shell: bash
         run: |
           bash steps/ut.sh sql_cluster_test 0
 
       - name: run sql_standalone_sdk_test
         id: sql_standalone_sdk_test
+        shell: bash
         run: |
           bash steps/ut.sh sql_standalone_sdk_test 0
 
@@ -119,6 +119,7 @@ jobs:
 
       - name: install
         if: ${{ github.event_name == 'push' }}
+        shell: bash
         run: |
           make install
 
