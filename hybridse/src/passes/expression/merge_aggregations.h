@@ -17,10 +17,6 @@
 #ifndef HYBRIDSE_SRC_PASSES_EXPRESSION_MERGE_AGGREGATIONS_H_
 #define HYBRIDSE_SRC_PASSES_EXPRESSION_MERGE_AGGREGATIONS_H_
 
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include "passes/expression/expr_pass.h"
 
 namespace hybridse {
