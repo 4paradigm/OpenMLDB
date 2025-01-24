@@ -216,3 +216,63 @@ cases:
         - [3, "aa", 1, 8]
         - [4, "aa", 0, 21]
 
+  - id: 6
+    desc: |
+      nested aggregate function call
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 string" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, NULL
+          5, 1612130404000, g1, 5
+          6, 1612130404000, g2, NULL
+          7, 1612130405000, g2, 3
+          8, 1612130406000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      count_where(id, val1 = first_value(val1)) over w1 as agg1,
+      count_where(id, val1 != first_value(val1)) over w1 as agg2,
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows_range between 5s preceding and 1s preceding)
+    expect:
+      columns: ["id int", "val1 string", "agg1 int64", "agg2 int64"]
+      order: id
+      rows:
+         - [1, 1, 0, 0]
+         - [2, 2, 1, 0]
+         - [3, 3, 1, 1]
+         - [4, NULL, 1, 2]
+         - [5, 5, 1, 2]
+         - [6, NULL, 0, 0]
+         - [7, 3, 0, 0]
+         - [8, 2, 0, 0]
+  - id: 7
+    desc: |
+      duplicated aggregate call
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 string" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      first_value(val1) over w1 as agg1,
+      first_value(val1) over w1 as agg2,
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows_range between 5s preceding and 0s preceding)
+    expect:
+      columns: ["id int", "val1 string", "agg1 string", "agg2 string"]
+      order: id
+      rows:
+         - [1, 1, "1", "1"]
+         - [2, 2, "1", "1"]
