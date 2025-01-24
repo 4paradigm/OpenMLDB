@@ -19,8 +19,10 @@
 
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "node/expr_node.h"
 #include "node/sql_node.h"
 
@@ -54,6 +56,8 @@ class LambdafyProjects {
                      node::LambdaNode** out_lambda,
                      std::vector<int>* require_agg);
 
+ private:
+    using CACHE_TYPE = absl::flat_hash_map<const node::ExprNode*, std::pair<node::ExprNode*, bool>>;
     /**
      * Transform original expression under lambda scope with arg
      *     @arg "row":    Current input row.
@@ -62,16 +66,14 @@ class LambdafyProjects {
      * Return transformed expression and fill two flags:
      *   "has_agg": Whether there exist agg expr node in output tree.
      */
-    Status VisitExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
-                     node::ExprIdNode* window_arg, node::ExprNode** out,
-                     bool* has_agg);
+    Status VisitExpr(const node::ExprNode* expr, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
+                     node::ExprNode** out, bool* has_agg, CACHE_TYPE&);
 
     Status VisitLeafExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
                          node::ExprNode** out);
 
-    Status VisitAggExpr(node::CallExprNode* call, node::ExprIdNode* row_arg,
-                        node::ExprIdNode* window_arg, node::ExprNode** out,
-                        bool* is_window_agg);
+    Status VisitAggExpr(node::CallExprNode* call, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
+                        node::ExprNode** out, bool* is_window_agg, CACHE_TYPE&);
 
  private:
     node::ExprAnalysisContext* ctx_;

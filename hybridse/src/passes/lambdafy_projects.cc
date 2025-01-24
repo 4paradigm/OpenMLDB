@@ -15,6 +15,8 @@
  */
 
 #include "passes/lambdafy_projects.h"
+#include "absl/cleanup/cleanup.h"
+
 #include "passes/resolve_fn_and_attrs.h"
 
 namespace hybridse {
@@ -40,8 +42,10 @@ Status LambdafyProjects::Transform(
     // iterate project exprs
     auto out_list = nm->MakeExprList();
     require_agg_vec->clear();
+    CACHE_TYPE agg_cache;
     for (auto origin_expr : exprs) {
         CHECK_TRUE(origin_expr != nullptr, kCodegenError);
+
         if (origin_expr->GetExprType() == node::kExprAll) {
             // expand *
             for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize();
@@ -62,13 +66,11 @@ Status LambdafyProjects::Transform(
             out_list->AddChild(expr);
             require_agg_vec->push_back(true);
         } else {
-            auto expr = origin_expr->DeepCopy(nm);
-            CHECK_TRUE(expr != nullptr, kCodegenError);
             bool has_agg;
             node::ExprNode* transformed = nullptr;
             CHECK_STATUS(
-                VisitExpr(expr, row_arg, window_arg, &transformed, &has_agg),
-                "Lambdafy ", expr->GetExprString(), " failed");
+                VisitExpr(origin_expr, row_arg, window_arg, &transformed, &has_agg, agg_cache),
+                "Lambdafy ", origin_expr->GetExprString(), " failed");
             out_list->AddChild(transformed);
             require_agg_vec->push_back(has_agg);
         }
@@ -78,10 +80,22 @@ Status LambdafyProjects::Transform(
     return Status::OK();
 }
 
-Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
-                                   node::ExprIdNode* row_arg,
-                                   node::ExprIdNode* window_arg,
-                                   node::ExprNode** out, bool* has_agg) {
+Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr, node::ExprIdNode* row_arg,
+                                   node::ExprIdNode* window_arg, node::ExprNode** out, bool* has_agg,
+                                   CACHE_TYPE& cache) {
+    auto it = cache.find(ori_expr);
+    if (it != cache.end()) {
+        *out = it->second.first;
+        *has_agg = it->second.second;
+        return base::Status::OK();
+    }
+    absl::Cleanup clean = [&]() {
+        if (*has_agg) {
+            cache.try_emplace(ori_expr, *out, *has_agg);
+        }
+    };
+
+    auto expr = ori_expr->DeepCopy(ctx_->node_manager());
     // determine whether an agg call
     size_t child_num = expr->GetChildNum();
     if (expr->GetExprType() == node::kExprCall) {
@@ -100,7 +114,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
                     return Status::OK();
                 }
             } else if (library->IsUdaf(fn->function_name(), child_num)) {
-                CHECK_STATUS(VisitAggExpr(call, row_arg, window_arg, out, has_agg));
+                CHECK_STATUS(VisitAggExpr(call, row_arg, window_arg, out, has_agg, cache));
                 return base::Status::OK();
             }
         }
@@ -148,7 +162,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
         }
 
         CHECK_STATUS(VisitExpr(child, row_arg, window_arg,
-                               &transformed_children[i], &child_has_agg));
+                               &transformed_children[i], &child_has_agg, cache));
         *has_agg |= child_has_agg;
     }
 
@@ -223,7 +237,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                                       node::ExprIdNode* row_arg,
                                       node::ExprIdNode* window_arg,
                                       node::ExprNode** out,
-                                      bool* is_window_agg) {
+                                      bool* is_window_agg,
+                                      CACHE_TYPE& cache) {
     auto nm = ctx_->node_manager();
     auto fn = dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
     CHECK_TRUE(fn != nullptr, kCodegenError, "Fail to visit agg expression with null function definition node");
@@ -274,8 +289,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         }
 
         bool child_has_agg = false;
-        CHECK_STATUS(VisitExpr(child, child_row_arg, window_arg,
-                               &transformed_child[i], &child_has_agg));
+        CHECK_STATUS(VisitExpr(child, child_row_arg, window_arg, &transformed_child[i], &child_has_agg, cache));
 
         // resolve update arg
         node::ExprNode* resolved_arg = nullptr;
