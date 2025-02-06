@@ -17,14 +17,15 @@
 #include "node/expr_node.h"
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/substitute.h"
 #include "codec/fe_row_codec.h"
+#include "codegen/ir_base_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "passes/expression/expr_pass.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
-#include "codegen/ir_base_builder.h"
 
 using ::hybridse::common::kTypeError;
 
@@ -1230,6 +1231,30 @@ Status ArrayElementExpr::InferAttr(ExprAnalysisContext* ctx) {
 }
 ExprNode *ArrayElementExpr::array() const { return GetChild(0); }
 ExprNode *ArrayElementExpr::position() const { return GetChild(1); }
+
+
+void LetExpr::Print(std::ostream &output, const std::string &org_tab) const {}
+const std::string LetExpr::GetExprString() const {
+    return absl::Substitute("LET $0 IN $1",
+                            absl::StrJoin(ctx_.bindings, ",",
+                                          [](std::string* out, const decltype(LetContext::bindings)::value_type& kv) {
+                                              absl::StrAppend(out, kv.first->GetExprString(), "=",
+                                                              kv.second->GetExprString());
+                                          }),
+                            expr_->GetExprString());
+}
+LetExpr* LetExpr::ShadowCopy(NodeManager* nm) const { return nm->MakeNode<LetExpr>(expr_, ctx_); }
+
+Status LetExpr::InferAttr(ExprAnalysisContext* ctx) {
+    for (auto& [k, v] : ctx_.bindings) {
+        CHECK_TRUE(k->GetOutputType() != nullptr, common::kTypeError, "expr id node not resolved");
+        CHECK_TRUE(k->GetOutputType() == v->GetOutputType(), common::kTypeError,
+                   "expr id node return type does not match binding expr");
+    }
+    SetOutputType(expr_->GetOutputType());
+    SetNullable(expr_->nullable());
+    return {};
+}
 
 StructCtorWithParens* StructCtorWithParens::ShadowCopy(NodeManager* nm) const {
     return nm->MakeNode<StructCtorWithParens>(fields());

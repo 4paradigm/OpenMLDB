@@ -15,8 +15,10 @@
  */
 
 #include "passes/lambdafy_projects.h"
-#include "absl/cleanup/cleanup.h"
 
+#include <atomic>
+
+#include "absl/cleanup/cleanup.h"
 #include "passes/resolve_fn_and_attrs.h"
 
 namespace hybridse {
@@ -43,6 +45,7 @@ Status LambdafyProjects::Transform(
     auto out_list = nm->MakeExprList();
     require_agg_vec->clear();
     CACHE_TYPE agg_cache;
+    node::LetExpr::LetContext let_ctx;
     for (auto origin_expr : exprs) {
         CHECK_TRUE(origin_expr != nullptr, kCodegenError);
 
@@ -69,29 +72,54 @@ Status LambdafyProjects::Transform(
             bool has_agg;
             node::ExprNode* transformed = nullptr;
             CHECK_STATUS(
-                VisitExpr(origin_expr, row_arg, window_arg, &transformed, &has_agg, agg_cache),
+                VisitExpr(origin_expr, row_arg, window_arg, false, &transformed, &has_agg, agg_cache, let_ctx),
                 "Lambdafy ", origin_expr->GetExprString(), " failed");
             out_list->AddChild(transformed);
             require_agg_vec->push_back(has_agg);
         }
     }
 
-    *out_lambda = nm->MakeLambdaNode({row_arg, window_arg}, out_list);
+    if (!let_ctx.empty()) {
+        *out_lambda = nm->MakeLambdaNode({row_arg, window_arg}, nm->MakeNode<node::LetExpr>(out_list, let_ctx));
+    } else {
+        *out_lambda = nm->MakeLambdaNode({row_arg, window_arg}, out_list);
+    }
     return Status::OK();
 }
 
 Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr, node::ExprIdNode* row_arg,
-                                   node::ExprIdNode* window_arg, node::ExprNode** out, bool* has_agg,
-                                   CACHE_TYPE& cache) {
+                                   node::ExprIdNode* window_arg, bool is_agg, node::ExprNode** out, bool* has_agg,
+                                   CACHE_TYPE& cache, LET_CTX_TYPE& let_ctx) {
     auto it = cache.find(ori_expr);
     if (it != cache.end()) {
         *out = it->second.first;
         *has_agg = it->second.second;
         return base::Status::OK();
     }
+
+    // current expression is aggregate call
+    bool expr_is_agg = false;
+
     absl::Cleanup clean = [&]() {
-        if (*has_agg) {
-            cache.try_emplace(ori_expr, *out, *has_agg);
+        if (expr_is_agg) {
+            if (is_agg) {
+                // nested aggregate call: add it to the let bindings if not exists
+                auto nested_agg = ctx_->node_manager()->MakeExprIdNode(
+                    absl::StrCat("nested_agg_call_", counter_.fetch_add(1, std::memory_order_relaxed)));
+                auto out_udaf_call = *out;
+
+                nested_agg->SetOutputType(out_udaf_call->GetOutputType());
+                nested_agg->SetNullable(out_udaf_call->nullable());
+
+                // output type for this expr id node will set during LetExpr's infer
+                let_ctx.Append(nested_agg, out_udaf_call);
+
+                cache.try_emplace(ori_expr, nested_agg, *has_agg);
+
+                *out = nested_agg;
+            } else {
+                cache.try_emplace(ori_expr, *out, *has_agg);
+            }
         }
     };
 
@@ -114,7 +142,12 @@ Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr, node::ExprIdN
                     return Status::OK();
                 }
             } else if (library->IsUdaf(fn->function_name(), child_num)) {
-                CHECK_STATUS(VisitAggExpr(call, row_arg, window_arg, out, has_agg, cache));
+                expr_is_agg = true;
+                CHECK_STATUS(VisitAggExpr(call, row_arg, window_arg, out, has_agg, cache, let_ctx));
+                if (is_agg) {
+                    CHECK_TRUE((*out)->GetOutputType() != nullptr, common::kCodegenError,
+                               "nested udaf call should inferred before")
+                }
                 return base::Status::OK();
             }
         }
@@ -144,6 +177,7 @@ Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr, node::ExprIdN
             if (child_is_col) {
                 transformed_children[i] = child;
                 *has_agg = true;
+                expr_is_agg = true;
                 continue;
             }
             // Expression require list type input at current position
@@ -161,14 +195,21 @@ Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr, node::ExprIdN
                        " to list for ", expr->GetExprString());
         }
 
-        CHECK_STATUS(VisitExpr(child, row_arg, window_arg,
-                               &transformed_children[i], &child_has_agg, cache));
+        CHECK_STATUS(VisitExpr(child, row_arg, window_arg, is_agg,
+                               &transformed_children[i], &child_has_agg, cache, let_ctx));
         *has_agg |= child_has_agg;
     }
 
     // root(c1, c2 ...) -> root(transform(c1), transform(c2), ...)
     for (size_t i = 0; i < child_num; ++i) {
         expr->SetChild(i, transformed_children[i]);
+    }
+    if (expr_is_agg && is_agg) {
+        // infer type early since type info is required for constructing LetExpr
+        ResolveFnAndAttrs resolver(ctx_);
+        node::ExprNode* resolved = nullptr;
+        CHECK_STATUS(resolver.VisitExpr(expr, &resolved));
+        expr = resolved;
     }
     *out = expr;
     return Status::OK();
@@ -238,7 +279,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                                       node::ExprIdNode* window_arg,
                                       node::ExprNode** out,
                                       bool* is_window_agg,
-                                      CACHE_TYPE& cache) {
+                                      CACHE_TYPE& cache,
+                                      LET_CTX_TYPE& let_ctx) {
     auto nm = ctx_->node_manager();
     auto fn = dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
     CHECK_TRUE(fn != nullptr, kCodegenError, "Fail to visit agg expression with null function definition node");
@@ -265,7 +307,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                              child->GetExprType() != node::kExprColumnRef;
 
         // TODO(bxq): udaf require information about const argument positions
-        bool child_is_const = child->GetExprType() == node::kExprPrimary;
+        bool child_is_const = child->GetExprType() == node::kExprPrimary || child->GetExprType() == node::kExprId;
         bool child_require_iter =
             call->RequireListAt(ctx_, i) && !child_is_const;
         bool child_require_window_iter = child_require_iter && !child_is_list;
@@ -289,7 +331,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         }
 
         bool child_has_agg = false;
-        CHECK_STATUS(VisitExpr(child, child_row_arg, window_arg, &transformed_child[i], &child_has_agg, cache));
+        CHECK_STATUS(
+            VisitExpr(child, child_row_arg, window_arg, true, &transformed_child[i], &child_has_agg, cache, let_ctx));
 
         // resolve update arg
         node::ExprNode* resolved_arg = nullptr;
@@ -406,7 +449,14 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     auto new_udaf =
         nm->MakeUdafDefNode(new_udaf_name, proxy_udaf_arg_types, ori_init,
                             update_func, ori_merge_fn, ori_output_fn);
-    *out = nm->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
+    auto fn_call = nm->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
+
+    // infer type early since type info is required for constructing LetExpr
+    ResolveFnAndAttrs resolver(ctx_);
+    node::ExprNode* resolved = nullptr;
+    CHECK_STATUS(resolver.VisitExpr(fn_call, &resolved));
+
+    *out = resolved;
     return Status::OK();
 }
 

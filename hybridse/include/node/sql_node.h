@@ -22,8 +22,10 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
@@ -617,6 +619,7 @@ class ArrayElementExpr : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
+
 
 class FnNode : public SqlNode {
  public:
@@ -1867,6 +1870,41 @@ class EscapedExpr : public ExprNode {
     ExprNode* GetEscape() const {
         return GetChildOrNull(1);
     }
+};
+
+class LetExpr : public ExprNode {
+ public:
+    class LetContext {
+     public:
+        void Append(ExprIdNode *k, ExprNode *v) {
+            bindings.emplace_back(k, v);
+            cache.emplace(k, v);
+        }
+        bool empty() const noexcept { return bindings.empty(); }
+        std::vector<std::pair<ExprIdNode *, ExprNode*>> bindings;
+        absl::flat_hash_map<ExprIdNode *, ExprNode *> cache;
+    };
+
+    LetExpr(ExprNode *expr, const LetContext &ctx) : ExprNode(kExprLet), ctx_(ctx), expr_(expr) {
+        for (auto &kv : ctx.bindings) {
+            AddChild(kv.second);
+        }
+        AddChild(expr);
+    }
+    ~LetExpr() override {}
+
+
+    const LetContext& ctx() const {return ctx_; }
+    ExprNode *expr() const { return expr_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    LetExpr *ShadowCopy(NodeManager *nm) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    LetContext ctx_;
+    ExprNode* expr_;
 };
 
 class ResTarget : public SqlNode {

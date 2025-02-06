@@ -58,22 +58,24 @@ class LambdafyProjects {
 
  private:
     using CACHE_TYPE = absl::flat_hash_map<const node::ExprNode*, std::pair<node::ExprNode*, bool>>;
+    using LET_CTX_TYPE = node::LetExpr::LetContext;
     /**
      * Transform original expression under lambda scope with arg
-     *     @arg "row":    Current input row.
-     *     @arg "window": Associating multi row list.
+     *     @arg row_arg:    Current input row.
+     *     @arg window_arg: Associating multi row list.
+     *     @arg is_agg:     whether `expr` is inside aggregate context or not
      *
      * Return transformed expression and fill two flags:
      *   "has_agg": Whether there exist agg expr node in output tree.
      */
-    Status VisitExpr(const node::ExprNode* expr, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
-                     node::ExprNode** out, bool* has_agg, CACHE_TYPE&);
+    Status VisitExpr(const node::ExprNode* expr, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg, bool is_agg,
+                     node::ExprNode** out, bool* has_agg, CACHE_TYPE&, LET_CTX_TYPE&);
 
     Status VisitLeafExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
                          node::ExprNode** out);
 
     Status VisitAggExpr(node::CallExprNode* call, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
-                        node::ExprNode** out, bool* is_window_agg, CACHE_TYPE&);
+                        node::ExprNode** out, bool* is_window_agg, CACHE_TYPE&, LET_CTX_TYPE&);
 
  private:
     node::ExprAnalysisContext* ctx_;
@@ -83,6 +85,8 @@ class LambdafyProjects {
     bool legacy_agg_opt_;
     std::unordered_set<std::string> agg_opt_fn_names_ = {"sum", "min", "max",
                                                          "count", "avg"};
+
+    std::atomic<int> counter_ = 0;
 };
 
 }  // namespace passes
