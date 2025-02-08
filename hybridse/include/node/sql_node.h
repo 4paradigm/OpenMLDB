@@ -1874,21 +1874,30 @@ class EscapedExpr : public ExprNode {
 
 class LetExpr : public ExprNode {
  public:
+    class LetCtxEntry {
+     public:
+        LetCtxEntry(ExprIdNode *id_node, ExprNode *expr, const FrameNode *frame)
+            : id_node(id_node), expr(expr), frame(frame) {}
+        ExprIdNode *id_node;
+        ExprNode *expr;  // referred udaf call
+        const FrameNode *frame;
+    };
+
     class LetContext {
      public:
-        void Append(ExprIdNode *k, ExprNode *v) {
-            bindings.emplace_back(k, v);
-            cache.emplace(k, v);
+        void Append(ExprIdNode *k, ExprNode *v, const FrameNode* frame) {
+            if (cache.find(k) == cache.end()) {
+                bindings.emplace_back(k, v, frame);
+                cache.emplace(k, v);
+            }
         }
+
         bool empty() const noexcept { return bindings.empty(); }
-        std::vector<std::pair<ExprIdNode *, ExprNode*>> bindings;
+        std::vector<LetCtxEntry> bindings;
         absl::flat_hash_map<ExprIdNode *, ExprNode *> cache;
     };
 
     LetExpr(ExprNode *expr, const LetContext &ctx) : ExprNode(kExprLet), ctx_(ctx), expr_(expr) {
-        for (auto &kv : ctx.bindings) {
-            AddChild(kv.second);
-        }
         AddChild(expr);
     }
     ~LetExpr() override {}

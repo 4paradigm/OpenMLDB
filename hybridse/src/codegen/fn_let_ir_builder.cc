@@ -120,7 +120,11 @@ Status RowFnLetIRBuilder::Build(
                "Frame num should match expr num");
 
     if (is_let_fn_body) {
-        for (auto& [key, exp] : maybe_let_expr->ctx().bindings) {
+        for (auto& entry : maybe_let_expr->ctx().bindings) {
+            auto key = entry.id_node;
+            auto exp = entry.expr;
+            auto frame = entry.frame;
+            CHECK_STATUS(BindProjectFrame(&expr_ir_builder, frame, compile_func, ctx_->GetCurrentBlock(), sv));
             NativeValue exp_out;
             CHECK_STATUS(expr_ir_builder.Build(exp, &exp_out));
 

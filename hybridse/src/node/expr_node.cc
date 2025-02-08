@@ -1238,15 +1238,15 @@ const std::string LetExpr::GetExprString() const {
     return absl::Substitute("LET $0 IN $1",
                             absl::StrJoin(ctx_.bindings, ",",
                                           [](std::string* out, const decltype(LetContext::bindings)::value_type& kv) {
-                                              absl::StrAppend(out, kv.first->GetExprString(), "=",
-                                                              kv.second->GetExprString());
+                                              absl::StrAppend(out, kv.id_node->GetExprString(), "=",
+                                                              kv.expr->GetExprString());
                                           }),
                             expr_->GetExprString());
 }
 LetExpr* LetExpr::ShadowCopy(NodeManager* nm) const { return nm->MakeNode<LetExpr>(expr_, ctx_); }
 
 Status LetExpr::InferAttr(ExprAnalysisContext* ctx) {
-    for (auto& [k, v] : ctx_.bindings) {
+    for (auto& [k, v, _] : ctx_.bindings) {
         CHECK_TRUE(k->GetOutputType() != nullptr, common::kTypeError, "expr id node not resolved");
         CHECK_TRUE(k->GetOutputType() == v->GetOutputType(), common::kTypeError,
                    "expr id node return type does not match binding expr");

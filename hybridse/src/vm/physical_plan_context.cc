@@ -50,9 +50,10 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
 
     node::ExprAnalysisContext expr_pass_ctx(node_manager(), library(), schemas_ctx, parameter_types_);
 
-    passes::CacheExpressions ce;
+    absl::flat_hash_map<const node::FrameNode*, passes::CacheExpressions> ces;
     for (size_t i = 0; i < projects.size(); ++i) {
         if (projects.GetFrame(i) != nullptr) {
+            auto& ce = ces[projects.GetFrame(i)];
             node::ExprNode* co = nullptr;
             CHECK_STATUS(ce.Apply(&expr_pass_ctx, const_cast<node::ExprNode*>(projects.GetExpr(i)), &co));
             if (co != nullptr && co != exprs[i]) {
@@ -65,7 +66,7 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
     passes::LambdafyProjects lambdafy_pass(&expr_pass_ctx, enable_legacy_agg_opt);
     node::LambdaNode* lambdafy_func = nullptr;
     std::vector<int> require_agg;
-    CHECK_STATUS(lambdafy_pass.Transform(exprs, &lambdafy_func, &require_agg));
+    CHECK_STATUS(lambdafy_pass.Transform(exprs, projects.frames(), &lambdafy_func, &require_agg));
 
     // check whether agg exists in row mode
     bool has_agg = false;

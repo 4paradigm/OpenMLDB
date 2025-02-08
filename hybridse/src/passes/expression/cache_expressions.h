@@ -18,7 +18,6 @@
 
 #include <absl/container/flat_hash_set.h>
 
-#include <unordered_set>
 #include <string>
 
 #include "passes/expression/expr_pass.h"
@@ -36,16 +35,7 @@ class CacheExpressions : public passes::ExprPass {
     base::Status Apply(node::ExprAnalysisContext* ctx, node::ExprNode* expr, node::ExprNode** out) override;
 
  private:
-    struct ExprEq {
-        bool operator()(const node::ExprNode* lhs, const node::ExprNode* rhs) const {
-            return node::ExprEquals(lhs, rhs);
-        }
-    };
-    struct ExprHash {
-        std::size_t operator()(const node::ExprNode* s) const { return std::hash<std::string>()(s->GetExprString()); }
-    };
-
-    std::unordered_set<node::ExprNode*, ExprHash, ExprEq> expr_cache_;
+    absl::flat_hash_map<std::string, node::ExprNode*> expr_cache_;
 };
 
 }  // namespace passes

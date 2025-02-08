@@ -53,29 +53,42 @@ class LambdafyProjects {
      * expressions num maybe larger than original projects num.
      */
     Status Transform(const std::vector<const node::ExprNode*>& exprs,
+                     const std::vector<const node::FrameNode*>& frames,
                      node::LambdaNode** out_lambda,
                      std::vector<int>* require_agg);
 
  private:
-    using CACHE_TYPE = absl::flat_hash_map<const node::ExprNode*, std::pair<node::ExprNode*, bool>>;
+    struct CACHE_VAL {
+        CACHE_VAL(node::ExprNode* lambdafied, bool has_agg, node::ExprIdNode* id_node)
+            : lambdafied(lambdafied), has_agg(has_agg), id_node(id_node) {}
+
+        node::ExprNode* lambdafied;
+        bool has_agg;
+        // lambdafied udaf expr nodes may have corresponding id not, if it is somewhere used as nested udaf call
+        node::ExprIdNode* id_node;
+    };
+    // expr node -> (lambdafied expr node, has aggregate, is aggregate call itself)
+    using CACHE_TYPE = absl::flat_hash_map<const node::ExprNode*, CACHE_VAL>;
     using LET_CTX_TYPE = node::LetExpr::LetContext;
     /**
      * Transform original expression under lambda scope with arg
      *     @arg row_arg:    Current input row.
      *     @arg window_arg: Associating multi row list.
-     *     @arg is_agg:     whether `expr` is inside aggregate context or not
+     *     @arg inside_agg_ctx:     whether `expr` is inside aggregate context or not
      *
      * Return transformed expression and fill two flags:
      *   "has_agg": Whether there exist agg expr node in output tree.
      */
-    Status VisitExpr(const node::ExprNode* expr, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg, bool is_agg,
-                     node::ExprNode** out, bool* has_agg, CACHE_TYPE&, LET_CTX_TYPE&);
+    Status VisitExpr(const node::ExprNode* expr, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
+                     const node::FrameNode* frame,
+                     bool inside_agg_ctx, node::ExprNode** out, bool* has_agg, CACHE_TYPE&, LET_CTX_TYPE&);
 
     Status VisitLeafExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
                          node::ExprNode** out);
 
-    Status VisitAggExpr(node::CallExprNode* call, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
-                        node::ExprNode** out, bool* is_window_agg, CACHE_TYPE&, LET_CTX_TYPE&);
+    Status VisitAggExpr(const node::CallExprNode* call, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
+                        const node::FrameNode* frame, node::ExprNode** out, bool* is_window_agg, CACHE_TYPE&,
+                        LET_CTX_TYPE&);
 
  private:
     node::ExprAnalysisContext* ctx_;

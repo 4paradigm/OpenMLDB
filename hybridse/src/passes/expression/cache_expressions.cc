@@ -19,6 +19,22 @@
 namespace hybridse {
 namespace passes {
 
+static std::string CallExprKey(const node::CallExprNode* call);
+
+std::string CallExprKey(const node::CallExprNode* call) {
+    std::string str = call->GetFnDef()->GetName();
+    str.append("(");
+    for (size_t i = 0; i < call->children_.size(); ++i) {
+        str.append(call->children_[i]->GetExprString());
+        if (i < call->children_.size() - 1) {
+            str.append(", ");
+        }
+    }
+    str.append(")");
+
+    return str;
+}
+
 base::Status CacheExpressions::Apply(node::ExprAnalysisContext* ctx, node::ExprNode* expr, node::ExprNode** out) {
     *out = expr;
     for (int i = 0; i < expr->GetChildNum(); ++i) {
@@ -38,11 +54,13 @@ base::Status CacheExpressions::Apply(node::ExprAnalysisContext* ctx, node::ExprN
         return {};
     }
 
-    auto it = expr_cache_.find(expr);
+    auto key = CallExprKey(call);
+
+    auto it = expr_cache_.find(key);
     if (it != expr_cache_.end()) {
-        *out = *it;
+        *out = it->second;
     } else {
-        expr_cache_.insert(expr);
+        expr_cache_.emplace(key, call);
     }
 
     return {};
