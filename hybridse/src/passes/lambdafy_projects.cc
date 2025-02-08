@@ -110,7 +110,7 @@ Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr,
         *has_agg = it->second.has_agg;
 
         // memories in LetContext
-        let_ctx.Append(it->second.id_node, it->second.lambdafied, frame);
+        CHECK_STATUS(let_ctx.Append(it->second.id_node, it->second.lambdafied, frame));
 
         return base::Status::OK();
     }
@@ -142,7 +142,8 @@ Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr,
                                "nested udaf call should inferred before")
                     auto it = cache.find(ori_expr);
                     CHECK_TRUE(it != cache.end() , kCodegenError, "no expr id node found for agg call");
-                    let_ctx.Append(it->second.id_node, *out, frame);
+                    CHECK_STATUS(let_ctx.Append(it->second.id_node, *out, frame));
+                    *out = it->second.id_node;
                 }
                 return base::Status::OK();
             }
@@ -215,7 +216,8 @@ Status LambdafyProjects::VisitExpr(const node::ExprNode* ori_expr,
 
         if (inside_agg_ctx) {
             // the agg call is inside another agg, just memories in let context
-            let_ctx.Append(nested_agg_id_node, expr_copy, frame);
+            CHECK_STATUS(let_ctx.Append(nested_agg_id_node, expr_copy, frame));
+            expr_copy = nested_agg_id_node;
         }
     }
     *out = expr_copy;

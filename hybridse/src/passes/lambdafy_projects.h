@@ -19,7 +19,6 @@
 
 #include <string>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -64,7 +63,6 @@ class LambdafyProjects {
 
         node::ExprNode* lambdafied;
         bool has_agg;
-        // lambdafied udaf expr nodes may have corresponding id not, if it is somewhere used as nested udaf call
         node::ExprIdNode* id_node;
     };
     // expr node -> (lambdafied expr node, has aggregate, is aggregate call itself)

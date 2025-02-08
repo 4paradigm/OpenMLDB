@@ -17,6 +17,7 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 #define HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 
+#include <absl/status/status.h>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -30,6 +31,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "base/fe_status.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/filesystem/operations.hpp"
@@ -1878,6 +1880,7 @@ class LetExpr : public ExprNode {
      public:
         LetCtxEntry(ExprIdNode *id_node, ExprNode *expr, const FrameNode *frame)
             : id_node(id_node), expr(expr), frame(frame) {}
+
         ExprIdNode *id_node;
         ExprNode *expr;  // referred udaf call
         const FrameNode *frame;
@@ -1885,14 +1888,22 @@ class LetExpr : public ExprNode {
 
     class LetContext {
      public:
-        void Append(ExprIdNode *k, ExprNode *v, const FrameNode* frame) {
-            if (cache.find(k) == cache.end()) {
+        base::Status Append(ExprIdNode *k, ExprNode *v, const FrameNode *frame) {
+            auto it = cache.find(k);
+            if (it == cache.end()) {
                 bindings.emplace_back(k, v, frame);
                 cache.emplace(k, v);
+            } else {
+                CHECK_TRUE(v == it->second, common::kPlanError,
+                           "let context: try mapping id node to two different resolved nodes");
             }
+
+            return base::Status::OK();
         }
 
         bool empty() const noexcept { return bindings.empty(); }
+
+        // necessary let bindings, not all cached entry will appear in bindings
         std::vector<LetCtxEntry> bindings;
         absl::flat_hash_map<ExprIdNode *, ExprNode *> cache;
     };
