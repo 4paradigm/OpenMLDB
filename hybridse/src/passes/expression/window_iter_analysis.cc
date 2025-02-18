@@ -15,7 +15,6 @@
  */
 
 #include "passes/expression/window_iter_analysis.h"
-#include <string>
 #include <unordered_map>
 #include <vector>
 

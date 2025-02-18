@@ -117,38 +117,39 @@ static const absl::flat_hash_map<DataType, absl::string_view>& GetDataTypeNamesM
 }
 
 static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap() {
-  absl::flat_hash_map<ExprType, absl::string_view> map = {
-      {kExprPrimary, "primary"},
-      {kExprParameter, "parameter"},
-      {kExprId, "id"},
-      {kExprBinary, "binary"},
-      {kExprUnary, "unary"},
-      {kExprCall, "function"},
-      {kExprCase, "case"},
-      {kExprWhen, "when"},
-      {kExprBetween, "between"},
-      {kExprColumnRef, "column ref"},
-      {kExprColumnId, "column id"},
-      {kExprCast, "cast"},
-      {kExprAll, "all"},
-      {kExprStruct, "struct"},
-      {kExprQuery, "query"},
-      {kExprOrder, "order"},
-      {kExprGetField, "get field"},
-      {kExprCond, "cond"},
-      {kExprUnknow, "unknow"},
-      {kExprIn, "in"},
-      {kExprList, "expr_list"},
-      {kExprForIn, "for_in"},
-      {kExprRange, "range"},
-      {kExprOrderExpression, "order"},
-      {kExprEscaped, "escape"},
-      {kExprArray, "array"},
-      {kExprArrayElement, "array element"},
-      {kExprStructCtorParens, "struct with parens"},
-  };
-  for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
-      DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+    absl::flat_hash_map<ExprType, absl::string_view> map = {
+        {kExprPrimary, "primary"},
+        {kExprParameter, "parameter"},
+        {kExprId, "id"},
+        {kExprBinary, "binary"},
+        {kExprUnary, "unary"},
+        {kExprCall, "function"},
+        {kExprCase, "case"},
+        {kExprWhen, "when"},
+        {kExprBetween, "between"},
+        {kExprColumnRef, "column ref"},
+        {kExprColumnId, "column id"},
+        {kExprCast, "cast"},
+        {kExprAll, "all"},
+        {kExprStruct, "struct"},
+        {kExprQuery, "query"},
+        {kExprOrder, "order"},
+        {kExprGetField, "get field"},
+        {kExprCond, "cond"},
+        {kExprUnknow, "unknow"},
+        {kExprIn, "in"},
+        {kExprList, "expr_list"},
+        {kExprForIn, "for_in"},
+        {kExprRange, "range"},
+        {kExprOrderExpression, "order"},
+        {kExprEscaped, "escape"},
+        {kExprArray, "array"},
+        {kExprArrayElement, "array element"},
+        {kExprStructCtorParens, "struct with parens"},
+        {kExprLet, "let"},
+    };
+    for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
+        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
   }
   return map;
 }
