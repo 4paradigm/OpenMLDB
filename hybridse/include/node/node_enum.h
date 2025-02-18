@@ -149,6 +149,7 @@ enum ExprType {
     kExprArray,
     kExprArrayElement,      // extract value from a array or map, with `[]` operator
     kExprStructCtorParens,  // (expr1, expr2, ...)
+    kExprLet,               // LET [bindings] in <output expr>
     kExprFake,              // not a real one
     kExprLast = kExprFake,
 };

@@ -16,6 +16,7 @@
 #include "vm/physical_plan_context.h"
 
 #include "codegen/ir_base_builder.h"
+#include "passes/expression/cache_expressions.h"
 #include "passes/expression/default_passes.h"
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
@@ -48,11 +49,24 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
     }
 
     node::ExprAnalysisContext expr_pass_ctx(node_manager(), library(), schemas_ctx, parameter_types_);
+
+    absl::flat_hash_map<const node::FrameNode*, passes::CacheExpressions> ces;
+    for (size_t i = 0; i < projects.size(); ++i) {
+        if (projects.GetFrame(i) != nullptr) {
+            auto& ce = ces[projects.GetFrame(i)];
+            node::ExprNode* co = nullptr;
+            CHECK_STATUS(ce.Apply(&expr_pass_ctx, const_cast<node::ExprNode*>(projects.GetExpr(i)), &co));
+            if (co != nullptr && co != exprs[i]) {
+                exprs[i] = co;
+            }
+        }
+    }
+
     const bool enable_legacy_agg_opt = true;
     passes::LambdafyProjects lambdafy_pass(&expr_pass_ctx, enable_legacy_agg_opt);
     node::LambdaNode* lambdafy_func = nullptr;
     std::vector<int> require_agg;
-    CHECK_STATUS(lambdafy_pass.Transform(exprs, &lambdafy_func, &require_agg));
+    CHECK_STATUS(lambdafy_pass.Transform(exprs, projects.frames(), &lambdafy_func, &require_agg));
 
     // check whether agg exists in row mode
     bool has_agg = false;
@@ -87,6 +101,9 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects, const Sche
 
     // set output schema
     auto expr_list = resolved_func->body();
+    if (expr_list ->GetExprType() == node::kExprLet) {
+        expr_list = expr_list->GetAsOrNull<node::LetExpr>()->expr();
+    }
     CHECK_TRUE(projects.size() == expr_list->GetChildNum(), kPlanError);
     for (size_t i = 0; i < projects.size(); ++i) {
         type::ColumnDef column_def;
@@ -218,7 +235,11 @@ Status OptimizeFunctionLet(const ColumnProjects& projects,
                            node::ExprAnalysisContext* ctx,
                            node::LambdaNode* func) {
     CHECK_TRUE(func->GetArgSize() == 2, kPlanError);
-    CHECK_TRUE(projects.size() == func->body()->GetChildNum(), kPlanError);
+    auto fn_body = func->body();
+    if (fn_body ->GetExprType() == node::kExprLet) {
+        fn_body = fn_body->GetAsOrNull<node::LetExpr>()->expr();
+    }
+    CHECK_TRUE(projects.size() == fn_body->GetChildNum(), kPlanError);
 
     // group idx -> (idx in group -> output idx)
     std::vector<std::vector<size_t>> pos_mappings;
@@ -231,7 +252,7 @@ Status OptimizeFunctionLet(const ColumnProjects& projects,
 
     // split expressions by frame
     for (size_t i = 0; i < projects.size(); ++i) {
-        auto expr = func->body()->GetChild(i);
+        auto expr = fn_body->GetChild(i);
         auto frame = projects.GetFrame(i);
         std::string key = frame ? frame->GetExprString() : "";
         auto iter = frame_mappings.find(key);
@@ -257,12 +278,10 @@ Status OptimizeFunctionLet(const ColumnProjects& projects,
         node::ExprNode* optimized = nullptr;
         CHECK_STATUS(pass_group.Apply(ctx, groups[i], &optimized));
 
-        CHECK_TRUE(optimized != nullptr &&
-                       optimized->GetChildNum() == pos_mappings[i].size(),
-                   kPlanError);
+        CHECK_TRUE(optimized != nullptr && optimized->GetChildNum() == pos_mappings[i].size(), kPlanError);
         for (size_t j = 0; j < optimized->GetChildNum(); ++j) {
             size_t output_idx = pos_mappings[i][j];
-            func->body()->SetChild(output_idx, optimized->GetChild(j));
+            fn_body->SetChild(output_idx, optimized->GetChild(j));
         }
     }
     return base::Status::OK();

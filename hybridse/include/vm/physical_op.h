@@ -330,6 +330,8 @@ class ColumnProjects : public FnComponent {
         primary_frame_ = frame;
     }
 
+    std::vector<const node::FrameNode *> frames() const { return frames_; }
+
     const node::FrameNode *GetPrimaryFrame() const { return primary_frame_; }
 
     base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
