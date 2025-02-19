@@ -276,7 +276,7 @@ struct GCFormat {
     }
 
     std::string Output() {
-        std::string instance_index_str = "";
+        std::string instance_index_str = " ";
         if (instance_index >= 0) {
             instance_index_str = " " + std::to_string(instance_index);
         }
