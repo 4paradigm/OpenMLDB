@@ -61,7 +61,7 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
       - name: Cache local Maven repository
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
@@ -76,7 +76,7 @@ jobs:
           make build
       - name: upload linux library
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shared-library-${{ github.sha }}
           path: |
@@ -93,13 +93,13 @@ jobs:
           ./mvnw --batch-mode test
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: event-file
           path: ${{ github.event_path }}
       - name: upload java ut results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-java-${{ github.sha }}
           path: |
@@ -121,7 +121,7 @@ jobs:
           ./mvnw --batch-mode prepare-package
           ./mvnw --batch-mode scoverage:report
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-java-report-${{ github.sha }}
           path: |
@@ -252,14 +252,14 @@ jobs:
           bash steps/test_python.sh
       - name: upload python ut results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
             python/openmldb_sdk/tests/pytest.xml
             python/openmldb_tool/tests/pytest.xml
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-python-report-${{ github.sha }}
           path: |
@@ -309,7 +309,7 @@ jobs:
           bash steps/test_python.sh
       - name: upload python ut results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mac-ut-result-python-${{ github.sha }}
           path: |
