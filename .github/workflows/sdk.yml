@@ -73,6 +73,11 @@ jobs:
           ./java/prepare_release.sh "$VERSION"
       - name: build jsdk
         shell: bash
+        env:
+          MAVEN_OPTS: -Duser.home=/github/home
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           git config --global --add safe.directory /__w/OpenMLDB/OpenMLDB
           make build
