@@ -72,7 +72,9 @@ jobs:
           VERSION=${VERSION#v}
           ./java/prepare_release.sh "$VERSION"
       - name: build jsdk
+        shell: bash
         run: |
+          git config --global --add safe.directory /__w/OpenMLDB/OpenMLDB
           make build
       - name: upload linux library
         if: github.event_name == 'push'
