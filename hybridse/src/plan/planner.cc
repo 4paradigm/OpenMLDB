@@ -210,14 +210,23 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
         // expand window frame for lag funtions early
         if (project_expr->GetExprType() == node::kExprCall) {
             auto *call_expr = dynamic_cast<node::CallExprNode *>(project_expr);
-            if (call_expr != nullptr && call_expr->GetOver() != nullptr &&
-                IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
-                // current row window constructed only for `lag(col, 1) over w`,
-                // not for nested window aggregation from kids,
-                //   like `lag(split_by_key(count_cate_where(col, ...) over w, ",", ":"), 1)`
-                auto s = ConstructWindowForLag(w_ptr, call_expr);
-                CHECK_TRUE(s.ok(), common::kUnsupportSql, s.status().ToString());
-                w_ptr = s.value();
+            if (call_expr != nullptr && call_expr->GetOver() != nullptr) {
+                // special window functions
+                if (IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
+                    // current row window constructed only for `lag(col, 1) over w`,
+                    // not for nested window aggregation from kids,
+                    //   like `lag(split_by_key(count_cate_where(col, ...) over w, ",", ":"), 1)`
+                    auto s = ConstructWindowForLag(w_ptr, call_expr);
+                    CHECK_TRUE(s.ok(), common::kUnsupportSql, s.status().ToString());
+                    w_ptr = s.value();
+                } else if (absl::EqualsIgnoreCase(call_expr->GetFnDef()->GetName(), "row_number")) {
+                    if (!is_batch_mode_) {
+                        // mock the row_number window function so it is runnable on request mode only.
+                        // row_number() always return 1 on request mode
+                        project_expr = node_manager_->MakeConstNode(1);
+                        w_ptr = nullptr;
+                    }
+                }
             }
         }
 
