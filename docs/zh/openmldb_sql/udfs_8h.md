@@ -14,7 +14,9 @@ title: udfs/udfs.h
 | **[acos](/openmldb_sql/Files/udfs_8h.md#function-acos)**()| <br>Return the arc cosine of expr. |
 | **[add](/openmldb_sql/Files/udfs_8h.md#function-add)**()| <br>Compute sum of two arguments. |
 | **[add_months](/openmldb_sql/Files/udfs_8h.md#function-add-months)**()| <br>adds an integer months to a given date, returning the resulting date. |
+| **[array_combine](/openmldb_sql/Files/udfs_8h.md#function-array-combine)**()| <br>array_combine(delimiter, array1, array2, ...) |
 | **[array_contains](/openmldb_sql/Files/udfs_8h.md#function-array-contains)**()| <br>array_contains(array, value) - Returns true if the array contains the value. |
+| **[array_join](/openmldb_sql/Files/udfs_8h.md#function-array-join)**()| <br>array_join(array, delimiter) - Concatenates the elements of the given array using the delimiter. Any null value is filtered. |
 | **[asin](/openmldb_sql/Files/udfs_8h.md#function-asin)**()| <br>Return the arc sine of expr. |
 | **[at](/openmldb_sql/Files/udfs_8h.md#function-at)**()| |
 | **[atan](/openmldb_sql/Files/udfs_8h.md#function-atan)**()| <br>Return the arc tangent of expr If called with one parameter, this function returns the arc tangent of expr. If called with two parameters X and Y, this function returns the arc tangent of Y / X. |
@@ -24,6 +26,7 @@ title: udfs/udfs.h
 | **[avg_cate_where](/openmldb_sql/Files/udfs_8h.md#function-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V', separated by comma, and sorted by key in ascend order. |
 | **[avg_where](/openmldb_sql/Files/udfs_8h.md#function-avg-where)**()| <br>Compute average of values match specified condition. |
 | **[bigint](/openmldb_sql/Files/udfs_8h.md#function-bigint)**()| |
+| **[binary_label](/openmldb_sql/Files/udfs_8h.md#function-binary-label)**()| <br>Set the column signature to binary label. Example: |
 | **[bool](/openmldb_sql/Files/udfs_8h.md#function-bool)**()| <br>Cast string expression to bool. |
 | **[ceil](/openmldb_sql/Files/udfs_8h.md#function-ceil)**()| <br>Return the smallest integer value not less than the expr. |
 | **[ceiling](/openmldb_sql/Files/udfs_8h.md#function-ceiling)**()| |
@@ -32,12 +35,14 @@ title: udfs/udfs.h
 | **[character_length](/openmldb_sql/Files/udfs_8h.md#function-character-length)**()| |
 | **[concat](/openmldb_sql/Files/udfs_8h.md#function-concat)**()| <br>This function returns a string resulting from the joining of two or more string values in an end-to-end manner. (To add a separating value during joining, see concat_ws.) |
 | **[concat_ws](/openmldb_sql/Files/udfs_8h.md#function-concat-ws)**()| <br>Returns a string resulting from the joining of two or more string value in an end-to-end manner. It separates those concatenated string values with the delimiter specified in the first function argument. |
+| **[continuous](/openmldb_sql/Files/udfs_8h.md#function-continuous)**()| <br>Set the column signature to continuous feature. Example: |
 | **[cos](/openmldb_sql/Files/udfs_8h.md#function-cos)**()| <br>Return the cosine of expr. |
 | **[cot](/openmldb_sql/Files/udfs_8h.md#function-cot)**()| <br>Return the cotangent of expr. |
 | **[count](/openmldb_sql/Files/udfs_8h.md#function-count)**()| <br>Compute number of values. |
 | **[count_cate](/openmldb_sql/Files/udfs_8h.md#function-count-cate)**()| <br>Compute count of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[count_cate_where](/openmldb_sql/Files/udfs_8h.md#function-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[count_where](/openmldb_sql/Files/udfs_8h.md#function-count-where)**()| <br>Compute number of values match specified condition. |
+| **[csv](/openmldb_sql/Files/udfs_8h.md#function-csv)**()| <br>Return instance in CSV format. Example: |
 | **[date](/openmldb_sql/Files/udfs_8h.md#function-date)**()| <br>Cast timestamp or string expression to date (date >= 1900-01-01) |
 | **[date_format](/openmldb_sql/Files/udfs_8h.md#function-date-format)**()| <br>Formats the date value according to the format string. |
 | **[datediff](/openmldb_sql/Files/udfs_8h.md#function-datediff)**()| <br>days difference from date1 to date2 |
@@ -46,6 +51,7 @@ title: udfs/udfs.h
 | **[dayofweek](/openmldb_sql/Files/udfs_8h.md#function-dayofweek)**()| <br>Return the day of week for a timestamp or date. |
 | **[dayofyear](/openmldb_sql/Files/udfs_8h.md#function-dayofyear)**()| <br>Return the day of year for a timestamp or date. Returns 0 given an invalid date. |
 | **[degrees](/openmldb_sql/Files/udfs_8h.md#function-degrees)**()| <br>Convert radians to degrees. |
+| **[discrete](/openmldb_sql/Files/udfs_8h.md#function-discrete)**()| <br>Set the column signature to discrete feature. |
 | **[distinct_count](/openmldb_sql/Files/udfs_8h.md#function-distinct-count)**()| <br>Compute number of distinct values. |
 | **[double](/openmldb_sql/Files/udfs_8h.md#function-double)**()| <br>Cast string expression to double. |
 | **[drawdown](/openmldb_sql/Files/udfs_8h.md#function-drawdown)**()| <br>Compute drawdown of values. |
@@ -54,9 +60,10 @@ title: udfs/udfs.h
 | **[ew_avg](/openmldb_sql/Files/udfs_8h.md#function-ew-avg)**()| <br>Compute exponentially-weighted average of values. It's equivalent to pandas ewm(alpha={alpha}, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0) |
 | **[exp](/openmldb_sql/Files/udfs_8h.md#function-exp)**()| <br>Return the value of e (the base of natural logarithms) raised to the power of expr. |
 | **[farm_fingerprint](/openmldb_sql/Files/udfs_8h.md#function-farm-fingerprint)**()| |
-| **[first_value](/openmldb_sql/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the latest row (last row) of the window frame. |
+| **[first_value](/openmldb_sql/Files/udfs_8h.md#function-first-value)**()| <br>`first_value(expr[, isIgnoreNull])` - Returns the value of `expr` from the first row of the window frame. If `isIgnoreNull` is true, returns only non-null values. |
 | **[float](/openmldb_sql/Files/udfs_8h.md#function-float)**()| <br>Cast string expression to float. |
 | **[floor](/openmldb_sql/Files/udfs_8h.md#function-floor)**()| <br>Return the largest integer value not less than the expr. |
+| **[gcformat](/openmldb_sql/Files/udfs_8h.md#function-gcformat)**()| <br>Return instance in GCFormat format. Example: |
 | **[get_json_object](/openmldb_sql/Files/udfs_8h.md#function-get-json-object)**()| <br>Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)|
 | **[hash64](/openmldb_sql/Files/udfs_8h.md#function-hash64)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
 | **[hex](/openmldb_sql/Files/udfs_8h.md#function-hex)**()| <br>Convert integer to hexadecimal. |
@@ -71,21 +78,27 @@ title: udfs/udfs.h
 | **[int32](/openmldb_sql/Files/udfs_8h.md#function-int32)**()| <br>Cast string expression to int32. |
 | **[int64](/openmldb_sql/Files/udfs_8h.md#function-int64)**()| <br>Cast string expression to int64. |
 | **[is_null](/openmldb_sql/Files/udfs_8h.md#function-is-null)**()| <br>Check if input value is null, return bool. |
+| **[isin](/openmldb_sql/Files/udfs_8h.md#function-isin)**()| <br>isin(value, array) - Returns true if the array contains the value. |
 | **[isnull](/openmldb_sql/Files/udfs_8h.md#function-isnull)**()| |
 | **[join](/openmldb_sql/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
 | **[json_array_length](/openmldb_sql/Files/udfs_8h.md#function-json-array-length)**()| <br>Returns the number of elements in the outermost JSON array. |
 | **[lag](/openmldb_sql/Files/udfs_8h.md#function-lag)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
 | **[last_day](/openmldb_sql/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
+| **[last_value](/openmldb_sql/Files/udfs_8h.md#function-last-value)**()| <br>`last_value(expr[, isIgnoreNull])` - Returns the value of `expr` from the last row of the window frame. If `isIgnoreNull` is true, returns only non-null values. |
 | **[lcase](/openmldb_sql/Files/udfs_8h.md#function-lcase)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
+| **[libsvm](/openmldb_sql/Files/udfs_8h.md#function-libsvm)**()| <br>Return instance in LIBSVM format. Example: |
 | **[like_match](/openmldb_sql/Files/udfs_8h.md#function-like-match)**()| <br>pattern match same as LIKE predicate |
 | **[list_except_by_key](/openmldb_sql/Files/udfs_8h.md#function-list-except-by-key)**()| <br>Return list of elements in list1 but keys not in except_str. |
 | **[list_except_by_value](/openmldb_sql/Files/udfs_8h.md#function-list-except-by-value)**()| <br>Return list of elements in list1 but values not in except_str. |
 | **[ln](/openmldb_sql/Files/udfs_8h.md#function-ln)**()| <br>Return the natural logarithm of expr. |
+| **[locate](/openmldb_sql/Files/udfs_8h.md#function-locate)**()| <br>Returns the position of the first occurrence of substr in str after position pos. The given pos and return value are 1-based. |
 | **[log](/openmldb_sql/Files/udfs_8h.md#function-log)**()| <br>log(base, expr) If called with one parameter, this function returns the natural logarithm of expr. If called with two parameters, this function returns the logarithm of expr to the base. |
 | **[log10](/openmldb_sql/Files/udfs_8h.md#function-log10)**()| <br>Return the base-10 logarithm of expr. |
 | **[log2](/openmldb_sql/Files/udfs_8h.md#function-log2)**()| <br>Return the base-2 logarithm of expr. |
 | **[lower](/openmldb_sql/Files/udfs_8h.md#function-lower)**()| |
 | **[make_tuple](/openmldb_sql/Files/udfs_8h.md#function-make-tuple)**()| |
+| **[map](/openmldb_sql/Files/udfs_8h.md#function-map)**()| <br>map(key1, value1, key2, value2, ...) - Creates a map with the given key/value pairs. |
+| **[map_keys](/openmldb_sql/Files/udfs_8h.md#function-map-keys)**()| <br>map_keys(map) - Returns an unordered array containing the keys of the map. |
 | **[max](/openmldb_sql/Files/udfs_8h.md#function-max)**()| <br>Compute maximum of values. |
 | **[max_cate](/openmldb_sql/Files/udfs_8h.md#function-max-cate)**()| <br>Compute maximum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[max_cate_where](/openmldb_sql/Files/udfs_8h.md#function-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
@@ -99,7 +112,8 @@ title: udfs/udfs.h
 | **[minimum](/openmldb_sql/Files/udfs_8h.md#function-minimum)**()| <br>Compute minimum of two arguments. |
 | **[minute](/openmldb_sql/Files/udfs_8h.md#function-minute)**()| <br>Return the minute for a timestamp. |
 | **[month](/openmldb_sql/Files/udfs_8h.md#function-month)**()| <br>Return the month part of a timestamp or date. |
-| **[nth_value_where](/openmldb_sql/Files/udfs_8h.md#function-nth-value-where)**()| <br>Returns the value of expr from the idx th row matches the condition. |
+| **[multiclass_label](/openmldb_sql/Files/udfs_8h.md#function-multiclass-label)**()| <br>Set the column signature to multiclass label. Example: |
+| **[nth_value_where](/openmldb_sql/Files/udfs_8h.md#function-nth-value-where)**()| <br>Returns the value of expr from the idx th row matches the condition. Index start from 1 or -1. |
 | **[nvl](/openmldb_sql/Files/udfs_8h.md#function-nvl)**()| |
 | **[nvl2](/openmldb_sql/Files/udfs_8h.md#function-nvl2)**()| <br>nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwise. |
 | **[pmod](/openmldb_sql/Files/udfs_8h.md#function-pmod)**()| <br>Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL. |
@@ -107,6 +121,7 @@ title: udfs/udfs.h
 | **[power](/openmldb_sql/Files/udfs_8h.md#function-power)**()| |
 | **[radians](/openmldb_sql/Files/udfs_8h.md#function-radians)**()| <br>Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.) |
 | **[regexp_like](/openmldb_sql/Files/udfs_8h.md#function-regexp-like)**()| <br>pattern match same as RLIKE predicate (based on RE2) |
+| **[regression_label](/openmldb_sql/Files/udfs_8h.md#function-regression-label)**()| <br>Set the column signature to regression label. Example: |
 | **[replace](/openmldb_sql/Files/udfs_8h.md#function-replace)**()| <br>replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`|
 | **[reverse](/openmldb_sql/Files/udfs_8h.md#function-reverse)**()| <br>Returns the reversed given string. |
 | **[round](/openmldb_sql/Files/udfs_8h.md#function-round)**()| <br>Returns expr rounded to d decimal places using HALF_UP rounding mode. |
@@ -324,6 +339,33 @@ SELECT add_months('2012-01-31', 1);
 * [`date`, `int32`]
 * [`date`, `int64`] 
 
+### function array_combine
+
+```cpp
+array_combine()
+```
+
+**Description**:
+
+array_combine(delimiter, array1, array2, ...) 
+
+**Since**:
+0.9.2
+
+
+return array of strings for input array1, array2, ... doing cartesian product. Each product is joined with {delimiter} as a string. Empty string used if {delimiter} is null.
+
+Example:
+
+```sql
+
+select array_combine("-", ["1", "2"], ["3", "4"]);
+-- output ["1-3", "1-4", "2-3", "2-4"]
+```
+
+
+**Supported Types**: 
+
 ### function array_contains
 
 ```cpp
@@ -358,6 +400,33 @@ select array_contains([2,2], 2) as c0;
 * [array_int64, `int64`]
 * [array_string, `string`]
 * [array_timestamp, `timestamp`] 
+
+### function array_join
+
+```cpp
+array_join()
+```
+
+**Description**:
+
+array_join(array, delimiter) - Concatenates the elements of the given array using the delimiter. Any null value is filtered. 
+
+**Since**:
+0.9.2
+
+
+Example:
+
+```sql
+
+select array_join(["1", "2"], "-");
+-- output "1-2"
+```
+
+
+**Supported Types**:
+
+* [array_string, `string`] 
 
 ### function asin
 
@@ -501,13 +570,13 @@ Compute average of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -541,13 +610,13 @@ Compute average of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -586,13 +655,13 @@ Compute average of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -634,13 +703,13 @@ Compute average of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -664,6 +733,31 @@ bigint()
 
 
 alias to int64 
+
+### function binary_label
+
+```cpp
+binary_label()
+```
+
+**Description**:
+
+Set the column signature to binary label. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select csv(binary_label(true));
+-- output 1
+```
+
+
+**Supported Types**:
+
+* [`bool`] 
 
 ### function bool
 
@@ -855,6 +949,32 @@ select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
 
 * [`any`, ...] 
 
+### function continuous
+
+```cpp
+continuous()
+```
+
+**Description**:
+
+Set the column signature to continuous feature. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select csv(continuous(1.5));
+-- output 1.500000
+```
+
+
+**Supported Types**:
+
+* [`bool`]
+* [`number`] 
+
 ### function cos
 
 ```cpp
@@ -946,13 +1066,13 @@ Compute number of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -987,13 +1107,13 @@ Compute count of values grouped by category key and output string. Each group is
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -1032,13 +1152,13 @@ Compute count of values matching specified condition grouped by category key and
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -1080,13 +1200,13 @@ Compute number of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -1100,6 +1220,31 @@ SELECT count_where(value, value > 2) OVER w;
 
 * [`list<any>`, `list<bool>`]
 * [`list<row>`, `list<bool>`] 
+
+### function csv
+
+```cpp
+csv()
+```
+
+**Description**:
+
+Return instance in CSV format. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select csv(multiclass_label(6), continuous(1.5), category(3));
+-- output 6,1.500000,2681491882390849628
+```
+
+
+**Supported Types**:
+
+* [...] 
 
 ### function date
 
@@ -1351,6 +1496,55 @@ SELECT degrees(3.141592653589793);
 
 * [`double`] 
 
+### function discrete
+
+```cpp
+discrete()
+```
+
+**Description**:
+
+Set the column signature to discrete feature. 
+
+**Parameters**: 
+
+  * **input** Input column 
+  * **bucket_size** (Optional) The result is within [0, bucket_size) Example: ```sql
+
+select csv(discrete(3), discrete(3, 100));
+-- output 2681491882390849628,28
+```
+
+
+**Since**:
+0.9.0
+
+
+
+**Supported Types**:
+
+* [`bool`]
+* [`bool`, `int32`]
+* [`bool`, `int64`]
+* [`date`]
+* [`date`, `int32`]
+* [`date`, `int64`]
+* [`int16`]
+* [`int16`, `int32`]
+* [`int16`, `int64`]
+* [`int32`]
+* [`int32`, `int32`]
+* [`int32`, `int64`]
+* [`int64`]
+* [`int64`, `int32`]
+* [`int64`, `int64`]
+* [`string`]
+* [`string`, `int32`]
+* [`string`, `int64`]
+* [`timestamp`]
+* [`timestamp`, `int32`]
+* [`timestamp`, `int64`] 
+
 ### function distinct_count
 
 ```cpp
@@ -1374,13 +1568,13 @@ Compute number of distinct values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 0   |
-| 2   |
-| 2   |
-| 4   |
+| 0     |
+| 0     |
+| 2     |
+| 2     |
+| 4    |
 
 
 ```sql
@@ -1450,14 +1644,14 @@ It requires that all values are non-negative. Negative values will be ignored.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 8   |
-| 5   |
-| 2   |
-| 10   |
-| 4   |
+| 1     |
+| 8     |
+| 5     |
+| 2     |
+| 10     |
+| 4    |
 
 
 ```sql
@@ -1568,13 +1762,13 @@ It requires that values are ordered so that it can only be used with WINDOW (PAR
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -1637,11 +1831,13 @@ first_value()
 
 **Description**:
 
-Returns the value of expr from the latest row (last row) of the window frame. 
+`first_value(expr[, isIgnoreNull])` - Returns the value of `expr` from the first row of the window frame. If `isIgnoreNull` is true, returns only non-null values. 
 
 **Since**:
 0.1.0
 
+
+NOTE before version 0.9.0, first_value returns the expr of latest row (last row), which is the semantic equivalent to `last_value` in standard SQL. The behavior is corrected in version 0.9.0.
 
 Example:
 
@@ -1652,11 +1848,11 @@ window w as (partition by gp order by ts rows between 3 preceding and current ro
 ```
 
 
-| id  | gp  | ts  | agg   |
+| id    | gp    | ts    | agg     |
 |  -------- | -------- | -------- | -------- |
-| 1  | 100  | 98  | 98   |
-| 2  | 100  | 99  | 99   |
-| 3  | 100  | 100  | 100   |
+| 1    | 100    | 98    | 98     |
+| 2    | 100    | 99    | 98     |
+| 3    | 100    | 100    | 98    |
 
 
 
@@ -1721,6 +1917,31 @@ SELECT FLOOR(1.23);
 
 * [`bool`]
 * [`number`] 
+
+### function gcformat
+
+```cpp
+gcformat()
+```
+
+**Description**:
+
+Return instance in GCFormat format. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select gcformat(multiclass_label(6), continuous(1.5), category(3));
+-- output 6 | 1:0:1.500000 2:2681491882390849628
+```
+
+
+**Supported Types**:
+
+* [...] 
 
 ### function get_json_object
 
@@ -2150,6 +2371,41 @@ Check if input value is null, return bool.
 
 * [`any`] 
 
+### function isin
+
+```cpp
+isin()
+```
+
+**Description**:
+
+isin(value, array) - Returns true if the array contains the value. 
+
+**Since**:
+0.9.1
+
+
+Example:
+
+```sql
+
+select isin(2, [2,2]) as c0;
+-- output true
+```
+
+
+**Supported Types**:
+
+* [`bool`, array_bool]
+* [`date`, array_date]
+* [`double`, array_double]
+* [`float`, array_float]
+* [`int16`, array_int16]
+* [`int32`, array_int32]
+* [`int64`, array_int64]
+* [`string`, array_string]
+* [`timestamp`, array_timestamp] 
+
 ### function isnull
 
 ```cpp
@@ -2259,13 +2515,13 @@ The offset in window is `nth_value()`, not `[lag()](/openmldb_sql/Files/udfs_8h.
 Example:
 
 
-| c1  | c2   |
+| c1    | c2     |
 |  -------- | -------- |
-| 0  | 1   |
-| 1  | 1   |
-| 2  | 2   |
-| 3  | 2   |
-| 4  | 2   |
+| 0    | 1     |
+| 1    | 1     |
+| 2    | 2     |
+| 3    | 2     |
+| 4    | 2    |
 
 
 ```sql
@@ -2292,7 +2548,8 @@ SELECT at(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 ro
 
 **Supported Types**:
 
-* [`list<any>`, `int64`] 
+* [`list<any>`, `int64`]
+* [`list<any>`, `int64`, `bool`] 
 
 ### function last_day
 
@@ -2327,6 +2584,39 @@ select last_day(timestamp("2021-02-12"));
 * [`int64`]
 * [`timestamp`] 
 
+### function last_value
+
+```cpp
+last_value()
+```
+
+**Description**:
+
+`last_value(expr[, isIgnoreNull])` - Returns the value of `expr` from the last row of the window frame. If `isIgnoreNull` is true, returns only non-null values. 
+
+**Since**:
+0.9.0
+
+
+Example:
+
+```sql
+
+select id, gp, ts, last_value(ts) over w as agg from t1
+window w as (partition by gp order by ts rows between 3 preceding and current row);
+```
+
+
+| id    | gp    | ts    | agg     |
+|  -------- | -------- | -------- | -------- |
+| 1    | 100    | 98    | 98     |
+| 2    | 100    | 99    | 99     |
+| 3    | 100    | 100    | 100    |
+
+
+
+**Supported Types**: 
+
 ### function lcase
 
 ```cpp
@@ -2353,6 +2643,31 @@ SELECT LCASE('SQl') as str1;
 **Supported Types**:
 
 * [`string`] 
+
+### function libsvm
+
+```cpp
+libsvm()
+```
+
+**Description**:
+
+Return instance in LIBSVM format. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select libsvm(multiclass_label(6), continuous(1.5), category(3));
+-- output 6 1:1.500000 2681491882390849628:1
+```
+
+
+**Supported Types**:
+
+* [...] 
 
 ### function like_match
 
@@ -2501,6 +2816,43 @@ SELECT LN(1);
 * [`bool`]
 * [`number`] 
 
+### function locate
+
+```cpp
+locate()
+```
+
+**Description**:
+
+Returns the position of the first occurrence of substr in str after position pos. The given pos and return value are 1-based. 
+
+**Parameters**: 
+
+  * **substr** 
+  * **str** 
+  * **pos** define the begining search position of the str.
+
+* Negetive value is illegal and will return 0 directly;
+* If substr is "" and pos less equal len(str) + 1, return pos, other case return 0;
+
+
+Example:
+
+```sql
+
+select locate("wo", "hello world", 2);
+--output 7
+            
+select locate("Wo", "hello world", 2);
+--output 0
+```
+
+
+**Supported Types**:
+
+* [`string`, `string`]
+* [`string`, `string`, `int32`] 
+
 ### function log
 
 ```cpp
@@ -2630,6 +2982,58 @@ make_tuple()
 
 * [...] 
 
+### function map
+
+```cpp
+map()
+```
+
+**Description**:
+
+map(key1, value1, key2, value2, ...) - Creates a map with the given key/value pairs. 
+
+**Since**:
+0.9.0
+
+
+Example:
+
+```sql
+
+select map(1, '1', 2, '2');
+-- {1: "1", 2: "2"}
+```
+
+
+**Supported Types**:
+
+* [...] 
+
+### function map_keys
+
+```cpp
+map_keys()
+```
+
+**Description**:
+
+map_keys(map) - Returns an unordered array containing the keys of the map. 
+
+**Since**:
+0.9.0
+
+
+Example:
+
+```sql
+
+select map_keys(map(1, '2', 3, '4'));
+-- [1, 3]
+```
+
+
+**Supported Types**: 
+
 ### function max
 
 ```cpp
@@ -2653,13 +3057,13 @@ Compute maximum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2696,13 +3100,13 @@ Compute maximum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -2741,13 +3145,13 @@ Compute maximum of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -2789,13 +3193,13 @@ Compute maximum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2861,12 +3265,12 @@ Compute the median of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2903,13 +3307,13 @@ Compute minimum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2946,13 +3350,13 @@ Compute minimum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -2991,14 +3395,14 @@ Compute minimum of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 1  | true  | y   |
-| 4  | true  | x   |
-| 3  | true  | y   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 1    | true    | y     |
+| 4    | true    | x     |
+| 3    | true    | y    |
 
 
 ```sql
@@ -3040,13 +3444,13 @@ Compute minimum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3146,6 +3550,34 @@ select month(timestamp(1590115420000));
 * [`int64`]
 * [`timestamp`] 
 
+### function multiclass_label
+
+```cpp
+multiclass_label()
+```
+
+**Description**:
+
+Set the column signature to multiclass label. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select csv(multiclass_label(6));
+-- output 6
+```
+
+
+**Supported Types**:
+
+* [`bool`]
+* [`int16`]
+* [`int32`]
+* [`int64`] 
+
 ### function nth_value_where
 
 ```cpp
@@ -3154,7 +3586,7 @@ nth_value_where()
 
 **Description**:
 
-Returns the value of expr from the idx th row matches the condition. 
+Returns the value of expr from the idx th row matches the condition. Index start from 1 or -1. 
 
 **Parameters**: 
 
@@ -3176,12 +3608,12 @@ select col1, cond, gp, nth_value_where(col1, 2, cond) over (partition by gp orde
 ```
 
 
-| col1  | cond  | gp  | agg   |
+| col1    | cond    | gp    | agg     |
 |  -------- | -------- | -------- | -------- |
-| 1  | true  | 100  | NULL   |
-| 2  | false  | 100  | NULL   |
-| 3  | NULL  | 100  | NULL   |
-| 4  | true  | 100  | 4   |
+| 1    | true    | 100    | NULL     |
+| 2    | false    | 100    | NULL     |
+| 3    | NULL    | 100    | NULL     |
+| 4    | true    | 100    | 4    |
 
 
 
@@ -3410,6 +3842,32 @@ select regexp_like('append', 'ap*end')
 
 * [`string`, `string`]
 * [`string`, `string`, `string`] 
+
+### function regression_label
+
+```cpp
+regression_label()
+```
+
+**Description**:
+
+Set the column signature to regression label. Example: 
+
+**Since**:
+0.9.0
+
+
+```sql
+
+select csv(regression_label(1.5));
+-- output 1.500000
+```
+
+
+**Supported Types**:
+
+* [`bool`]
+* [`number`] 
 
 ### function replace
 
@@ -3810,12 +4268,12 @@ Alias function: `std`, `stddev_samp`
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3852,12 +4310,12 @@ Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2)
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -4013,13 +4471,13 @@ Compute sum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -4053,13 +4511,13 @@ Compute sum of values grouped by category key and output string. Each group is r
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -4098,13 +4556,13 @@ Compute sum of values matching specified condition grouped by category key and o
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -4146,13 +4604,13 @@ Compute sum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -4262,13 +4720,13 @@ Compute top k of values and output string separated by comma. The outputs are so
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4     |
+| 4    |
 
 
 ```sql
@@ -4319,11 +4777,11 @@ SELECT key, top1_ratio(key) over () as ratio FROM t1;
 ```
 
 
-| key  | ratio   |
+| key    | ratio     |
 |  -------- | -------- |
-| 1  | 1.0   |
-| 2  | 0.5   |
-| NULL  | 0.5   |
+| 1    | 1.0     |
+| 2    | 0.5     |
+| NULL    | 0.5    |
 
 
 
@@ -4360,15 +4818,15 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4420,15 +4878,15 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4480,15 +4938,15 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4540,15 +4998,15 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4602,15 +5060,15 @@ For each group, ratio value is `value` expr count matches condtion divide total 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 2  | true  | x   |
-| 4  | true  | x   |
-| 1  | true  | y   |
-| 3  | false  | y   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 2    | true    | x     |
+| 4    | true    | x     |
+| 1    | true    | y     |
+| 3    | false    | y     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4661,15 +5119,15 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4721,15 +5179,15 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4781,15 +5239,15 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | true  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | true    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4841,15 +5299,15 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4901,15 +5359,15 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | true  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | true    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4963,15 +5421,15 @@ For each group, ratio value is `value` expr count matches condtion divide total 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 2  | true  | x   |
-| 4  | true  | x   |
-| 1  | true  | y   |
-| 3  | false  | y   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 2    | true    | x     |
+| 4    | true    | x     |
+| 1    | true    | y     |
+| 3    | false    | y     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -5022,15 +5480,15 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -5245,11 +5703,11 @@ Compute population variance of values, i.e., `sum((x_i - avg)^2) / n`
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 3   |
-| 6   |
+| 0     |
+| 3     |
+| 6    |
 
 
 ```sql
@@ -5286,11 +5744,11 @@ Compute population variance of values, i.e., `sum((x_i - avg)^2) / (n-1)`
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 3   |
-| 6   |
+| 0     |
+| 3     |
+| 6    |
 
 
 ```sql
