@@ -157,6 +157,7 @@ We really appreciate the contribution from our community.
   ![wechat](docs/en/about/images/wechat.png)  
 
 ## 12. Publications
+- [OpenMLDB: A Real-Time Relational Data Feature Computation System for Online ML](https://dl.acm.org/doi/10.1145/3722212.3724446). Xuanhe Zhou, Wei Zhou, Liguo Qi, Hao Zhang, Dihao Chen, Bingsheng He, Mian Lu, Guoliang Li, Fan Wu, Yuqiang Chen. SIGMOD 2025.
 - [PECJ: Stream Window Join on Disorder Data Streams with Proactive Error Compensation](https://tonyskyzeng.github.io/downloads/PECJ_TR.pdf). Xianzhi Zeng, Shuhao Zhang, Hongbin Zhong, Hao Zhang, Mian Lu, Zhao Zheng, and Yuqiang Chen. International Conference on Management of Data (SIGMOD/PODS) 2024.
 - [Principles and Practices of Real-Time Feature Computing Platforms for ML](https://cacm.acm.org/magazines/2023/7/274061-principles-and-practices-of-real-time-feature-computing-platforms-for-ml/fulltext). Hao Zhang, Jun Yang, Cheng Chen, Siqi Wang, Jiashu Li, and Mian Lu. 2023. Communications of the ACM 66, 7 (July 2023), 77–78.
 - [Scalable Online Interval Join on Modern Multicore Processors in OpenMLDB](docs/paper/scale_oij_icde2023.pdf). Hao Zhang, Xianzhi Zeng, Shuhao Zhang, Xinyi Liu, Mian Lu, and Zhao Zheng. In 2023 IEEE 39rd International Conference on Data Engineering (ICDE) 2023. [[code]](https://github.com/4paradigm/OpenMLDB/tree/stream)
