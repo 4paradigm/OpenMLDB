@@ -62,7 +62,8 @@ jobs:
       HYBRIDSE_DEBUG: true
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: recursive
       - name: Install dependencies
         run: |
           brew install coreutils

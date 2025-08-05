@@ -48,7 +48,8 @@ jobs:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: recursive
       - name: prepare release
         run: |
           VERSION="snapshot"
