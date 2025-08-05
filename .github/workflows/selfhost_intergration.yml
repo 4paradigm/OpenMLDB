@@ -300,8 +300,8 @@ jobs:
         with:
             name: openmldb-package       
       - name: install openmldb
-        run: |
         shell: bash
+        run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
