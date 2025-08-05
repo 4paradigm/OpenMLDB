@@ -78,8 +78,8 @@ jobs:
 
       - name: run cpp
         id: unittest
-        run: |
         shell: bash
+        run: |
           make test
 
       - name: run sql_router_test
