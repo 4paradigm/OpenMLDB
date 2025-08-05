@@ -34,7 +34,8 @@ jobs:
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: recursive
       - name: Build HybridSE
         run: |
           make hybridse-build
