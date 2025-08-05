@@ -82,6 +82,7 @@ jobs:
 
       - name: build jsdk
         run: |
+          git config --system --add safe.directory $(pwd)
           make build
 
       - name: upload linux library
