@@ -26,6 +26,7 @@
 #include <vector>
 #include <utility>
 
+#include "absl/strings/str_split.h"
 #include "base/status.h"
 #include "codec/codec.h"
 #include "codec/fe_row_codec.h"
@@ -118,8 +119,7 @@ class SchemaCodec {
                          const std::string& ts_name, ::openmldb::type::TTLType ttl_type, uint64_t abs_ttl,
                          uint64_t lat_ttl) {
         index->set_index_name(name);
-        std::vector<std::string> parts;
-        boost::split(parts, col_name, boost::is_any_of("|"));
+        std::vector<std::string> parts = absl::StrSplit(col_name, '|');
         for (const auto& col : parts) {
             index->add_col_name(col);
         }
