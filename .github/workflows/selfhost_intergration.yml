@@ -28,7 +28,7 @@ jobs:
     env:
       OS: linux
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: build
         shell: bash
         if: ${{ env.E_VERSION == 'main' }}
@@ -63,7 +63,7 @@ jobs:
     
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
@@ -120,7 +120,7 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
@@ -177,7 +177,7 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
@@ -234,7 +234,7 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
@@ -291,7 +291,7 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
@@ -348,7 +348,7 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
@@ -407,7 +407,7 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}

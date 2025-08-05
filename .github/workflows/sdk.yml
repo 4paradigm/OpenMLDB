@@ -48,7 +48,7 @@ jobs:
       SPARK_HOME: /tmp/spark/
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v2
         with:
@@ -67,7 +67,7 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Cache local Maven repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
@@ -154,7 +154,7 @@ jobs:
     # mac job for java sdk. steps are almost same with job 'java-sdk'
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
     # the job only run on tag push or manual workflow dispatch due to no test runs
-    runs-on: macos-12
+    runs-on: macos-latest
     needs:
       - java-sdk
     if: github.event_name == 'push'
@@ -266,7 +266,7 @@ jobs:
       OPENMLDB_BUILD_TARGET: "cp_python_sdk_so openmldb"
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: prepare release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
