@@ -156,7 +156,7 @@ jobs:
     # mac job for java sdk. steps are almost same with job 'java-sdk'
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
     # the job only run on tag push or manual workflow dispatch due to no test runs
-    runs-on: macos-latest
+    runs-on: macos-13
     needs:
       - java-sdk
     if: github.event_name == 'push'
@@ -172,7 +172,7 @@ jobs:
       - name: Xcode Select Version
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '14.0.1'
+          xcode-version: '14.1.0'
 
       - name: Cache local Maven repository
         uses: actions/cache@v3
@@ -323,7 +323,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   python-sdk-mac:
-    runs-on: macos-latest
+    runs-on: macos-13
     env:
       SQL_PYSDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_python_sdk_so openmldb"
@@ -335,7 +335,7 @@ jobs:
       - name: Xcode Select Version
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '14.0.1'
+          xcode-version: '14.1.0'
 
       - name: prepare release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
