@@ -30,6 +30,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "base/fe_status.h"
 #include "boost/algorithm/string.hpp"
@@ -1097,8 +1098,7 @@ class ConstNode : public ExprNode {
         switch (data_type_) {
             case kVarchar: {
                 std::string date_str(val_.vstr);
-                std::vector<std::string> date_vec;
-                boost::split(date_vec, date_str, boost::is_any_of("-"), boost::token_compress_on);
+                std::vector<std::string> date_vec = absl::StrSplit(date_str, absl::ByChar('-'), absl::SkipEmpty());
                 if (date_vec.size() < 3) {
                     LOG(WARNING) << "Invalid Date Format";
                     return false;

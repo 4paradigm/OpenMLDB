@@ -62,40 +62,36 @@ cluster_start_component() {
 
     mkdir -p "$log_dir"
 
-    local extra_opts=(--enable_status_service=true)
-    if [[ $role = 'tablet' ]]; then
+    local extra_opts="--enable_status_service=true"
+
+    if [ "$role" = 'tablet' ]; then
         [ -d "$binlog_dir" ] && rm -r "$binlog_dir"
         mkdir -p "$binlog_dir"
 
         [ -d "$recycle_bin_dir" ] && rm -r "$recycle_bin_dir"
         mkdir -p "$recycle_bin_dir"
 
-        extra_opts+=(
-            --binlog_notify_on_put=true
-            --zk_keep_alive_check_interval=60000
-            --db_root_path="$binlog_dir"
-            --recycle_bin_root_path="$recycle_bin_dir"
-            --hdd_root_path="$binlog_dir"
-            --recycle_bin_hdd_root_path="$recycle_bin_dir"
-        )
-    elif [[ $role = 'nameserver' ]]; then
-        extra_opts+=(
-            --tablet_offline_check_interval=1
-            --tablet_heartbeat_timeout=1
-        )
+        extra_opts="$extra_opts --binlog_notify_on_put=true"
+        extra_opts="$extra_opts --zk_keep_alive_check_interval=60000"
+        extra_opts="$extra_opts --db_root_path=\"$binlog_dir\""
+        extra_opts="$extra_opts --recycle_bin_root_path=\"$recycle_bin_dir\""
+        extra_opts="$extra_opts --hdd_root_path=\"$binlog_dir\""
+        extra_opts="$extra_opts --recycle_bin_hdd_root_path=\"$recycle_bin_dir\""
+    elif [ "$role" = 'nameserver' ]; then
+        extra_opts="$extra_opts --tablet_offline_check_interval=1"
+        extra_opts="$extra_opts --tablet_heartbeat_timeout=1"
     else
         echo "unsupported role: $role"
         return 3
     fi
 
-    # just need extra_opts to split
     "$OPENMLDB_BIN" \
         --role="$role" \
         --endpoint="$endpoint" \
         --openmldb_log_dir="$log_dir" \
         --zk_cluster="$zk_end" \
         --zk_root_path="$zk_path" \
-        "${extra_opts[@]}"
+        $extra_opts
 }
 
 ZK_CLUSTER=$IP:6181

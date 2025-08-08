@@ -284,7 +284,7 @@ TEST_F(ProcedureDropTest, DropProcedureBeforeDropTable) {
     ShowTable(name_server_client, db, 0);
 
     tb_server2.Stop(10);
-    delete tablet2;
+    // delete tablet2;
 }
 
 }  // namespace tablet
