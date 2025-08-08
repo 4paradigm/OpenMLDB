@@ -208,6 +208,7 @@ class MiniCluster {
  private:
     bool StartTablet(brpc::Server* tb_server) {
         std::string tb_endpoint = "127.0.0.1:" + GenRand();
+        FLAGS_endpoint = tb_endpoint;
         tb_endpoints_.push_back(tb_endpoint);
         ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
         bool ok = tablet->Init(zk_cluster_, zk_path_, tb_endpoint, "");
@@ -368,12 +369,13 @@ class StandaloneEnv {
 
     bool StartTablet(brpc::Server* tb_server) {
         std::string tb_endpoint = "127.0.0.1:" + std::to_string(GenRand());
+        FLAGS_endpoint = tb_endpoint;
         tb_endpoint_ = tb_endpoint;
         ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
         bool ok = tablet->Init("", "", tb_endpoint, "");
         if (!ok) {
             return false;
-    }
+        }
 
         auto ts_authenticator = new openmldb::authn::BRPCAuthenticator(
             [tablet](const std::string& host, const std::string& username, const std::string& password) {

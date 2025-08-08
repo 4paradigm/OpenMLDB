@@ -113,6 +113,8 @@ api::TableMeta CreateTableMeta(const std::string& name, uint32_t tid, uint32_t p
 // Since glfags are global, the function does take effect only once
 [[maybe_unused]]
 bool InitRandomDiskFlags(std::string_view tag = "test");
+[[maybe_unused]]
+void ResetRandomDiskFlags();
 }  // namespace test
 }  // namespace openmldb
 #endif  // SRC_TEST_UTIL_H_

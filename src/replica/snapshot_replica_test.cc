@@ -102,6 +102,8 @@ TEST_P(SnapshotReplicaTest, AddReplicate) {
 }
 
 TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
+    FLAGS_endpoint = "127.0.0.1:18529";
+    std::string leader_point = "127.0.0.1:18529";
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
@@ -110,7 +112,6 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
         exit(1);
     }
     brpc::ServerOptions options;
-    std::string leader_point = "127.0.0.1:18529";
     if (server.Start(leader_point.c_str(), &options) != 0) {
         PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
@@ -140,10 +141,7 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
     }
 
     sleep(3);
-
-    ::openmldb::test::TempPath temp_path;
-    FLAGS_db_root_path = temp_path.GetTempPath();
-    FLAGS_hdd_root_path = temp_path.GetTempPath();
+    ::openmldb::test::ResetRandomDiskFlags();
     FLAGS_endpoint = "127.0.0.1:18530";
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
@@ -213,6 +211,8 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
 
 TEST_P(SnapshotReplicaTest, SendSnapshot) {
     FLAGS_make_snapshot_threshold_offset = 0;
+    FLAGS_endpoint = "127.0.0.1:18529";
+    std::string leader_point = "127.0.0.1:18529";
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     MockClosure closure;
     tablet->Init("");
@@ -222,7 +222,6 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
         exit(1);
     }
     brpc::ServerOptions options;
-    std::string leader_point = "127.0.0.1:18529";
     if (server.Start(leader_point.c_str(), &options) != 0) {
         PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
@@ -257,9 +256,7 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
     tablet->MakeSnapshot(NULL, &grq, &grp, &closure);
 
     sleep(3);
-    ::openmldb::test::TempPath temp_path;
-    FLAGS_db_root_path = temp_path.GetTempPath();
-    FLAGS_hdd_root_path = temp_path.GetTempPath();
+    ::openmldb::test::ResetRandomDiskFlags();
     FLAGS_endpoint = "127.0.0.1:18530";
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
@@ -319,6 +316,8 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
     tablet->DropTable(NULL, &dr, &drs, &closure);
     tablet1->DropTable(NULL, &dr, &drs, &closure);
     sleep(2);
+    server.Stop(10);
+    server1.Stop(10);
 }
 
 TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
@@ -540,7 +539,10 @@ TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
 }
 
 TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
+    ::openmldb::test::ResetRandomDiskFlags();
     auto storage_mode = GetParam();
+    FLAGS_endpoint = "127.0.0.1:18529";
+    std::string leader_point = "127.0.0.1:18529";
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     tablet->Init("");
     brpc::Server server;
@@ -549,7 +551,6 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
         exit(1);
     }
     brpc::ServerOptions options;
-    std::string leader_point = "127.0.0.1:18529";
     if (server.Start(leader_point.c_str(), &options) != 0) {
         PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
@@ -586,9 +587,8 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
     ASSERT_TRUE(client.Put(tid, pid, cur_time, value, dimensions).OK());
 
     sleep(3);
-    ::openmldb::test::TempPath temp_path;
-    FLAGS_db_root_path = temp_path.GetTempPath();
-    FLAGS_hdd_root_path = temp_path.GetTempPath();
+
+    ::openmldb::test::ResetRandomDiskFlags();
     FLAGS_endpoint = "127.0.0.1:18530";
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
@@ -628,7 +628,10 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
     ::openmldb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
     tablet1->DropTable(NULL, &dr, &drs, &closure);
+
     sleep(1);
+    server.Stop(10);
+    server1.Stop(10);
 }
 
 INSTANTIATE_TEST_SUITE_P(DBSDK, SnapshotReplicaTest,

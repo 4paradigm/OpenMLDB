@@ -47,6 +47,21 @@ namespace test {
 
 using ::openmldb::codec::SchemaCodec;
 
+std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
+
+void SetRootPath(const std::filesystem::path& prefix) {
+    std::filesystem::path tmp_path = prefix / GenRand();
+    LOG(INFO) << "setting root path for test in " << tmp_path;
+    FLAGS_db_root_path = tmp_path / "db_root";
+    FLAGS_ssd_root_path = tmp_path / "ssd_root";
+    FLAGS_hdd_root_path = tmp_path / "hdd_root";
+    FLAGS_recycle_bin_root_path = tmp_path / "recycle_root";
+    FLAGS_recycle_bin_hdd_root_path = tmp_path / "recycle_hdd_root";
+    FLAGS_recycle_bin_ssd_root_path = tmp_path / "recycle_ssd_root";
+}
+
 struct DiskFlagsRAII {
     // no copy
     DiskFlagsRAII(const DiskFlagsRAII&) = delete;
@@ -54,14 +69,8 @@ struct DiskFlagsRAII {
     DiskFlagsRAII& operator=(const DiskFlagsRAII&) = delete;
     DiskFlagsRAII& operator=(DiskFlagsRAII&&) = default;
 
-    explicit DiskFlagsRAII(const std::filesystem::path& p) : prefix(p) {
-        LOG(INFO) << "setting temp path for test in " << prefix;
-        FLAGS_db_root_path = prefix / "db_root";
-        FLAGS_ssd_root_path = prefix / "ssd_root";
-        FLAGS_hdd_root_path = prefix / "hdd_root";
-        FLAGS_recycle_bin_root_path = prefix / "recycle_root";
-        FLAGS_recycle_bin_hdd_root_path = prefix / "recycle_hdd_root";
-        FLAGS_recycle_bin_ssd_root_path = prefix / "recycle_ssd_root";
+    explicit DiskFlagsRAII(const std::filesystem::path& p) : prefix(p){
+        SetRootPath(prefix);
     }
 
     ~DiskFlagsRAII() {
@@ -72,10 +81,6 @@ struct DiskFlagsRAII {
     std::filesystem::path prefix;
 };
 static const DiskFlagsRAII* flags_raii_ptr = nullptr;
-
-std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
                       ::openmldb::nameserver::TableInfo* table_meta) {
@@ -367,13 +372,14 @@ static DiskFlagsRAII GenerateRandomDiskFlags(absl::string_view tag) {
 static bool InitRandomDiskFlagsImpl(absl::string_view tag) {
     static DiskFlagsRAII flags_raii = GenerateRandomDiskFlags(tag);
     auto sig_handler = [](int sig) {
+        LOG(INFO) << "Quit " << sig;
         flags_raii.~DiskFlagsRAII();
         _exit(1);
     };
     signal(SIGINT, sig_handler);
     signal(SIGKILL, sig_handler);
     signal(SIGTERM, sig_handler);
-    signal(SIGABRT, sig_handler);
+    // signal(SIGABRT, sig_handler);
 
     flags_raii_ptr = &flags_raii;
     return true;
@@ -385,6 +391,10 @@ static bool InitRandomDiskFlagsImpl(absl::string_view tag) {
 bool InitRandomDiskFlags(std::string_view tag) {
     static bool flags_raii_flag = InitRandomDiskFlagsImpl(tag);
     return flags_raii_flag;
+}
+
+void ResetRandomDiskFlags() {
+    SetRootPath(flags_raii_ptr->prefix);
 }
 }  // namespace test
 }  // namespace openmldb
