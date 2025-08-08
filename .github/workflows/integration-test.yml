@@ -28,14 +28,23 @@ env:
 jobs:
   openmldb-test-python:
     runs-on: [self-hosted, generic]
+    if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Mark repo as safe
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin
       - name: build openmldb
         shell: bash
         run: |
-          git config --system --add safe.directory $(pwd)
           make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
           make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
       - name: install openmldb
