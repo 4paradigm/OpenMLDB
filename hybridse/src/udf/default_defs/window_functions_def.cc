@@ -145,7 +145,8 @@ struct NthValueWhere {
             // saved value list
             // if `nth` > 0, work like a ring buffer
             // if `nth < 0`, have one value at most
-            std::queue<std::pair<T, bool>, std::list<std::pair<T, bool>>> data;
+            using StorageT = typename container::ContainerStorageTypeTrait<T>::type;
+            std::queue<std::pair<StorageT, bool>, std::list<std::pair<StorageT, bool>>> data;
         };
 
         // (nth idx, [(value, value_is_null)])

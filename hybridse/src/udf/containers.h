@@ -45,10 +45,9 @@ struct ContainerStorageTypeTrait {
 
 template <>
 struct ContainerStorageTypeTrait<openmldb::base::StringRef> {
-    // FIXME: StringRef do not own data, ref #2944
-    using type = codec::StringRef;
-    static codec::StringRef to_stored_value(codec::StringRef* t) {
-        return t == nullptr ? codec::StringRef() : *t;
+    using type = std::string;
+    static std::string to_stored_value(codec::StringRef* t) {
+        return t == nullptr ? "" : t->ToString();
     }
 };
 
