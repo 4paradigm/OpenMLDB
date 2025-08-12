@@ -38,6 +38,7 @@ absl::Status DeploymentMetricCollector::DeleteDeploy(const std::string& db, cons
 
 void DeploymentMetricCollector::Reset() {
     absl::WriterMutexLock lock(&mutex_);
+    md_recorder_.reset();
     md_recorder_ = make_shared(prefix_);
 }
 }  // namespace openmldb::statistics
