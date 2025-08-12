@@ -119,6 +119,13 @@ jobs:
           path: |
             java/*/target/**/TEST-*.xml
 
+      - name: Import GPG key in container
+        #if: github.event_name == 'push'
+        run: |
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_OWNERTRUST }}" | gpg --batch --import-ownertrust
       - name: deploy
         #if: github.event_name == 'push'
         working-directory: java
