@@ -44,7 +44,6 @@ jobs:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_native_so openmldb"
-      MAVEN_OPTS: -Duser.home=/github/home
       SPARK_HOME: /tmp/spark/
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
     steps:
@@ -126,7 +125,6 @@ jobs:
         run: |
           ./mvnw --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
         env:
-          MAVEN_OPTS: -Duser.home=/github/home
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
