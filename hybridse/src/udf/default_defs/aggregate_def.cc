@@ -69,7 +69,8 @@ template <typename StatisticTrait>
 struct StdTemplate {
     template <typename T>
     struct Impl {
-        using ContainerT = std::pair<std::vector<T>, double>;
+        using StorageT = typename container::ContainerStorageTypeTrait<T>::type;
+        using ContainerT = std::pair<std::vector<StorageT>, double>;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
@@ -113,9 +114,10 @@ struct StdTemplate {
 template <typename T>
 struct ShannonEntropy {
     using CType = typename DataTypeTrait<T>::CCallArgType;
+    using StorageT = typename container::ContainerStorageTypeTrait<T>::type;
 
     // intermedate state: ([key -> count], total count)
-    using ContainerT = std::pair<std::map<T, int64_t>, int64_t>;
+    using ContainerT = std::pair<std::map<StorageT, int64_t>, int64_t>;
 
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string prefix = absl::StrCat(helper.name(), "_", DataTypeTrait<T>::to_string());
