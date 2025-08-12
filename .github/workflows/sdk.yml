@@ -120,7 +120,7 @@ jobs:
             java/*/target/**/TEST-*.xml
 
       - name: deploy
-        if: github.event_name == 'push'
+        #if: github.event_name == 'push'
         working-directory: java
         run: |
           ./mvnw --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
