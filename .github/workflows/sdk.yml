@@ -44,6 +44,7 @@ jobs:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_native_so openmldb"
+      MAVEN_OPTS: -Duser.home=/github/home
       SPARK_HOME: /tmp/spark/
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
     steps:
@@ -61,10 +62,11 @@ jobs:
 
       - name: Import GPG key
         id: import_gpg
-        if: github.event_name == 'push'
+        #if: github.event_name == 'push'
         uses: crazy-max/ghaction-import-gpg@v4
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Cache local Maven repository
         uses: actions/cache@v3
@@ -85,7 +87,7 @@ jobs:
           make build
 
       - name: upload linux library
-        if: github.event_name == 'push'
+        #if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: shared-library-${{ github.sha }}
@@ -119,13 +121,6 @@ jobs:
           path: |
             java/*/target/**/TEST-*.xml
 
-      - name: Import GPG key in container
-        #if: github.event_name == 'push'
-        run: |
-          mkdir -p ~/.gnupg
-          chmod 700 ~/.gnupg
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          echo "${{ secrets.GPG_OWNERTRUST }}" | gpg --batch --import-ownertrust
       - name: deploy
         #if: github.event_name == 'push'
         working-directory: java
