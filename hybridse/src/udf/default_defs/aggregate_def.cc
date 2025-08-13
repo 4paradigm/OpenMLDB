@@ -69,8 +69,7 @@ template <typename StatisticTrait>
 struct StdTemplate {
     template <typename T>
     struct Impl {
-        using StorageT = typename container::ContainerStorageTypeTrait<T>::type;
-        using ContainerT = std::pair<std::vector<StorageT>, double>;
+        using ContainerT = std::pair<std::vector<T>, double>;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
@@ -114,7 +113,7 @@ struct StdTemplate {
 template <typename T>
 struct ShannonEntropy {
     using CType = typename DataTypeTrait<T>::CCallArgType;
-    using StorageT = typename container::ContainerStorageTypeTrait<T>::type;
+    using StorageT = typename container::ContainerStorageTypeTrait<T, true>::type;
 
     // intermedate state: ([key -> count], total count)
     using ContainerT = std::pair<std::map<StorageT, int64_t>, int64_t>;
@@ -133,7 +132,7 @@ struct ShannonEntropy {
         if (is_null) {
             return ctr;
         }
-        auto val = container::ContainerStorageTypeTrait<T>::to_stored_value(value);
+        auto val = container::ContainerStorageTypeTrait<T, true>::to_stored_value(value);
         auto [it, inserted] = ctr->first.try_emplace(val, 0);
         it->second++;
         ctr->second++;

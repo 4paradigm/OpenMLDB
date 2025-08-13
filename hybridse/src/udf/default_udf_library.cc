@@ -328,7 +328,8 @@ struct EwAvgUdafDef {
 template <typename T>
 struct DistinctCountDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
-    using SetT = std::unordered_set<T>;
+    using StorageT = typename container::ContainerStorageTypeTrait<T, true>::type;
+    using SetT = std::unordered_set<StorageT>;
 
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_std_set_" + DataTypeTrait<T>::to_string();
@@ -351,7 +352,7 @@ struct DistinctCountDef {
     template <typename V>
     struct UpdateImpl {
         static SetT* update_set(SetT* set, V value) {
-            set->insert(value);
+            set->insert(container::ContainerStorageTypeTrait<V, true>::to_stored_value(value));
             return set;
         }
     };
@@ -359,7 +360,7 @@ struct DistinctCountDef {
     template <typename V>
     struct UpdateImpl<V*> {
         static SetT* update_set(SetT* set, V* value) {
-            set->insert(*value);
+            set->insert(container::ContainerStorageTypeTrait<V, true>::to_stored_value(value));
             return set;
         }
     };
