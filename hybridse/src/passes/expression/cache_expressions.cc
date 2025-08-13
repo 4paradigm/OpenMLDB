@@ -37,7 +37,7 @@ std::string CallExprKey(const node::CallExprNode* call) {
 
 base::Status CacheExpressions::Apply(node::ExprAnalysisContext* ctx, node::ExprNode* expr, node::ExprNode** out) {
     *out = expr;
-    for (int i = 0; i < expr->GetChildNum(); ++i) {
+    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
         node::ExprNode* co = nullptr;
         CHECK_STATUS(Apply(ctx, expr->GetChild(i), &co));
         if (co != nullptr && co != expr->GetChild(i)) {

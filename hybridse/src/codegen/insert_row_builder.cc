@@ -58,7 +58,7 @@ absl::StatusOr<std::shared_ptr<int8_t>> InsertRowBuilder::ComputeRow(absl::Span<
 }
 
 absl::StatusOr<int8_t*> InsertRowBuilder::ComputeRowUnsafe(absl::Span<node::ExprNode* const> values) {
-    if (schema_->size() != values.size()) {
+    if (static_cast<size_t>(schema_->size()) != values.size()) {
         return absl::FailedPreconditionError(
             absl::Substitute("invalid expression number, expect $0, but got $1", schema_->size(), values.size()));
     }

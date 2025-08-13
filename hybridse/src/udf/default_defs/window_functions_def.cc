@@ -169,7 +169,7 @@ struct NthValueWhere {
                 if (ctr->nth > 0) {
                     // nth from window start
                     ctr->data.emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value), value_is_null);
-                    if (ctr->data.size() > ctr->nth) {
+                    if (ctr->data.size() > static_cast<size_t>(ctr->nth)) {
                         ctr->data.pop();
                     }
                 } else {
@@ -189,7 +189,7 @@ struct NthValueWhere {
             absl::Cleanup clean = [ctr]() { ctr->~ContainerT(); };
 
             // count from window end
-            if (ctr->nth == 0 || ctr->data.empty() || (ctr->nth > 0 && ctr->data.size() < ctr->nth)) {
+            if (ctr->nth == 0 || ctr->data.empty() || (ctr->nth > 0 && ctr->data.size() < static_cast<size_t>(ctr->nth))) {
                 // 1. invalid input: nth = 0
                 // 2. queue empty when nth < 0
                 // 3. queue size not equal to nth (when nth > 0)

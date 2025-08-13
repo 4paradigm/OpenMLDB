@@ -1721,7 +1721,7 @@ absl::StatusOr<ColProducerTraceInfo> PhysicalSetOperationNode::TraceColID(absl::
     ColProducerTraceInfo vec;
 
     // every producer node in set operation is able to backtrace columns in current node context
-    for (int i = 0; i < GetProducerCnt(); ++i) {
+    for (size_t i = 0; i < GetProducerCnt(); ++i) {
         size_t child_col_id = 0;
         auto s = GetProducer(i)->schemas_ctx()->ResolveColumnID("", "", std::string(col_name), &child_col_id);
         if (!s.isOK()) {
