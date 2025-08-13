@@ -256,7 +256,7 @@ class RequestRunSession : public RunSession {
     /// \param in_row: request row
     /// \param[out] output: result is written to this variable
     /// \return `0` if run successfully else negative integer
-    int32_t Run(uint32_t task_id, const Row& in_row, Row* output);  // NOLINT
+    int32_t Run(int32_t task_id, const Row& in_row, Row* output);  // NOLINT
 
     /// \brief Return the schema of request row
     virtual const Schema& GetRequestSchema() const {
@@ -303,7 +303,7 @@ class BatchRequestRunSession : public RunSession {
     /// \param request_batch: a batch of request rows
     /// \param output: query results will be returned as std::vector<Row> in output
     /// \return 0 if runs successfully else negative integer
-    int32_t Run(const uint32_t id, const std::vector<Row>& request_batch, std::vector<Row>& output);  // NOLINT
+    int32_t Run(int32_t id, const std::vector<Row>& request_batch, std::vector<Row>& output);  // NOLINT
 
     /// \brief Add common column idx
     void AddCommonColumnIdx(size_t idx) { common_column_indices_.insert(idx); }

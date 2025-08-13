@@ -545,7 +545,9 @@ static void refreshSingleLine(struct linenoiseState *l) {
     /* Move cursor to original position. */
     snprintf(seq, sizeof(seq), "\r\x1b[%dC", static_cast<int>(pos + plen));
     abAppend(&ab, seq, strlen(seq));
-    write(fd, ab.b, ab.len);
+    if (write(fd, ab.b, ab.len) == -1) {
+        perror("terminal write failed");
+    }
     /* Can't recover from write error. */
     abFree(&ab);
 }
@@ -630,7 +632,9 @@ static void refreshMultiLine(struct linenoiseState *l) {
     lndebug("\n");
     l->oldpos = l->pos;
 
-    write(fd, ab.b, ab.len); /* Can't recover from write error. */
+    if (write(fd, ab.b, ab.len) == -1) { /* Can't recover from write error. */
+        perror("terminal write failed");
+    }
     abFree(&ab);
 }
 
