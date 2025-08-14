@@ -27,16 +27,9 @@ namespace hybridse {
 namespace base {
 
 template <typename STREAM, typename... Args>
-static inline std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
-                                                               Args... args) {  // NOLINT
-#ifdef __APPLE__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-stack-address"
-#endif
-    return std::initializer_list<int>{(stream << args, 0)...};
-#ifdef __APPLE__
-#pragma GCC diagnostic pop
-#endif
+static inline void __output_literal_args(STREAM& stream,  // NOLINT
+                                         Args... args) {  // NOLINT
+    ((stream << args), ...);
 }
 
 #define MAX_STATUS_TRACE_SIZE 4096

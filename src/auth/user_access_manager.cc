@@ -61,7 +61,7 @@ void UserAccessManager::SyncWithDB() {
             row_view.GetStrValue(1, &user);
             row_view.GetStrValue(2, &password);
             row_view.GetStrValue(5, &privilege_level_str);
-            openmldb::nameserver::PrivilegeLevel privilege_level;
+            openmldb::nameserver::PrivilegeLevel privilege_level = openmldb::nameserver::PrivilegeLevel::NO_PRIVILEGE;
             ::openmldb::nameserver::PrivilegeLevel_Parse(privilege_level_str, &privilege_level);
             UserRecord user_record = {password, privilege_level};
             if (host == "%") {

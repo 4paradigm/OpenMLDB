@@ -104,7 +104,7 @@ void SplitString(StringRef* str, StringRef* delimeter, ArrayRef<StringRef>* arra
 
 void array_join(ArrayRef<StringRef>* arr, StringRef* del, bool del_null, StringRef* out) {
     int sz = 0;
-    for (int i = 0; i < arr->size; ++i) {
+    for (size_t i = 0; i < arr->size; ++i) {
         if (!arr->nullables[i]) {
             if (!del_null && i > 0) {
                 sz += del->size_;
@@ -117,7 +117,7 @@ void array_join(ArrayRef<StringRef>* arr, StringRef* del, bool del_null, StringR
     memset(buf, 0, sz);
 
     int32_t idx = 0;
-    for (int i = 0; i < arr->size; ++i) {
+    for (size_t i = 0; i < arr->size; ++i) {
         if (!arr->nullables[i]) {
             if (!del_null && i > 0) {
                 memcpy(buf + idx, del->data_, del->size_);

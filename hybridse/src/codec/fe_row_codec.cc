@@ -1166,7 +1166,7 @@ base::Status RowBuilder2::Build(const std::vector<node::ExprNode*>& values, code
 
     auto expect_cols =
         std::accumulate(schemas_.begin(), schemas_.end(), 0, [](int val, const auto& e) { return val + e.size(); });
-    CHECK_TRUE(values.size() == expect_cols, common::kCodegenEncodeError, "pass in expr number do not match, expect ",
+    CHECK_TRUE(values.size() == static_cast<size_t>(expect_cols), common::kCodegenEncodeError, "pass in expr number do not match, expect ",
                expect_cols, " but got ", values.size(), ": (",
                absl::StrJoin(
                    values, ", ",
@@ -1193,7 +1193,7 @@ base::Status RowBuilder2::Build(const std::vector<node::ExprNode*>& values, code
     return {};
 }
 base::Status RowBuilder2::InitSchema(int idx, const codec::Schema& sc) {
-    if (idx >= schemas_.size()) {
+    if (static_cast<size_t>(idx) >= schemas_.size()) {
         return {common::kCodegenEncodeError, "idx out of bound"};
     }
     schemas_[idx] = sc;
