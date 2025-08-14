@@ -60,7 +60,14 @@ jobs:
           server-password: MAVEN_TOKEN
           gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
       - name: test gpg
-        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | head -n 5
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "GPG key length: ${#GPG_PRIVATE_KEY}"
+          echo "First 10 lines:"
+          echo "$GPG_PRIVATE_KEY" | head -n 10
+          echo "Last 10 lines:"
+          echo "$GPG_PRIVATE_KEY" | tail -n 10
 
       - name: Import GPG key
         id: import_gpg
