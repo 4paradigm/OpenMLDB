@@ -29,7 +29,7 @@ constexpr uint32_t INVALID_PID = UINT32_MAX;
 FullTableIterator::FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
         const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients)
     : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(INVALID_PID),
-    it_(), kv_it_(), key_(0), last_ts_(0), last_pk_(), value_() {
+    it_(), kv_it_(), key_(0), last_ts_(0), last_pk_(), value_(), buffered_slices_(10) {
 }
 
 void FullTableIterator::SeekToFirst() {
