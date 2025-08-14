@@ -59,24 +59,10 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_TOKEN
           gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
-      - name: Verify secrets access
-        run: |
-          echo "List of available secrets:"
-          echo "GPG_PRIVATE_KEY exists: ${{ secrets.GPG_PRIVATE_KEY != '' }}"
-          echo "GPG_PASSPHRASE exists: ${{ secrets.GPG_PASSPHRASE != '' }}"
-      - name: test gpg
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        run: |
-          echo "GPG key length: ${#GPG_PRIVATE_KEY}"
-          echo "First 10 lines:"
-          echo "$GPG_PRIVATE_KEY" | head -n 10
-          echo "Last 10 lines:"
-          echo "$GPG_PRIVATE_KEY" | tail -n 10
 
       - name: Import GPG key
         id: import_gpg
-        #if: github.event_name == 'push'
+        if: github.event_name == 'push'
         uses: crazy-max/ghaction-import-gpg@v4
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -101,7 +87,7 @@ jobs:
           make build
 
       - name: upload linux library
-        #if: github.event_name == 'push'
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: shared-library-${{ github.sha }}
@@ -136,7 +122,7 @@ jobs:
             java/*/target/**/TEST-*.xml
 
       - name: deploy
-        #if: github.event_name == 'push'
+        if: github.event_name == 'push'
         working-directory: java
         run: |
           ./mvnw --batch-mode deploy -DskipTests=true -Dscalatest.skip=true
