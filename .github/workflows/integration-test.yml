@@ -41,7 +41,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '8'
-          distribution: 'temurin
+          distribution: 'temurin'
       - name: build openmldb
         shell: bash
         run: |

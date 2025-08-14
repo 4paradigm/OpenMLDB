@@ -1805,7 +1805,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     // 2. iterate over agg table from end_base until start_base (both inclusive)
-    int64_t prev_ts_start = INT64_MAX;
+    uint64_t prev_ts_start = UINT64_MAX;
     while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
@@ -1829,7 +1829,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // FIXME(zhanghao): check cnt and rows_start_preceding meanings
             int next_incr = num_rows > 0 ? num_rows - 1 : 0;
             auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
-                                                                     ts_start > end, ts_start < start);
+			static_cast<int64_t>(ts_start) > end, static_cast<int64_t>(ts_start) < start);
             if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
                 start_base = ts_end + 1;
                 break;
@@ -1890,7 +1890,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
             int next_incr = total_rows > 0 ? total_rows - 1 : 0;
             auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
-                                                                     ts_start > end, ts_start < start);
+	            static_cast<int64_t>(ts_start) > end, static_cast<int64_t>(ts_start) < start);
             if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
                 start_base = ts_end_range + 1;
                 break;

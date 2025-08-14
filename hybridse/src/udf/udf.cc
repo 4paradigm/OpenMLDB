@@ -1466,10 +1466,10 @@ void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef
     auto real_sz = products.size();
     v1::AllocManagedArray(out, products.size());
 
-    for (int prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
+    for (size_t prod_idx = 0; prod_idx < products.size(); ++prod_idx) {
         auto &prod = products.at(prod_idx);
         int32_t sz = 0;
-        for (int i = 0; i < prod.size(); ++i) {
+        for (size_t i = 0; i < prod.size(); ++i) {
             if (!data[i]->nullables[prod.at(i)]) {
                 // delimiter would be empty string if null
                 if (i > 0) {
@@ -1485,7 +1485,7 @@ void array_combine(codec::StringRef *del, int32_t cnt, ArrayRef<codec::StringRef
         }
         auto buf = v1::AllocManagedStringBuf(sz);
         int32_t idx = 0;
-        for (int i = 0; i < prod.size(); ++i) {
+        for (size_t i = 0; i < prod.size(); ++i) {
             if (!data[i]->nullables[prod.at(i)]) {
                 if (i > 0 && del->size_ > 0) {
                     memcpy(buf + idx, del->data_, del->size_);

@@ -455,7 +455,7 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job->main_task_id(),
                in_row, out_row);
 }
-int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, Row* out_row) {
+int32_t RequestRunSession::Run(int32_t task_id, const Row& in_row, Row* out_row) {
     ::hybridse::codec::Row row = in_row;
     std::vector<::hybridse::codec::Row>& sql_request_rows =
         std::dynamic_pointer_cast<SqlCompileInfo>(GetCompileInfo())->get_sql_context().request_rows;
@@ -499,7 +499,7 @@ int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch, std::
     return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job->main_task_id(),
                request_batch, output);
 }
-int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& request_batch,
+int32_t BatchRequestRunSession::Run(int32_t id, const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
     auto info = std::dynamic_pointer_cast<SqlCompileInfo>(GetCompileInfo());
     std::vector<::hybridse::codec::Row>& sql_request_rows = info->get_sql_context().request_rows;
