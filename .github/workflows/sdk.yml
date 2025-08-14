@@ -59,6 +59,11 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_TOKEN
           gpg-passphrase: GPG_PASSPHRASE # env variable for GPG private key passphrase
+      - name: Verify secrets access
+        run: |
+          echo "List of available secrets:"
+          echo "GPG_PRIVATE_KEY exists: ${{ secrets.GPG_PRIVATE_KEY != '' }}"
+          echo "GPG_PASSPHRASE exists: ${{ secrets.GPG_PASSPHRASE != '' }}"
       - name: test gpg
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
