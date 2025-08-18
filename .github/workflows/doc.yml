@@ -50,12 +50,12 @@ jobs:
 
       - name: doc build (branch)
         working-directory: docs
-        if: github.event_name == 'push'
+        #if: github.event_name == 'push'
         run: |
           make
 
       - name: upload artifact
-        if: github.event_name == 'push'
+        #if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/build/
