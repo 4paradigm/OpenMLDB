@@ -60,7 +60,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/build/
-          name: github-pages
 
   # Deployment job
   deploy:
@@ -74,4 +73,4 @@ jobs:
       # This action expects an artifact named github-pages to have been created prior to execution.
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
