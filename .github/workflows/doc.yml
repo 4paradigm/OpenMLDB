@@ -51,12 +51,12 @@ jobs:
 
       - name: doc build (branch)
         working-directory: docs
-        #if: github.event_name == 'push'
+        if: github.event_name == 'push'
         run: |
           make
 
       - name: upload artifact
-        #if: github.event_name == 'push'
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/build/
@@ -69,7 +69,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    #if: github.event_name == 'push'
+    if: github.event_name == 'push'
     steps:
       # This action expects an artifact named github-pages to have been created prior to execution.
       - name: Deploy to GitHub Pages
