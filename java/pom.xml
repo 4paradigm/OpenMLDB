@@ -122,9 +122,17 @@
                 <artifactId>git-commit-id-plugin</artifactId>
             </plugin>
             <plugin>
-                <!-- deploy to sonatype -->
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.8.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>ossrh</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <!--
+                    <waitUntil>published</waitUntil>
+                    -->
+                </configuration>
             </plugin>
             <plugin>
                 <!-- create jar with source code -->
@@ -480,7 +488,7 @@
   <distributionManagement>
     <snapshotRepository>
         <id>ossrh</id>
-        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        <url>https://central.sonatype.com/repository/maven-snapshots/</url>
     </snapshotRepository>
     <repository>
         <id>ossrh</id>
