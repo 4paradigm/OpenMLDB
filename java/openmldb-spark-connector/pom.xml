@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>openmldb-spark-connector</artifactId>
+    <name>openmldb-spark-connector</name>
     <packaging>jar</packaging>
 
     <description>OpenMLDB Spark Connector is the connector to the OpenMLDB online storage.</description>
