@@ -46,7 +46,6 @@ object JobInfoManager {
   option.setZkCluster(TaskManagerConfig.getZkCluster)
   option.setZkPath(TaskManagerConfig.getZkRootPath)
   option.setUser(TaskManagerConfig.getUser)
-  option.setPassword(TaskManagerConfig.getPassword)
 
   if (!TaskManagerConfig.getPassword.isEmpty) {
     option.setPassword(TaskManagerConfig.getPassword)
