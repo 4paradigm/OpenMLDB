@@ -113,9 +113,10 @@ struct StdTemplate {
 template <typename T>
 struct ShannonEntropy {
     using CType = typename DataTypeTrait<T>::CCallArgType;
+    using StorageT = typename container::ContainerStorageTypeTrait<T, true>::type;
 
     // intermedate state: ([key -> count], total count)
-    using ContainerT = std::pair<std::map<T, int64_t>, int64_t>;
+    using ContainerT = std::pair<std::map<StorageT, int64_t>, int64_t>;
 
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string prefix = absl::StrCat(helper.name(), "_", DataTypeTrait<T>::to_string());
@@ -131,7 +132,7 @@ struct ShannonEntropy {
         if (is_null) {
             return ctr;
         }
-        auto val = container::ContainerStorageTypeTrait<T>::to_stored_value(value);
+        auto val = container::ContainerStorageTypeTrait<T, true>::to_stored_value(value);
         auto [it, inserted] = ctr->first.try_emplace(val, 0);
         it->second++;
         ctr->second++;
