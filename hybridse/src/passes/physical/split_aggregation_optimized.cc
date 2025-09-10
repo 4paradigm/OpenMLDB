@@ -17,6 +17,8 @@
 
 #include <vector>
 
+#include "absl/strings/strip.h"
+#include "absl/strings/str_split.h"
 #include "vm/engine.h"
 #include "vm/physical_op.h"
 
@@ -24,18 +26,15 @@ namespace hybridse {
 namespace passes {
 
 SplitAggregationOptimized::SplitAggregationOptimized(PhysicalPlanContext* plan_ctx) : TransformUpPysicalPass(plan_ctx) {
-    std::vector<std::string> windows;
     const auto* options = plan_ctx_->GetOptions();
     if (!options) {
         LOG(ERROR) << "plan_ctx option is empty";
         return;
     }
-
-    boost::split(windows, options->at(vm::LONG_WINDOWS), boost::is_any_of(","));
+    std::vector<std::string> windows = absl::StrSplit(options->at(vm::LONG_WINDOWS), ",");
     for (auto& w : windows) {
-        std::vector<std::string> window_info;
-        boost::split(window_info, w, boost::is_any_of(":"));
-        boost::trim(window_info[0]);
+        std::vector<std::string> window_info = absl::StrSplit(w, ":");
+        absl::StripAsciiWhitespace(&window_info[0]);
         long_windows_.insert(window_info[0]);
     }
 }

@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/str_split.h"
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 #include "google/protobuf/util/message_differencer.h"
@@ -81,14 +82,12 @@ void StrToTTLType(const std::string& ttl_type, type::TTLType* type) {
 
 common::ColumnKey ParseIndex(const std::string& index_str) {
     common::ColumnKey key;
-    std::vector<std::string> vec;
-    boost::split(vec, index_str, boost::is_any_of(";"));
+    std::vector<std::string> vec = absl::StrSplit(index_str, ";");  
     if (vec.size() != 3) {
         LOG(WARNING) << "invalid index str " << index_str;
         return {};
     }
-    std::vector<std::string> keys;
-    boost::split(keys, vec[0], boost::is_any_of(","));
+    std::vector<std::string> keys = absl::StrSplit(vec[0], ",");
     for (auto& k : keys) {
         key.add_col_name(k);
     }
@@ -96,8 +95,7 @@ common::ColumnKey ParseIndex(const std::string& index_str) {
         key.set_ts_name(vec[1]);
     }
     // parse ttl in vec[2]
-    std::vector<std::string> ttl_parts;
-    boost::split(ttl_parts, vec[2], boost::is_any_of(","));
+    std::vector<std::string> ttl_parts = absl::StrSplit(vec[2], ",");
     if (ttl_parts.size() != 3) {
         LOG(WARNING) << "invalid ttl str " << vec[2];
         return {};
@@ -214,13 +212,11 @@ class DDLParserTest : public ::testing::Test {
                              const std::string& col_sep, const std::string& name_type_sep) {
         auto table = db->add_tables();
         table->set_name(table_name);
-        std::vector<std::string> cols;
-        boost::split(cols, cols_def, boost::is_any_of(col_sep));
+        std::vector<std::string> cols = absl::StrSplit(cols_def, col_sep);
         for (auto col : cols) {
             // name: type
-            std::vector<std::string> vec;
             boost::trim(col);
-            boost::split(vec, col, boost::is_any_of(name_type_sep));
+            std::vector<std::string> vec = absl::StrSplit(col, name_type_sep);
             EXPECT_EQ(vec.size(), 2);
 
             auto name = vec[0];

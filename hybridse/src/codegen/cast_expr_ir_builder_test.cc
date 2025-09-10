@@ -20,6 +20,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include "absl/strings/str_split.h"
 #include "case/sql_case.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/ir_base_builder_test.h"
@@ -464,9 +465,7 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
                     cast_func, exp_value, nullptr);
                 return;
             }
-            std::vector<std::string> date_strs;
-            boost::split(date_strs, src_value_str, boost::is_any_of("-"),
-                         boost::token_compress_on);
+            std::vector<std::string> date_strs = abls::StrSplit(src_value_str, "-", absl::SkipEmpty());
 
             ExprCheck<CASTTYPE, udf::Nullable<Date>>(
                 cast_func, exp_value,
@@ -582,9 +581,7 @@ void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
                 CastExprCheck<udf::Nullable<Date>>(nullptr, src_type_str,
                                                           src_value_str);
             } else {
-                std::vector<std::string> date_strs;
-                boost::split(date_strs, cast_value_str, boost::is_any_of("-"),
-                             boost::token_compress_on);
+                std::vector<std::string> date_strs = absl::StrSplit(cast_value_str, "-", absl::SkipEmpty());
                 Date exp_value =
                     Date(boost::lexical_cast<int32_t>(date_strs[0]),
                                 boost::lexical_cast<int32_t>(date_strs[1]),

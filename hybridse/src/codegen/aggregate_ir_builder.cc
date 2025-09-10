@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 
+#include "absl/strings/ascii.h"
 #include "absl/container/flat_hash_set.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/expr_ir_builder.h"
@@ -74,7 +75,7 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
                 default:
                     break;
             }
-            boost::to_lower(agg_func_name);
+            absl::AsciiStrToLower(&agg_func_name);
             if (!IsAggFuncName(agg_func_name)) {
                 break;
             }

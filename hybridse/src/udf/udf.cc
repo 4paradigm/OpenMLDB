@@ -639,7 +639,7 @@ void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {
     }
 
     auto temp = str->ToString();
-    boost::to_lower(temp);
+    absl::AsciiStrToLower(&temp);
     if ("y" == temp || "yes" == temp || "1" == temp || "t" == temp ||
         "true" == temp) {
         *out = true;

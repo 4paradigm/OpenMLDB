@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/strings/ascii.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 #include "boost/algorithm/string.hpp"
@@ -74,10 +75,8 @@ bool SqlCase::TTLParse(const std::string& org_type_str,
         LOG(WARNING) << "Empty TTL String";
         return false;
     }
-    std::vector<std::string> ttlstrings;
     boost::trim(type_str);
-    boost::split(ttlstrings, type_str, boost::is_any_of("|"),
-                 boost::token_compress_on);
+    std::vector<std::string> ttlstrings = absl::StrSplit(type_str, "|", absl::SkipEmpty());
 
     for (std::string ttlstr : ttlstrings) {
         char unit = ttlstr[ttlstr.size() - 1];
@@ -186,9 +185,7 @@ bool SqlCase::ExtractIndex(const std::string& index_str,
         LOG(WARNING) << "Empty Index String";
         return false;
     }
-    std::vector<std::string> index_vec;
-    boost::split(index_vec, index_str, boost::is_any_of(",\n"),
-                 boost::token_compress_on);
+    std::vector<std::string> index_vec = absl::StrSplit(index_str, ",\n", absl::SkipEmpty());
     if (!ExtractIndex(index_vec, table)) {
         LOG(WARNING) << "Fail extract index: " << index_str;
         return false;
@@ -210,9 +207,7 @@ bool SqlCase::ExtractIndex(const std::vector<std::string>& indexs,
                 LOG(WARNING) << "Index String Empty";
                 return false;
             }
-            std::vector<std::string> name_keys_order;
-            boost::split(name_keys_order, index, boost::is_any_of(":"),
-                         boost::token_compress_on);
+            std::vector<std::string> name_keys_order = absl::StrSplit(index, ":", absl::SkipEmpty());
             if (2 > name_keys_order.size()) {
                 LOG(WARNING) << "Invalid Index Format:" << index;
                 return false;
@@ -227,10 +222,8 @@ bool SqlCase::ExtractIndex(const std::vector<std::string>& indexs,
             index_def->set_name(name_keys_order[0]);
             index_names.insert(name_keys_order[0]);
 
-            std::vector<std::string> keys;
             boost::trim(name_keys_order[1]);
-            boost::split(keys, name_keys_order[1], boost::is_any_of("|"),
-                         boost::token_compress_on);
+            std::vector<std::string> keys = absl::StrSplit(name_keys_order[1], "|", absl::SkipEmpty());
             boost::trim(name_keys_order[1]);
 
             for (auto key : keys) {
@@ -278,9 +271,7 @@ bool SqlCase::ExtractSchema(const std::string& schema_str,
         LOG(WARNING) << "Empty Schema String";
         return false;
     }
-    std::vector<std::string> col_vec;
-    boost::split(col_vec, schema_str, boost::is_any_of(",\n"),
-                 boost::token_compress_on);
+    std::vector<std::string> col_vec = absl::StrSplit(schema_str, ",\n", absl::SkipEmpty());
     if (!ExtractSchema(col_vec, table)) {
         LOG(WARNING) << "Invalid Schema Format:" << schema_str;
         return false;
@@ -311,9 +302,7 @@ bool SqlCase::ExtractSchema(const std::vector<std::string>& columns,
         for (auto col : columns) {
             boost::trim(col);
             boost::replace_last(col, " ", ":");
-            std::vector<std::string> name_type_vec;
-            boost::split(name_type_vec, col, boost::is_any_of(":"),
-                         boost::token_compress_on);
+            std::vector<std::string> name_type_vec = absl::StrSplit(col, ":", absl::SkipEmpty());
             if (2 != name_type_vec.size()) {
                 LOG(WARNING) << "Invalid Schema Format:"
                              << " Invalid Column " << col;
@@ -547,14 +536,10 @@ bool SqlCase::BuildInsertSqlFromData(const type::TableDef& table,
                                      std::string data,
                                      std::string* insert_sql) {
     boost::trim(data);
-    std::vector<std::string> row_vec;
-    boost::split(row_vec, data, boost::is_any_of("\n"),
-                 boost::token_compress_on);
+    std::vector<std::string> row_vec = absl::StrSplit(data, "\n", absl::SkipEmpty());
     std::vector<std::vector<std::string>> rows;
     for (auto row_str : row_vec) {
-        std::vector<std::string> item_vec;
-        boost::split(item_vec, row_str, boost::is_any_of(","),
-                     boost::token_compress_on);
+        std::vector<std::string> item_vec = absl::StrSplit(row_str, ",", absl::SkipEmpty());
         rows.push_back(item_vec);
     }
     BuildInsertSqlFromRows(table, rows, insert_sql);
@@ -618,9 +603,7 @@ bool SqlCase::BuildInsertValueStringFromRow(
 }
 bool SqlCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
                          int8_t** out_ptr, int32_t* out_size) {
-    std::vector<std::string> item_vec;
-    boost::split(item_vec, row_str, boost::is_any_of(","),
-                 boost::token_compress_on);
+    std::vector<std::string> item_vec = absl::StrSplit(row_str, ",", absl::SkipEmpty());
     if (!ExtractRow(schema, item_vec, out_ptr, out_size)) {
         LOG(WARNING) << "Fail to extract row: " << row_str;
         return false;
@@ -732,10 +715,7 @@ bool SqlCase::ExtractRow(const vm::Schema& schema,
                     break;
                 }
                 case type::kDate: {
-                    std::vector<std::string> date_strs;
-                    boost::split(date_strs, item_vec[index],
-                                 boost::is_any_of("-"),
-                                 boost::token_compress_on);
+                    std::vector<std::string> date_strs = absl::StrSplit(item_vec[index], "-", absl::SkipEmpty());
 
                     if (!rb.AppendDate(
                             boost::lexical_cast<int32_t>(date_strs[0]),
@@ -780,9 +760,7 @@ bool SqlCase::ExtractRows(const vm::Schema& schema,
 }
 bool SqlCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
                           std::vector<hybridse::codec::Row>& rows) {
-    std::vector<std::string> row_vec;
-    boost::split(row_vec, data_str, boost::is_any_of("\n"),
-                 boost::token_compress_on);
+    std::vector<std::string> row_vec = absl::StrSplit(data_str, "\n", absl::SkipEmpty());
     if (row_vec.empty()) {
         LOG(WARNING) << "Invalid Data Format";
         return false;
@@ -875,14 +853,10 @@ bool SqlCase::BuildInsertSqlListFromInput(
     if (!inputs_[input_idx].data_.empty()) {
         auto data = inputs_[input_idx].data_;
         boost::trim(data);
-        std::vector<std::string> row_vec;
-        boost::split(row_vec, data, boost::is_any_of("\n"),
-                     boost::token_compress_on);
+        std::vector<std::string> row_vec = absl::StrSplit(data, "\n", absl::SkipEmpty());
         for (auto row_str : row_vec) {
             std::vector<std::vector<std::string>> rows;
-            std::vector<std::string> item_vec;
-            boost::split(item_vec, row_str, boost::is_any_of(","),
-                         boost::token_compress_on);
+            std::vector<std::string> item_vec = absl::StrSplit(row_str, ",", absl::SkipEmpty());
             rows.push_back(item_vec);
             std::string insert_sql;
             if (!BuildInsertSqlFromRows(table, rows, &insert_sql)) {
@@ -1745,9 +1719,7 @@ std::set<std::string> SqlCase::HYBRIDSE_LEVEL() {
     char* value = getenv(env_name);
     if (value != nullptr) {
         try {
-            std::set<std::string> item_vec;
-            boost::split(item_vec, value, boost::is_any_of(","),
-                         boost::token_compress_on);
+            std::set<std::string> item_vec = absl::StrSplit(value, ",", absl::SkipEmpty());
             return item_vec;
         } catch (const std::exception& ex) {
             LOG(WARNING) << "Fail to parser hybridse level: " << ex.what();

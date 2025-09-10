@@ -24,7 +24,9 @@
 #include <vector>
 
 #include "absl/strings/match.h"
+#include "absl/strings/strip.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "plan/plan_api.h"
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
@@ -51,12 +53,10 @@ Planner::Planner(node::NodeManager *manager, const bool is_batch_mode, const boo
       node_manager_(manager),
       extra_options_(extra_options) {
     if (extra_options_ && extra_options_->count(vm::LONG_WINDOWS)) {
-        std::vector<std::string> tokens;
-        boost::split(tokens, extra_options_->at(vm::LONG_WINDOWS), boost::is_any_of(","));
+        std::vector<std::string> tokens = absl::StrSplit(extra_options_->at(vm::LONG_WINDOWS), ",");
         for (auto& w : tokens) {
-            std::vector<std::string> window_info;
-            boost::split(window_info, w, boost::is_any_of(":"));
-            boost::trim(window_info[0]);
+            std::vector<std::string> window_info = absl::StrSplit(w, ":");
+            absl::StripAsciiWhitespace(&window_info[0]);
             long_windows_.insert(window_info[0]);
         }
     }

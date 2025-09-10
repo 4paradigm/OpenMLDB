@@ -19,6 +19,7 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "absl/strings/ascii.h"
+#include "absl/strings/str_replace.h"
 #include "absl/time/clock.h"
 #include "base/texttable.h"
 #include "google/protobuf/util/message_differencer.h"
@@ -393,7 +394,7 @@ Status EngineTestRunner::Compile() {
     std::string sql_str = sql_case_.sql_str();
     for (int j = 0; j < sql_case_.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        boost::replace_all(sql_str, placeholder, sql_case_.inputs_[j].name_);
+        sql_str = absl::StrReplaceAll(sql_str, {{placeholder, sql_case_.inputs_[j].name_}});
     }
     DLOG(INFO) << "Compile SQL:\n" << sql_str;
     CHECK_TRUE(session_ != nullptr, common::kTestEngineError, "Session is not set");
