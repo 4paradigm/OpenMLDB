@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "base/glog_wrapper.h"
-#include "boost/algorithm/string.hpp"
 #include "boost/container/deque.hpp"
 #include "codec/schema_codec.h"
 #include "codec/row_codec.h"
