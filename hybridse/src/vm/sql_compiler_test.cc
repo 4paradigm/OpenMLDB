@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/strings/ascii.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "llvm/Support/TargetSelect.h"
@@ -70,7 +71,7 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                    const Schema& paramter_types, const EngineMode engine_mode,
                    const bool enable_batch_window_paralled,
                    const bool enable_window_column_pruning) {
-    std::string sql = boost::to_lower_copy(sql_case.sql_str());
+    std::string sql = absl::AsciiStrToLower(sql_case.sql_str());
     SqlCompiler sql_compiler(catalog, false, true, false);
     SqlContext sql_context;
     sql_context.sql = sql;
@@ -101,7 +102,7 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
 }
 void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const SqlCase& sql_case,
                         const vm::Schema& paramter_types, const type::TableDef& exp_table_def) {
-    std::string sql = boost::to_lower_copy(sql_case.sql_str());
+    std::string sql = absl::AsciiStrToLower(sql_case.sql_str());
     SqlCompiler sql_compiler(catalog);
     SqlContext sql_context;
     sql_context.sql = sql;

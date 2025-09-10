@@ -465,7 +465,7 @@ void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
                     cast_func, exp_value, nullptr);
                 return;
             }
-            std::vector<std::string> date_strs = abls::StrSplit(src_value_str, "-", absl::SkipEmpty());
+            std::vector<std::string> date_strs = absl::StrSplit(src_value_str, "-", absl::SkipEmpty());
 
             ExprCheck<CASTTYPE, udf::Nullable<Date>>(
                 cast_func, exp_value,

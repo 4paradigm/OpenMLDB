@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_join.h"
 #include "case/case_data_mock.h"
 #include "gtest/gtest.h"
@@ -260,7 +261,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
-            boost::to_lower(sqlstr);
+            absl::AsciiStrToLower(&sqlstr);
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
@@ -281,7 +282,7 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
-            boost::to_lower(sqlstr);
+            absl::AsciiStrToLower(&sqlstr);
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;
@@ -442,8 +443,7 @@ INSTANTIATE_TEST_SUITE_P(Func, GetDependentTablesTest, ::testing::ValuesIn(GetDe
 
 TEST_P(GetDependentTablesTest, UnitTest) {
     auto& pair = GetParam();
-    std::string sqlstr = pair.first;
-    boost::to_lower(sqlstr);
+    std::string sqlstr = absl::AsciiStrToLower(pair.first);
     std::set<std::pair<std::string, std::string>> tables;
     base::Status get_status;
     ASSERT_TRUE(engine->GetDependentTables(sqlstr, "simple_db", &tables, get_status)) << get_status;
@@ -650,7 +650,7 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
-            boost::to_lower(sqlstr);
+            absl::AsciiStrToLower(&sqlstr);
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             BatchRunSession session;

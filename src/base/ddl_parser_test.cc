@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/strip.h"
 #include "absl/strings/str_split.h"
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
@@ -182,8 +183,8 @@ class DDLParserTest : public ::testing::Test {
         // copy to trim
         auto name = col_name;
         auto type = col_type;
-        boost::trim(name);
-        boost::trim(type);
+        absl::StripAsciiWhitespace(&name);
+        absl::StripAsciiWhitespace(&type);
         auto col = table->add_columns();
         col->set_name(name);
         auto t = codec::DATA_TYPE_MAP.find(type);
@@ -215,7 +216,7 @@ class DDLParserTest : public ::testing::Test {
         std::vector<std::string> cols = absl::StrSplit(cols_def, col_sep);
         for (auto col : cols) {
             // name: type
-            boost::trim(col);
+            absl::StripAsciiWhitespace(&col);
             std::vector<std::string> vec = absl::StrSplit(col, name_type_sep);
             EXPECT_EQ(vec.size(), 2);
 

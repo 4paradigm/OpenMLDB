@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include "absl/strings/str_replace.h"
 #include "base/texttable.h"
 #include "brpc/server.h"
 #include "case/sql_case.h"
@@ -698,14 +699,14 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
             std::string create;
             if (sql_case.BuildCreateSqlFromInput(i, &create) && !create.empty()) {
                 std::string placeholder = "{" + std::to_string(i) + "}";
-                boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+                create = absl::StrReplaceAll(create, {{placeholder, sql_case.inputs()[i].name_}});
                 LOG(INFO) << create;
                 dbms_sdk->ExecuteQuery(db, create, &status);
                 ASSERT_EQ(0, static_cast<int>(status.code));
 
                 std::string insert;
                 ASSERT_TRUE(sql_case.BuildInsertSqlFromInput(i, &insert));
-                boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+                insert = absl::StrReplaceAll(insert, {{placeholder, sql_case.inputs()[i].name_}});
                 LOG(INFO) << insert;
                 dbms_sdk->ExecuteQuery(db, insert, &status);
                 if (!sql_case.expect_.success_) {
@@ -723,7 +724,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+            sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
         }
         LOG(INFO) << sql;
         std::shared_ptr<ResultSet> rs =

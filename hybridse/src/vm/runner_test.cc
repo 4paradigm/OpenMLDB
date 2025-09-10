@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
@@ -100,7 +101,7 @@ TEST_P(RunnerTest, RequestModeTest) {
     auto& sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-    boost::to_lower(sqlstr);
+    absl::AsciiStrToLower(&sqlstr);
     LOG(INFO) << sqlstr;
 
     hybridse::type::TableDef table_def;
@@ -231,7 +232,7 @@ TEST_P(RunnerTest, BatchModeTest) {
     auto& sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-    boost::to_lower(sqlstr);
+    absl::AsciiStrToLower(&sqlstr);
     LOG(INFO) << sqlstr;
 
     hybridse::type::TableDef table_def;
@@ -313,7 +314,7 @@ Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
 TEST_F(RunnerTest, KeyGeneratorTest) {
     std::string sqlstr = "select avg(col1), avg(col2) from t1 group by col1, col2 limit 1;";
     const hybridse::base::Status exp_status(::hybridse::common::kOk, "ok");
-    boost::to_lower(sqlstr);
+    absl::AsciiStrToLower(&sqlstr);
     LOG(INFO) << sqlstr;
     hybridse::type::TableDef table_def;
     BuildTableDef(table_def);

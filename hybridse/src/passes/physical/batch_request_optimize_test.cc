@@ -15,6 +15,7 @@
  */
 
 #include "passes/physical/batch_request_optimize.h"
+#include "absl/strings/str_replace.h"
 #include "gtest/gtest.h"
 #include "testing/engine_test_base.h"
 #include "vm/sql_compiler.h"
@@ -170,7 +171,7 @@ void CheckOptimizePlan(const SqlCase& sql_case_org,
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < sql_case.CountInputs(); ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        boost::replace_all(sql_str, placeholder, sql_case.inputs_[j].name_);
+        sql_str = absl::StrReplaceAll(sql_str, {{placeholder, sql_case.inputs_[j].name_}});
     }
     LOG(INFO) << "Compile SQL:\n" << sql_str;
 
