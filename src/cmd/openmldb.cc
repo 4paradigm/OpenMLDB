@@ -24,6 +24,7 @@
 #include <memory>
 #include <random>
 
+#include "absl/strings/strip.h"
 #include "absl/strings/str_split.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
@@ -3628,7 +3629,7 @@ void StartClient() {
             }
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
-                boost::trim(buffer);
+                absl::StripAsciiWhitespace(&buffer);
                 if (!buffer.empty()) {
                     ::openmldb::base::linenoiseHistoryAdd(line);
                 }
@@ -3778,7 +3779,7 @@ void StartNsClient() {
 
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
-                boost::trim(buffer);
+                absl::StripAsciiWhitespace(&buffer);
                 if (!buffer.empty()) {
                     ::openmldb::base::linenoiseHistoryAdd(line);
                 }
