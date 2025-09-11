@@ -25,6 +25,7 @@
 
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
@@ -41,7 +42,6 @@
 #include "base/proto_util.h"
 #include "base/status.h"
 #include "base/strings.h"
-#include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
 #include "codec/row_codec.h"
 #include "gflags/gflags.h"
@@ -1456,7 +1456,7 @@ base::Status NameServerImpl::FlushPrivileges() {
     }
     if (failed_tablet_list.size() > 0) {
         return {ReturnCode::kFlushPrivilegesFailed,
-                "Failed to flush privileges to tablets: " + boost::algorithm::join(failed_tablet_list, ", ")};
+                "Failed to flush privileges to tablets: " + absl::StrJoin(failed_tablet_list, ", ")};
     }
     return {};
 }

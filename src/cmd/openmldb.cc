@@ -24,6 +24,8 @@
 #include <memory>
 #include <random>
 
+#include "absl/strings/strip.h"
+#include "absl/strings/str_split.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/hash.h"
@@ -38,7 +40,6 @@
 #endif
 #include "apiserver/api_server_impl.h"
 #include "auth/brpc_authenticator.h"
-#include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
 #include "client/ns_client.h"
@@ -371,8 +372,7 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {  
         if (::openmldb::base::IsNumber(pid_group)) {
             pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
         } else if (pid_group.find('-') != std::string::npos) {
-            std::vector<std::string> vec;
-            boost::split(vec, pid_group, boost::is_any_of("-"));
+            std::vector<std::string> vec = absl::StrSplit(pid_group, "-");
             if (vec.size() != 2 || !::openmldb::base::IsNumber(vec[0]) || !::openmldb::base::IsNumber(vec[1])) {
                 return -1;
             }
@@ -383,8 +383,7 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {  
                 start_index++;
             }
         } else if (pid_group.find(',') != std::string::npos) {
-            std::vector<std::string> vec;
-            boost::split(vec, pid_group, boost::is_any_of(","));
+            std::vector<std::string> vec = absl::StrSplit(pid_group, ",");
             for (const auto& pid_str : vec) {
                 if (!::openmldb::base::IsNumber(pid_str)) {
                     return -1;
@@ -3630,7 +3629,7 @@ void StartClient() {
             }
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
-                boost::trim(buffer);
+                absl::StripAsciiWhitespace(&buffer);
                 if (!buffer.empty()) {
                     ::openmldb::base::linenoiseHistoryAdd(line);
                 }
@@ -3780,7 +3779,7 @@ void StartNsClient() {
 
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
-                boost::trim(buffer);
+                absl::StripAsciiWhitespace(&buffer);
                 if (!buffer.empty()) {
                     ::openmldb::base::linenoiseHistoryAdd(line);
                 }
@@ -3909,8 +3908,7 @@ void StartAPIServer() {
 
     auto api_service = std::make_unique<::openmldb::apiserver::APIServerImpl>(real_endpoint);
     if (!FLAGS_nameserver.empty()) {
-        std::vector<std::string> vec;
-        boost::split(vec, FLAGS_nameserver, boost::is_any_of(":"));
+        std::vector<std::string> vec = absl::StrSplit(FLAGS_nameserver, ":");
         if (vec.size() != 2) {
             PDLOG(WARNING, "Invalid nameserver format");
             exit(1);
