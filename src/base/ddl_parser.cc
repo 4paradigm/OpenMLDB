@@ -24,6 +24,7 @@
 #include <vector>
 #include <set>
 
+#include "absl/strings/str_split.h"
 #include "codec/schema_codec.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "node/node_manager.h"
@@ -644,8 +645,7 @@ std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBui
     auto ts_sep = index_str.find(TS_MARK);
     auto keys_str = index_str.substr(key_sep + 1, ts_sep - key_sep - 1);
     // split keys
-    std::vector<std::string> keys;
-    boost::split(keys, keys_str, boost::is_any_of(std::string(1, KEY_SEP)));
+    std::vector<std::string> keys = absl::StrSplit(keys_str, std::string(1, KEY_SEP));
     for (auto& key : keys) {
         DCHECK(!key.empty());
         column_key.add_col_name(key);

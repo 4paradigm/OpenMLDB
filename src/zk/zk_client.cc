@@ -20,9 +20,9 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/str_split.h"
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
-#include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "gflags/gflags.h"
 
@@ -617,8 +617,7 @@ bool ZkClient::MkdirNoLock(const std::string& path) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
-    std::vector<std::string> parts;
-    boost::split(parts, path, boost::is_any_of("/"));
+    std::vector<std::string> parts = absl::StrSplit(path, "/");
     std::string full_path = "/";
     std::vector<std::string>::iterator it = parts.begin();
     int32_t index = 0;

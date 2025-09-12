@@ -32,7 +32,6 @@
 #include "codec/fe_row_codec.h"
 #include "codec/field_codec.h"
 #include "proto/name_server.pb.h"
-#include <boost/algorithm/string.hpp>
 
 namespace openmldb {
 namespace codec {
