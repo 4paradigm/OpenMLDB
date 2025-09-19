@@ -174,6 +174,8 @@ jobs:
         with:
           java-version: '8'
           distribution: 'temurin'
+      - name: Install CMake 3.22
+        run: brew install cmake@3.22 && brew link cmake@3.22 --force
       - name: prepare release
         run: |
           VERSION="snapshot"
