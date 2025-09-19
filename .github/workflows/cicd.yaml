@@ -174,8 +174,10 @@ jobs:
         with:
           java-version: '8'
           distribution: 'temurin'
-      - name: Install CMake 3.22
-        run: brew install cmake@3.22 && brew link cmake@3.22 --force
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v1
+          with:
+              cmake-version: '3.22.0'
       - name: prepare release
         run: |
           VERSION="snapshot"
