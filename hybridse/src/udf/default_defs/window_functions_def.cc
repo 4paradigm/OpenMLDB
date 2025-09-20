@@ -145,7 +145,8 @@ struct NthValueWhere {
             // saved value list
             // if `nth` > 0, work like a ring buffer
             // if `nth < 0`, have one value at most
-            std::queue<std::pair<T, bool>, std::list<std::pair<T, bool>>> data;
+            using StorageT = typename container::ContainerStorageTypeTrait<T, true>::type;
+            std::queue<std::pair<StorageT, bool>, std::list<std::pair<StorageT, bool>>> data;
         };
 
         // (nth idx, [(value, value_is_null)])
@@ -168,7 +169,7 @@ struct NthValueWhere {
             if (cond && !cond_is_null) {
                 if (ctr->nth > 0) {
                     // nth from window start
-                    ctr->data.emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value), value_is_null);
+                    ctr->data.emplace(container::ContainerStorageTypeTrait<T, true>::to_stored_value(value), value_is_null);
                     if (ctr->data.size() > static_cast<size_t>(ctr->nth)) {
                         ctr->data.pop();
                     }
@@ -177,7 +178,7 @@ struct NthValueWhere {
                     ctr->cur_idx++;
                     if (ctr->cur_idx + ctr->nth == 0) {
                         // reaches nth
-                        ctr->data.emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value),
+                        ctr->data.emplace(container::ContainerStorageTypeTrait<T, true>::to_stored_value(value),
                                            value_is_null);
                     }
                 }
