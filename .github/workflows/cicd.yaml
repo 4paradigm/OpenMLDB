@@ -174,6 +174,10 @@ jobs:
         with:
           java-version: '8'
           distribution: 'temurin'
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v1
+        with:
+          cmake-version: '3.22.0'
       - name: prepare release
         run: |
           VERSION="snapshot"
