@@ -99,6 +99,33 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
+                <version>4.5.6</version>
+                <executions>
+                    <execution>
+                    <id>scala-compile-first</id>
+                    <phase>process-resources</phase>
+                    <goals>
+                        <goal>compile</goal>
+                        <goal>testCompile</goal>
+                    </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <args>
+                    <arg>-deprecation</arg>
+                    <arg>-feature</arg>
+                    </args>
+                    <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <recompileMode>incremental</recompileMode>
+                    <useZincServer>false</useZincServer>
+                    <javacArgs>
+                    <javacArg>-source</javacArg>
+                    <javacArg>${maven.compiler.source}</javacArg>
+                    <javacArg>-target</javacArg>
+                    <javacArg>${maven.compiler.target}</javacArg>
+                    </javacArgs>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.scalatest</groupId>
