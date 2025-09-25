@@ -251,9 +251,9 @@ When creating a Covering index using KEY in OpenMLDB, the index stores the compl
 When creating an IOT table, the first index must be the only Clustered index, while other indexes are optional. Changing the order of the Clustered index is currently not supported.
 
 ```sql
-CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1, ts=c2)); -- 一个Clustered索引
-CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2)); -- 一个Clustered索引和一个Secondary索引
-CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2), INDEX(key=c3)); -- 一个Clustered索引、一个Secondary索引和一个Covering索引
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1, ts=c2)); -- Clustered index
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2)); -- Clustered index and Secondary index
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2), INDEX(key=c3)); -- Clustered index、Secondary index and Covering index
 ```
 
 The TTL behavior of indexes in an IOT table differs from that of a regular table. When data is evicted by TTL from the IOT Clustered index, it triggers deletion operations in all other indexes. In contrast, TTL eviction from a Secondary index or a Covering index only removes data within the respective index itself and does not trigger deletions in other indexes.
