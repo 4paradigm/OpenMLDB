@@ -241,6 +241,29 @@ The index key must be configured, and other configuration items are optional. Th
 | `ABSORLAT`  | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`. | Records will be eliminated if either the time expires **or** the number of records exceeds the maximum limit. | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`. Records will be eliminated when either the number of records exceeds 100 **or** the records expire.          |
 | `ABSANDLAT` | It defines the expiration time and the maximum number of live records. The configuration value is a 2-tuple of the form `(100m, 10), (1d, 1)`. The maximum can be configured `(15768000m, 1000)`.  | Records will only be eliminated when both the time expires **and** the number of records exceeds the maximum limit.   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`. Records will only be eliminated when the number of records exceeds 100 **and** the records expire. |
 
+#### Index-Organized Table(IOT)
+
+When creating a Covering index using KEY in OpenMLDB, the index stores the complete data row, which results in higher memory usage. If lower memory consumption is desired at the cost of some performance degradation, an IOT table can be used. In an IOT table, three types of indexes can be created:
+- `CKEY`：Clustered index, storing the complete data row. The configured CKEY and TS are used to uniquely identify a row of data. If a duplicate primary key is inserted, the data will be updated (this triggers the deletion of old data in all indexes, followed by the insertion of new data, which may incur performance overhead). It is also possible to use only CKEY without configuring TS, where CKEY uniquely identifies a row of data. Queries using this index suffer no performance loss.
+- `SKEY`：Secondary index, storing the primary key. If TS is not configured, data under the same SKEY is sorted by insertion time. During query execution, the corresponding primary key values are first located in the Secondary index, and then the data is retrieved based on the primary key, resulting in some performance loss.
+- `KEY`：Covering index, storing the complete data row. If TS is not configured, data under the same KEY is sorted by insertion time. Queries using this index suffer no performance loss.
+
+When creating an IOT table, the first index must be the only Clustered index, while other indexes are optional. Changing the order of the Clustered index is currently not supported.
+
+```sql
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1, ts=c2)); -- Clustered index
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2)); -- Clustered index and Secondary index
+CREATE TABLE iot (c1 int64, c2 int64, c3 int64, INDEX(ckey=c1), INDEX(skey=c2), INDEX(key=c3)); -- Clustered index、Secondary index and Covering index
+```
+
+The TTL behavior of indexes in an IOT table differs from that of a regular table. When data is evicted by TTL from the IOT Clustered index, it triggers deletion operations in all other indexes. In contrast, TTL eviction from a Secondary index or a Covering index only removes data within the respective index itself and does not trigger deletions in other indexes.
+
+Generally, unless it is necessary to make Secondary and Covering indexes more memory-efficient, you can configure TTL only for the Clustered index and leave the TTL unset for Secondary and Covering indexes.
+
+##### Notes
+
+- An IOT table does not support concurrent writes of multiple rows with the same primary key, as this may lead to conflicts causing at least one write to fail. Pre-existing rows with the same primary key in the IOT table will be overwritten without requiring additional handling. To avoid the need for import repairs, perform data cleansing before import by deduplicating records with the same primary key in the source data. (Overwriting data triggers deletions in all indexes, resulting in very low efficiency even for single-threaded writes. Therefore, single-threaded import is not recommended.)
+
 #### Example
 
 **Example 1**
