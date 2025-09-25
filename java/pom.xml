@@ -158,6 +158,14 @@
                 <!-- scala's code coverage plugin -->
                 <groupId>org.scoverage</groupId>
                 <artifactId>scoverage-maven-plugin</artifactId>
+                <configuration>
+                    <sourceDirectories>
+                        <directory>src/main/scala</directory>
+                        <directory>src/test/scala</directory>
+                    </sourceDirectories>
+                    <highlighting>true</highlighting>
+                    <aggregate>true</aggregate>
+                </configuration>
             </plugin>
 
         </plugins>
