@@ -2177,7 +2177,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
           request->name().c_str(), request->pid());
 }
 
-int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
+base::Status NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint32_t partition_num = FLAGS_partition_num;
     if (table_info.has_partition_num() && table_info.partition_num() > 0) {
         partition_num = table_info.partition_num();
@@ -2204,11 +2204,11 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     if (endpoint_pid_bucked.size() < replica_num) {
         PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]", endpoint_pid_bucked.size(),
               replica_num);
-        return -1;
+        return base::Status(base::kError, "healthy endpoint num is less than replica num");
     }
     if (replica_num < 1) {
-        PDLOG(WARNING, "replica_num less than 1 that is illegal, replica_num[%u]", replica_num);
-        return -1;
+        PDLOG(WARNING, "replica_num cannot be less than 1. replica_num[%u]", replica_num);
+        return base::Status(base::kError, "replica_num cannot be less than 1");
     }
     std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
     {
@@ -2274,7 +2274,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     }
     PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", table_info.name().c_str(),
           partition_num, replica_num);
-    return 0;
+    return {};
 }
 
 base::Status NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
@@ -3559,9 +3559,10 @@ void NameServerImpl::CreateTableInfoSimply(RpcController* controller, const Crea
             return;
         }
     } else {
-        if (SetPartitionInfo(*table_info) < 0) {
+        auto status = SetPartitionInfo(*table_info);
+        if (!status.OK()) {
             response->set_code(::openmldb::base::ReturnCode::kSetPartitionInfoFailed);
-            response->set_msg("set partition info failed");
+            response->set_msg(status.GetMsg());
             PDLOG(WARNING, "set partition info failed");
             return;
         }
@@ -3655,9 +3656,10 @@ void NameServerImpl::CreateTableInfo(RpcController* controller, const CreateTabl
             return;
         }
     } else {
-        if (SetPartitionInfo(*table_info) < 0) {
+        auto status = SetPartitionInfo(*table_info);
+        if (!status.OK()) {
             response->set_code(::openmldb::base::ReturnCode::kSetPartitionInfoFailed);
-            response->set_msg("set partition info failed");
+            response->set_msg(status.GetMsg());
             PDLOG(WARNING, "set partition info failed");
             return;
         }
@@ -3843,9 +3845,9 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                 return;
             }
         } else {
-            if (SetPartitionInfo(*table_info) < 0) {
-                base::SetResponseStatus(base::ReturnCode::kSetPartitionInfoFailed, "set partition info failed",
-                                        response);
+            auto status = SetPartitionInfo(*table_info);
+            if (!status.OK()) {
+                base::SetResponseStatus(base::ReturnCode::kSetPartitionInfoFailed, status.GetMsg(), response);
                 PDLOG(WARNING, "set partition info failed");
                 return;
             }
@@ -9919,9 +9921,10 @@ base::Status NameServerImpl::CreateSystemTable(SystemTableType table_type) {
         return {base::ReturnCode::kError, "allocate tid failed"};
     }
     table_info->set_tid(tid);
-    if (SetPartitionInfo(*table_info) < 0) {
+    auto status = SetPartitionInfo(*table_info);
+    if (!status.OK()) {
         LOG(WARNING) << "set partition info failed. name is " << GetSystemTableName(table_type);
-        return {base::ReturnCode::kError, "set partition info failed"};
+        return status;
     }
     uint64_t cur_term = GetTerm();
     GeneralResponse response;

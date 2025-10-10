@@ -407,7 +407,7 @@ class NameServerImpl : public NameServer {
 
     bool RecoverProcedureInfo();
 
-    int SetPartitionInfo(TableInfo& table_info);  // NOLINT
+    base::Status SetPartitionInfo(TableInfo& table_info);  // NOLINT
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
 
