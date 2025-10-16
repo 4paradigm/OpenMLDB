@@ -37,31 +37,34 @@ namespace container {
 /**
  * Specify actual stored type, store itself for most of the primitive types.
  */
-template <typename T>
+template <typename T, bool UseStringStorage = false>
 struct ContainerStorageTypeTrait {
     using type = T;
     static T to_stored_value(const T& t) { return t; }
 };
 
-template <>
-struct ContainerStorageTypeTrait<openmldb::base::StringRef> {
-    // FIXME: StringRef do not own data, ref #2944
-    using type = codec::StringRef;
-    static codec::StringRef to_stored_value(codec::StringRef* t) {
-        return t == nullptr ? codec::StringRef() : *t;
+template <bool UseStringStorage>
+struct ContainerStorageTypeTrait<openmldb::base::StringRef, UseStringStorage> {
+    using type = std::conditional_t<UseStringStorage, std::string, openmldb::base::StringRef>;
+    static type to_stored_value(codec::StringRef* t) {
+        if constexpr (UseStringStorage) {
+            return t == nullptr ? "" : t->ToString();
+        } else {
+            return t == nullptr ? codec::StringRef() : *t;
+        }
     }
 };
 
-template <>
-struct ContainerStorageTypeTrait<openmldb::base::Date> {
+template <bool UseStringStorage>
+struct ContainerStorageTypeTrait<openmldb::base::Date, UseStringStorage> {
     using type = openmldb::base::Date;
     static openmldb::base::Date to_stored_value(openmldb::base::Date* t) {
         return t == nullptr ? openmldb::base::Date(0) : *t;
     }
 };
 
-template <>
-struct ContainerStorageTypeTrait<openmldb::base::Timestamp> {
+template <bool UseStringStorage>
+struct ContainerStorageTypeTrait<openmldb::base::Timestamp, UseStringStorage> {
     using type = openmldb::base::Timestamp;
     static openmldb::base::Timestamp to_stored_value(openmldb::base::Timestamp* t) {
         return t == nullptr ? openmldb::base::Timestamp(0) : *t;
@@ -75,7 +78,7 @@ class TopKContainer {
     using InputT = typename DataTypeTrait<T>::CCallArgType;
 
     // actual stored type
-    using StorageT = typename ContainerStorageTypeTrait<T>::type;
+    using StorageT = typename ContainerStorageTypeTrait<T, true>::type;
 
     // self type
     using ContainerT = TopKContainer<T, BoundT>;
@@ -141,7 +144,7 @@ class TopKContainer {
     }
 
     void Push(InputT t) {
-        auto key = ContainerStorageTypeTrait<T>::to_stored_value(t);
+        auto key = ContainerStorageTypeTrait<T, true>::to_stored_value(t);
         auto iter = map_.find(key);
         if (iter == map_.end()) {
             map_.insert(iter, {key, 1});
@@ -198,7 +201,7 @@ struct DefaultPairCmp {
 };
 
 template <typename K, typename V,
-          typename StorageV = typename ContainerStorageTypeTrait<V>::type,
+          typename StorageV = typename ContainerStorageTypeTrait<V, true>::type,
           template <typename, typename> typename PairCmp = DefaultPairCmp>
 class BoundedGroupByDict {
  public:
@@ -209,7 +212,7 @@ class BoundedGroupByDict {
     using InputK = typename DataTypeTrait<K>::CCallArgType;
     using InputV = typename DataTypeTrait<V>::CCallArgType;
     // actual stored type
-    using StorageK = typename ContainerStorageTypeTrait<K>::type;
+    using StorageK = typename ContainerStorageTypeTrait<K, true>::type;
 
     // self type
     using ContainerT = BoundedGroupByDict<K, V, StorageV, PairCmp>;
@@ -218,10 +221,10 @@ class BoundedGroupByDict {
 
     // convert to internal key and value
     static inline StorageK to_stored_key(const InputK& key) {
-        return ContainerStorageTypeTrait<K>::to_stored_value(key);
+        return ContainerStorageTypeTrait<K, true>::to_stored_value(key);
     }
     static inline auto to_stored_value(const InputV& value) {
-        return ContainerStorageTypeTrait<V>::to_stored_value(value);
+        return ContainerStorageTypeTrait<V, true>::to_stored_value(value);
     }
 
     static void Init(ContainerT* addr) { new (addr) ContainerT(); }

@@ -29,7 +29,7 @@ constexpr uint32_t INVALID_PID = UINT32_MAX;
 FullTableIterator::FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
         const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients)
     : tid_(tid), tables_(tables), tablet_clients_(tablet_clients), in_local_(true), cur_pid_(INVALID_PID),
-    it_(), kv_it_(), key_(0), last_ts_(0), last_pk_(), value_() {
+    it_(), kv_it_(), key_(0), last_ts_(0), last_pk_(), value_(), buffered_slices_(10) {
 }
 
 void FullTableIterator::SeekToFirst() {
@@ -185,7 +185,7 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
     int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(sz));
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
-    buffered_slices_.push_back(shared_slice);
+    buffered_slices_.put(shared_slice);
     value_.Reset(shared_slice);
     return value_;
 }
