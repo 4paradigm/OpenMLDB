@@ -71,6 +71,10 @@ jobs:
       - name: Install dependencies
         run: |
           brew install coreutils
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v1
+        with:
+          cmake-version: '3.22.0'
 
       - name: Cache thirdparty
         uses: actions/cache@v3
