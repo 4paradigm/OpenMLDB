@@ -63,7 +63,7 @@ jobs:
           echo "OPENMLDB_PREFIX=openmldb-$VERSION-linux" >> $GITHUB_ENV
 
       - name: enable java on release
-        if: github.event_name == 'push'
+        #if: github.event_name == 'push'
         run: |
           echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
 
