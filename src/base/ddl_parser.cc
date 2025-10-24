@@ -182,13 +182,13 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
         case hybridse::node::kPlanTypeQuery: {
             // TODO(ace): Traverse Node return Status
             if (!TraverseNode(node, window_map, infos)) {
-                return hybridse::sdk::Status(::hybridse::common::StatusCode::kUnsupportedPlan, "TraverseNode failed");
+                return hybridse::sdk::Status(::hybridse::common::StatusCode::kUnsupportPlan, "TraverseNode failed");
             }
             break;
         }
         default: {
             DLOG(ERROR) << "only support extract long window infos from query";
-            return hybridse::sdk::Status(::hybridse::common::StatusCode::kUnsupportedPlan,
+            return hybridse::sdk::Status(::hybridse::common::StatusCode::kUnsupportPlan,
                                          "only support extract long window infos from query");
         }
     }
