@@ -217,7 +217,7 @@ void NameServerImpl::CheckSyncTable(const std::string& alias,
         // get remote table_info: tid and leader partition info
         std::string msg;
         if (!ns_client->CreateRemoteTableInfo(zone_info_, table_info, msg)) {
-            PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str());
+            PDLOG(WARNING, "create remote table_info error, wrong msg is [%s]", msg.c_str());
             return;
         }
         std::lock_guard<std::mutex> lock(mu_);
@@ -274,7 +274,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci,
             for (const auto& part : table.table_partition()) {
                 if (parts.find(part.pid()) == parts.end()) {
                     PDLOG(WARNING, "table [%s] pid [%u] partition leader is offline", table.name().c_str(), part.pid());
-                    continue;  // leader partition is offline, can't add talbe
+                    continue;  // leader partition is offline, can't add table
                                // replica
                 }
                 for (auto& meta : part.partition_meta()) {
@@ -966,7 +966,7 @@ bool NameServerImpl::RecoverOPTask() {
                 }
                 break;
             default:
-                PDLOG(WARNING, "unsupport recover op[%s]! op_id[%lu]", op_type_str.c_str(), op_id);
+                PDLOG(WARNING, "unsupported recover op[%s]! op_id[%lu]", op_type_str.c_str(), op_id);
                 continue;
         }
         if (!SkipDoneTask(op_data)) {
@@ -1108,7 +1108,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         if (FLAGS_use_name) {
             std::string real_ep;
             if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/map/names/" + cur_endpoint, real_ep)) {
-                PDLOG(WARNING, "get tablet names value failed. endpint %s", cur_endpoint.c_str());
+                PDLOG(WARNING, "get tablet names value failed. endpoint %s", cur_endpoint.c_str());
                 continue;
             }
             if (it == real_ep_map_.end()) {
@@ -2416,7 +2416,7 @@ void NameServerImpl::ConfSet(RpcController* controller, const ConfSetRequest* re
     } else {
         response->set_code(::openmldb::base::ReturnCode::kInvalidParameter);
         response->set_msg("invalid parameter");
-        PDLOG(WARNING, "unsupport set key[%s]", key.c_str());
+        PDLOG(WARNING, "unsupported set key[%s]", key.c_str());
         return;
     }
     PDLOG(INFO, "config set ok. key[%s] value[%s]", key.c_str(), value.c_str());
@@ -3032,16 +3032,16 @@ void NameServerImpl::DropTableFun(const DropTableRequest* request, GeneralRespon
                 response->set_msg("add task in replica cluster ns failed");
                 return;
             }
-            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]",
+            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_type [%s] task_status [%s]",
                   task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                   ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
         task_thread_pool_.AddTask(
-            boost::bind(&NameServerImpl::DropTableInternel, this, *request, *response, table_info, task_ptr));
+            boost::bind(&NameServerImpl::DropTableInternal, this, *request, *response, table_info, task_ptr));
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
     } else {
-        DropTableInternel(*request, *response, table_info, task_ptr);
+        DropTableInternal(*request, *response, table_info, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
@@ -3119,7 +3119,7 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
     DropTableFun(request, response, table_info);
 }
 
-void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralResponse& response,
+void NameServerImpl::DropTableInternal(const DropTableRequest& request, GeneralResponse& response,
                                        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                        std::shared_ptr<::openmldb::api::TaskInfo> task_ptr) {
     const std::string& name = request.name();
@@ -3473,7 +3473,7 @@ void NameServerImpl::LoadTable(RpcController* controller, const LoadTableRequest
             return;
         }
         PDLOG(INFO,
-              "add task in replica cluster ns success, op_id [%lu] task_tpye "
+              "add task in replica cluster ns success, op_id [%lu] task_type "
               "[%s] task_status [%s]",
               task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
               ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
@@ -3882,16 +3882,16 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
                                         "add task in replica cluster ns failed", response);
                 return;
             }
-            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]",
+            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_type [%s] task_status [%s]",
                   task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                   ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
         task_thread_pool_.AddTask(
-            boost::bind(&NameServerImpl::CreateTableInternel, this, *response, table_info, cur_term, tid, task_ptr));
+            boost::bind(&NameServerImpl::CreateTableInternal, this, *response, table_info, cur_term, tid, task_ptr));
         base::SetResponseOK(response);
     } else {
         std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
-        CreateTableInternel(*response, table_info, cur_term, tid, task_ptr);
+        CreateTableInternal(*response, table_info, cur_term, tid, task_ptr);
         response->set_code(response->code());
         response->set_msg(response->msg());
     }
@@ -3942,7 +3942,7 @@ void NameServerImpl::TruncateTable(RpcController* controller, const TruncateTabl
             if (!tablet_ptr) {
                 PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
                 response->set_code(::openmldb::base::ReturnCode::kGetTabletFailed);
-                response->set_msg("fail to get client, endpint " + endpoint);
+                response->set_msg("fail to get client, endpoint " + endpoint);
                 return;
             }
             auto status = tablet_ptr->client_->TruncateTable(tid, pid);
@@ -3998,7 +3998,7 @@ void NameServerImpl::RefreshTablet(uint32_t tid) {
     }
 }
 
-void NameServerImpl::CreateTableInternel(GeneralResponse& response,
+void NameServerImpl::CreateTableInternal(GeneralResponse& response,
                                          std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                          uint64_t cur_term, uint32_t tid,
                                          std::shared_ptr<::openmldb::api::TaskInfo> task_ptr) {
@@ -4030,7 +4030,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
             if (SetTableInfo(table_info)) {
                 if (task_ptr) {
                     task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
-                    PDLOG(INFO, "set task type success, op_id [%lu] task_tpye [%s] task_status [%s]", task_ptr->op_id(),
+                    PDLOG(INFO, "set task type success, op_id [%lu] task_type [%s] task_status [%s]", task_ptr->op_id(),
                           ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                           ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
                 }
@@ -4055,7 +4055,7 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                     std::string msg;
                     if (!std::atomic_load_explicit(&kv.second->client_, std::memory_order_relaxed)
                              ->CreateRemoteTableInfoSimply(zone_info_, remote_table_info, msg)) {
-                        PDLOG(WARNING, "create remote table_info erro, wrong msg is [%s]", msg.c_str());
+                        PDLOG(WARNING, "create remote table_info error, wrong msg is [%s]", msg.c_str());
                         response.set_code(::openmldb::base::ReturnCode::kCreateRemoteTableInfoFailed);
                         response.set_msg("create remote table info failed");
                         break;
@@ -4505,7 +4505,7 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller, const Add
         return;
     }
     PDLOG(INFO,
-          "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] "
+          "add task in replica cluster ns success, op_id [%lu] task_type [%s] "
           "task_status [%s]",
           task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
           ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
@@ -6651,7 +6651,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, const
 int NameServerImpl::CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data) {
     EndpointStatusData endpoint_status_data;
     if (!endpoint_status_data.ParseFromString(op_data->op_info_.data())) {
-        PDLOG(WARNING, "parse endpont_status_data failed. data[%s]", op_data->op_info_.data().c_str());
+        PDLOG(WARNING, "parse endpoint_status_data failed. data[%s]", op_data->op_info_.data().c_str());
         return -1;
     }
     std::string name = op_data->op_info_.name();
@@ -7585,7 +7585,7 @@ void NameServerImpl::NotifyTableChanged(::openmldb::type::NotifyType type) {
         }
         PDLOG(INFO, "notify globalvar changed ok");
     } else {
-        PDLOG(ERROR, "unsupport notify type");
+        PDLOG(ERROR, "unsupported notify type");
     }
 }
 
@@ -8079,8 +8079,8 @@ void NameServerImpl::SwitchMode(::google::protobuf::RpcController* controller,
         return;
     }
     if (request->sm() >= kFOLLOWER) {
-        response->set_code(::openmldb::base::ReturnCode::kUnkownServerMode);
-        response->set_msg("unkown server status");
+        response->set_code(::openmldb::base::ReturnCode::kUnknownServerMode);
+        response->set_msg("unknown server status");
         return;
     }
     if (mode_.load(std::memory_order_acquire) == request->sm()) {
@@ -9928,7 +9928,7 @@ base::Status NameServerImpl::CreateSystemTable(SystemTableType table_type) {
     }
     uint64_t cur_term = GetTerm();
     GeneralResponse response;
-    CreateTableInternel(response, table_info, cur_term, tid, nullptr);
+    CreateTableInternal(response, table_info, cur_term, tid, nullptr);
     if (response.code() != 0) {
         return {base::ReturnCode::kError, response.msg()};
     }

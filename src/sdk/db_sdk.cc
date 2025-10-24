@@ -282,7 +282,7 @@ bool ClusterSDK::TriggerNotify(::openmldb::type::NotifyType type) const {
     } else if (type == ::openmldb::type::NotifyType::kGlobalVar) {
         return zk_client_->Increment(globalvar_changed_notify_path_);
     }
-    LOG(ERROR) << "unsupport notify type";
+    LOG(ERROR) << "unsupported notify type";
     return false;
 }
 
@@ -320,11 +320,11 @@ bool ClusterSDK::GetTaskManagerAddress(std::string* endpoint, std::string* real_
 }
 
 // TODO(hw): refactor
-bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, const std::vector<std::string>& sp_datas) {
+bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_data, const std::vector<std::string>& sp_data) {
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::map<std::string, std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>>> mapping;
     auto new_catalog = std::make_shared<::openmldb::catalog::SDKCatalog>(client_manager_);
-    for (const auto& table_data : table_datas) {
+    for (const auto& table_data : table_data) {
         if (table_data.empty()) continue;
         std::string value;
         bool ok = zk_client_->GetNodeValue(table_root_path_ + "/" + table_data, value);
@@ -352,7 +352,7 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, cons
     }
 
     Procedures db_sp_map;
-    for (const auto& node : sp_datas) {
+    for (const auto& node : sp_data) {
         if (node.empty()) continue;
         std::string value;
         bool ok = zk_client_->GetNodeValue(sp_root_path_ + "/" + node, value);
@@ -424,9 +424,9 @@ bool ClusterSDK::BuildCatalog() {
         return false;
     }
 
-    std::vector<std::string> table_datas;
+    std::vector<std::string> table_data;
     if (zk_client_->IsExistNode(table_root_path_) == 0) {
-        bool ok = zk_client_->GetChildren(table_root_path_, table_datas);
+        bool ok = zk_client_->GetChildren(table_root_path_, table_data);
         if (!ok) {
             LOG(WARNING) << "fail to get table list with path " << table_root_path_;
             return false;
@@ -434,9 +434,9 @@ bool ClusterSDK::BuildCatalog() {
     } else {
         LOG(INFO) << "no tables in db";
     }
-    std::vector<std::string> sp_datas;
+    std::vector<std::string> sp_data;
     if (zk_client_->IsExistNode(sp_root_path_) == 0) {
-        bool ok = zk_client_->GetChildren(sp_root_path_, sp_datas);
+        bool ok = zk_client_->GetChildren(sp_root_path_, sp_data);
         if (!ok) {
             LOG(WARNING) << "fail to get procedure list with path " << sp_root_path_;
             return false;
@@ -444,9 +444,9 @@ bool ClusterSDK::BuildCatalog() {
     } else {
         LOG(INFO) << "no procedures in db";
     }
-    // The empty database can't be find if we only get table datas, but database no notify, so we get alldbs from
+    // The empty database can't be find if we only get table data, but database no notify, so we get alldbs from
     // nameserver in GetAllDbs()
-    return UpdateCatalog(table_datas, sp_datas);
+    return UpdateCatalog(table_data, sp_data);
 }
 
 std::vector<std::string> DBSDK::GetAllDbs() {
@@ -487,9 +487,9 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables
     if (it == table_to_tablets_.end()) {
         return tables;
     }
-    auto iit = it->second.begin();
-    for (; iit != it->second.end(); ++iit) {
-        tables.push_back(iit->second);
+    auto it = it->second.begin();
+    for (; it != it->second.end(); ++it) {
+        tables.push_back(it->second);
     }
     return tables;
 }
@@ -513,9 +513,9 @@ std::vector<std::string> DBSDK::GetTableNames(const std::string& db) {
     if (it == table_to_tablets_.end()) {
         return tableNames;
     }
-    auto iit = it->second.begin();
-    for (; iit != it->second.end(); ++iit) {
-        tableNames.push_back(iit->second->name());
+    auto it = it->second.begin();
+    for (; it != it->second.end(); ++it) {
+        tableNames.push_back(it->second->name());
     }
     return tableNames;
 }

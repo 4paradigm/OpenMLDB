@@ -159,7 +159,7 @@ class ClusterSDK : public DBSDK {
 
  private:
     bool GetRealEndpointFromZk(const std::string& endpoint, std::string* real_endpoint);
-    bool UpdateCatalog(const std::vector<std::string>& table_datas, const std::vector<std::string>& sp_datas);
+    bool UpdateCatalog(const std::vector<std::string>& table_data, const std::vector<std::string>& sp_data);
     bool InitTabletClient();
     void WatchNotify();
     void CheckZk();
@@ -206,7 +206,7 @@ class StandAloneSDK : public DBSDK {
         } else if (type == ::openmldb::type::kGlobalVar) {
             return true;
         }
-        DLOG(ERROR) << "unsupport notify type";
+        DLOG(ERROR) << "unsupported notify type";
         return false;
     }
 

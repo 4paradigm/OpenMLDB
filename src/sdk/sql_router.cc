@@ -155,7 +155,7 @@ std::vector<std::string> GenDDL(
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
-        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not empty, but conversion failed";
         return {};
     }
     // DDL only support single db, but ExtractIndexes support multi db
@@ -217,7 +217,7 @@ std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
         schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
-        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not empty, but conversion failed";
         return {};
     }
     return openmldb::base::DDLParser::GetOutputSchema(sql, db, table_desc_map);
@@ -231,7 +231,7 @@ std::vector<std::string> ValidateSQLInBatch(
         schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
-        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not empty, but conversion failed";
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
     return openmldb::base::DDLParser::ValidateSQLInBatch(sql, db, table_desc_map);
@@ -245,7 +245,7 @@ std::vector<std::string> ValidateSQLInRequest(
         schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
-        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not empty, but conversion failed";
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
     return openmldb::base::DDLParser::ValidateSQLInRequest(sql, db, table_desc_map);
@@ -259,7 +259,7 @@ std::vector<std::pair<std::string, std::string>> GetDependentTables(
         schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
-        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not empty, but conversion failed";
         return {};
     }
     hybridse::vm::ExplainOutput explain;

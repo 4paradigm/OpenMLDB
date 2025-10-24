@@ -52,7 +52,7 @@ absl::string_view GetSystemTableName(SystemTableType type) {
     if (it != map.end()) {
         return it->second.name_;
     }
-    return "UnkownSystemTable";
+    return "UnknownSystemTable";
 }
 
 }  // namespace nameserver

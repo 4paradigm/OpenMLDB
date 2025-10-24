@@ -376,7 +376,7 @@ inline static std::vector<std::string> FindFiles(const std::string& path) {
     }
 
     std::vector<std::string> filenames;
-    for (size_t i = 0; i < glob_result.gl_pathc; ++i) {
+    for (size_t i = 0; i < glob_result.gl_patch; ++i) {
         std::string filename = glob_result.gl_pathv[i];
         if (!IsFolder(filename)) {
             filenames.push_back(filename);

@@ -303,7 +303,7 @@ void ReplicateNode::Stop() {
     }
 
     if (bthread_stopped(worker_) == 1) {
-        PDLOG(INFO, "sync thread for table #tid %u #pid %u has been stoped", tid_, pid_);
+        PDLOG(INFO, "sync thread for table #tid %u #pid %u has been stopped", tid_, pid_);
         return;
     }
 

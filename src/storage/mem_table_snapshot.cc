@@ -859,7 +859,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
             continue;
         }
         std::vector<std::string> index_row;
-        auto staus = DecodeData(table, base::Slice(entry.value()), table_index_info.GetAllIndexCols(), &index_row);
+        auto status = DecodeData(table, base::Slice(entry.value()), table_index_info.GetAllIndexCols(), &index_row);
         std::map<uint32_t, std::vector<::openmldb::api::Dimension>> dimension_map;
         for (auto idx : table_index_info.GetAddIndexIdx()) {
             std::string index_key;

@@ -155,7 +155,7 @@ bool SchemaAdapter::ConvertType(hybridse::node::DataType hybridse_type, openmldb
 
 absl::Status SchemaAdapter::ConvertType(const hybridse::node::ColumnSchemaNode* sc, common::TableColumnSchema* tbs) {
     if (sc == nullptr) {
-        return absl::InvalidArgumentError("paramter null");
+        return absl::InvalidArgumentError("parameter null");
     }
     switch (sc->type()) {
         case hybridse::node::kBool:

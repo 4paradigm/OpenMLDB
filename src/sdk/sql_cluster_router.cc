@@ -2403,7 +2403,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
         std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
         all_tablet = cluster_sdk_->GetAllTablet();
-        // set dafault value
+        // set default value
         uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
 
         hybridse::base::Status sql_status;
@@ -3382,7 +3382,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             // Update offline table info
             tableInfo->mutable_offline_table_info()->CopyFrom(offline_table_info);
 
-            // Send reqeust to persistent table info
+            // Send request to persistent table info
             auto ns = cluster_sdk_->GetNsClient();
             ns->UpdateOfflineTableInfo(*tableInfo);
             return {};
@@ -3971,7 +3971,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
         return status;
     }
     if (!parameter_vec.empty()) {
-        return {StatusCode::kCmdError, "unsupport placeholder in sql"};
+        return {StatusCode::kCmdError, "unsupported placeholder in sql"};
     }
     DeleteOption option;
     status = NodeAdapter::ExtractDeleteOption(table_info->column_key(), condition_vec, &option);
@@ -3979,7 +3979,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
         return status;
     }
     DLOG(INFO) << "delete option: " << option.DebugString();
-    status = SendDeleteRequst(table_info, option);
+    status = SendDeleteRequest(table_info, option);
     if (status.IsOK() && db != nameserver::INTERNAL_DB) {
         status = {
             StatusCode::kOk,
@@ -3992,7 +3992,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     return status;
 }
 
-hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
+hybridse::sdk::Status SQLClusterRouter::SendDeleteRequest(
     const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, const DeleteOption& option) {
     if (!option.idx.has_value()) {
         std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
@@ -4050,7 +4050,7 @@ bool SQLClusterRouter::ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse
     if (!status->IsOK()) {
         return false;
     }
-    *status = SendDeleteRequst(table_info, option);
+    *status = SendDeleteRequest(table_info, option);
     return status->IsOK();
 }
 
@@ -4447,7 +4447,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
     std::unordered_map<std::string, std::string> long_window_map;
     if (!long_window_param.empty()) {
         if (table_pair.size() != 1) {
-            return {StatusCode::kUnsupportSql, "unsupport multi tables with long window options"};
+            return {StatusCode::kUnsupportedSql, "unsupported multi tables with long window options"};
         }
         std::string base_db = table_pair.begin()->first;
         std::string base_table = table_pair.begin()->second;
@@ -4504,7 +4504,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
 
         for (const auto& lw : long_window_infos) {
             if (absl::EndsWithIgnoreCase(lw.aggr_func_, "_where")) {
-                // TOOD(ace): *_where op only support for memory base table
+                // TODO(ace): *_where op only support for memory base table
                 if (tables[0].storage_mode() != common::StorageMode::kMemory) {
                     return {StatusCode::kUnSupport,
                             absl::StrCat(lw.aggr_func_, " only support over memory base table")};
@@ -4512,18 +4512,18 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
 
                 // TODO(#2313): *_where for rows bucket should support later
                 if (openmldb::base::IsNumber(long_window_map.at(lw.window_name_))) {
-                    return {StatusCode::kUnSupport, absl::StrCat("unsupport *_where op (", lw.aggr_func_,
+                    return {StatusCode::kUnSupport, absl::StrCat("unsupported *_where op (", lw.aggr_func_,
                                                                  ") for rows bucket type long window")};
                 }
 
-                // unsupport filter col of date/timestamp
+                // unsupported filter col of date/timestamp
                 for (int i = 0; i < tables[0].column_desc_size(); ++i) {
                     if (lw.filter_col_ == tables[0].column_desc(i).name()) {
                         auto type = tables[0].column_desc(i).data_type();
                         if (type == type::DataType::kDate || type == type::DataType::kTimestamp) {
                             return {
                                 StatusCode::kUnSupport,
-                                absl::Substitute("unsupport date or timestamp as filter column ($0)", lw.filter_col_)};
+                                absl::Substitute("unsupported date or timestamp as filter column ($0)", lw.filter_col_)};
                         }
                     }
                 }
@@ -4674,7 +4674,7 @@ static const ::openmldb::schema::PBSchema& GetComponetSchema() {
 // where
 // - Endpoint IP:PORT or DOMAIN:PORT
 // - Role can be 'tablet', 'nameserver', 'taskmanager'
-// - Connect_time last conncted timestamp from epoch
+// - Connect_time last connected timestamp from epoch
 // - Status can be 'online', 'offline' or 'NULL' (otherwise)
 // - Ns_role can be 'master', 'standby', or 'NULL' (for non-namespace component)
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowComponents(hybridse::sdk::Status* status) {
@@ -4765,7 +4765,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         return {};
     }
 
-    // endponit => create time (time in milliseconds from epoch)
+    // endpoint => create time (time in milliseconds from epoch)
     std::map<std::string, int64_t> endpoint_map;
     for (const auto& path : children) {
         std::string real_path = absl::StrCat(node_path, "/", path);
@@ -4999,7 +4999,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                         symbolic_paths, error_msg});
     }
 
-    // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
+    // TODO(#1456): rich schema result set, and pretty-print numeric values (e.g timestamp) in cli
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
 }
 

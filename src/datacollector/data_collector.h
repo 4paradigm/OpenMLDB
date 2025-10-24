@@ -56,7 +56,7 @@ class SyncToolClient {
         if (client_.Init() != 0) return false;
         return true;
     }
-    // if ok, check repsonse, otherwise do not use response
+    // if ok, check response, otherwise do not use response
     bool SendData(const datasync::SendDataRequest* request, butil::IOBuf& data,  // NOLINT
                   datasync::SendDataResponse* response) {
         // TODO(hw): IOBufAppender is better?
@@ -148,7 +148,7 @@ class DataCollectorImpl : public datasync::DataCollector {
 
     // data will be cleared, whether send success or not
     bool SendDataUnlock(const datasync::AddSyncTaskRequest* task, butil::IOBuf& data, uint64_t count,  // NOLINT
-                        const datasync::SyncPoint& next_point, bool is_finished, datasync::SendDataResponse* reponse,
+                        const datasync::SyncPoint& next_point, bool is_finished, datasync::SendDataResponse* response,
                         datasync::AddSyncTaskRequest* update_task);
 
     std::shared_ptr<replica::LogReplicator> GetReplicator(const std::string& name) {

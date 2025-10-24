@@ -114,7 +114,7 @@ service DataCollector {
 
 service SyncTool {
     rpc CreateSyncTask(CreateSyncTaskRequest) returns (GeneralResponse);
-    rpc DelelteSyncTask(DeleteSyncTaskRequest) returns (GeneralResponse);
+    rpc DeleteSyncTask(DeleteSyncTaskRequest) returns (GeneralResponse);
     rpc TaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
     rpc SendData(SendDataRequest) returns (SendDataResponse);
 }

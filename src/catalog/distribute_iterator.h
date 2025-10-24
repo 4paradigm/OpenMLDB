@@ -38,7 +38,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     FullTableIterator(uint32_t tid, std::shared_ptr<Tables> tables,
             const std::map<uint32_t, std::shared_ptr<::openmldb::client::TabletClient>>& tablet_clients);
     void Seek(const uint64_t& ts) override {
-        LOG(ERROR) << "Unsupport Seek in FullTableIterator";
+        LOG(ERROR) << "Unsupported Seek in FullTableIterator";
     }
 
     void SeekToFirst() override;

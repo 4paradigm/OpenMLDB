@@ -30,7 +30,7 @@ using SystemVariables = absl::flat_hash_map<absl::string_view, absl::flat_hash_s
 const SystemVariables& GetSystemVariablePresets();
 
 // check if the stmt 'set {key} = {val}' has a valid semantic
-// key and value for system variable is case insensetive
+// key and value for system variable is case insensitive
 absl::Status CheckSystemVariableSet(absl::string_view key, absl::string_view val);
 
 }  // namespace internal

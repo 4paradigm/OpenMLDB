@@ -205,17 +205,17 @@ TEST_F(SqlCmdTest, SelectIntoOutfile) {
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_TRUE(status.IsOK());
 
-    // False - Type un-supproted
+    // False - Type un-supported
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (mode = 1)";
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
-    // False - Type un-supproted
+    // False - Type un-supported
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (quote = '__')";
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
 
-    // False - Type un-supproted
+    // False - Type un-supported
     select_into_sql = "select * from " + name + " into outfile '" + file_path + "' options (delimiter = '')";
     router->ExecuteSQL(select_into_sql, &status);
     ASSERT_FALSE(status.IsOK());
@@ -3210,7 +3210,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereWithDataOutOfOrder) {
     EXPECT_EQ(4.0, res->GetDoubleUnsafe(11));
 }
 
-TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
+TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportedRowsBucket) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -3240,20 +3240,20 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportRowsBucket) {
                                              dp_, table_),
                             &status);
             ASSERT_FALSE(status.IsOK());
-            EXPECT_EQ(status.msg, "unsupport *_where op (avg_where) for rows bucket type long window")
+            EXPECT_EQ(status.msg, "unsupported *_where op (avg_where) for rows bucket type long window")
                 << "code=" << status.code << ", msg=" << status.msg << "\n"
                 << status.trace;
         }
         void TearDownDeployment() override {}
     };
 
-    // unsupport: deploy any_where with rows bucket
+    // unsupported: deploy any_where with rows bucket
     DeployLongWindowAnyWhereEnv env(sr);
     env.SetUp();
     absl::Cleanup clean = [&env]() { env.TearDown(); };
 }
 
-TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
+TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportedTimeFilter) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -3275,7 +3275,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                                                  dp_, table_),
                                 &status);
                 ASSERT_FALSE(status.IsOK());
-                EXPECT_EQ(status.msg, "unsupport date or timestamp as filter column (date_col)")
+                EXPECT_EQ(status.msg, "unsupported date or timestamp as filter column (date_col)")
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
@@ -3304,7 +3304,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
                                                  dp_, table_),
                                 &status);
                 ASSERT_FALSE(status.IsOK());
-                EXPECT_EQ(status.msg, "unsupport date or timestamp as filter column (t_col)")
+                EXPECT_EQ(status.msg, "unsupported date or timestamp as filter column (t_col)")
                     << "code=" << status.code << ", msg=" << status.msg << "\n"
                     << status.trace;
             }
@@ -3317,7 +3317,7 @@ TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportTimeFilter) {
     }
 }
 
-TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportHDDTable) {
+TEST_P(DBSDKTest, LongWindowAnyWhereUnsupportedHDDTable) {
     // *_where over HDD/SSD table main table not support
     auto cli = GetParam();
     cs = cli->cs;

@@ -93,7 +93,7 @@ std::shared_ptr<openmldb::sdk::SQLRequestRow> ParameterRow::get_parameter_row() 
             case ::hybridse::sdk::kTypeString:
                 sql_parameter_row_->AppendString(std::any_cast<std::string>(record_[i]));
                 break;
-            case ::hybridse::sdk::kTypeUnknow:
+            case ::hybridse::sdk::kTypeUnknown:
                 sql_parameter_row_->AppendNULL();
                 break;
             default:
@@ -169,7 +169,7 @@ ParameterRow& ParameterRow::operator<<(const char* value) {
 }
 
 ParameterRow& ParameterRow::operator<<(const OpenmldbNull value) {
-    parameter_types_->AddColumnType(::hybridse::sdk::kTypeUnknow);
+    parameter_types_->AddColumnType(::hybridse::sdk::kTypeUnknown);
     record_.push_back(value);
     return *this;
 }
@@ -222,7 +222,7 @@ std::shared_ptr<openmldb::sdk::SQLRequestRow> RequestRow::get_request_row() cons
             case ::hybridse::sdk::kTypeString:
                 sql_request_row_->AppendString(std::any_cast<std::string>(record_[i]));
                 break;
-            case ::hybridse::sdk::kTypeUnknow:
+            case ::hybridse::sdk::kTypeUnknown:
                 sql_request_row_->AppendNULL();
                 break;
             default:
@@ -298,7 +298,7 @@ RequestRow& RequestRow::operator<<(const char* value) {
 }
 
 RequestRow& RequestRow::operator<<(const OpenmldbNull value) {
-    parameter_types_->AddColumnType(::hybridse::sdk::kTypeUnknow);
+    parameter_types_->AddColumnType(::hybridse::sdk::kTypeUnknown);
     record_.push_back(value);
     return *this;
 }

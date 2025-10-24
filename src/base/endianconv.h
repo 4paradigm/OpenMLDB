@@ -82,7 +82,7 @@
 #endif /* BYTE_ORDER */
 
 /* Sometimes after including an OS-specific header that defines the
- * endianess we end with __BYTE_ORDER but not with BYTE_ORDER that is what
+ * endianness we end with __BYTE_ORDER but not with BYTE_ORDER that is what
  * the Redis code uses. In this case let's define everything without the
  * underscores. */
 #ifndef BYTE_ORDER
@@ -121,7 +121,7 @@ uint16_t intrev16(uint16_t v);
 uint32_t intrev32(uint32_t v);
 uint64_t intrev64(uint64_t v);
 
-/* variants of the function doing the actual convertion only if the target
+/* variants of the function doing the actual conversion only if the target
  * host is big endian */
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define memrev16ifbe(p)

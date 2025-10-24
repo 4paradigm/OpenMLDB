@@ -219,10 +219,10 @@ void DataCollectorImpl::CheckZkClient() {
         if (zk_client_->Reconnect() && zk_client_->Register()) {
             LOG(WARNING) << "reconnect zk ok";
         }
-    } else if (!zk_client_->IsRegisted()) {
-        LOG(WARNING) << "registe zk";
+    } else if (!zk_client_->IsRegistered()) {
+        LOG(WARNING) << "register zk";
         if (zk_client_->Register()) {
-            LOG(WARNING) << "registe zk ok";
+            LOG(WARNING) << "register zk ok";
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, std::bind(&DataCollectorImpl::CheckZkClient, this));
@@ -484,7 +484,7 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
         }
     }
 
-    // fullfil the request: io_buf, count, next_point, finished(for mode 0)
+    // fulfil the request: io_buf, count, next_point, finished(for mode 0)
     butil::IOBuf io_buf;
     uint64_t count = 0;
     decltype(start_point) next_point;
@@ -819,7 +819,7 @@ bool DataCollectorImpl::PackBINLOG(std::shared_ptr<log::LogReader> reader, uint6
 // use response and update_task iff status == true (the response may be not ok, and should delete the task)
 bool DataCollectorImpl::SendDataUnlock(const datasync::AddSyncTaskRequest* task, butil::IOBuf& data, uint64_t count,
                                        const datasync::SyncPoint& next_point, bool is_finished,
-                                       datasync::SendDataResponse* reponse, datasync::AddSyncTaskRequest* update_task) {
+                                       datasync::SendDataResponse* response, datasync::AddSyncTaskRequest* update_task) {
     // pack send data request
     datasync::SendDataRequest send_data_request;
     send_data_request.set_tid(task->tid());
@@ -838,7 +838,7 @@ bool DataCollectorImpl::SendDataUnlock(const datasync::AddSyncTaskRequest* task,
         return false;
     }
 
-    if (!client.SendData(&send_data_request, data, reponse)) {
+    if (!client.SendData(&send_data_request, data, response)) {
         LOG(WARNING) << "fail to send data to sync tool, task " << task->ShortDebugString();
         return false;
     }
@@ -866,7 +866,7 @@ void DataCollectorImpl::Recover() {
     std::vector<std::string> failed_tasks;
     for (const auto& entry : fs::directory_iterator(FLAGS_collector_datadir)) {
         if (!entry.is_directory()) {
-            LOG(WARNING) << "irrelavant file? " << entry.path();
+            LOG(WARNING) << "irrelevant file? " << entry.path();
             continue;
         }
         LOG(INFO) << "try recover: " << entry.path();

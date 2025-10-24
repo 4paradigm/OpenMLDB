@@ -130,7 +130,7 @@
     }
     jsize $1_fields_size = jenv->GetArrayLength($input);
 
-    jmethodID $1_ser_method;
+    jmethodID $1_set_method;
 
     for (jsize k = 0; k < $1_fields_size; ++k) {
         auto field_ptr = ($1).Add();
@@ -138,10 +138,10 @@
         jobject obj = jenv->GetObjectArrayElement($input, k);
         if (k == 0) {
             jclass clazz = jenv->GetObjectClass(obj);
-            $1_ser_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
+            $1_set_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
         }
 
-        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, $1_ser_method);
+        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, $1_set_method);
         jsize $1_bytes_size = jenv->GetArrayLength($1_byte_arr);
         jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
         field_ptr->ParseFromArray($1_bytes, $1_bytes_size);
@@ -157,7 +157,7 @@
     }
     jsize $1_fields_size = jenv->GetArrayLength($input);
 
-    jmethodID $1_ser_method;
+    jmethodID $1_set_method;
 
     TYPE $1_object;
     for (jsize k = 0; k < $1_fields_size; ++k) {
@@ -166,10 +166,10 @@
         jobject obj = jenv->GetObjectArrayElement($input, k);
         if (k == 0) {
             jclass clazz = jenv->GetObjectClass(obj);
-            $1_ser_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
+            $1_set_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
         }
 
-        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, $1_ser_method);
+        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, $1_set_method);
         jsize $1_bytes_size = jenv->GetArrayLength($1_byte_arr);
         jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
         field_ptr->ParseFromArray($1_bytes, $1_bytes_size);
@@ -186,7 +186,7 @@
     }
     jsize $1_fields_size = jenv->GetArrayLength($input);
 
-    jmethodID $1_ser_method;
+    jmethodID $1_set_method;
 
     TYPE $1_object;
     for (jsize k = 0; k < $1_fields_size; ++k) {
@@ -195,10 +195,10 @@
         jobject obj = jenv->GetObjectArrayElement($input, k);
         if (k == 0) {
             jclass clazz = jenv->GetObjectClass(obj);
-            $1_ser_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
+            $1_set_method = jenv->GetMethodID(clazz, "toByteArray", "()[B");
         }
 
-        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, $1_ser_method);
+        jbyteArray $1_byte_arr = (jbyteArray) jenv->CallObjectMethod(obj, $1_set_method);
         jsize $1_bytes_size = jenv->GetArrayLength($1_byte_arr);
         jbyte* $1_bytes = (jbyte *)jenv->GetByteArrayElements($1_byte_arr, NULL);
         field_ptr->ParseFromArray($1_bytes, $1_bytes_size);

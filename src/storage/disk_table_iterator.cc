@@ -493,13 +493,13 @@ const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
     if (compress_type_ == type::CompressType::kSnappy) {
         tmp_buf_.clear();
         snappy::Uncompress(it_->value().data(), size, &tmp_buf_);
-        int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(tmp_buf_.size()));
-        memcpy(copyed_row_data, tmp_buf_.data(), tmp_buf_.size());
-        row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, tmp_buf_.size()));
+        int8_t* copied_row_data = reinterpret_cast<int8_t*>(malloc(tmp_buf_.size()));
+        memcpy(copied_row_data, tmp_buf_.data(), tmp_buf_.size());
+        row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copied_row_data, tmp_buf_.size()));
     } else {
-        int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(size));
-        memcpy(copyed_row_data, it_->value().data(), size);
-        row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, size));
+        int8_t* copied_row_data = reinterpret_cast<int8_t*>(malloc(size));
+        memcpy(copied_row_data, it_->value().data(), size);
+        row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copied_row_data, size));
     }
     return row_;
 }

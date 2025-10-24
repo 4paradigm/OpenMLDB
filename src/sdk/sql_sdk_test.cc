@@ -53,27 +53,27 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 }
 
 static bool IsRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
-        mode.find("performance-sensitive-unsupport") != std::string::npos ||
-        mode.find("request-unsupport") != std::string::npos || mode.find("standalone-unsupport") != std::string::npos) {
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupported") != std::string::npos ||
+        mode.find("performance-sensitive-unsupported") != std::string::npos ||
+        mode.find("request-unsupported") != std::string::npos || mode.find("standalone-unsupported") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
-        mode.find("performance-sensitive-unsupport") != std::string::npos ||
-        mode.find("batch-request-unsupport") != std::string::npos ||
-        mode.find("request-unsupport") != std::string::npos || mode.find("standalone-unsupport") != std::string::npos) {
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupported") != std::string::npos ||
+        mode.find("performance-sensitive-unsupported") != std::string::npos ||
+        mode.find("batch-request-unsupported") != std::string::npos ||
+        mode.find("request-unsupported") != std::string::npos || mode.find("standalone-unsupported") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
-        mode.find("batch-unsupport") != std::string::npos ||
-        mode.find("performance-sensitive-unsupport") != std::string::npos ||
-        mode.find("standalone-unsupport") != std::string::npos) {
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupported") != std::string::npos ||
+        mode.find("batch-unsupported") != std::string::npos ||
+        mode.find("performance-sensitive-unsupported") != std::string::npos ||
+        mode.find("standalone-unsupported") != std::string::npos) {
         return false;
     }
     return true;
@@ -82,7 +82,7 @@ TEST_P(SQLSDKTest, SqlSdkBatchTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     SQLRouterOptions sql_opt;
@@ -103,7 +103,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsRequestSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
@@ -114,7 +114,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchRequestTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
@@ -126,7 +126,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!IsBatchSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
@@ -136,8 +136,8 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupported" == sql_case.mode()) {
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
@@ -148,8 +148,8 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupported" == sql_case.mode()) {
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
@@ -174,7 +174,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkDeployTest) {
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     if (sql_case.batch_request().columns_.empty()) {
@@ -188,8 +188,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupported" == sql_case.mode()) {
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     if (sql_case.batch_request().columns_.empty()) {
@@ -204,8 +204,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureAsynTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
-        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupported" == sql_case.mode()) {
+        LOG(WARNING) << "Unsupported mode: " << sql_case.mode();
         return;
     }
     if (sql_case.batch_request().columns_.empty()) {
