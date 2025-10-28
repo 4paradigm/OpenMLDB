@@ -91,7 +91,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Test Function
 INSTANTIATE_TEST_SUITE_P(
-    SQLSDKTestCalculateFunction, SQLSDKQueryTest,
+    SQLSDKTestCalulateFunction, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/function/function/test_calculate.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestDateFunction, SQLSDKQueryTest,
