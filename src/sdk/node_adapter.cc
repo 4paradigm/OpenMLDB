@@ -272,27 +272,27 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
         }
     }
     if (replica_num <= 0) {
-        *status = {hybridse::common::kUnsupportedSql, "replicanum should be great than 0"};
+        *status = {hybridse::common::kUnsupportSql, "replicanum should be great than 0"};
         return false;
     }
     if (partition_num <= 0) {
-        *status = {hybridse::common::kUnsupportedSql, "partitionnum should be great than 0"};
+        *status = {hybridse::common::kUnsupportSql, "partitionnum should be great than 0"};
         return false;
     }
     if (storage_mode == hybridse::node::StorageMode::kUnknown) {
-        *status = {hybridse::common::kUnsupportedSql, "invalid storage mode"};
+        *status = {hybridse::common::kUnsupportSql, "invalid storage mode"};
         return false;
     }
     // deny create table when invalid configuration in standalone mode
     if (!is_cluster_mode) {
         if (replica_num != 1) {
             status->msg = "Fail to create table with the replica configuration in standalone mode";
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (!distribution_list.empty()) {
             status->msg = "Fail to create table with the distribution configuration in standalone mode";
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
     }
@@ -310,7 +310,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 ::openmldb::common::ColumnDesc* add_column_desc = table->add_column_desc();
                 if (column_names.find(add_column_desc->name()) != column_names.end()) {
                     status->msg = "COLUMN NAME " + column_def->GetColumnName() + " duplicate";
-                    status->code = hybridse::common::kUnsupportedSql;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
                 add_column_desc->set_name(column_def->GetColumnName());
@@ -319,7 +319,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                                                                       add_column_desc->mutable_schema());
                 if (!s.ok()) {
                     status->msg = s.ToString();
-                    status->code = hybridse::common::kUnsupportedSql;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
                 add_column_desc->set_data_type(add_column_desc->schema().type());
@@ -352,7 +352,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 index_name = PlanAPI::GenerateName("INDEX", table->column_key_size());
                 if (index_names.find(index_name) != index_names.end()) {
                     status->msg = "INDEX NAME " + index_name + " duplicate";
-                    status->code = hybridse::common::kUnsupportedSql;
+                    status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
                 ::openmldb::common::ColumnKey* index = table->add_column_key();
@@ -369,12 +369,12 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         }
                         if (!has_generate_index) {
                             status->msg = "can not found index col";
-                            status->code = hybridse::common::kUnsupportedSql;
+                            status->code = hybridse::common::kUnsupportSql;
                             return false;
                         }
                     } else {
                         status->msg = "INDEX KEY empty";
-                        status->code = hybridse::common::kUnsupportedSql;
+                        status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
                 }
@@ -390,7 +390,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             default: {
                 status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(column_desc->GetType()) +
                               " when CREATE TABLE";
-                status->code = hybridse::common::kUnsupportedSql;
+                status->code = hybridse::common::kUnsupportSql;
                 return false;
             }
         }
@@ -404,7 +404,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             if (idx == 0) {
                 cur_replica_num = partition_mata_nodes->GetSize();
             } else if (cur_replica_num != partition_mata_nodes->GetSize()) {
-                *status = {hybridse::common::kUnsupportedSql, "replica num is inconsistency"};
+                *status = {hybridse::common::kUnsupportSql, "replica num is inconsistency"};
                 return false;
             }
             std::set<std::string> endpoint_set;
@@ -415,7 +415,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         const std::string& ep = p_meta_node->GetEndpoint();
                         if (endpoint_set.count(ep) > 0) {
                             status->msg = "partition meta endpoint duplicate";
-                            status->code = hybridse::common::kUnsupportedSql;
+                            status->code = hybridse::common::kUnsupportSql;
                             return false;
                         }
                         endpoint_set.insert(ep);
@@ -428,7 +428,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         } else {
                             status->msg = "role_type " +
                                           hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) + " not support";
-                            status->code = hybridse::common::kUnsupportedSql;
+                            status->code = hybridse::common::kUnsupportSql;
                             return false;
                         }
                         break;
@@ -436,19 +436,19 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     default: {
                         status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType())
                                         + " when CREATE TABLE";
-                        status->code = hybridse::common::kUnsupportedSql;
+                        status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
                 }
             }
         }
         if (set_partition_num && table->partition_num() != distribution_list.size()) {
-            *status = {hybridse::common::kUnsupportedSql, "distribution_list size and partition_num is not match"};
+            *status = {hybridse::common::kUnsupportSql, "distribution_list size and partition_num is not match"};
             return false;
         }
         table->set_partition_num(distribution_list.size());
         if (set_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
-            *status = {hybridse::common::kUnsupportedSql, "replica in distribution_list and replica_num is not match"};
+            *status = {hybridse::common::kUnsupportSql, "replica in distribution_list and replica_num is not match"};
             return false;
         }
         table->set_replica_num(cur_replica_num);
@@ -483,7 +483,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         for (const auto& col : index->col_name()) {
             if (column_names.find(col) == column_names.end()) {
                 status->msg = "column " + col + " does not exist";
-                status->code = hybridse::common::kUnsupportedSql;
+                status->code = hybridse::common::kUnsupportSql;
                 return false;
             }
         }
@@ -495,7 +495,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         openmldb::type::TTLType type;
         if (!::openmldb::codec::SchemaCodec::TTLTypeParse(ttl_type, &type)) {
             status->msg = "ttl_type " + column_index->ttl_type() + " not support";
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         ttl_st->set_ttl_type(type);
@@ -505,7 +505,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     if (ttl_st->ttl_type() == openmldb::type::kAbsoluteTime) {
         if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
             status->msg = "abs ttl format error or set lat ttl";
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetAbsTTL() == -2) {
@@ -518,7 +518,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     } else if (ttl_st->ttl_type() == openmldb::type::kLatestTime) {
         if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
             status->msg = "lat ttl format error";
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetLatTTL() == -2) {
@@ -530,7 +530,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     } else {
         if (column_index->GetAbsTTL() == -1) {
             status->msg = "abs ttl format error for " + type::TTLType_Name(ttl_st->ttl_type());
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetAbsTTL() == -2) {
@@ -540,7 +540,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
         }
         if (column_index->GetLatTTL() == -1) {
             status->msg = "lat ttl format error for " + type::TTLType_Name(ttl_st->ttl_type());
-            status->code = hybridse::common::kUnsupportedSql;
+            status->code = hybridse::common::kUnsupportSql;
             return false;
         }
         if (column_index->GetLatTTL() == -2) {
@@ -555,7 +555,7 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
             auto it = column_names.find(column_index->GetTs());
             if (it == column_names.end()) {
                 status->msg = "TS NAME " + column_index->GetTs() + " not exists";
-                status->code = hybridse::common::kUnsupportedSql;
+                status->code = hybridse::common::kUnsupportSql;
                 return false;
             }
         }

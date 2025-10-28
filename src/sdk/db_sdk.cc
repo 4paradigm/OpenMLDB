@@ -487,9 +487,9 @@ std::vector<std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetTables
     if (it == table_to_tablets_.end()) {
         return tables;
     }
-    auto it = it->second.begin();
-    for (; it != it->second.end(); ++it) {
-        tables.push_back(it->second);
+    auto iit = it->second.begin();
+    for (; iit != it->second.end(); ++iit) {
+        tables.push_back(iit->second);
     }
     return tables;
 }
@@ -513,9 +513,9 @@ std::vector<std::string> DBSDK::GetTableNames(const std::string& db) {
     if (it == table_to_tablets_.end()) {
         return tableNames;
     }
-    auto it = it->second.begin();
-    for (; it != it->second.end(); ++it) {
-        tableNames.push_back(it->second->name());
+    auto iit = it->second.begin();
+    for (; iit != it->second.end(); ++iit) {
+        tableNames.push_back(iit->second->name());
     }
     return tableNames;
 }

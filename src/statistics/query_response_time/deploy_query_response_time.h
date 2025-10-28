@@ -61,9 +61,9 @@ class DeployResponseTimeRowReducer {
     inline std::shared_ptr<DeployResponseTimeRow> Find(const std::string& dp_name, TIME time) const {
         auto it = cache_.find(dp_name);
         if (it != cache_.end()) {
-            auto it = it->second.find(time);
-            if (it != it->second.end()) {
-                return it->second;
+            auto iit = it->second.find(time);
+            if (iit != it->second.end()) {
+                return iit->second;
             }
         }
         return {};
