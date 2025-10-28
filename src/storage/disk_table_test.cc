@@ -385,8 +385,8 @@ TEST_F(DiskTableTest, TraverseIterator) {
         for (int k = 0; k < 10; k++) {
             ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
             if (idx == 10 && k == 5) {
-                ASSERT_TRUE(table->Put(key, ts + k, "value9", 5));
-                ASSERT_TRUE(table->Put(key, ts + k, "value8", 5));
+                ASSERT_TRUE(table->Put(key, ts + k, "valu9", 5));
+                ASSERT_TRUE(table->Put(key, ts + k, "valu8", 5));
             }
         }
     }
@@ -440,7 +440,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     }
     ASSERT_EQ(90, count);
 
-    ASSERT_TRUE(table->Put("test98", 9548, "value8", 5));
+    ASSERT_TRUE(table->Put("test98", 9548, "valu8", 5));
     it->Seek("test98", 9547);
     count = 0;
     while (it->Valid()) {
@@ -455,7 +455,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     ASSERT_EQ(20, count);
     std::string val;
     ASSERT_TRUE(table->Get(0, "test98", 9548, val));
-    ASSERT_EQ("value8", val);
+    ASSERT_EQ("valu8", val);
     RemoveData(table_path);
 }
 
