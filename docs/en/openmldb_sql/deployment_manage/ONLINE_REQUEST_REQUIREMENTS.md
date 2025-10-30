@@ -108,5 +108,5 @@ desc t1;
   - table ref or simple table projection，e.g `t1` or `select id, val from t1`. The schema of main table and union source must be the same，and index optimized for columns referred by `PARTITION BY`, `ORDER BY` from union sources
   - **Since OpenMLDB 0.8.0**, simple projection over table last join，e.g `UNION (select * from t1 last join t2 ON ...)`. Index requirements：
     - `t1 last join t2`meet the requirements for LAST JOIN
-    - columns refered by `PARTITION BY`, `ORDER BY` must resolved to the left most table from last join, `t1` here.
+    - columns referred by `PARTITION BY`, `ORDER BY` must resolved to the left most table from last join, `t1` here.
 

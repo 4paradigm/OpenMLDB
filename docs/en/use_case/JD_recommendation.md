@@ -239,7 +239,7 @@ on out0.reqId_1 = out3.reqId_17
 INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 ```
 ```{note}
-Note that the cluster version `SELECT INTO` is a non-blocking task. You can use the command `SHOW JOBS` to view the running status of the task. Please wait for the task to run successfully (`state` to `FINISHED` status) before proceeding to the next step. It takes around 1.5 minites.
+Note that the cluster version `SELECT INTO` is a non-blocking task. You can use the command `SHOW JOBS` to view the running status of the task. Please wait for the task to run successfully (`state` to `FINISHED` status) before proceeding to the next step. It takes around 1.5 minutes.
 ```
 Since there is only one command, we can directly execute the sql script `sync_select_out.sql`:
 
@@ -325,7 +325,7 @@ Assuming that the model produced by the features designed in the previous model 
    ```bash
    /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
    ```
-2. Deploy the sql(see [Offline Feature Extracion](#offline-feature-extraction)) 
+2. Deploy the sql(see [Offline Feature Extraction](#offline-feature-extraction)) 
 ```sql
 -- OpenMLDB CLI
 USE JD_db;

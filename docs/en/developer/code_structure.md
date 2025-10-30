@@ -18,7 +18,7 @@ hybridse/
 │   ├── passes        // sql optimizer
 │   ├── plan          // logic execution plan generation
 │   ├── planv2        // the transformation from zetasql syntax tree to nodes
-│   ├── proto         // the difinition of protobuf
+│   ├── proto         // the definition of protobuf
 │   ├── sdk           
 │   ├── testing       
 │   ├── udf           // the registration and generation of udf and udaf
@@ -32,7 +32,7 @@ src/
 ├── apiserver      
 ├── base           // basic libraries catalogue
 ├── catalog        
-├── client         // the difinition and implementation of ns/tablet/taskmanager client interfaces 
+├── client         // the definition and implementation of ns/tablet/taskmanager client interfaces 
 ├── cmd            // CLI and OpenMLDB binary generation
 ├── codec          // decode and encode
 ├── datacollector  // online -> offline sync tool 

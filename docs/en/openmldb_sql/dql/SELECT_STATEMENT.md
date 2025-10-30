@@ -128,7 +128,7 @@ Even if the `scan_max_bytes_size` is set to unlimited, the `SELECT` statement ma
 
 ## SQL request query in raw SQL
 
-OpenMLDB >= 0.9.0 make it possible for a query statement to run as request mode without extra request row info passed in , for example from one of the parameter in JAVA SDK. Those request row informations are
+OpenMLDB >= 0.9.0 make it possible for a query statement to run as request mode without extra request row info passed in , for example from one of the parameter in JAVA SDK. Those request row information are
 instead allowed inside CONFIG clause, as `execute_mode` and `values`. When CONFIG `execute_mode = 'request'`，it firstly parse request row value in CONFIG `values`.
 CONFIG `values` supports two formats：
 1. Parentheses `()` surrounded expression list, representing single request row. For example `(1, "str", timestamp(1000) )` 

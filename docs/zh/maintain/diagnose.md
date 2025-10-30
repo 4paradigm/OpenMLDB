@@ -13,7 +13,7 @@ openmldb_tool # 注意下划线
 ```
 有以下几个子命令可选择执行：
 ```bash
-usage: openmldb_tool [-h] [--helpfull] {status,inspect,rpc,test,static-check} ...
+usage: openmldb_tool [-h] [--helpful] {status,inspect,rpc,test,static-check} ...
 ```
 
 注意`-c/--cluster`参数，格式为`<zk_cluster>/<zk_root_path>`，默认将访问`127.0.0.1:2181/openmldb`。如果是自行设置的OpenMLDB集群，请配置此参数。其他参数根据子命令不同而不同，可以使用`-h`查看，或查看各个子命令的详细文档。
@@ -59,7 +59,7 @@ Server:
 
 Table:
 {all healthy | unhealthy tables desc}
-[]Fatal/Warn table, {read/write may fail or still work}, {repair immediatly or not}
+[]Fatal/Warn table, {read/write may fail or still work}, {repair immediately or not}
 {partition detail: if leader healthy, if has unhealthy replicas, if offset too large, related ops}
 
     Make sure all servers online, and no ops for the table is running.
@@ -86,11 +86,11 @@ Table:
 `status`用于查看OpenMLDB集群的状态，包括服务组件的地址，角色，连接时间，状态等，等价于`SHOW COMPONENTS`。如果发现集群表现不正常，请先查询各服务组件的实时状态。
 ```
 openmldb_tool status -h
-usage: openmldb_tool status [-h] [--helpfull] [--diff]
+usage: openmldb_tool status [-h] [--helpful] [--diff]
 
 optional arguments:
   -h, --help  show this help message and exit
-  --helpfull  show full help message and exit
+  --helpful  show full help message and exit
   --diff      check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`
   --conn                check network connection of all servers
 ```
@@ -129,7 +129,7 @@ openmldb_tool status --diff -f=/work/openmldb/conf/hosts
 
 ```
 openmldb_tool inspect -h
-usage: openmldb_tool inspect [-h] [--helpfull] {online,offline,job} ...
+usage: openmldb_tool inspect [-h] [--helpful] {online,offline,job} ...
 
 positional arguments:
   {online,offline,job}
@@ -189,11 +189,11 @@ JOB 检查是更灵活的离线任务检查命令，可以按条件筛选job，�
 
 ```bash
 openmldb_tool static-check -h
-usage: openmldb_tool static-check [-h] [--helpfull] [--version] [--conf] [--log]
+usage: openmldb_tool static-check [-h] [--helpful] [--version] [--conf] [--log]
 
 optional arguments:
   -h, --help     show this help message and exit
-  --helpfull     show full help message and exit
+  --helpful     show full help message and exit
   --version, -V  check version
   --conf, -C     check conf
   --log, -L      check log
@@ -296,4 +296,4 @@ You should input json like this, ignore round brackets in the key and double quo
 
 ## 附加
 
-可使用`openmldb_tool --helpfull`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。
+可使用`openmldb_tool --helpful`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。

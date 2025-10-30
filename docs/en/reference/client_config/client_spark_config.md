@@ -26,4 +26,4 @@ Take this for example if we save the configruation file as `/work/openmldb/bin/s
 ./openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --spark_conf=/work/openmldb/bin/spark.conf
 ```
 
-If the configuration file does not exist or is incorrect, we will get errors when submiting the offline jobs.
+If the configuration file does not exist or is incorrect, we will get errors when submitting the offline jobs.

@@ -29,7 +29,7 @@
 | `<=`            | Less than or equal to        |
 | `!=`, `<>`      | Not equal to                 |
 | `=`, `==`       | Equal                        |
-| `BEWTEEN...AND` | Between left and right       |
+| `BETWEEN...AND` | Between left and right       |
 | `IN`            | In the collection            |
 | `LIKE`          | Comparison, case sensitive   |
 | `ILIKE`         | Comparison, case insensitive |

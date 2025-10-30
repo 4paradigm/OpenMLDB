@@ -77,8 +77,8 @@ SELECT 3.1415926f from t1;
 ## String Literals
 
 ```sql
-string_literal := '"' (charactor)* '"'
-								| "'" (charactor)* '"'
+string_literal := '"' (character)* '"'
+								| "'" (character)* '"'
 ```
 
 字符串是由单引号（`'`）或双引号（`"`）字符组成的一系列字节或字符。
@@ -95,7 +95,7 @@ SELECT 'hello' from t1;
 -- empty string with double quote
 SELECT "" from t1;
 
--- empty string with single qoute
+-- empty string with single quote
 SELECT '' from t1;
 
 

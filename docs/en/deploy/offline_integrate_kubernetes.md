@@ -34,7 +34,7 @@ You can specify Kubernetes configurations in the TaskManager configuration file.
 
 | Config | Type | Note |
 | ------ | ---- | ---- |
-| spark.master | String | Supports "kuberenetes" or "k8s" |
+| spark.master | String | Supports "kubernetes" or "k8s" |
 | offline.data.prefix | String | Recommended to use HDFS path |
 | k8s.hadoop.configmap | String | Default setting as "hadoop-config" |
 | k8s.mount.local.path | String | Default setting as "/tmp" |

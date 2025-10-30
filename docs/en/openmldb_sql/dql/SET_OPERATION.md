@@ -36,7 +36,7 @@ SELECT * FROM t2
 UNION ALL
 SELECT * FROM t3
 
--- differnt DISTINCT field
+-- different DISTINCT field
 SELECT * FROM t1
 UNION ALL
 (

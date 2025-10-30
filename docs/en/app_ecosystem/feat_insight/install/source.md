@@ -35,6 +35,6 @@ Deploy OpenMLDB cluster and generate configuration file, start the service with 
 
 ## IDE
 
-If you are developing with IDE, you can modify `application.yml` configuration file, and directly start `HtttpServer.java`.
+If you are developing with IDE, you can modify `application.yml` configuration file, and directly start `HttpServer.java`.
 
 ![](../images/ide_develop_featuer_platform.png)

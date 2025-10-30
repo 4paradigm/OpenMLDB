@@ -66,7 +66,7 @@ echo "create database rocketmq_test;" | /work/openmldb/bin/openmldb --zk_cluster
 
 ```bash
 Build RocketMQ and Start RocketMQ
-1. Downlaod RocketMQ
+1. Download RocketMQ
 $ wget https://dlcdn.apache.org/rocketmq/4.9.3/rocketmq-all-4.9.3-source-release.zip
 
 
@@ -75,7 +75,7 @@ If it has already been compiled, please directly execute Part 3 to start RocketM
 
 $ unzip rocketmq-all-4.9.3-source-release.zip  
 $ cd rocketmq-all-4.9.3/  
-$ mvn -Prelease-all -DskipTests clean install -U  
+$ mvn -Prerelease-all -DskipTests clean install -U  
 $ cd distribution/target/rocketmq-4.9.3/rocketmq-4.9.3
 
 
@@ -108,7 +108,7 @@ Build the project
 
 ```bash
 $ cd rocketmq-connect
-$ mvn -Prelease-connect -DskipTests clean install -U
+$ mvn -Prerelease-connect -DskipTests clean install -U
 ```
 
 Edit the configuration `connect-standalone.conf` , and the key configurations are as follows:
@@ -203,7 +203,7 @@ COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-Create and start RocketMQ conect mysql source connector, the examples is as follows:
+Create and start RocketMQ connect mysql source connector, the examples is as follows:
 
 ```bash
 curl -X POST -H "Content-Type: application/json" http://127.0.0.1:8082/connectors/jdbc-mysql-source-test

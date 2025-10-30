@@ -50,7 +50,7 @@
   </configuration>
   ```
 
-除了Hive连接配置，还需要在Hive中给TaskMananger的启动用户（OS用户和组）授予创建/读/写等权限，以及Hive表的HDFS路径的Read/Write/Execute权限。
+除了Hive连接配置，还需要在Hive中给TaskManager的启动用户（OS用户和组）授予创建/读/写等权限，以及Hive表的HDFS路径的Read/Write/Execute权限。
 
 如果权限不够，可能出现如下错误：
 

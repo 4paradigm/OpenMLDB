@@ -80,7 +80,7 @@ $ wget https://dlcdn.apache.org/rocketmq/4.9.3/rocketmq-all-4.9.3-source-release
 
 $ unzip rocketmq-all-4.9.3-source-release.zip  
 $ cd rocketmq-all-4.9.3/  
-$ mvn -Prelease-all -DskipTests clean install -U  
+$ mvn -Prerelease-all -DskipTests clean install -U  
 $ cd distribution/target/rocketmq-4.9.3/rocketmq-4.9.3
 
 
@@ -113,7 +113,7 @@ $ git clone git@github.com:apache/rocketmq-connect.git
 
 ```bash
 $ cd rocketmq-connect
-$ mvn -Prelease-connect -DskipTests clean install -U
+$ mvn -Prerelease-connect -DskipTests clean install -U
 ```
 
 修改配置`connect-standalone.conf` ，重点配置如下
@@ -206,7 +206,7 @@ COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-创建并启动 RocketMQ conect mysql source connector ，如下所示：
+创建并启动 RocketMQ connect mysql source connector ，如下所示：
 
 ```bash
 curl -X POST -H "Content-Type: application/json" http://127.0.0.1:8082/connectors/jdbc-mysql-source-test

@@ -17,7 +17,7 @@ SHOW COMPONENTS;
 
 
 ```{note}
-`SHOW COMPONETS` 目前仍有部分未完善的功能：
+`SHOW COMPONENTS` 目前仍有部分未完善的功能：
 - 不能展示 api server 信息
 - 只能展示单个 task manager master 的信息，不能展示其他 slave 节点
 - 单机版 nameserver 的 connect time 不准确

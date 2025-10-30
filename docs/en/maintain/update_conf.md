@@ -5,11 +5,11 @@ We'll use the normal mode(background) to restart the components. If you want to 
 ```
 
 ## Update Nameserver Configuration
-* Backup configuation
+* Backup configuration
     ```bash
     cp conf/nameserver.flags conf/nameserver.flags.bak
     ```
-* Update configuation
+* Update configuration
 * Restart the nameserver
     ```bash
     bash bin/start.sh restart nameserver
@@ -30,11 +30,11 @@ Here is the impact when update the configuration of tablet:
 * If the table is multi-replica, we will migrate the leader partitions in the tablet to be updating to other tablets, and migrate back after the upgrade. If there is write traffic during the update, there may be data loss.
 
 Steps for updating are as follows:
-* Backup configuation
+* Backup configuration
     ```bash
     cp conf/tablet.flags conf/tablet.flags.bak
     ```
-* Update configuation
+* Update configuration
 * `pre-upgrade`: to reduce the interruption to the online service before the restart (refer to [Operation Tool](./openmldb_ops.md))
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
@@ -67,21 +67,21 @@ After a tablet node is restarted, repeat the above steps for other tablets.
 After all tablets are restarted, resume write operations, and run the `showtablestatus` command to check whether the `Rows` number has increased.
 
 ## Update APIServer Configuration
-* Backup configuation
+* Backup configuration
     ```bash
     cp conf/apiserver.flags conf/apiserver.flags.bak
     ```
-* Update configuation
+* Update configuration
 * Restart the apiserver
     ```bash
     bash bin/start.sh restart apiserver
     ```
 ## Update TaskManager Configuration
-* Backup configuation
+* Backup configuration
     ```bash
     cp conf/taskmanager.properties conf/taskmanager.properties.bak
     ```
-* Update configuation
+* Update configuration
 * Restart the taskmanager
     ```bash
     bash bin/start.sh restart taskmanager

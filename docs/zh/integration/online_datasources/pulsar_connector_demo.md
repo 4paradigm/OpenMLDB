@@ -85,7 +85,7 @@ OpenMLDB服务已经使用了端口2181，所以此处我们为Pulsar重新设�
 ps axu|grep pulsar
 ```
 
-当你启动一个本地standalone集群，会自动创建'pulic/default' namesapce。这个namespace用于开发，参考[pulsar文档](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
+当你启动一个本地standalone集群，会自动创建'pulic/default' namespace。这个namespace用于开发，参考[pulsar文档](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
 
 **我们将在此namespace中创建sink**
 

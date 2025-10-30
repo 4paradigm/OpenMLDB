@@ -77,8 +77,8 @@ SELECT 3.1415926f from t1;
 ## String Literals
 
 ```sql
-string_literal := '"' (charactor)* '"'
-								| "'" (charactor)* '"'
+string_literal := '"' (character)* '"'
+								| "'" (character)* '"'
 ```
 
 A string is a sequence of bytes or characters consisting of single quote (`'`) or double quote (`"`) characters.
@@ -95,7 +95,7 @@ SELECT 'hello' from t1;
 -- empty string with double quote
 SELECT "" from t1;
 
--- empty string with single qoute
+-- empty string with single quote
 SELECT '' from t1;
 
 

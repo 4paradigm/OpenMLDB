@@ -34,7 +34,7 @@ TaskManager 配置文件中可以指定 Kubernetes 相关配置，相关配置�
 
 | Config | Type | Note |
 | ------ | ---- | ---- |
-| spark.master | String | 可支持"kuberenetes"或"k8s" |
+| spark.master | String | 可支持"kubernetes"或"k8s" |
 | offline.data.prefix | String | 建议使用 HDFS 路径 |
 | k8s.hadoop.configmap | String | 默认为"hadoop-config" |
 | k8s.mount.local.path | String | 默认为"/tmp" |

@@ -13,7 +13,7 @@ openmldb_tool # note the underscore
 ```
 The following subcommands can be used:
 ```bash
-usage: openmldb_tool [-h] [--helpfull] {status,inspect,rpc,test,static-check} ...
+usage: openmldb_tool [-h] [--helpful] {status,inspect,rpc,test,static-check} ...
 ```
 Note, for `-c/--cluster`, the format is`<zk_cluster>/<zk_root_path>`, by default is `127.0.0.1:2181/openmldb`. If a different OpenMLDB cluster is used, please specify this parameter. Other settings are different as respect to each sub-command, you can use `-h` to check the detailed documentation. 
 
@@ -57,7 +57,7 @@ Server:
 
 Table:
 {all healthy | unhealthy tables desc}
-[]Fatal/Warn table, {read/write may fail or still work}, {repair immediatly or not}
+[]Fatal/Warn table, {read/write may fail or still work}, {repair immediately or not}
 {partition detail: if leader healthy, if has unhealthy replicas, if offset too large, related ops}
 
     Make sure all servers online, and no ops for the table is running.
@@ -84,11 +84,11 @@ The `status` command is used to view the status of the OpenMLDB cluster, includi
 
 ```
 openmldb_tool status -h
-usage: openmldb_tool status [-h] [--helpfull] [--diff]
+usage: openmldb_tool status [-h] [--helpful] [--diff]
 
 optional arguments:
   -h, --help  show this help message and exit
-  --helpfull  show full help message and exit
+  --helpful  show full help message and exit
   --diff      check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`
   --conn                check network connection of all servers
 ```
@@ -125,7 +125,7 @@ If you want to check the cluster status, it is recommended to use the one-click 
 
 ```
 openmldb_tool inspect -h
-usage: openmldb_tool inspect [-h] [--helpfull] {online,offline,job} ...
+usage: openmldb_tool inspect [-h] [--helpful] {online,offline,job} ...
 
 positional arguments:
   {online,offline,job}
@@ -185,11 +185,11 @@ The `static-check` command performs a static check based on the cluster deployme
 
 ```bash
 openmldb_tool static-check -h
-usage: openmldb_tool static-check [-h] [--helpfull] [--version] [--conf] [--log]
+usage: openmldb_tool static-check [-h] [--helpful] [--version] [--conf] [--log]
 
 optional arguments:
   -h, --help     show this help message and exit
-  --helpfull     show full help message and exit
+  --helpful     show full help message and exit
   --version, -V  check version
   --conf, -C     check conf
   --log, -L      check log
@@ -291,4 +291,4 @@ You should input json like this, ignore round brackets in the key and double quo
 
 ## Additional Information
 
-You can use `openmldb_tool --helpfull` to view all configuration options. For example, `--sdk_log` can print SDK logs (zk, glog) for debugging purposes.
+You can use `openmldb_tool --helpful` to view all configuration options. For example, `--sdk_log` can print SDK logs (zk, glog) for debugging purposes.
