@@ -264,7 +264,7 @@ We can check the sink status in Pulsar:
 ```{note}
 "numReadFromPulsar": Pulsar sent 2 messages to the sink example.
 
-"numWritenToSink": The sink example wrote 2 messages to OpenMLDB.
+"numWrittenToSink": The sink example wrote 2 messages to OpenMLDB.
 ```
 
 #### Check in OpenMLDB

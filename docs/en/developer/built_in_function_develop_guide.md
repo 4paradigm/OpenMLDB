@@ -129,7 +129,7 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
 - Operator `new` operator or method `malloc` are forbidden in C++ built-in function implementation.
 - In C++ built-in aggregate functions, it is permissible to use the `new` or `malloc` functions to allocate memory during initialization. However, it is crucial to ensure that the allocated space is released when the `output` generates the final result.
 - Developers must call provided memory management APIs in order to archive space allocation for UDF output parameters:
-  - `hybridse::udf::v1::AllocManagedStringBuf(size)` to allocate space. OpenMLDB `ByteMemoryPool` will assign continous space to the function and will release it when safe.
+  - `hybridse::udf::v1::AllocManagedStringBuf(size)` to allocate space. OpenMLDB `ByteMemoryPool` will assign continuous space to the function and will release it when safe.
     - If allocated size < 0, allocation will fail. `AllocManagedStringBuf` return null pointer.
     - If allocated size exceed the MAX_ALLOC_SIZE which is 2048, the allocation will fail. `AllocManagedStringBuf` return null pointer.
   - `hybridse::udf::v1::AllocManagedArray(ArrayRef<T>*, uint64_t)`: allocate space for array types
@@ -346,9 +346,9 @@ RegisterExternal("substring")
             @endcode
 
             @param str
-            @param pos: define the begining of the substring.
+            @param pos: define the beginning of the substring.
 
-             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+             - If `pos` is positive, the beginning of the substring is `pos` characters from the start of string.
              - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
             @param len length of substring. If len is less than 1, the result is the empty string.
@@ -440,7 +440,7 @@ namespace hybridse {
 }
 ```
 
-Configure and register function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+Configure and register function into `DefaultUdfLibrary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
 ```c++
 # hybridse/src/udf/default_udf_library.cc
@@ -483,7 +483,7 @@ namespace hybridse {
 }
 ```
 
-Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Note that if the function needs to return through parameter, `return_by_arg(true)` needs to be configured.
+Configure and register the function into `DefaultUdfLibrary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc). Note that if the function needs to return through parameter, `return_by_arg(true)` needs to be configured.
 
 ```c++
 # hybridse/src/udf/default_udf_library.cc
@@ -531,7 +531,7 @@ namespace hybridse {
 } 
 ```
 
-Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+Configure and register the function into `DefaultUdfLibrary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
 ```c++
 # hybridse/src/udf/default_udf_library.cc
@@ -584,12 +584,12 @@ namespace hybridse {
 } 
 ```
 
-Configure and register the function into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+Configure and register the function into `DefaultUdfLibrary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
 ```c++
 # hybridse/src/udf/default_udf_library.cc
 RegisterExternal("my_func")
-        .args<Arg1, Nulable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
+        .args<Arg1, Nullable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
         .doc(R"(
             documenting my_func
         )");
@@ -614,7 +614,7 @@ namespace hybridse {
       int32_t month(codec::Timestamp *ts);
     } // namespace v1
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 Implement `month()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
@@ -633,12 +633,12 @@ namespace hybridse {
       int32_t month(codec::Timestamp *ts) { return month(ts->ts_); }
     } // namespace v1
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 #### Step 2: Register C++ Function to Default Library
 
-Configure and register `month()` into `DefaultUdfLibary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
+Configure and register `month()` into `DefaultUdfLibrary` in[hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc):
 
 ```c++
 namespace hybridse {
@@ -659,7 +659,7 @@ namespace udf {
           )");
   }
 } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 #### Step3: Function Unit Test
@@ -703,7 +703,7 @@ namespace hybridse {
       void bool_to_string(bool v, hybridse::codec::StringRef *output);
     } // namespace v1
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 Implement the `bool_to_string()` function in [hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc)：
@@ -728,7 +728,7 @@ namespace hybridse {
         }
     } // namespace v1
   } // namespace udf
- } // namepsace hybridse
+ } // namespace hybridse
 ```
 
 Notice that we used `AllocManagedStringBuf` to allocate memory from OpenMLDB Memory pool instead of using the `new` operator or the `malloc` api.
@@ -761,7 +761,7 @@ namespace hybridse {
               @since 0.1.0)");
     }
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 #### Step3: Function Unit Test

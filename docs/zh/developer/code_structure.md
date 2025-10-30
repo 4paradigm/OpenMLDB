@@ -41,7 +41,7 @@ src/
 ├── proto          // protobuf相关定义
 ├── replica        // 主从同步
 ├── rpc            // 封装brpc请求
-├── schema         // shema和索引解析生成
+├── schema         // schema和索引解析生成
 ├── sdk            // sdk相关
 ├── storage        // 存储引擎
 ├── tablet         // tablet中接口的实现

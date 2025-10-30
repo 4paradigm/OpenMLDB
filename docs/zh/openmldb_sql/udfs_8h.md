@@ -72,7 +72,7 @@ title: udfs/udfs.h
 | **[int64](/openmldb_sql/Files/udfs_8h.md#function-int64)**()| <br>Cast string expression to int64. |
 | **[is_null](/openmldb_sql/Files/udfs_8h.md#function-is-null)**()| <br>Check if input value is null, return bool. |
 | **[isnull](/openmldb_sql/Files/udfs_8h.md#function-isnull)**()| |
-| **[join](/openmldb_sql/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
+| **[join](/openmldb_sql/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimiter. Null values are skipped. |
 | **[json_array_length](/openmldb_sql/Files/udfs_8h.md#function-json-array-length)**()| <br>Returns the number of elements in the outermost JSON array. |
 | **[lag](/openmldb_sql/Files/udfs_8h.md#function-lag)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
 | **[last_day](/openmldb_sql/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
@@ -114,10 +114,10 @@ title: udfs/udfs.h
 | **[sin](/openmldb_sql/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
 | **[size](/openmldb_sql/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
 | **[smallint](/openmldb_sql/Files/udfs_8h.md#function-smallint)**()| |
-| **[split](/openmldb_sql/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
-| **[split_array](/openmldb_sql/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimeter. |
-| **[split_by_key](/openmldb_sql/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. |
-| **[split_by_value](/openmldb_sql/Files/udfs_8h.md#function-split-by-value)**()| <br>Split string by delimeter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. |
+| **[split](/openmldb_sql/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimiter. Null values are skipped. |
+| **[split_array](/openmldb_sql/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimiter. |
+| **[split_by_key](/openmldb_sql/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimiter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. |
+| **[split_by_value](/openmldb_sql/Files/udfs_8h.md#function-split-by-value)**()| <br>Split string by delimiter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. |
 | **[sqrt](/openmldb_sql/Files/udfs_8h.md#function-sqrt)**()| <br>Return square root of expr. |
 | **[std](/openmldb_sql/Files/udfs_8h.md#function-std)**()| |
 | **[stddev](/openmldb_sql/Files/udfs_8h.md#function-stddev)**()| <br>Compute sample standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / (n-1) )`|
@@ -158,9 +158,9 @@ title: udfs/udfs.h
 | **[variance](/openmldb_sql/Files/udfs_8h.md#function-variance)**()| |
 | **[week](/openmldb_sql/Files/udfs_8h.md#function-week)**()| |
 | **[weekofyear](/openmldb_sql/Files/udfs_8h.md#function-weekofyear)**()| <br>Return the week of year for a timestamp or date. |
-| **[window_split](/openmldb_sql/Files/udfs_8h.md#function-window-split)**()| <br>For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. |
-| **[window_split_by_key](/openmldb_sql/Files/udfs_8h.md#function-window-split-by-key)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
-| **[window_split_by_value](/openmldb_sql/Files/udfs_8h.md#function-window-split-by-value)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
+| **[window_split](/openmldb_sql/Files/udfs_8h.md#function-window-split)**()| <br>For each string value from specified column of window, split by delimiter and add segment to output list. Null values are skipped. |
+| **[window_split_by_key](/openmldb_sql/Files/udfs_8h.md#function-window-split-by-key)**()| <br>For each string value from specified column of window, split by delimiter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
+| **[window_split_by_value](/openmldb_sql/Files/udfs_8h.md#function-window-split-by-value)**()| <br>For each string value from specified column of window, split by delimiter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
 | **[year](/openmldb_sql/Files/udfs_8h.md#function-year)**()| <br>Return the year part of a timestamp or date. |
 
 
@@ -534,14 +534,14 @@ Compute average of values grouped by category key and output string. Each group 
 **Parameters**: 
 
   * **value** Specify value column to aggregate on. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | catagory   |
+| value  | category   |
 |  -------- | -------- |
 | 0  | x   |
 | 1  | y   |
@@ -552,7 +552,7 @@ Example:
 
 ```sql
 
-SELECT avg_cate(value, catagory) OVER w;
+SELECT avg_cate(value, category) OVER w;
 -- output "x:2,y:2"
 ```
 
@@ -579,14 +579,14 @@ Compute average of values matching specified condition grouped by category key a
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -980,14 +980,14 @@ Compute count of values grouped by category key and output string. Each group is
 **Parameters**: 
 
   * **value** Specify value column to aggregate on. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | catagory   |
+| value  | category   |
 |  -------- | -------- |
 | 0  | x   |
 | 1  | y   |
@@ -998,7 +998,7 @@ Example:
 
 ```sql
 
-SELECT count_cate(value, catagory) OVER w;
+SELECT count_cate(value, category) OVER w;
 -- output "x:3,y:2"
 ```
 
@@ -1025,14 +1025,14 @@ Compute count of values matching specified condition grouped by category key and
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -2169,12 +2169,12 @@ join()
 
 **Description**:
 
-For each string value from specified column of window, join by delimeter. Null values are skipped. 
+For each string value from specified column of window, join by delimiter. Null values are skipped. 
 
 **Parameters**: 
 
   * **input** List of string to join 
-  * **delimeter** Join delimeter
+  * **delimiter** Join delimiter
 
 
 **Since**:
@@ -2412,7 +2412,7 @@ Return list of elements in list1 but keys not in except_str.
 
 **Parameters**: 
 
-  * **list1** List of string, with each element as the format of `key:vaule`. 
+  * **list1** List of string, with each element as the format of `key:value`. 
   * **except_str** String joined list, as `key1,key2`, split by comma(,)
 
 
@@ -2446,7 +2446,7 @@ Return list of elements in list1 but values not in except_str.
 
 **Parameters**: 
 
-  * **list1** List of string, with each element as the format of `key:vaule`. 
+  * **list1** List of string, with each element as the format of `key:value`. 
   * **except_str** String joined list, as `value1,value2`, split by comma(,). Empty string filters list whose value is empty
 
 
@@ -2689,14 +2689,14 @@ Compute maximum of values grouped by category key and output string. Each group 
 **Parameters**: 
 
   * **value** Specify value column to aggregate on. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | catagory   |
+| value  | category   |
 |  -------- | -------- |
 | 0  | x   |
 | 1  | y   |
@@ -2707,7 +2707,7 @@ Example:
 
 ```sql
 
-SELECT max_cate(value, catagory) OVER w;
+SELECT max_cate(value, category) OVER w;
 -- output "x:4,y:3"
 ```
 
@@ -2734,14 +2734,14 @@ Compute maximum of values matching specified condition grouped by category key a
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -2939,14 +2939,14 @@ Compute minimum of values grouped by category key and output string. Each group 
 **Parameters**: 
 
   * **value** Specify value column to aggregate on. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | catagory   |
+| value  | category   |
 |  -------- | -------- |
 | 0  | x   |
 | 1  | y   |
@@ -2957,7 +2957,7 @@ Example:
 
 ```sql
 
-SELECT min_cate(value, catagory) OVER w;
+SELECT min_cate(value, category) OVER w;
 -- output "x:0,y:1"
 ```
 
@@ -2984,14 +2984,14 @@ Compute minimum of values matching specified condition grouped by category key a
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -3621,12 +3621,12 @@ split()
 
 **Description**:
 
-Split string to list by delimeter. Null values are skipped. 
+Split string to list by delimiter. Null values are skipped. 
 
 **Parameters**: 
 
   * **input** Input string 
-  * **delimeter** Delimeter of string
+  * **delimiter** Delimiter of string
 
 
 **Since**:
@@ -3655,7 +3655,7 @@ split_array()
 
 **Description**:
 
-Split string to array of string by delimeter. 
+Split string to array of string by delimiter. 
 
 **Since**:
 0.7.0
@@ -3680,13 +3680,13 @@ split_by_key()
 
 **Description**:
 
-Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. 
+Split string by delimiter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. 
 
 **Parameters**: 
 
   * **input** Input string 
-  * **delimeter** Delimeter of string 
-  * **kv_delimeter** Delimeter of kv pair
+  * **delimiter** Delimiter of string 
+  * **kv_delimiter** Delimiter of kv pair
 
 
 **Since**:
@@ -3715,13 +3715,13 @@ split_by_value()
 
 **Description**:
 
-Split string by delimeter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. 
+Split string by delimiter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. 
 
 **Parameters**: 
 
   * **input** Input string 
-  * **delimeter** Delimeter of string 
-  * **kv_delimeter** Delimeter of kv pair
+  * **delimiter** Delimiter of string 
+  * **kv_delimiter** Delimiter of kv pair
 
 
 **Since**:
@@ -3967,7 +3967,7 @@ Return a substring `len` characters long from string str, starting at position `
 **Parameters**: 
 
   * **str** 
-  * **pos** define the begining of the substring.
+  * **pos** define the beginning of the substring.
   * **len** length of substring. If len is less than 1, the result is the empty string.
 
 
@@ -3985,7 +3985,7 @@ select substr("hello world", 3, 6);
 
 
 
-* If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+* If `pos` is positive, the beginning of the substring is `pos` characters from the start of string.
 * If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
 
@@ -4046,14 +4046,14 @@ Compute sum of values grouped by category key and output string. Each group is r
 **Parameters**: 
 
   * **value** Specify value column to aggregate on. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | catagory   |
+| value  | category   |
 |  -------- | -------- |
 | 0  | x   |
 | 1  | y   |
@@ -4064,7 +4064,7 @@ Example:
 
 ```sql
 
-SELECT sum_cate(value, catagory) OVER w;
+SELECT sum_cate(value, category) OVER w;
 -- output "x:6,y:4"
 ```
 
@@ -4091,14 +4091,14 @@ Compute sum of values matching specified condition grouped by category key and o
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by.
+  * **category** Specify category column to group by.
 
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -4348,7 +4348,7 @@ Compute average of values matching specified condition grouped by category key. 
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4360,7 +4360,7 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -4373,7 +4373,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_key_avg_cate_where(value, condition, catagory, 2)
+    SELECT top_n_key_avg_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:5,y:3"
 ```
@@ -4408,7 +4408,7 @@ Compute count of values matching specified condition grouped by category key. Ou
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4420,7 +4420,7 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | true  | y   |
@@ -4433,7 +4433,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_key_count_cate_where(value, condition, catagory, 2)
+    SELECT top_n_key_count_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:2,y:2"
 ```
@@ -4468,7 +4468,7 @@ Compute maximum of values matching specified condition grouped by category key. 
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4480,7 +4480,7 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -4493,7 +4493,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_key_max_cate_where(value, condition, catagory, 2)
+    SELECT top_n_key_max_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:5,y:3"
 ```
@@ -4528,7 +4528,7 @@ Compute minimum of values matching specified condition grouped by category key. 
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4540,7 +4540,7 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | true  | y   |
@@ -4553,7 +4553,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_key_min_cate_where(value, condition, catagory, 2)
+    SELECT top_n_key_min_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:5,y:1"
 ```
@@ -4588,7 +4588,7 @@ Ratios (cond match cnt / total cnt) for groups.
 
   * **value** Specify value column to aggregate on. 
   * **condition** Ratio filter condition . 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Top N.
 
 
@@ -4596,13 +4596,13 @@ Ratios (cond match cnt / total cnt) for groups.
 0.8.1
 
 
-For each group, ratio value is `value` expr count matches condtion divide total rows count. NULL groups or NULL values are never take into count. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+For each group, ratio value is `value` expr count matches condition divide total rows count. NULL groups or NULL values are never take into count. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 2  | true  | x   |
@@ -4615,7 +4615,7 @@ Example:
 
 ```sql
 
-SELECT top_n_key_ratio_cate_where(value, condition, catagory, 2) from t;
+SELECT top_n_key_ratio_cate_where(value, condition, category, 2) from t;
 -- output "z:1.000000,y:0.500000"
 ```
 
@@ -4649,7 +4649,7 @@ Compute sum of values matching specified condition grouped by category key. Outp
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4661,7 +4661,7 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | true  | y   |
@@ -4674,7 +4674,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_key_sum_cate_where(value, condition, catagory, 2)
+    SELECT top_n_key_sum_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:11,y:4"
 ```
@@ -4709,7 +4709,7 @@ Compute average of values matching specified condition grouped by category key. 
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4721,7 +4721,7 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -4734,7 +4734,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_value_avg_cate_where(value, condition, catagory, 2)
+    SELECT top_n_value_avg_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:5,x:4"
 ```
@@ -4769,7 +4769,7 @@ Compute count of values matching specified condition grouped by category key. Ou
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Top N.
 
 
@@ -4781,7 +4781,7 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | true  | y   |
@@ -4794,7 +4794,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_value_count_cate_where(value, condition, catagory, 2)
+    SELECT top_n_value_count_cate_where(value, condition, category, 2)
 OVER w;
     -- output "x:3,y:2"
 ```
@@ -4829,7 +4829,7 @@ Compute maximum of values matching specified condition grouped by category key. 
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch Top n.
 
 
@@ -4841,7 +4841,7 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | false  | y   |
@@ -4854,7 +4854,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_value_max_cate_where(value, condition, catagory, 2)
+    SELECT top_n_value_max_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:5,x:4"
 ```
@@ -4889,7 +4889,7 @@ Compute minimum of values matching specified condition grouped by category key. 
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Fetch top n keys.
 
 
@@ -4901,7 +4901,7 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | true  | y   |
@@ -4914,7 +4914,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_value_min_cate_where(value, condition, catagory, 2)
+    SELECT top_n_value_min_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:5,x:2"
 ```
@@ -4949,7 +4949,7 @@ Ratios (cond match cnt / total cnt) for groups.
 
   * **value** Specify value column to aggregate on. 
   * **condition** Ratio filter condition . 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Top N.
 
 
@@ -4957,13 +4957,13 @@ Ratios (cond match cnt / total cnt) for groups.
 0.8.1
 
 
-For each group, ratio value is `value` expr count matches condtion divide total rows count. NULL groups or NULL values are never take into count. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+For each group, ratio value is `value` expr count matches condition divide total rows count. NULL groups or NULL values are never take into count. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
 
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 2  | true  | x   |
@@ -4976,7 +4976,7 @@ Example:
 
 ```sql
 
-SELECT top_n_value_ratio_cate_where(value, condition, catagory, 2) from t;
+SELECT top_n_value_ratio_cate_where(value, condition, category, 2) from t;
 -- output "z:1.000000,x:1.000000"
 ```
 
@@ -5010,7 +5010,7 @@ Compute sum of values matching specified condition grouped by category key. Outp
 
   * **value** Specify value column to aggregate on. 
   * **condition** Specify condition column. 
-  * **catagory** Specify catagory column to group by. 
+  * **category** Specify category column to group by. 
   * **n** Top N.
 
 
@@ -5022,7 +5022,7 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value  | condition  | category   |
 |  -------- | -------- | -------- |
 | 0  | true  | x   |
 | 1  | true  | y   |
@@ -5035,7 +5035,7 @@ Example:
 
 ```sql
 
-    SELECT top_n_value_sum_cate_where(value, condition, catagory, 2)
+    SELECT top_n_value_sum_cate_where(value, condition, category, 2)
 OVER w;
     -- output "z:11,x:4"
 ```
@@ -5365,7 +5365,7 @@ window_split()
 
 **Description**:
 
-For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. 
+For each string value from specified column of window, split by delimiter and add segment to output list. Null values are skipped. 
 
 **Since**:
 0.6.5
@@ -5384,7 +5384,7 @@ window_split_by_key()
 
 **Description**:
 
-For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. 
+For each string value from specified column of window, split by delimiter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. 
 
 **Since**:
 0.6.5
@@ -5403,7 +5403,7 @@ window_split_by_value()
 
 **Description**:
 
-For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. 
+For each string value from specified column of window, split by delimiter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. 
 
 **Since**:
 0.6.5

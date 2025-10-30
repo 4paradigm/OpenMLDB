@@ -346,9 +346,9 @@ RegisterExternal("substring")
             @endcode
 
             @param str
-            @param pos: define the begining of the substring.
+            @param pos: define the beginning of the substring.
 
-             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+             - If `pos` is positive, the beginning of the substring is `pos` characters from the start of string.
              - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
             @param len length of substring. If len is less than 1, the result is the empty string.
@@ -589,7 +589,7 @@ namespace hybridse {
 ```c++
 # hybridse/src/udf/default_udf_library.cc
 RegisterExternal("my_func")
-        .args<Arg1, Nulable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
+        .args<Arg1, Nullable<Arg2>, ...>(static_cast<R (*)(Arg1, Arg2, bool, ...)>(v1::func))()
         .doc(R"(
             documenting my_func
         )");
@@ -614,7 +614,7 @@ namespace hybridse {
       int32_t month(Timestamp *ts);
     } // namespace v1
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc) 中实现`month()`函数:
@@ -633,7 +633,7 @@ namespace hybridse {
       int32_t month(Timestamp *ts) { return month(ts->ts_); }
     } // namespace v1
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 ##### **step 2: 配置函数，并注册到默认函数库中**
@@ -659,7 +659,7 @@ namespace udf {
           )");
   }
 } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 ##### **step 3: 函数单元测试**
@@ -701,7 +701,7 @@ namespace hybridse {
       void bool_to_string(bool v, StringRef *output);
     } // namespace v1
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 在[hybridse/src/udf/udf.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udf.cc) 中实现**bool_to_string()** 函数:
@@ -726,7 +726,7 @@ namespace hybridse {
         }
     } // namespace v1
   } // namespace udf
- } // namepsace hybridse
+ } // namespace hybridse
 ```
 
 请注意，我们使用`AllocManagedStringBuf`向OpenMLDB的内存池申请空间，而不使用`new`操作符或者`malloc`函数。
@@ -759,7 +759,7 @@ namespace hybridse {
               @since 0.1.0)");
     }
   } // namespace udf
-} // namepsace hybridse
+} // namespace hybridse
 ```
 
 ##### **step 3: 函数单元测试**

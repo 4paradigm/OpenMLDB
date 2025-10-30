@@ -34,6 +34,6 @@ mvn clean package
 
 ## 使用 IDE 开发
 
-如果使用 IDE 开发，修改 `application.yml` 配置文件，找到 `HtttpServer.java` 类直接启动即可。
+如果使用 IDE 开发，修改 `application.yml` 配置文件，找到 `HttpServer.java` 类直接启动即可。
 
 ![](../images/ide_develop_featuer_platform.png)

@@ -73,7 +73,7 @@ spark.default.conf=spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.Spar
 24/01/30 09:01:06 INFO ObjectStore: ObjectStore, initialize called
 24/01/30 09:01:06 INFO Persistence: Property hive.metastore.integral.jdo.pushdown unknown - will be ignored
 24/01/30 09:01:06 INFO Persistence: Property datanucleus.cache.level2 unknown - will be ignored
-24/01/30 09:01:07 INFO ObjectStore: Setting MetaStore object pin classes with hive.metastore.cache.pinobjtypes="Table,StorageDescriptor,SerDeInfo,Partition,Database,Type,FieldSchema,Order"
+24/01/30 09:01:07 INFO ObjectStore: Setting MetaStore object pin classes with hive.metastore.cache.pinobjtypes="Table,StorageDescriptor,SetDeInfo,Partition,Database,Type,FieldSchema,Order"
 24/01/30 09:01:07 INFO MetaStoreDirectSql: Using direct SQL, underlying DB is POSTGRES
 24/01/30 09:01:07 INFO ObjectStore: Initialized ObjectStore
 24/01/30 09:01:08 INFO HiveMetaStore: Added admin role in metastore
