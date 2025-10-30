@@ -597,8 +597,8 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         for (int k = 0; k < 5; k++) {
             ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
             if (idx == 10 && k == 2) {
-                ASSERT_TRUE(table->Put(key, ts + k, "valu9", 5));
-                ASSERT_TRUE(table->Put(key, ts + k, "valu8", 5));
+                ASSERT_TRUE(table->Put(key, ts + k, "value9", 5));
+                ASSERT_TRUE(table->Put(key, ts + k, "value8", 5));
             }
         }
     }

@@ -131,7 +131,7 @@ class ZkClient {
         return connected_;
     }
 
-    inline bool IsRegisted() { return registed_.load(std::memory_order_relaxed); }
+    inline bool IsRegistered() { return registered_.load(std::memory_order_relaxed); }
 
     inline uint64_t GetSessionTerm() { return session_term_.load(std::memory_order_relaxed); }
 
@@ -172,7 +172,7 @@ class ZkClient {
 
     struct String_vector data_;
     bool connected_;
-    std::atomic<bool> registed_;
+    std::atomic<bool> registered_;
     std::map<std::string, NodesChangedCallback> children_callbacks_;
     std::map<std::string, ItemChangedCallback> item_callbacks_;
     char buffer_[ZK_MAX_BUFFER_SIZE];

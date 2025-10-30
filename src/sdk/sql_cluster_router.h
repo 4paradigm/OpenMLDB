@@ -379,7 +379,7 @@ class SQLClusterRouter : public SQLRouter {
     hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
                                        const hybridse::node::ExprNode* condition);
 
-    hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
+    hybridse::sdk::Status SendDeleteRequest(const std::shared_ptr<nameserver::TableInfo>& table_info,
                                            const DeleteOption& option);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,

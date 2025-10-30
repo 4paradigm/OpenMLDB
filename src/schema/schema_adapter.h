@@ -76,7 +76,7 @@ class SchemaAdapter {
 
     // table column definition to SQL type.
     //
-    // NOTE NOT ALL fields from table column are convertable to SQL type, be aware the difference between
+    // NOTE NOT ALL fields from table column are convertible to SQL type, be aware the difference between
     // 'table_column_definition' and 'type' from parser.
     // For example common::ColumnDesc::default_value does not have corresponding field in hybridse::type::ColumnDef.
     static absl::Status ConvertColumn(const openmldb::common::ColumnDesc& column, hybridse::type::ColumnDef* sql_column)

@@ -91,7 +91,7 @@
  *
  * DSR (Device Status Report)
  *    Sequence: ESC [ 6 n
- *    Effect: reports the current cusor position as ESC [ n ; m R
+ *    Effect: reports the current cursor position as ESC [ n ; m R
  *            where n is the row and m is the column
  *
  * When multi line mode is enabled, we also use an additional escape
@@ -562,7 +562,7 @@ static void refreshMultiLine(struct linenoiseState *l) {
     int rows = (plen + l->len + l->cols - 1) / l->cols; /* rows used by current buf. */
     int rpos = (plen + l->oldpos + l->cols) / l->cols;  /* cursor relative row. */
     int rpos2;                                          /* rpos after refresh. */
-    int col;                                            /* colum position, zero-based. */
+    int col;                                            /* column position, zero-based. */
     int old_rows = l->maxrows;
     int fd = l->ofd, j;
     struct abuf ab;
@@ -756,7 +756,7 @@ void linenoiseEditBackspace(struct linenoiseState *l) {
     }
 }
 
-/* Delete the previosu word, maintaining the cursor at the start of the
+/* Delete the previous word, maintaining the cursor at the start of the
  * current word. */
 void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
     size_t old_pos = l->pos;

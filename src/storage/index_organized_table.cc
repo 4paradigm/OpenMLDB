@@ -334,7 +334,7 @@ absl::Status IndexOrganizedTable::Put(uint64_t time, const std::string& value, c
     if (ts_value_map.empty()) {
         return absl::InvalidArgumentError(absl::StrCat(id_, ".", pid_, ": empty ts value map"));
     }
-    // it's ok to have no clustered/covering put or no secondary put, put will be applyed on other pid
+    // it's ok to have no clustered/covering put or no secondary put, put will be applied on other pid
     // but if no clustered/covering put and no secondary put, it's invalid, check it in put-loop
     DataBlock* cblock = nullptr;
     DataBlock* sblock = nullptr;

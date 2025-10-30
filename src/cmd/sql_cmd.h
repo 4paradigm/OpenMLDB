@@ -80,7 +80,7 @@ const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // N
 ::openmldb::sdk::DBSDK* cs = nullptr;
 ::openmldb::sdk::SQLClusterRouter* sr = nullptr;
 
-// strip any whitespace characters begining of the last unfinished statement from `input` (string after last semicolon)
+// strip any whitespace characters beginning of the last unfinished statement from `input` (string after last semicolon)
 // final SQL strings are appended into `output`
 //
 // this help handle SQL strings that has space trailing but do not expected to be a statement after semicolon
@@ -255,12 +255,12 @@ void Shell() {
         ns_endpoint = ns_client->GetEndpoint();
     }
     std::string display_prefix = ns_endpoint + "/" + sr->GetDatabase() + "> ";
-    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_prefix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {
         std::string buffer;
-        char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+        char* line = ::openmldb::base::linenoise(multi_line ? multi_line_prefix.c_str() : display_prefix.c_str());
         if (line == nullptr) {
             return;
         }
@@ -283,7 +283,7 @@ void Shell() {
             HandleSQL(sql);
             multi_line = false;
             display_prefix = ns_endpoint + "/" + sr->GetDatabase() + "> ";
-            multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+            multi_line_prefix = std::string(display_prefix.length() - 3, ' ') + "-> ";
             sql.clear();
         } else {
             sql.append("\n");

@@ -646,7 +646,7 @@ void HandleNSSwitchMode(const std::vector<std::string>& parts, ::openmldb::clien
         ok = client->SwitchMode(::openmldb::nameserver::kLEADER, msg);
     }
     if (!ok) {
-        std::cout << "Fail to swith mode. error msg: " << msg << std::endl;
+        std::cout << "Fail to switch mode. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "switchmode ok" << std::endl;
@@ -1682,7 +1682,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
-        std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx "
+        std::cout << "count format error! eg. count tid=xxx pid=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]"
                   << std::endl;
         return;
@@ -2327,7 +2327,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
         printf("info - show information of the table\n");
         printf("addrepcluster - add remote replica cluster\n");
         printf("showrepcluster - show remote replica cluster\n");
-        printf("removerepcluster - remove remote replica cluste \n");
+        printf("removerepcluster - remove remote replica cluster \n");
         printf("switchmode - switch cluster mode\n");
         printf("synctable - synctable from leader cluster to replica cluster\n");
         printf("deleteindx - delete index of specified table\n");
@@ -2339,7 +2339,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf("usage: create table_meta_file_path\n");
             printf(
                 "usage: create table_name ttl partition_num replica_num "
-                "[colum_name1:type:index colum_name2:type ...]\n");
+                "[column_name1:type:index column_name2:type ...]\n");
             printf("example: create ./table_meta.txt\n");
             printf("example: create table1 144000 8 3\n");
             printf("example: create table2 latest:10 8 3\n");
@@ -2587,7 +2587,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::openmldb::clien
             printf("usage: dropdb database_name\n");
             printf("example: dropdb db1");
         } else {
-            printf("unsupport cmd %s\n", parts[1].c_str());
+            printf("unsupported cmd %s\n", parts[1].c_str());
         }
     } else {
         printf("help format error!\n");
@@ -3121,7 +3121,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::openmldb::client::
             printf("ex: setttl 2 0 latest 10\n");
             printf("ex: setttl 3 0 latest 10 ts1\n");
         } else {
-            printf("unsupport cmd %s\n", parts[1].c_str());
+            printf("unsupported cmd %s\n", parts[1].c_str());
         }
     } else {
         printf("help format error!\n");
@@ -3460,7 +3460,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("tid", parts, "=", parameter_map)) {
-        std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx "
+        std::cout << "count format error! eg. count tid=xxx pid=xxx key=xxx "
                      "index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]"
                   << std::endl;
         return;
@@ -3758,13 +3758,13 @@ void StartNsClient() {
         return;
     }
     std::string display_prefix = endpoint + " " + client.GetDb() + "> ";
-    std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+    std::string multi_line_prefix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {
         std::string buffer;
         display_prefix = endpoint + " " + client.GetDb() + "> ";
-        multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
+        multi_line_prefix = std::string(display_prefix.length() - 3, ' ') + "-> ";
         if (!FLAGS_cmd.empty()) {
             buffer = FLAGS_cmd;
             if (!FLAGS_database.empty()) {
@@ -3772,7 +3772,7 @@ void StartNsClient() {
                 client.Use(FLAGS_database, error);
             }
         } else {
-            char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+            char* line = ::openmldb::base::linenoise(multi_line ? multi_line_prefix.c_str() : display_prefix.c_str());
             if (line == NULL) {
                 return;
             }

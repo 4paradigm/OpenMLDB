@@ -230,8 +230,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     // different default value for cluster and standalone mode
     int replica_num = 1;
     int partition_num = 1;
-    bool setted_replica_num = false;
-    bool setted_partition_num = false;
+    bool set_replica_num = false;
+    bool set_partition_num = false;
     if (is_cluster_mode) {
         replica_num = default_replica_num;
         partition_num = FLAGS_partition_num;
@@ -242,13 +242,13 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             switch (table_option->GetType()) {
                 case hybridse::node::kReplicaNum: {
                     replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
-                    setted_replica_num = true;
+                    set_replica_num = true;
                     break;
                 }
                 case hybridse::node::kPartitionNum: {
                     partition_num =
                         dynamic_cast<hybridse::node::PartitionNumNode*>(table_option)->GetPartitionNum();
-                    setted_partition_num = true;
+                    set_partition_num = true;
                     break;
                 }
                 case hybridse::node::kStorageMode: {
@@ -442,12 +442,12 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
             }
         }
-        if (setted_partition_num && table->partition_num() != distribution_list.size()) {
+        if (set_partition_num && table->partition_num() != distribution_list.size()) {
             *status = {hybridse::common::kUnsupportSql, "distribution_list size and partition_num is not match"};
             return false;
         }
         table->set_partition_num(distribution_list.size());
-        if (setted_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
+        if (set_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
             *status = {hybridse::common::kUnsupportSql, "replica in distribution_list and replica_num is not match"};
             return false;
         }
@@ -768,7 +768,7 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
         }
         default:
             return {::hybridse::common::StatusCode::kCmdError,
-                "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+                "unsupported operator type " + hybridse::node::ExprOpTypeName(op_type)};
     }
     return {};
 }

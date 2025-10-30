@@ -39,7 +39,7 @@ enum DataType {
 }
 
 enum IndexType {
-    kUnique = 1; // uinque index
+    kUnique = 1; // unique index
     kNoUnique = 2;
     kPrimaryKey = 3; 
     kAutoGen = 4;  // auto gen primary key
@@ -71,7 +71,7 @@ enum StartupMode {
 }
 
 enum ProcedureType {
-    kUnknow = -1;
+    kUnknown = -1;
     kReqProcedure = 0;
     kReqDeployment = 1;
 }

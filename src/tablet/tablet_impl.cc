@@ -2051,10 +2051,10 @@ void TabletImpl::ProcessBatchRequestQuery(bool is_sub, RpcController* ctrl,
     // fill output data
     size_t output_col_num = session.GetSchema().size();
     auto& output_common_indices = batch_request_info.output_common_column_indices;
-    bool has_common_and_uncomon_slice =
+    bool has_common_and_uncommon_slice =
         !request->has_task_id() && !output_common_indices.empty() && output_common_indices.size() < output_col_num;
 
-    if (has_common_and_uncomon_slice && !output_rows.empty()) {
+    if (has_common_and_uncommon_slice && !output_rows.empty()) {
         const auto& first_row = output_rows[0];
         if (first_row.GetRowPtrCnt() != 2) {
             response->set_msg("illegal row ptrs: expect 2");
@@ -2070,7 +2070,7 @@ void TabletImpl::ProcessBatchRequestQuery(bool is_sub, RpcController* ctrl,
     }
     response->set_non_common_slices(1);
     for (auto& output_row : output_rows) {
-        if (has_common_and_uncomon_slice) {
+        if (has_common_and_uncommon_slice) {
             if (output_row.GetRowPtrCnt() != 2) {
                 response->set_msg("illegal row ptrs: expect 2");
                 response->set_code(::openmldb::base::kSQLRunError);
@@ -3056,7 +3056,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller, const ::openmldb::api:
                       "tid[%u] pid[%u]",
                       request->tid(), request->pid());
             } else if (table->GetTableStat() != ::openmldb::storage::kNormal) {
-                PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", table->GetTableStat(),
+                PDLOG(WARNING, "table status is [%u], can't pause. tid[%u] pid[%u]", table->GetTableStat(),
                       request->tid(), request->pid());
                 response->set_code(::openmldb::base::ReturnCode::kTableStatusIsNotKnormal);
                 response->set_msg("table status is not kNormal");
@@ -3106,7 +3106,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller, const ::openmldb::ap
                       request->tid(), request->pid());
 
             } else if (table->GetTableStat() != ::openmldb::storage::kSnapshotPaused) {
-                PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", table->GetTableStat(),
+                PDLOG(WARNING, "table status is [%u], can't recover. tid[%u] pid[%u]", table->GetTableStat(),
                       request->tid(), request->pid());
                 response->set_code(::openmldb::base::ReturnCode::kTableStatusIsNotKsnapshotpaused);
                 response->set_msg("table status is not kSnapshotPaused");
@@ -4489,10 +4489,10 @@ void TabletImpl::CheckZkClient() {
             if (zk_client_->Reconnect() && zk_client_->Register()) {
                 PDLOG(INFO, "reconnect zk ok");
             }
-        } else if (!zk_client_->IsRegisted()) {
-            PDLOG(WARNING, "registe zk");
+        } else if (!zk_client_->IsRegistered()) {
+            PDLOG(WARNING, "register zk");
             if (zk_client_->Register()) {
-                PDLOG(INFO, "registe zk ok");
+                PDLOG(INFO, "register zk ok");
             }
         }
         trivial_task_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
@@ -4576,9 +4576,9 @@ void TabletImpl::RefreshTableInfo() {
         LOG(WARNING) << "value is not integer";
     }
     std::string db_table_data_path = zk_path_ + "/table/db_table_data";
-    std::vector<std::string> table_datas;
+    std::vector<std::string> table_data;
     if (zk_client_->IsExistNode(db_table_data_path) == 0) {
-        bool ok = zk_client_->GetChildren(db_table_data_path, table_datas);
+        bool ok = zk_client_->GetChildren(db_table_data_path, table_data);
         if (!ok) {
             LOG(WARNING) << "fail to get table list with path " << db_table_data_path;
             return;
@@ -4587,7 +4587,7 @@ void TabletImpl::RefreshTableInfo() {
         LOG(INFO) << "no tables in db";
     }
     std::vector<::openmldb::nameserver::TableInfo> table_info_vec;
-    for (const auto& node : table_datas) {
+    for (const auto& node : table_data) {
         std::string value;
         if (!zk_client_->GetNodeValue(db_table_data_path + "/" + node, value)) {
             LOG(WARNING) << "fail to get table data. node: " << node;
@@ -4601,9 +4601,9 @@ void TabletImpl::RefreshTableInfo() {
         table_info_vec.push_back(std::move(table_info));
     }
     // procedure part
-    std::vector<std::string> sp_datas;
+    std::vector<std::string> sp_data;
     if (zk_client_->IsExistNode(sp_root_path_) == 0) {
-        bool ok = zk_client_->GetChildren(sp_root_path_, sp_datas);
+        bool ok = zk_client_->GetChildren(sp_root_path_, sp_data);
         if (!ok) {
             LOG(WARNING) << "fail to get procedure list with path " << sp_root_path_;
             return;
@@ -4612,7 +4612,7 @@ void TabletImpl::RefreshTableInfo() {
         DLOG(INFO) << "no procedures in db";
     }
     openmldb::catalog::Procedures db_sp_map;
-    for (const auto& node : sp_datas) {
+    for (const auto& node : sp_data) {
         if (node.empty()) continue;
         std::string value;
         bool ok = zk_client_->GetNodeValue(sp_root_path_ + "/" + node, value);

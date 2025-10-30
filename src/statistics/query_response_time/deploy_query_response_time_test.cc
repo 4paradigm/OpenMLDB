@@ -167,7 +167,7 @@ TEST_F(DeployTimeCollectorTest, MultiDeployThreadSafe) {
     ExpectRowsEq(helper_, deploy3, ts3, rs3.value());
 }
 
-// test wirte & read concurrently won't miss up counters
+// test write & read concurrently won't miss up counters
 TEST_F(DeployTimeCollectorTest, ReadWriteSafe) {
     DeployQueryTimeCollector col;
     std::string default_dp = "default_dp";

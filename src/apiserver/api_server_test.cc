@@ -612,7 +612,7 @@ TEST_F(APIServerTest, validPut) {
         JsonReader reader(cntl.response_attachment().to_string().c_str());
         reader >> resp;
         ASSERT_EQ(-1, resp.code) << resp.msg;
-        ASSERT_STREQ("convertion failed on col field4[7] with value 2021-0 4-27", resp.msg.c_str());
+        ASSERT_STREQ("conversion failed on col field4[7] with value 2021-0 4-27", resp.msg.c_str());
     }
 
     // valid data
@@ -1164,7 +1164,7 @@ TEST_F(APIServerTest, getDBs) {
     {
         hybridse::sdk::Status status;
         for (auto& db : test_dbs) {
-            // empty db can be droped
+            // empty db can be dropped
             env->cluster_remote->DropDB(db, &status);
             ASSERT_TRUE(env->cluster_remote->CreateDB(db, &status));
         }

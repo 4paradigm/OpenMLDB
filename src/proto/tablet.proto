@@ -706,7 +706,7 @@ message QueryResponse {
   *      to find each row's start offset in attachment buffer. Multiple slices in
   *      row are stored consecutively also, with slice size encoded just in slice data.
   *
-  *   (2) If non-trival common columns exist
+  *   (2) If non-trivial common columns exist
   *   - `row_sizes` store N+1 integers, the first is the total size of common row part,
         the next N is total size of each non-common row part from batch.
   *   - `common_slices` represent common row's slices num.

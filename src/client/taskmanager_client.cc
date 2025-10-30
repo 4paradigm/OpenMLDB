@@ -30,7 +30,7 @@ namespace openmldb::client {
 
     auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
                                     job_timeout, 1);
-    // if ok, cntl won't failed, only check repsonse
+    // if ok, cntl won't failed, only check response
     if (st.OK()) {
         if (response.code() == 0) {
             for (int32_t i = 0; i < response.jobs_size(); i++) {
