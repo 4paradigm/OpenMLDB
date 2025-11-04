@@ -89,7 +89,7 @@ The following SQL commands created the right table t2 as mentioned above and ins
 ```{note}
 The storage order of data rows is not necessarily the same as their insert order. And the storage order will influence the matching order when JOIN.
 In this example, we want to realize the storage order of t2 as the above figure displayed, which will lead to a result that is convenient to check. 
-To guarantee the storage order of t2, please create following index, do not set `ts`, and sequentially instert data one by one. 
+To guarantee the storage order of t2, please create following index, do not set `ts`, and sequentially insert data one by one. 
 Detail explanation is in [columnindex](../ddl/CREATE_TABLE_STATEMENT.md#columnindex).  
 ```
 ```sql
