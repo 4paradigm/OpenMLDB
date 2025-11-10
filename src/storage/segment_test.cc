@@ -540,6 +540,72 @@ TEST_F(SegmentTest, PutIfAbsent) {
     }
 }
 
+TEST_F(SegmentTest, TestGcAllType) {
+    std::vector<uint32_t> ts_idx_vec = {1, 2};
+    Segment segment(8, ts_idx_vec);
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    for (int idx = 0; idx < 10; idx++) {
+        std::map<int32_t, uint64_t> ts_map = {
+            {1, cur_time - idx * 60 * 1000},
+            {2, cur_time - idx * 60 * 1000},
+        };
+        std::string key = absl::StrCat("key", idx);
+        std::string value = absl::StrCat("value", idx);
+        auto* block = new DataBlock(2, value.c_str(), value.length());
+        segment.Put(Slice(key), ts_map, block, false);
+    }
+    for (int idx = 0; idx < 10; idx++) {
+        std::map<int32_t, uint64_t> ts_map = {
+            {1, cur_time - idx * 60 * 1000},
+            {2, cur_time - idx * 60 * 1000},
+        };
+        std::string key = absl::StrCat("key", idx);
+        Ticket ticket;
+        std::unique_ptr<MemTableIterator> it(segment.NewIterator(key, 1, ticket, type::CompressType::kNoCompress));
+        auto ts = cur_time - idx * 60 * 1000;
+        it->Seek(ts);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(it->GetKey(), ts);
+        it.reset(segment.NewIterator(key, 2, ticket, type::CompressType::kNoCompress));
+        it->Seek(ts);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(it->GetKey(), ts);
+    }
+
+    StatisticsInfo statistics_info(1);
+    std::map<uint32_t, TTLSt> ttl_st_map = {
+        {1, TTLSt(5 * 60 * 1000, 0, TTLType::kAbsoluteTime)},
+        {2, TTLSt(3 * 60 * 1000, 0, TTLType::kAbsoluteTime)}
+    };
+    segment.ExecuteGc(ttl_st_map, &statistics_info, std::optional<uint32_t>());
+    for (int idx = 0; idx < 10; idx++) {
+        std::map<int32_t, uint64_t> ts_map = {
+            {1, cur_time - idx * 60 * 1000},
+            {2, cur_time - idx * 60 * 1000},
+        };
+        std::string key = absl::StrCat("key", idx);
+        Ticket ticket;
+        std::unique_ptr<MemTableIterator> it(segment.NewIterator(key, 1, ticket, type::CompressType::kNoCompress));
+        auto ts = cur_time - idx * 60 * 1000;
+        it->Seek(ts);
+        if (idx < 5) {
+            ASSERT_TRUE(it->Valid()) << "Iterator invalid at key: " << key;
+            ASSERT_EQ(it->GetKey(), ts);
+        } else if (idx > 5) {
+            ASSERT_FALSE(it->Valid()) << "Iterator valid at key: " << key;
+        }
+        it.reset(segment.NewIterator(key, 2, ticket, type::CompressType::kNoCompress));
+        it->Seek(ts);
+        if (idx < 3) {
+            ASSERT_TRUE(it->Valid()) << "Iterator invalid at key: " << key;
+            ASSERT_EQ(it->GetKey(), ts);
+        } else if (idx > 3) {
+            ASSERT_FALSE(it->Valid()) << "Iterator valid at key: " << key;
+        }
+    }
+
+}
+
 }  // namespace storage
 }  // namespace openmldb
 

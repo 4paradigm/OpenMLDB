@@ -544,6 +544,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
         DLOG(INFO) << "ts " << ts << " ttl_st " << ttl_st.ToString() << " it will be current time - ttl?";
     }
 
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     while (it->Valid()) {
         KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(it->GetValue());
         Slice key = it->GetKey();
@@ -567,13 +568,16 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
             bool continue_flag = false;
             switch (kv.second.ttl_type) {
                 case ::openmldb::storage::TTLType::kAbsoluteTime: {
+                    uint64_t expire_time = cur_time - ttl_offset_ - kv.second.abs_ttl;
                     node = entry->entries.GetLast();
-                    if (node == nullptr || node->GetKey() > kv.second.abs_ttl) {
+                    if (node == nullptr || node->GetKey() > expire_time) {
                         continue_flag = true;
                     } else {
+                        DLOG(INFO) << "gc key " << key.ToString() << " idx " << pos->second
+                                   << " expire time " << expire_time << " ts " << node->GetKey();
                         node = nullptr;
                         std::lock_guard<std::mutex> lock(mu_);
-                        SplitList(entry, kv.second.abs_ttl, &node);
+                        SplitList(entry, expire_time, &node);
                         if (entry->entries.IsEmpty()) {
                             DLOG(INFO) << "gc key " << key.ToString() << " is empty";
                             empty_cnt++;
@@ -589,14 +593,15 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
                     break;
                 }
                 case ::openmldb::storage::TTLType::kAbsAndLat: {
+                    uint64_t expire_time = cur_time - ttl_offset_ - kv.second.abs_ttl;
                     node = entry->entries.GetLast();
-                    if (node == nullptr || node->GetKey() > kv.second.abs_ttl) {
+                    if (node == nullptr || node->GetKey() > expire_time) {
                         continue_flag = true;
                     } else {
                         node = nullptr;
                         std::lock_guard<std::mutex> lock(mu_);
                         if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                            node = entry->entries.SplitByKeyAndPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                            node = entry->entries.SplitByKeyAndPos(expire_time, kv.second.lat_ttl);
                         }
                     }
                     break;
@@ -607,14 +612,15 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
                         continue_flag = true;
                     } else {
                         node = nullptr;
+                        uint64_t expire_time = cur_time - ttl_offset_ - kv.second.abs_ttl;
                         std::lock_guard<std::mutex> lock(mu_);
                         if (entry->refs_.load(std::memory_order_acquire) <= 0) {
                             if (kv.second.abs_ttl == 0) {
                                 node = entry->entries.SplitByPos(kv.second.lat_ttl);
                             } else if (kv.second.lat_ttl == 0) {
-                                node = entry->entries.Split(kv.second.abs_ttl);
+                                node = entry->entries.Split(expire_time);
                             } else {
-                                node = entry->entries.SplitByKeyOrPos(kv.second.abs_ttl, kv.second.lat_ttl);
+                                node = entry->entries.SplitByKeyOrPos(expire_time, kv.second.lat_ttl);
                             }
                         }
                         if (entry->entries.IsEmpty()) {
