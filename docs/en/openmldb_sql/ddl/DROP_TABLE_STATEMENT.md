@@ -1,7 +1,7 @@
 # DROP TABLE
 
 ```
-DROP TABLE table_name
+DROP TABLE [IF EXISTS] table_name
 ```
 
 The `DROP TABLE` statement is used to drop a specified table.
@@ -48,7 +48,7 @@ Delete table t1:
 DROP TABLE t1;
 -- Drop table t1? yes/no
 -- yes
--- SUCCEED: Drop successfully
+-- SUCCEED
 ```
 
 Look at the tables of `db1` again:
@@ -64,7 +64,13 @@ SHOW TABLES;
 
 ```
 
-
+Use the `IF EXISTS` option to delete a table that does not exist
+```sql
+DROP TABLE IF EXISTS t3;
+-- Drop table t3? yes/no
+-- yes
+-- SUCCEED
+```
 
 ## Related SQL Statements
 
