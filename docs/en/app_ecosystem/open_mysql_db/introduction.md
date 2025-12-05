@@ -1,0 +1,5 @@
+# Introduction
+
+OpenM(ysq)LDB is a sub-module of OpenMLDB. The project name implies the inclusion of MySQL in OpenMLDB. Users can realize the unique online and offline feature calculation of OpenMLDB by using the MySQL command line client or the MySQL Connector in multiple programming languages. Currently, it supports `MySQL Community CLI 8.0.29`, `Sequel Ace 4.0.13`, and `Navicat Premium 16.3.4` clients, with more clients being adapted gradually.
+
+OpenMLDB is a distributed high-performance memory time-series database based on C++ and LLVM. Its architectural design and implementation logic are very different from the stand-alone relational database MySQL. OpenMLDB has been widely used in hard real-time online feature calculations such as financial marketing. Since both OpenMLDB and MySQL provide standard ANSI SQL interfaces, OpenMLDB is compatible with the MySQL protocol, allowing customers to directly use familiar MySQL clients. Even in SDK programming such as Java and Python, there is no need to install additional clients. Users can directly access OpenMLDB data and perform special OpenMLDB SQL feature extraction syntax.

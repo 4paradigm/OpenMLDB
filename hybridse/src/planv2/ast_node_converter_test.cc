@@ -20,6 +20,7 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <utility>
 
 #include "absl/strings/match.h"
 #include "case/sql_case.h"
@@ -741,7 +742,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateFunctionOKTest) {
     auto option = create_fun_stmt->Options();
     ASSERT_EQ(option->size(), 1);
     ASSERT_EQ(option->begin()->first, "PATH");
-    ASSERT_EQ(option->begin()->second->GetAsString(), "/tmp/libmyfun.so");
+    ASSERT_EQ(option->begin()->second->GetExprString(), "/tmp/libmyfun.so");
 
     std::string sql2 = "CREATE AGGREGATE FUNCTION fun1 (x BIGINT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
     create_fun_stmt = nullptr;
@@ -867,12 +868,6 @@ TEST_F(ASTNodeConverterTest, ConvertInsertStmtFailTest) {
         )sql";
         expect_converted(sql, common::kSqlAstError, "Un-support Named Parameter Expression a");
     }
-    {
-        const std::string sql = R"sql(
-        INSERT into t1 values (1, 2L, aaa)
-        )sql";
-        expect_converted(sql, common::kSqlAstError, "Un-support insert statement with un-const value");
-    }
 }
 TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     node::NodeManager node_manager;
@@ -944,20 +939,6 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
         EXPECT_EQ(common::kTypeError, status.code);
-    }
-    {
-        // not supported schema
-        const std::string sql = "create table t (a Array<int64>) ";
-
-        std::unique_ptr<zetasql::ParserOutput> parser_output;
-        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
-        const auto* statement = parser_output->statement();
-        ASSERT_TRUE(statement->Is<zetasql::ASTCreateTableStatement>());
-
-        const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
-        node::CreateStmt* output = nullptr;
-        auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlAstError, status.code);
     }
     {
         // not supported table element
@@ -1204,6 +1185,12 @@ INSTANTIATE_TEST_SUITE_P(ASTHavingStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTHWindowQueryTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTUnionQueryTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/union_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTAlterTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/alter.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTConstQueryTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/const_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 

@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.batch.nodes
 
 import com._4paradigm.hybridse.vm.PhysicalLoadDataNode
-import com._4paradigm.openmldb.batch.utils.HybridseUtil
+import com._4paradigm.openmldb.batch.utils.{DataSourceUtil, HybridseUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.proto.NS.OfflineTableInfo
 import org.slf4j.LoggerFactory
@@ -40,7 +40,11 @@ object LoadDataPlan {
     val (format, options, mode, extra) = HybridseUtil.parseOptions(inputFile, node)
     // load have the option deep_copy
     val deepCopy = extra.get("deep_copy").get.toBoolean
-
+    // auto schema conversion option skip_cvt
+    val skipCvt = (storage, format) match {
+      case ("online", "tidb") => extra.getOrElse("skip_cvt", "false").toBoolean
+      case _ => false
+    }
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
 
@@ -51,20 +55,23 @@ object LoadDataPlan {
 
     // we read input file even in soft copy,
     // cause we want to check if "the input file schema == openmldb table schema"
-    val df = HybridseUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList,
-      loadDataSql)
+    val df = DataSourceUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList,
+      loadDataSql, skipCvt)
 
     // write
-    logger.info("write data to storage {}, writer[mode {}], is deep? {}", storage, mode, deepCopy.toString)
+    logger.info("write data to storage {}, writer mode {}, is deep {}", storage, mode, deepCopy.toString)
     if (storage == "online") { // Import online data
       require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
       val writeType = extra.get("writer_type").get
+      val putIfAbsent = extra.get("put_if_absent").get.toBoolean
+      logger.info(s"online write type ${writeType}, put if absent ${putIfAbsent}")
       val writeOptions = Map(
         "db" -> db,
         "table" -> table,
         "zkCluster" -> ctx.getConf.openmldbZkCluster,
         "zkPath" -> ctx.getConf.openmldbZkRootPath,
-        "writerType" -> writeType
+        "writerType" -> writeType,
+        "putIfAbsent" -> putIfAbsent.toString
       )
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else { // Import offline data

@@ -36,6 +36,7 @@ DECLARE_string(openmldb_log_dir);
 DECLARE_string(role);
 DECLARE_string(glog_dir);
 DECLARE_int32(glog_level);
+DECLARE_int32(log_overdue_days);
 
 namespace openmldb {
 namespace base {
@@ -87,6 +88,9 @@ inline void UnprotectedSetupGlog(bool origin_flags = false) {
         FLAGS_logbufsecs = 0;
         ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
         ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
+    }
+    if (FLAGS_log_overdue_days > 0) {
+        google::EnableLogCleaner(FLAGS_log_overdue_days);
     }
 }
 

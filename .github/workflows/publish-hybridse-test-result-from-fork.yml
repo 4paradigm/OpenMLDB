@@ -21,6 +21,8 @@ jobs:
       files: artifacts/linux-ut-result-*/**/*.xml
       check_name: HybridSE Linux Test Report
       comment_title: HybridSE Linux Test Report
+      event_name: ${{ github.event.workflow_run.event }}
+      run_id: ${{ github.event.workflow_run.id }}
 
   test-results-mac:
     if: >
@@ -31,7 +33,9 @@ jobs:
     name: Publish HybridSE Mac UT Results
     uses: ./.github/workflows/publish-test-result-from-fork-action.yml
     with:
-        commit: ${{ github.event.workflow_run.head_sha }}
-        files: artifacts/macos-ut-result-*/**/*.xml
-        check_name: HybridSE Mac Test Report
-        comment_title: HybridSE Mac Test Report
+      commit: ${{ github.event.workflow_run.head_sha }}
+      files: artifacts/macos-ut-result-*/**/*.xml
+      check_name: HybridSE Mac Test Report
+      comment_title: HybridSE Mac Test Report
+      event_name: ${{ github.event.workflow_run.event }}
+      run_id: ${{ github.event.workflow_run.id }}

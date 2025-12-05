@@ -142,7 +142,7 @@ struct DeploymentEnv {
     std::string sql_str_;
     bool cleanup_ = true;
 
-    // when setted true, request row won't inserted into main table after deployment query
+    // when set true, request row won't inserted into main table after deployment query
     // be careful turning on, for sql case where main table has multiple row, result might as your expected
     bool pure_deploy_ = false;
 };

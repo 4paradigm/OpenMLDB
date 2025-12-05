@@ -12,7 +12,7 @@ curTime=$(date "+%m%d%H%M")
 dirName="${jobName}-${version}-${curTime}"
 
 #set Deploy Host and Ports
-Hosts=(node-3 node-4 node-1)
+Hosts=(node-2 node-4 node-1)
 
 AvaNode1Ports=$(ssh "${Hosts[0]}" "comm -23 <(seq $portFrom $portTo | sort) <(/usr/sbin/ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
 AvaNode2Ports=$(ssh "${Hosts[1]}" "comm -23 <(seq $portFrom $portTo | sort) <(/usr/sbin/ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
@@ -61,7 +61,7 @@ export OPENMLDB_ZK_HOME=
 export OPENMLDB_ZK_CLUSTER=
 export OPENMLDB_ZK_ROOT_PATH=/openmldb-$dirName
 export OPENMLDB_HOME=
-export SPARK_HOME=/tmp/spark/spark-$dirName
+export SPARK_HOME=/tmp/spark-3.2.1-bin-openmldbspark
 export CLEAR_OPENMLDB_INSTALL_DIR=true
 EOF
 

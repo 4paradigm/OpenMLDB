@@ -16,29 +16,54 @@
 
 #ifndef HYBRIDSE_INCLUDE_BASE_FE_STATUS_H_
 #define HYBRIDSE_INCLUDE_BASE_FE_STATUS_H_
+
+#include <sstream>
 #include <string>
 #include <vector>
-#include "glog/logging.h"
+
 #include "proto/fe_common.pb.h"
-#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace base {
 
 template <typename STREAM, typename... Args>
-static inline std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
-                                                               Args... args) {  // NOLINT
-#ifdef __APPLE__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-stack-address"
-#endif
-    return std::initializer_list<int>{(stream << args, 0)...};
-#ifdef __APPLE__
-#pragma GCC diagnostic pop
-#endif
+static inline void __output_literal_args(STREAM& stream,  // NOLINT
+                                         Args... args) {  // NOLINT
+    ((stream << args), ...);
 }
 
 #define MAX_STATUS_TRACE_SIZE 4096
+
+// Evaluate and check the expression returns a absl::Status.
+// End the current function by return status, if status is not OK
+#define CHECK_ABSL_STATUS(expr) \
+    while (true) {              \
+        auto _s = (expr);       \
+        if (!_s.ok()) {         \
+            return _s;          \
+        }                       \
+        break;                  \
+    }
+
+// Check the absl::StatusOr<T> object, end the current function
+// by return 'object.status()' if it is not OK
+#define CHECK_ABSL_STATUSOR(statusor) \
+    while (true) {                    \
+        if (!statusor.ok()) {         \
+            return statusor.status(); \
+        }                             \
+        break;                        \
+    }
+
+// Evaluate the expression returns Status, converted and return failed absl status if status not ok
+#define CHECK_STATUS_TO_ABSL(expr)                        \
+    while (true) {                                        \
+        auto _status = (expr);                            \
+        if (!_status.isOK()) {                              \
+            return absl::InternalError(_status.GetMsg()); \
+        }                                                 \
+        break;                                            \
+    }
 
 #define CHECK_STATUS(call, ...)                                         \
     while (true) {                                                      \

@@ -2004,7 +2004,7 @@ cases:
           - [12, 0, "b"]
     sql: |
       SELECT {0}.id, 
-        count_where(id, ifnull(c1, "a") = ifnull(first_value(c1), "a")) OVER w1 AS count_where
+        count_where(id, ifnull(c1, "a") = ifnull(last_value(c1), "a")) OVER w1 AS count_where
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
@@ -2433,7 +2433,7 @@ cases:
       `val1`,
       lag(val1, 0) over w1 as agg1,
       lag(val1, 3) over w1 as agg2,
-      first_value(val1) over w1 as agg3
+      last_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
     expect:
@@ -2512,7 +2512,7 @@ cases:
       `val1`,
       lag(val1, 0) over w1 as agg1,
       lag(val1, 3) over w1 as agg2,
-      first_value(val1) over w1 as agg3
+      last_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
     expect:
@@ -2657,7 +2657,7 @@ cases:
         id,
         key1,
         nth_value_where(id, 0, true) over w as agg_null,
-        nth_value_where(l1 + 1, -1, l1 < first_value(l1)) over w as agg1,
+        nth_value_where(l1 + 1, -1, l1 < last_value(l1)) over w as agg1,
         nth_value_where(f1, -2, case when f1 > 5.0 then true else null end) over w as agg2,
         nth_value_where(val, -2, case when sum(l2) > 10 then true else false end) over w as agg3,
         nth_value_where(l1 + 1, 1, l1 < 4) over w as agg4,

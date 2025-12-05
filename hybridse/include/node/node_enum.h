@@ -17,9 +17,6 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_NODE_ENUM_H_
 #define HYBRIDSE_INCLUDE_NODE_NODE_ENUM_H_
 
-#include <string>
-#include "proto/fe_common.pb.h"
-#include "proto/fe_type.pb.h"
 namespace hybridse {
 namespace node {
 
@@ -98,7 +95,14 @@ enum SqlNodeType {
     kAlterTableStmt,
     kShowStmt,
     kCompressType,
+    kColumnSchema,
+    kCreateUserStmt,
+    kAlterUserStmt,
+    kGrantStmt,
+    kRevokeStmt,
+    kCallStmt,
     kSqlNodeTypeLast,  // debug type
+    kVariadicUdfDef,
 };
 
 enum class ShowStmtType {
@@ -112,9 +116,9 @@ enum TableRefType {
 };
 
 enum QueryType {
-    kQuerySelect,
+    kQuerySelect = 0,
     kQuerySub,
-    kQueryUnion,
+    kQuerySetOperation,
 };
 enum ExprType {
     kExprUnknow = -1,
@@ -143,7 +147,10 @@ enum ExprType {
     kExprIn,
     kExprEscaped,
     kExprArray,
-    kExprFake,  // not a real one
+    kExprArrayElement,      // extract value from a array or map, with `[]` operator
+    kExprStructCtorParens,  // (expr1, expr2, ...)
+    kExprLet,               // LET [bindings] in <output expr>
+    kExprFake,              // not a real one
     kExprLast = kExprFake,
 };
 
@@ -175,9 +182,21 @@ enum DataType {
     kArray,         // fixed size. In SQL: [1, 2, 3] or ARRAY<int>[1, 2, 3]
     kDataTypeFake,  // not a data type, for testing purpose only
     kLastDataType = kDataTypeFake,
+
     // the tree type are not moved above kLastDataType for compatibility
     // it may necessary to do it in the further
+
+    // kVoid
+    //  A distinct data type: signifies no value or meaningful result.
+    //  Typically used for function that does not returns value.
     kVoid = 100,
+    // kNull
+    //   A special marker representing the absence of a value.
+    //   Not a true data type but a placeholder for missing or unknown information.
+    //   A `NULL` literal can be eventually resolved to:
+    //     - NULL of void type, if no extra info provided: 'SELECT NULL'
+    //     - NULL of int (or any other) type, extra information provided, e.g with 'CAST' operator
+    //         'SELECT CAST(NULL as INT)'
     kNull = 101,
     kPlaceholder = 102
 };
@@ -255,8 +274,11 @@ enum JoinType {
     kJoinTypeCross,  // AKA commma join
 };
 
-enum UnionType { kUnionTypeDistinct, kUnionTypeAll };
-
+enum class SetOperationType {
+    UNION,
+    EXCEPT,
+    INTERSECT,
+};
 enum CmdType {
     kCmdCreateDatabase = 0,
     kCmdUseDatabase,
@@ -286,6 +308,8 @@ enum CmdType {
     kCmdShowJobLog,
     kCmdShowCreateTable,
     kCmdTruncate,
+    kCmdDropUser,
+    kCmdShowUser,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };
@@ -304,7 +328,7 @@ enum PlanType {
     kPlanTypeFilter,
     kPlanTypeTable,
     kPlanTypeJoin,
-    kPlanTypeUnion,
+    kPlanTypeSetOperation,
     kPlanTypeSort,
     kPlanTypeGroup,
     kPlanTypeDistinct,
@@ -324,6 +348,11 @@ enum PlanType {
     kPlanTypeWithClauseEntry,
     kPlanTypeAlterTable,
     kPlanTypeShow,
+    kPlanTypeCreateUser,
+    kPlanTypeAlterUser,
+    kPlanTypeGrant,
+    kPlanTypeRevoke,
+    kPlanTypeCallStmt,
     kUnknowPlan = -1,
 };
 

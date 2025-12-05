@@ -126,6 +126,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::test::InitRandomDiskFlags("binlog_test");
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
     ::openmldb::test::TempPath tmp_path;

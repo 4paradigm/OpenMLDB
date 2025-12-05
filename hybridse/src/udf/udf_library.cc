@@ -425,7 +425,9 @@ Status UdfLibrary::ResolveFunction(const std::string& name,
 
 void UdfLibrary::AddExternalFunction(const std::string& name, void* addr) {
     std::lock_guard<std::mutex> lock(mu_);
-    external_symbols_.emplace(name, addr);
+    if (external_symbols_.emplace(name, addr).first->second != addr) {
+        LOG(WARNING) << "ambiguous external function: " << name;
+    }
 }
 
 void UdfLibrary::InitJITSymbols(vm::HybridSeJitWrapper* jit_ptr) {

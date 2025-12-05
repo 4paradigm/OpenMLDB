@@ -86,7 +86,7 @@ class TestGraphvizUtil extends SparkTestSuite {
       engine.close()
     }
 
-    assert(mutablenode.toString == "[65]GroupAgg{}->[22]GroupBy::")
+    assert(mutablenode.toString == "[87]GroupAgg{}->[22]GroupBy::")
   }
 
   test("Test visitPhysicalOp") {
@@ -103,6 +103,6 @@ class TestGraphvizUtil extends SparkTestSuite {
     if (engine != null) {
       engine.close()
     }
-    assert(mutablenode.toString == "[65]GroupAgg{}->")
+    assert(mutablenode.toString == "[87]GroupAgg{}->")
   }
 }

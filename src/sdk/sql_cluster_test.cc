@@ -15,6 +15,7 @@
  */
 
 #include <unistd.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
 #include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
@@ -31,8 +33,8 @@
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
-
 
 DECLARE_uint32(max_traverse_cnt);
 DECLARE_uint32(traverse_cnt_limit);
@@ -121,13 +123,19 @@ TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
 
     router->ExecuteSQL(db, "deploy " + deploy_name + " select col1 from " + table_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
-    router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
+    std::string sql = absl::StrCat("deploy ", deploy_name,
+            " OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\") select col1 from ", db, ".", table_name, ";");
+    router->ExecuteSQL(db2, sql, &status);
     ASSERT_TRUE(status.IsOK());
 
-    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    auto rs = router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
-    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->GetStringUnsafe(0).find("OPTIONS") == std::string::npos);
+    rs = router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->GetStringUnsafe(0).find("OPTIONS(RANGE_BIAS=\"inf\", ROWS_BIAS=\"inf\")") != std::string::npos);
 
     router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
@@ -323,47 +331,6 @@ TEST_F(SQLClusterDDLTest, CreateIndexCheck) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
-TEST_F(SQLClusterDDLTest, TestDelete) {
-    std::string name = "test" + GenRand();
-    ::hybridse::sdk::Status status;
-    std::string ddl;
-
-    std::string db = "db" + GenRand();
-    ASSERT_TRUE(router->CreateDB(db, &status));
-    ddl = absl::StrCat("create table ", name,
-          "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
-          "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
-    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
-    ASSERT_TRUE(router->RefreshCatalog());
-    router->ExecuteSQL(db, "insert into " + name + " values ('a', 'aa', 'aaa', 100, 101, 102, 'xx');", &status);
-    router->ExecuteSQL(db, "insert into " + name + " values ('b', 'bb', 'bbb', 200, 201, 202, 'xx');", &status);
-    auto rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
-    ASSERT_EQ(rs->Size(), 2);
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col5 > 100;", &status);
-    ASSERT_FALSE(status.IsOK());
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col6 > 100;", &status);
-    ASSERT_FALSE(status.IsOK());
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col3 = 'aaa';", &status);
-    ASSERT_FALSE(status.IsOK());
-    rs = router->ExecuteSQL(db, "delete from " + name + " where col7 = 'xxx' and col3 = 'aaa';", &status);
-    ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, "delete from " + name + " where col6 > 100;", &status);
-    ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, "delete from " + name + " where col4 > 100 and col5 = 200;", &status);
-    ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, "delete from " + name + " where col5 > 100;", &status);
-    ASSERT_TRUE(status.IsOK()) << status.msg;
-    rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
-    ASSERT_EQ(rs->Size(), 2);
-    router->ExecuteSQL(db, "delete from " + name + " where col4 > 100;", &status);
-    ASSERT_TRUE(status.IsOK());
-    rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
-    ASSERT_EQ(rs->Size(), 1);
-
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
-    ASSERT_TRUE(router->DropDB(db, &status));
-}
-
 TEST_F(SQLClusterDDLTest, ColumnDefaultValue) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
@@ -481,7 +448,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
-                      "index(key=col1, ts=col2)) options(partitionnum=8);";
+                      "index(key=col1, ts=col2)) options(partitionnum=8, replicanum = 2);";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -494,6 +461,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
         uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key) % 8);
         key_map[pid].push_back(key);
     }
+    absl::SleepFor(absl::Seconds(5));
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = mc_->GetNsClient();
     auto ret = ns->ShowDBTable(db, &tables);
@@ -517,7 +485,7 @@ TEST_F(SQLClusterTest, ClusterInsert) {
             }
         }
     }
-    ASSERT_EQ(100u, count);
+    ASSERT_EQ(2* 100u, count);
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -1433,6 +1401,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("sql_cluster_test");
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::base::SetupGlog(true);
 

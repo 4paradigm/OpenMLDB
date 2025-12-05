@@ -18,7 +18,7 @@
 #define SRC_SDK_SQL_SDK_TEST_H_
 
 #include <string>
-#include "base/glog_wrapper.h"
+
 #include "sdk/sql_sdk_base_test.h"
 
 namespace openmldb {
@@ -58,6 +58,8 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKParameterizedQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/parameterized_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSimpleQuery, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/simple_query.yaml")));
 
 // Test Cluster
 INSTANTIATE_TEST_SUITE_P(
@@ -110,6 +112,9 @@ INSTANTIATE_TEST_SUITE_P(
     UdafQuery, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    FeatureSignatureQuery, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/feature_signature_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     LimitClauseQuery, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/limit.yaml")));
 
@@ -140,6 +145,8 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/function/select/test_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(WithClause, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/with.yaml")));
+INSTANTIATE_TEST_SUITE_P(UnionQuery, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/union_query.yml")));
 
 // Test Multiple Databases
 INSTANTIATE_TEST_SUITE_P(

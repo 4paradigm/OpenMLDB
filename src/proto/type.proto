@@ -34,10 +34,12 @@ enum DataType {
     // reserve 9, 10, 11, 12
     kVarchar = 13;
     kString = 14;
+    kArray = 15;
+    kMap = 16;
 }
 
 enum IndexType {
-    kUnique = 1; // uinque index
+    kUnique = 1; // unique index
     kNoUnique = 2;
     kPrimaryKey = 3; 
     kAutoGen = 4;  // auto gen primary key
@@ -69,7 +71,7 @@ enum StartupMode {
 }
 
 enum ProcedureType {
-    kUnknow = -1;
+    kUnknown = -1;
     kReqProcedure = 0;
     kReqDeployment = 1;
 }

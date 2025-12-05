@@ -1,6 +1,6 @@
 # RocketMQ
 
-## 1. 为什么选择 RocketMQ OpenMLDB Connector
+## 为什么选择 RocketMQ OpenMLDB Connector
 
 为了使 OpenMLDB 与 RocketMQ 拥有高效稳定的传输通道，RocketMQ OpenMLDB connector 具有诸多优秀特性，包括但不限于：
 
@@ -9,9 +9,9 @@
 - **高可靠。**RocketMQ OpenMLDB Connector 集群部署的方式具备 Failover 能力，可以将有问题节点的任务调度到正常节点并保证集群负载均衡，使企业能**更专注和更高效**地探索数据的商业价值。
 - **低延时。秒级延迟**，满足实时数据及特征开发场景。
 
-## 2. RocketMQ OpenMLDB Connector
+## RocketMQ OpenMLDB Connector
 
-### 2.1. Connector 概述
+### Connector 概述
 
 **定位**
 
@@ -37,7 +37,7 @@ $ mvn clean package -Dmaven.test.skip=true
 
 最终将编译好的插件包放在 RocketMQ connect 指定的加载地址。
 
-### 2.2. Connector 使用演示
+### Connector 使用演示
 
 **流程介绍**
 
@@ -80,7 +80,7 @@ $ wget https://dlcdn.apache.org/rocketmq/4.9.3/rocketmq-all-4.9.3-source-release
 
 $ unzip rocketmq-all-4.9.3-source-release.zip  
 $ cd rocketmq-all-4.9.3/  
-$ mvn -Prelease-all -DskipTests clean install -U  
+$ mvn -Prerelease-all -DskipTests clean install -U  
 $ cd distribution/target/rocketmq-4.9.3/rocketmq-4.9.3
 
 
@@ -113,7 +113,7 @@ $ git clone git@github.com:apache/rocketmq-connect.git
 
 ```bash
 $ cd rocketmq-connect
-$ mvn -Prelease-connect -DskipTests clean install -U
+$ mvn -Prerelease-connect -DskipTests clean install -U
 ```
 
 修改配置`connect-standalone.conf` ，重点配置如下
@@ -206,7 +206,7 @@ COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-创建并启动 RocketMQ conect mysql source connector ，如下所示：
+创建并启动 RocketMQ connect mysql source connector ，如下所示：
 
 ```bash
 curl -X POST -H "Content-Type: application/json" http://127.0.0.1:8082/connectors/jdbc-mysql-source-test

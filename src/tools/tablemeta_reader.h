@@ -80,7 +80,8 @@ class TablemetaReader {
 class ClusterTablemetaReader : public TablemetaReader {
  public:
     ClusterTablemetaReader(const std::string &db_name, const std::string &table_name,
-                       std::unordered_map<std::string, std::string> tablet_map, const ClusterOptions& options) :
+                       std::unordered_map<std::string, std::string> tablet_map,
+                       const std::shared_ptr<sdk::SQLRouterOptions>& options) :
                        TablemetaReader(db_name, table_name, tablet_map), options_(options) {}
 
     void SetTableinfoPtr() override;
@@ -88,7 +89,7 @@ class ClusterTablemetaReader : public TablemetaReader {
     bool IsClusterMode() const override { return true; }
 
  private:
-    ClusterOptions options_;
+    std::shared_ptr<sdk::SQLRouterOptions> options_;
 };
 
 
@@ -96,15 +97,16 @@ class StandaloneTablemetaReader : public TablemetaReader {
  public:
     StandaloneTablemetaReader(const std::string &db_name, const std::string &table_name,
                           std::unordered_map<std::string, std::string> tablet_map, const std::string &host, int port) :
-                          TablemetaReader(db_name, table_name, tablet_map), host_(host), port_(port) {}
+                          TablemetaReader(db_name, table_name, tablet_map) {
+        options_ = std::make_shared<sdk::StandaloneOptions>(host, port);
+    }
 
     void SetTableinfoPtr() override;
 
     bool IsClusterMode() const override { return false; }
 
  private:
-    std::string host_;
-    uint32_t port_;
+    std::shared_ptr<sdk::StandaloneOptions> options_;
 };
 
 }  // namespace tools

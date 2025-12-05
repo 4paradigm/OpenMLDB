@@ -39,3 +39,36 @@ cases:
     mode: request-unsupport
     sql: |
       select int(NULL) as c1, bigint(NULL) as c2, float(NULL) as c3, double(NULL) as c4, timestamp(NULL) as c5, date(NULL) as c6, string(NULL) as c7;
+
+  - id: map_data_type
+    mode: request-unsupport
+    desc: access map value with []operator
+    sql: |
+      select map(1, 2)[1]
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  map(1, 2)[1]
+          |      +-name: <nil>
+          +-tableref_list: []
+          +-window_list: []
+      plan_tree_str: |
+        +-[kQueryPlan]
+          +-[kProjectPlan]
+            +-table: <nil>
+            +-project_list_vec[list]:
+              +-[kProjectList]
+                +-projects on table [list]:
+                  +-[kProjectNode]
+                    +-[0]map(1, 2)[1]: map(1, 2)[1]
+         null

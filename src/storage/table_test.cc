@@ -198,7 +198,7 @@ TEST_P(TableTest, MultiDimissionPut0) {
     ::openmldb::codec::SDKCodec sdk_codec(meta);
     std::string result;
     sdk_codec.EncodeRow({"d0", "d1", "d2"}, &result);
-    bool ok = table->Put(1, result, dimensions);
+    bool ok = table->Put(1, result, dimensions).ok();
     ASSERT_TRUE(ok);
     // some functions in disk table need to be implemented.
     // refer to issue #1238
@@ -808,7 +808,7 @@ TEST_P(TableTest, TableIteratorTS) {
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
@@ -921,7 +921,7 @@ TEST_P(TableTest, TraverseIteratorCount) {
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
@@ -1048,7 +1048,7 @@ TEST_P(TableTest, AbsAndLatSetGet) {
         dim->set_key("mcc");
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     // test get and set ttl
     ASSERT_EQ(10, (int64_t)table->GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
@@ -1149,7 +1149,7 @@ TEST_P(TableTest, AbsOrLatSetGet) {
         dim->set_key("mcc");
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     // test get and set ttl
     ASSERT_EQ(10, (int64_t)table->GetIndex(0)->GetTTL()->abs_ttl / (10 * 6000));
@@ -1562,7 +1562,7 @@ TEST_P(TableTest, TraverseIteratorCountWithLimit) {
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
 
     TableIterator* it = table->NewTraverseIterator(0);
@@ -1669,7 +1669,7 @@ TEST_P(TableTest, TSColIDLength) {
         dim1->set_key(row[0]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
 
     TableIterator* it = table->NewTraverseIterator(0);
@@ -1727,7 +1727,7 @@ TEST_P(TableTest, MultiDimensionPutTS) {
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
@@ -1781,7 +1781,7 @@ TEST_P(TableTest, MultiDimensionPutTS1) {
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
@@ -1823,7 +1823,7 @@ TEST_P(TableTest, MultiDimissionPutTS2) {
     ::openmldb::codec::SDKCodec sdk_codec(meta);
     std::string result;
     sdk_codec.EncodeRow({"d0", "d1", "d2"}, &result);
-    bool ok = table->Put(100, result, dimensions);
+    bool ok = table->Put(100, result, dimensions).ok();
     ASSERT_TRUE(ok);
 
     TableIterator* it = table->NewTraverseIterator(0);
@@ -1885,7 +1885,7 @@ TEST_P(TableTest, AbsAndLat) {
         }
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        table->Put(0, value, request.dimensions());
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
 
     for (int i = 0; i <= 5; i++) {
@@ -1924,7 +1924,6 @@ TEST_P(TableTest, NegativeTs) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -1939,10 +1938,11 @@ TEST_P(TableTest, NegativeTs) {
     dim->set_key(row[0]);
     std::string value;
     ASSERT_EQ(0, codec.EncodeRow(row, &value));
-    ASSERT_FALSE(table->Put(0, value, request.dimensions()));
+    auto st = table->Put(0, value, request.dimensions());
+    ASSERT_TRUE(absl::IsInvalidArgument(st)) << st.ToString();
 }
 
-INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableTest,
+INSTANTIATE_TEST_SUITE_P(TestMemAndHDD, TableTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
 }  // namespace storage

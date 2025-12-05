@@ -172,11 +172,17 @@ object WindowAggPlanUtil {
 
     // process order key
     val orders = windowOp.sort().orders()
-    val ordersExprListNode = orders.getOrder_expressions_()
-    if (ordersExprListNode.GetChildNum() > 1) {
-      throw new HybridSeException("Multiple window order not supported")
+    if (orders != null) {
+      val ordersExprListNode = orders.getOrder_expressions_()
+      if (ordersExprListNode.GetChildNum() > 1) {
+        throw new HybridSeException("Multiple window order not supported")
+      }
     }
-    val orderIdx = SparkColumnUtil.resolveOrderColumnIndex(orders.GetOrderExpression(0), node.GetProducer(0))
+    val orderIdx = if (orders == null) {
+      -1
+    } else {
+      SparkColumnUtil.resolveOrderColumnIndex(orders.GetOrderExpression(0), node.GetProducer(0))
+    }
 
     // process group-by keys
     val groups = windowOp.partition().keys()

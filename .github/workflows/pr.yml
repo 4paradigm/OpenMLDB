@@ -7,10 +7,11 @@ jobs:
   pr-name-lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
       with:
-        node-version: '14'
+        node-version: '18'
     - name: Install Dependencies
-      run: npm install @commitlint/config-conventional
-    - uses: JulienKode/pull-request-name-linter-action@v0.2.0
+      run: npm install @commitlint/config-conventional@18.5.0
+
+    - uses: JulienKode/pull-request-name-linter-action@v0.5.0

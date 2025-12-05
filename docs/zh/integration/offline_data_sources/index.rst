@@ -7,3 +7,5 @@
 
     hive
     s3
+    iceberg
+    tidb

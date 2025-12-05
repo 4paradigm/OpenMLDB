@@ -397,5 +397,145 @@ void LazyLeftJoinIterator::onNewLeftRow() {
     value_ = res.first;
     matches_right_ |= res.second;
 }
+void UnionIterator::Next() {
+    auto top = keys_.top();
+    keys_.pop();
+    inputs_.at(top.second)->Next();
+
+    if (inputs_.at(top.second)->Valid()) {
+        keys_.emplace(inputs_.at(top.second)->GetKey(), top.second);
+    }
+}
+const uint64_t& UnionIterator::GetKey() const {
+    if (Valid()) {
+        auto& top = keys_.top();
+        return inputs_.at(top.second)->GetKey();
+    }
+
+    return INVALID_KEY;
+}
+const Row& UnionIterator::GetValue() {
+    if (Valid()) {
+        auto& top = keys_.top();
+        return inputs_.at(top.second)->GetValue();
+    }
+
+    return INVALID_ROW;
+}
+void UnionIterator::Seek(const uint64_t& key) {
+    for (auto& n : inputs_) {
+        n->Seek(key);
+    }
+    rebuild_keys();
+}
+void UnionIterator::SeekToFirst() {
+    for (auto& n : inputs_) {
+        n->SeekToFirst();
+    }
+    rebuild_keys();
+}
+void UnionIterator::rebuild_keys() {
+    keys_ = {};
+    for (size_t i = 0; i < inputs_.size(); ++i) {
+        if (inputs_[i]->Valid()) {
+            keys_.emplace(inputs_[i]->GetKey(), i);
+        }
+    }
+}
+RowIterator* SetOperationHandler::GetRawIterator() {
+    switch (op_type_) {
+        case node::SetOperationType::UNION: {
+            std::vector<std::unique_ptr<RowIterator> > iters;
+            for (auto tb : inputs_) {
+                iters.emplace_back(tb->GetIterator());
+            }
+            return new UnionIterator(absl::MakeSpan(iters), distinct_);
+        }
+        default:
+            return nullptr;
+    }
+}
+RowIterator* UnionWindowIterator::GetRawValue() {
+    std::vector<std::unique_ptr<codec::RowIterator>> iters;
+    if (Valid()) {
+        auto& idxs = keys_.begin()->second;
+        for (auto i : idxs) {
+            iters.push_back(inputs_.at(i)->GetValue());
+        }
+    }
+
+    return new UnionIterator(absl::MakeSpan(iters), distinct_);
+}
+void UnionWindowIterator::Seek(const std::string& key) {
+    for (auto& i : inputs_) {
+        i->Seek(key);
+    }
+    rebuild_keys();
+}
+void UnionWindowIterator::SeekToFirst() {
+    for (auto& i : inputs_) {
+        i->SeekToFirst();
+    }
+    rebuild_keys();
+}
+void UnionWindowIterator::Next() {
+    auto idxs = keys_.begin()->second;
+    keys_.erase(keys_.begin());
+    for (auto i : idxs) {
+        inputs_.at(i)->Next();
+        if (inputs_.at(i)->Valid()) {
+            keys_[inputs_.at(i)->GetKey()].push_back(i);
+        }
+    }
+}
+const codec::Row UnionWindowIterator::GetKey() {
+    if (Valid()) {
+        return keys_.begin()->first;
+    }
+
+    return INVALID_ROW;
+}
+void UnionWindowIterator::rebuild_keys() {
+    keys_.clear();
+    for (size_t i = 0; i < inputs_.size(); i++) {
+        if (inputs_[i]->Valid()) {
+            keys_[inputs_[i]->GetKey()].push_back(i);
+        }
+    }
+}
+RowIterator* SetOperationPartitionHandler::GetRawIterator() {
+    switch (op_type_) {
+        case node::SetOperationType::UNION: {
+            std::vector<std::unique_ptr<RowIterator>> iters;
+            for (auto tb : inputs_) {
+                iters.emplace_back(tb->GetIterator());
+            }
+            return new UnionIterator(absl::MakeSpan(iters), distinct_);
+        }
+        default:
+            return nullptr;
+    }
+}
+std::shared_ptr<TableHandler> SetOperationPartitionHandler::GetSegment(const std::string& key) {
+    std::vector<std::shared_ptr<TableHandler>> segs;
+    for (auto n : inputs_) {
+        segs.push_back(n->GetSegment(key));
+    }
+
+    return std::shared_ptr<TableHandler>(new SetOperationHandler(op_type_, segs, distinct_));
+}
+std::unique_ptr<WindowIterator> SetOperationPartitionHandler::GetWindowIterator() {
+    // NOTE: window iterator may out-of-order, use 'GetSegment' if ordering is mandatory
+    if (op_type_ != node::SetOperationType::UNION) {
+        return {};
+    }
+
+    std::vector<std::unique_ptr<codec::WindowIterator>> iters;
+    for (auto n : inputs_) {
+        iters.push_back(n->GetWindowIterator());
+    }
+
+    return std::unique_ptr<WindowIterator>(new UnionWindowIterator(absl::MakeSpan(iters), distinct_));
+}
 }  // namespace vm
 }  // namespace hybridse

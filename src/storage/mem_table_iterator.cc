@@ -138,7 +138,7 @@ void MemTableKeyIterator::Next() {
     NextPK();
 }
 
-::hybridse::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
+TimeEntries::Iterator* MemTableKeyIterator::GetTimeIter() {
     TimeEntries::Iterator* it = nullptr;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
         KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
@@ -150,6 +150,11 @@ void MemTableKeyIterator::Next() {
         ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
     }
     it->SeekToFirst();
+    return it;
+}
+
+::hybridse::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
+    TimeEntries::Iterator* it = GetTimeIter();
     return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_, compress_type_);
 }
 

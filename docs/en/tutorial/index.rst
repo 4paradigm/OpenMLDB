@@ -5,12 +5,14 @@ Tutorials
 .. toctree::
     :maxdepth: 1
 
-    standalone_vs_cluster
-    modes
+    data_import_guide
     tutorial_sql_1
     tutorial_sql_2
-    data_import
     openmldbspark_distribution
+    data_import
+    data_export
     autofe
-    common_architecture
+    standalone_vs_cluster 
+    standalone_use
+    app_arch
     online_offline_sync

@@ -88,15 +88,15 @@ echo "deploy config:"
 cat ${deployConfigPath}
 # install command tool
 cd test/test-tool/command-tool || exit
-mvn clean install -Dmaven.test.skip=true
+mvn clean install -B -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # modify config
 sh test/steps/modify_java_sdk_config.sh "${CASE_XML}" "${DEPLOY_MODE}" "${JAVA_SDK_VERSION}" "" "${OPENMLDB_SERVER_VERSION}" "${JAVA_NATIVE_VERSION}" "${TABLE_STORAGE_MODE}"
 
 # install jar
 cd test/integration-test/openmldb-test-java || exit
-mvn clean install -Dmaven.test.skip=true
+mvn clean install -B -Dmaven.test.skip=true
 cd "${ROOT_DIR}" || exit
 # run case
 cd "${ROOT_DIR}"/test/integration-test/openmldb-test-java/openmldb-sdk-test || exit
-mvn clean test -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}"
+mvn clean test -B -e -U -DsuiteXmlFile=test_suite/"${CASE_XML}" -DcaseLevel="${CASE_LEVEL}"

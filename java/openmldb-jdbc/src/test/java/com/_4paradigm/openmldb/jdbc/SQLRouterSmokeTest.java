@@ -21,16 +21,23 @@ import com._4paradigm.openmldb.SQLInsertRows;
 import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
+import com._4paradigm.openmldb.sdk.DAGNode;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.openmldb.sdk.utils.AIOSUtil;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.collections.Maps;
 
+import com.google.gson.Gson;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.PreparedStatement;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -45,6 +52,7 @@ import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
     public static SqlExecutor clusterExecutor;
+    public static SqlExecutor lightClusterExecutor;
     public static SqlExecutor standaloneExecutor;
 
     static {
@@ -54,9 +62,10 @@ public class SQLRouterSmokeTest {
             option.setZkCluster(TestConfig.ZK_CLUSTER);
             option.setSessionTimeout(200000);
             clusterExecutor = new SqlClusterExecutor(option);
-            java.sql.Statement state = clusterExecutor.getStatement();
-            state.execute("SET @@execute_mode='online';");
-            state.close();
+            setOnlineMode(clusterExecutor);
+            option.setLight(true);
+            lightClusterExecutor = new SqlClusterExecutor(option);
+            setOnlineMode(lightClusterExecutor);
             // create standalone router
             SdkOption standaloneOption = new SdkOption();
             standaloneOption.setHost(TestConfig.HOST);
@@ -64,6 +73,16 @@ public class SQLRouterSmokeTest {
             standaloneOption.setClusterMode(false);
             standaloneOption.setSessionTimeout(20000);
             standaloneExecutor = new SqlClusterExecutor(standaloneOption);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    static void setOnlineMode(SqlExecutor executor) {
+        java.sql.Statement state = executor.getStatement();
+        try {
+            state.execute("SET @@execute_mode='online';");
+            state.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -82,7 +101,7 @@ public class SQLRouterSmokeTest {
 
     @DataProvider(name = "executor")
     public Object[] executor() {
-        return new Object[] { clusterExecutor, standaloneExecutor };
+        return new Object[] { clusterExecutor, lightClusterExecutor, standaloneExecutor };
     }
 
     @Test(dataProvider = "executor")
@@ -128,7 +147,7 @@ public class SQLRouterSmokeTest {
 
             // select
             String select1 = "select * from tsql1010;";
-            SQLResultSet rs1 = (SQLResultSet) router .executeSQL(dbname, select1);
+            SQLResultSet rs1 = (SQLResultSet) router.executeSQL(dbname, select1);
 
             Assert.assertEquals(2, rs1.GetInternalSchema().getColumnList().size());
             Assert.assertEquals(Types.BIGINT, rs1.GetInternalSchema().getColumnType(0));
@@ -858,4 +877,114 @@ public class SQLRouterSmokeTest {
                 + "(select db.main.id as merge_id_3, db.main.c1 as merge_c1_3, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out3 "
                 + "on out0.merge_id_0 = out3.merge_id_3 and out0.merge_c1_0 = out3.merge_c1_3;");
     }
+
+    @Test(dataProvider = "executor")
+    public void testSQLToDag(SqlExecutor router) throws SQLException {
+        String sql = " WITH q1 as (WITH q3 as (select * from t1 LIMIT 10), q4 as (select * from t2) select * from q3 left join q4 on q3.id = q4.id),"
+                +
+                "q2 as (select * from t3)" +
+                "select * from q1 last join q2 on q1.id = q2.id";
+
+        DAGNode dag = router.SQLToDAG(sql);
+
+        Assert.assertEquals(dag.name, "");
+        Assert.assertEquals(dag.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  q1\n" +
+                "  LAST JOIN\n" +
+                "  q2\n" +
+                "  ON q1.id = q2.id\n");
+        Assert.assertEquals(dag.producers.size(), 2);
+
+        DAGNode input1 = dag.producers.get(0);
+        Assert.assertEquals(input1.name, "q1");
+        Assert.assertEquals(input1.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  q3\n" +
+                "  LEFT JOIN\n" +
+                "  q4\n" +
+                "  ON q3.id = q4.id\n");
+        Assert.assertEquals(2, input1.producers.size());
+
+        DAGNode input2 = dag.producers.get(1);
+        Assert.assertEquals(input2.name, "q2");
+        Assert.assertEquals(input2.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  t3\n");
+        Assert.assertEquals(input2.producers.size(), 0);
+
+        DAGNode q1In1 = input1.producers.get(0);
+        Assert.assertEquals(q1In1.producers.size(), 0);
+        Assert.assertEquals(q1In1.name, "q3");
+        Assert.assertEquals(q1In1.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  t1\n" +
+                "LIMIT 10\n");
+
+        DAGNode q1In2 = input1.producers.get(1);
+        Assert.assertEquals(q1In2.producers.size(), 0);
+        Assert.assertEquals(q1In2.name, "q4");
+        Assert.assertEquals(q1In2.sql, "SELECT\n" +
+                "  *\n" +
+                "FROM\n" +
+                "  t2\n");
+    }
+
+    private void testMergeDAGSQLCase(String input, String output, String error) {
+        Exception exception = null;    
+        try {
+            DAGNode dag = AIOSUtil.parseAIOSDAG(input);
+            Map<String, Map<String, Schema>> tableSchema = AIOSUtil.parseAIOSTableSchema(input, "usedDB");
+            String merged = SqlClusterExecutor.mergeDAGSQL(dag);
+            System.out.println(merged);
+            Assert.assertEquals(merged, output);
+            List<String> errors = SqlClusterExecutor.validateSQLInRequest(merged, "usedDB", tableSchema);
+            if (!errors.isEmpty()) {
+                throw new SQLException("merged sql is invalid: " + errors +
+                        "\n, merged sql: " + merged + "\n, table schema: " + tableSchema);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            exception = e;
+        }
+        if (error == null) {
+            Assert.assertTrue(exception == null);
+        } else {
+            Assert.assertTrue(exception.toString().contains(error));
+        }
+    }
+
+    @Test
+    public void testMergeDAGSQL() throws IOException {
+        System.out.println("user.dir: " + System.getProperty("user.dir"));
+        ArrayList<Path> inputs = new ArrayList<>();
+        ArrayList<Path> outputs = new ArrayList<>();
+        inputs.add(Paths.get("src/test/data/aiosdagsql/input1.json"));
+        outputs.add(Paths.get("src/test/data/aiosdagsql/output1.sql"));
+        for (int i = 0; i < inputs.size(); ++i) {
+            String input = new String(Files.readAllBytes(inputs.get(i)));
+            String output = new String(Files.readAllBytes(outputs.get(i)));
+            testMergeDAGSQLCase(input, output, null);
+        }
+    }
+
+    @Test
+    public void testMergeDAGSQLError() throws IOException {
+        System.out.println("user.dir: " + System.getProperty("user.dir"));
+        ArrayList<Path> inputs = new ArrayList<>();
+        ArrayList<Path> outputs = new ArrayList<>();
+        inputs.add(Paths.get("src/test/data/aiosdagsql/error1.json"));
+        outputs.add(Paths.get("src/test/data/aiosdagsql/error1.sql"));
+        for (int i = 0; i < inputs.size(); ++i) {
+            String input = new String(Files.readAllBytes(inputs.get(i)));
+            String output = new String(Files.readAllBytes(outputs.get(i)));
+            testMergeDAGSQLCase(input, output, "Fail to resolve expression");
+        }
+    }
+
 }
+

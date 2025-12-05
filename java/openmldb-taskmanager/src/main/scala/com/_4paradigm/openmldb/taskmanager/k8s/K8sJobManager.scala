@@ -44,12 +44,18 @@ object K8sJobManager {
 
   def submitSparkJob(jobType: String, mainClass: String,
     args: List[String] = List(),
+    sql: String = "",
     localSqlFile: String = "",
     sparkConf: Map[String, String] = Map(),
     defaultDb: String = "",
     blocking: Boolean = false): JobInfo = {
 
-    val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
+    val jobInfoArgs = if (sql.nonEmpty) {
+      List(sql)
+    } else {
+      args
+    }
+    val jobInfo = JobInfoManager.createJobInfo(jobType, jobInfoArgs, sparkConf)
 
     val jobName = getK8sJobName(jobInfo.getId)
     jobInfo.setApplicationId(jobName)

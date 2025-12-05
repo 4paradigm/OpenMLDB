@@ -45,6 +45,11 @@ object JobInfoManager {
   private val option = new SdkOption
   option.setZkCluster(TaskManagerConfig.getZkCluster)
   option.setZkPath(TaskManagerConfig.getZkRootPath)
+  option.setUser(TaskManagerConfig.getUser)
+
+  if (!TaskManagerConfig.getPassword.isEmpty) {
+    option.setPassword(TaskManagerConfig.getPassword)
+  }
   val sqlExecutor = new SqlClusterExecutor(option)
   sqlExecutor.executeSQL("", "set @@execute_mode='online';")
 
@@ -67,7 +72,7 @@ object JobInfoManager {
   }
 
   def getAllJobs(): List[JobInfo] = {
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
     // TODO: Reorder in output, use orderby desc if SQL supported
     resultSetToJobs(rs).sortWith(_.getId > _.getId)
@@ -76,7 +81,7 @@ object JobInfoManager {
   def getUnfinishedJobs(): List[JobInfo] = {
     // TODO: Now we can not add index for `state` and run sql with
     //  s"SELECT * FROM $tableName WHERE state NOT IN (${JobInfo.FINAL_STATE.mkString(",")})"
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
 
     val jobs = mutable.ArrayBuffer[JobInfo]()
@@ -93,7 +98,7 @@ object JobInfoManager {
   }
 
   def stopJob(jobId: Int): JobInfo = {
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
 
     val jobInfo = if (rs.getFetchSize == 0) {
@@ -125,7 +130,7 @@ object JobInfoManager {
 
   def getJob(jobId: Int): Option[JobInfo] = {
     // TODO: Require to get only one row, https://github.com/4paradigm/OpenMLDB/issues/704
-    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId"
+    val sql = s"SELECT * FROM $JOB_INFO_TABLE_NAME WHERE id = $jobId CONFIG (execute_mode = 'online')"
     val rs = sqlExecutor.executeSQL(INTERNAL_DB_NAME, sql)
 
     if (rs.getFetchSize == 0) {
@@ -203,8 +208,7 @@ object JobInfoManager {
       val offlineTableInfo = tableInfo.getOfflineTableInfo
 
       val filePath = offlineTableInfo.getPath
-      if(offlineTableInfo.getDeepCopy) {
-
+      if(filePath.nonEmpty) {
         if (filePath.startsWith("file://")) {
           val dir = new File(filePath.substring(7))
           logger.info(s"Try to delete the path ${filePath.substring(7)}")
@@ -217,7 +221,7 @@ object JobInfoManager {
           throw new Exception(s"Get unsupported file path: $filePath")
         }
       } else {
-        logger.info(s"Do not delete file $filePath for non deep copy data")
+        logger.info(s"Do not delete for empty hard path")
       }
     }
 

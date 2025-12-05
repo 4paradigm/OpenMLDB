@@ -133,9 +133,9 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
         }
         if (match_index_col > 0) {
             if (!option->ts_name.empty()) {
-                option->index_map.clear();
+                option->idx.reset();
             }
-            if (option->index_map.empty()) {
+            if (!option->idx.has_value()) {
                 matched_column_key.CopyFrom(column_key);
             } else {
                 if (column_key.col_name_size() != matched_column_key.col_name_size() ||
@@ -144,7 +144,8 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                     return {hybridse::common::StatusCode::kCmdError, "hit multiple indexs"};
                 }
             }
-            option->index_map.emplace(index_pos[column_key.index_name()], pk);
+            option->idx = index_pos[column_key.index_name()];
+            option->key = pk;
             for (const auto& col : matched_column_key.col_name()) {
                 hit_con_col.insert(col);
             }
@@ -153,7 +154,7 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             }
         }
     }
-    if (!option->ts_name.empty() && !option->index_map.empty() && option->ts_name != matched_column_key.ts_name()) {
+    if (!option->ts_name.empty() && option->idx.has_value() && option->ts_name != matched_column_key.ts_name()) {
         return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
     }
     for (const auto& con : condition_vec) {
@@ -229,8 +230,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     // different default value for cluster and standalone mode
     int replica_num = 1;
     int partition_num = 1;
-    bool setted_replica_num = false;
-    bool setted_partition_num = false;
+    bool set_replica_num = false;
+    bool set_partition_num = false;
     if (is_cluster_mode) {
         replica_num = default_replica_num;
         partition_num = FLAGS_partition_num;
@@ -241,13 +242,13 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             switch (table_option->GetType()) {
                 case hybridse::node::kReplicaNum: {
                     replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
-                    setted_replica_num = true;
+                    set_replica_num = true;
                     break;
                 }
                 case hybridse::node::kPartitionNum: {
                     partition_num =
                         dynamic_cast<hybridse::node::PartitionNumNode*>(table_option)->GetPartitionNum();
-                    setted_partition_num = true;
+                    set_partition_num = true;
                     break;
                 }
                 case hybridse::node::kStorageMode: {
@@ -313,16 +314,17 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     return false;
                 }
                 add_column_desc->set_name(column_def->GetColumnName());
-                add_column_desc->set_not_null(column_def->GetIsNotNull());
                 column_names.insert(std::make_pair(column_def->GetColumnName(), add_column_desc));
-                openmldb::type::DataType data_type;
-                if (!openmldb::schema::SchemaAdapter::ConvertType(column_def->GetColumnType(), &data_type)) {
-                    status->msg = "column type " +
-                                  hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
+                auto s = openmldb::schema::SchemaAdapter::ConvertType(column_def->schema(),
+                                                                      add_column_desc->mutable_schema());
+                if (!s.ok()) {
+                    status->msg = s.ToString();
                     status->code = hybridse::common::kUnsupportSql;
                     return false;
                 }
-                add_column_desc->set_data_type(data_type);
+                add_column_desc->set_data_type(add_column_desc->schema().type());
+                add_column_desc->set_not_null(add_column_desc->schema().not_null());
+
                 auto default_val = column_def->GetDefaultValue();
                 if (default_val) {
                     if (default_val->GetExprType() != hybridse::node::kExprPrimary) {
@@ -330,7 +332,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                         status->code = hybridse::common::kTypeError;
                         return false;
                     }
-                    auto val = TransformDataType(*dynamic_cast<hybridse::node::ConstNode*>(default_val),
+                    auto val = TransformDataType(*dynamic_cast<const hybridse::node::ConstNode*>(default_val),
                                                  add_column_desc->data_type());
                     if (!val) {
                         status->msg = "default value type mismatch";
@@ -381,6 +383,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 if (!TransformToColumnKey(column_index, column_names, index, status)) {
                     return false;
                 }
+                DLOG(INFO) << "index column key [" << index->ShortDebugString() << "]";
                 break;
             }
 
@@ -439,12 +442,12 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
             }
         }
-        if (setted_partition_num && table->partition_num() != distribution_list.size()) {
+        if (set_partition_num && table->partition_num() != distribution_list.size()) {
             *status = {hybridse::common::kUnsupportSql, "distribution_list size and partition_num is not match"};
             return false;
         }
         table->set_partition_num(distribution_list.size());
-        if (setted_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
+        if (set_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
             *status = {hybridse::common::kUnsupportSql, "replica in distribution_list and replica_num is not match"};
             return false;
         }
@@ -469,6 +472,12 @@ bool NodeAdapter::TransformToColumnKey(hybridse::node::ColumnIndexNode* column_i
     for (const auto& key : column_index->GetKey()) {
         index->add_col_name(key);
     }
+    auto& type = column_index->GetIndexType();
+    if (type == "skey") {
+        index->set_type(common::IndexType::kSecondary);
+    } else if (type == "ckey") {
+        index->set_type(common::IndexType::kClustered);
+    } // else default type kCovering
     // if no column_names, skip check
     if (!column_names.empty()) {
         for (const auto& col : index->col_name()) {
@@ -759,7 +768,7 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
         }
         default:
             return {::hybridse::common::StatusCode::kCmdError,
-                "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+                "unsupported operator type " + hybridse::node::ExprOpTypeName(op_type)};
     }
     return {};
 }
@@ -780,6 +789,23 @@ hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::Binary
     std::vector<Condition> conditions(*condition_vec);
     conditions.insert(conditions.end(), parameter_vec->begin(), parameter_vec->end());
     return CheckCondition(indexs, conditions);
+}
+
+absl::StatusOr<std::string> NodeAdapter::ExtractUserOption(const hybridse::node::OptionsMap& map) {
+    if (map.empty()) {
+        return "";
+    } else if (map.size() > 1) {
+        return absl::InvalidArgumentError("only password option allowed");
+    }
+    if (!absl::EqualsIgnoreCase(map.begin()->first, "password")) {
+        return absl::InvalidArgumentError("invalid option " + map.begin()->first);
+    }
+    auto& kv = *map.begin();
+    auto cnode = kv.second->GetAsOrNull<::hybridse::node::ConstNode>();
+    if (cnode == nullptr || cnode->GetDataType() != hybridse::node::kVarchar) {
+        return absl::InvalidArgumentError("the value of password should be string");
+    }
+    return cnode->GetAsString();
 }
 
 }  // namespace openmldb::sdk

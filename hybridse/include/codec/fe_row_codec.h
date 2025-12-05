@@ -18,16 +18,30 @@
 #define HYBRIDSE_INCLUDE_CODEC_FE_ROW_CODEC_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
+
+#include "absl/status/statusor.h"
+#include "base/fe_status.h"
+#include "base/fe_slice.h"
 #include "base/raw_buffer.h"
-#include "butil/iobuf.h"
-#include "gflags/gflags.h"
+#include "codec/row.h"
 #include "proto/fe_type.pb.h"
 
 namespace hybridse {
+
+namespace node {
+class ExprNode;
+}
+namespace codegen {
+class InsertRowBuilder;
+}
+namespace vm {
+class HybridSeJitWrapper;
+}
+
 namespace codec {
 
 const uint32_t BitMapSize(uint32_t size);
@@ -42,8 +56,20 @@ static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 const std::string NONETOKEN = "!N@U#L$L%";  // NOLINT
 const std::string EMPTY_STRING = "!@#$%";   // NOLINT
 
-// TODO(chendihao): Change to inline function if do not depend on gflags
 const std::unordered_map<::hybridse::type::Type, uint8_t>& GetTypeSizeMap();
+
+// return true if the column considered base type in row codec.
+// date & timestamp consider base type since they have single field in corresponding llvm struct,
+// while string, map and array consider complex type.
+//
+// for base types, the column is written into row ptr by just writing the value of primitive type,
+// for comple type, written is made by a string (or string-like) manner: str size + str data.
+// map, array, or any other complex types, takes a extra encoding from their struct value into str data.
+bool IsCodecBaseType(const type::ColumnSchema& sc);
+bool IsCodecStrLikeType(const type::ColumnSchema& sc);
+
+// returns the corresponding SQL string representation for input ColumnSchema
+absl::StatusOr<std::string> ColumnSchemaStr(const type::ColumnSchema&);
 
 inline uint8_t GetAddrLength(uint32_t size) {
     if (size <= UINT8_MAX) {
@@ -66,6 +92,54 @@ inline uint32_t GetStartOffset(int32_t column_count) {
 void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
                           uint32_t str_idx, uint32_t str_offset);
 
+
+// single slice builder from pure codegen
+class SliceBuilder {
+ public:
+    SliceBuilder(vm::HybridSeJitWrapper*, const hybridse::codec::Schema* schema);
+    virtual ~SliceBuilder() {}
+
+    base::Status Build(const std::vector<node::ExprNode*>&, base::RefCountedSlice*);
+
+    base::Status Build(absl::Span<node::ExprNode* const>, base::RefCountedSlice*);
+
+ private:
+    void EnsureInitialized() {
+        assert(row_builder_ != nullptr && "must initialize the row builder before encoding");
+    }
+
+    const Schema* schema_;
+    std::shared_ptr<codegen::InsertRowBuilder> row_builder_ = nullptr;
+};
+
+// new row builder from pure codegen
+class RowBuilder2 {
+ public:
+    RowBuilder2(vm::HybridSeJitWrapper*, int sliceSize);
+    RowBuilder2(vm::HybridSeJitWrapper*, const std::vector<codec::Schema>& schemas);
+    RowBuilder2(vm::HybridSeJitWrapper*, const std::vector<std::vector<hybridse::type::ColumnDef>>& schemas);
+    ~RowBuilder2() {}
+
+    base::Status Init();
+
+    base::Status InitSchema(int idx, const codec::Schema& sc);
+
+    base::Status Build(const std::vector<node::ExprNode*>&, codec::Row*);
+
+ private:
+    void EnsureInitialized() {
+        assert(initialized_ && "RowBuild not initialized");
+    }
+
+    vm::HybridSeJitWrapper* jit_ = nullptr;
+    std::vector<codec::Schema> schemas_;
+    std::vector<std::shared_ptr<SliceBuilder>> builders_;
+
+    bool initialized_ = false;
+};
+
+// Old row builder in C
+// limited data type support, no map, no array. U should upgrade to RowBuilder2
 class RowBuilder {
  public:
     explicit RowBuilder(const hybridse::codec::Schema& schema);
@@ -180,26 +254,38 @@ class RowView {
 };
 
 struct ColInfo {
-    ::hybridse::type::Type type;
+    // type is still used in same lagecy udf context,
+    // cautious use for non-base types
+    ::hybridse::type::Type type() const {
+        if (!schema.has_base_type()) {
+            return type::kNull;
+        }
+        return schema.base_type();
+    }
+
     uint32_t idx;
     uint32_t offset;
     std::string name;
+    type::ColumnSchema schema;
 
     ColInfo() {}
-    ColInfo(const std::string& name, ::hybridse::type::Type type, uint32_t idx,
-            uint32_t offset)
-        : type(type), idx(idx), offset(offset), name(name) {}
+    ColInfo(const std::string& name, ::hybridse::type::Type type, uint32_t idx, uint32_t offset)
+        : idx(idx), offset(offset), name(name) {
+        schema.set_base_type(type);
+    }
+
+    ColInfo(const std::string& name, const type::ColumnSchema& sc, uint32_t idx, uint32_t offset)
+        : idx(idx), offset(offset), name(name), schema(sc) {}
 };
 
 struct StringColInfo : public ColInfo {
     uint32_t str_next_offset;
     uint32_t str_start_offset;
 
-    StringColInfo() {}
-    StringColInfo(const std::string& name, ::hybridse::type::Type type,
+    StringColInfo(const std::string& name, ::hybridse::type::ColumnSchema sc,
                   uint32_t idx, uint32_t offset, uint32_t str_next_offset,
                   uint32_t str_start_offset)
-        : ColInfo(name, type, idx, offset),
+        : ColInfo(name, sc, idx, offset),
           str_next_offset(str_next_offset),
           str_start_offset(str_start_offset) {}
 };
@@ -209,7 +295,7 @@ class SliceFormat {
     explicit SliceFormat(const hybridse::codec::Schema* schema);
     virtual ~SliceFormat() {}
 
-    bool GetStringColumnInfo(size_t idx, StringColInfo* res) const;
+    absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t idx) const;
 
     const ColInfo* GetColumnInfo(size_t idx) const;
 
@@ -224,7 +310,7 @@ class SliceFormat {
 class RowFormat {
  public:
     virtual ~RowFormat() {}
-    virtual bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const = 0;
+    virtual absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t schema_idx, size_t idx) const = 0;
     virtual const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const = 0;
     virtual size_t GetSliceId(size_t schema_idx) const = 0;
 };
@@ -245,8 +331,8 @@ class MultiSlicesRowFormat : public RowFormat {
         slice_formats_.clear();
     }
 
-    bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
-        return slice_formats_[schema_idx].GetStringColumnInfo(idx, res);
+    absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t schema_idx, size_t idx) const override {
+        return slice_formats_[schema_idx].GetStringColumnInfo(idx);
     }
 
     const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const override {
@@ -287,8 +373,8 @@ class SingleSliceRowFormat : public RowFormat {
         }
     }
 
-    bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
-        return slice_format_->GetStringColumnInfo(offsets_[schema_idx] + idx, res);
+    absl::StatusOr<StringColInfo> GetStringColumnInfo(size_t schema_idx, size_t idx) const override {
+        return slice_format_->GetStringColumnInfo(offsets_[schema_idx] + idx);
     }
 
     const ColInfo* GetColumnInfo(size_t schema_idx, size_t idx) const override {

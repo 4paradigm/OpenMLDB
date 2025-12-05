@@ -26,15 +26,15 @@
 namespace hybridse {
 namespace codegen {
 
-class CodeGenContext;
+class CodeGenContextBase;
 
 class NativeValue {
  public:
     ::llvm::Value* GetIsNull(::llvm::IRBuilder<>*) const;
-    ::llvm::Value* GetIsNull(CodeGenContext*) const;
+    ::llvm::Value* GetIsNull(CodeGenContextBase*) const;
 
     ::llvm::Value* GetValue(::llvm::IRBuilder<>*) const;
-    ::llvm::Value* GetValue(CodeGenContext*) const;
+    ::llvm::Value* GetValue(CodeGenContextBase*) const;
 
     ::llvm::Value* GetAddr(::llvm::IRBuilder<>*) const;
 

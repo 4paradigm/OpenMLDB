@@ -30,13 +30,13 @@ typedef ::google::protobuf::RepeatedPtrField< ::hybridse::type::TableDef>
 
 class SchemaImpl : public Schema {
  public:
-    explicit SchemaImpl(const vm::Schema& schema);
+    explicit SchemaImpl(const codec::Schema& schema);
     SchemaImpl() {}
 
     ~SchemaImpl();
 
-    const vm::Schema& GetSchema() const { return schema_; }
-    inline void SetSchema(const vm::Schema& schema) { schema_ = schema; }
+    const codec::Schema& GetSchema() const { return schema_; }
+    inline void SetSchema(const codec::Schema& schema) { schema_ = schema; }
     int32_t GetColumnCnt() const;
 
     const std::string& GetColumnName(uint32_t index) const;
@@ -46,7 +46,7 @@ class SchemaImpl : public Schema {
     const bool IsConstant(uint32_t index) const;
 
  private:
-    vm::Schema schema_;
+    codec::Schema schema_;
 };
 
 class TableImpl : public Table {

@@ -19,6 +19,7 @@
 #include <set>
 
 #include "absl/strings/str_join.h"
+#include "gflags/gflags.h"
 #include "passes/physical/physical_pass.h"
 #include "vm/physical_op.h"
 
@@ -740,10 +741,12 @@ void SchemasContext::BuildTrivial(
 
 std::string SchemasContext::DebugString() const  {
     std::stringstream ss;
-    ss << absl::StrCat("{", root_db_name_, ",", root_relation_name_, ",", default_db_name_, ", ",
-                        absl::StrJoin(schema_sources_, ",", [](std::string* out, const SchemaSource* source) {
-                            absl::StrAppend(out, source->DebugString());
-                        }));
+    ss << absl::StrCat(
+        "{db=", root_db_name_, ", table=", root_relation_name_, ", default_db=", default_db_name_, ", sources={",
+        absl::StrJoin(
+            schema_sources_, ",",
+            [](std::string* out, const SchemaSource* source) { absl::StrAppend(out, source->DebugString()); }),
+        "}");
     ss << ", id_map={"
        << absl::StrJoin(column_id_map_, ",", [](std::string* out, decltype(column_id_map_)::const_reference e) {
               absl::StrAppend(out, e.first, "=(", e.second.first, ",", e.second.second, ")");

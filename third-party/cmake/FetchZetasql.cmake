@@ -13,15 +13,21 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.3.1)
-set(ZETASQL_HASH_DARWIN 48bfdfe5fa91d414b0bf8383f116bc2a1f558c12fa286e49ea5ceede366dfbcf)
-set(ZETASQL_HASH_LINUX_UBUNTU 3847ed7a60aeda1192adf7d702076d2db2bd49258992e2af67515a57b8f6f6a6)
-set(ZETASQL_HASH_LINUX_CENTOS e73e6259ab2df3ae7289a9ae78600b69a8fbb6e4890d07a1031ccb1e37fa4281)
+set(ZETASQL_VERSION 0.3.5)
+set(ZETASQL_HASH_DARWIN f2e66877152bb3825f4947dc517917c531ecc0ae4a0cef6eb92137c244c44488)
+set(ZETASQL_HASH_LINUX_UBUNTU 88d6bf813562e2388285df97f6cd69b24a7a0c0d840c67bfc3a869208dec8eef)
+set(ZETASQL_HASH_LINUX_CENTOS 6aeba1a121513ba9c0bcfc486943db51e7da62fd1ababf109501a302ddfdfd7d)
+set(ZETASQL_HASH_LINUX_AARCH64 e20e03938ec108b1c08203c238841ae781498dd66c5d791f4ecc326440287cdb)
 set(ZETASQL_TAG v${ZETASQL_VERSION})
 
 function(init_zetasql_urls)
   if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     get_linux_lsb_release_information()
+
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+      set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64.tar.gz" PARENT_SCOPE)
+      set(ZETASQL_HASH ${ZETASQL_HASH_LINUX_AARCH64} PARENT_SCOPE)
+    endif()
 
     if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
@@ -40,23 +46,23 @@ endfunction()
 
 
 if (NOT BUILD_BUNDLED_ZETASQL)
-  init_zetasql_urls()
-
-  if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    message(FATAL_ERROR "pre-compiled zetasql for arm64 not available, try compile zetasql from source by cmake flag: '-DBUILD_BUNDLED_ZETASQL=ON'")
+  if (DEFINED ENV{ZETASQL_VERSION} AND "$ENV{ZETASQL_VERSION}" STREQUAL "${ZETASQL_VERSION}")
+    message(STATUS "ZETASQL_VERSION from env matches ZETASQL_VERSION, skipping download.")
+  else()
+    init_zetasql_urls()
+    message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
+    # download pre-compiled zetasql from GitHub Release
+    ExternalProject_Add(zetasql
+      URL ${ZETASQL_URL}
+      URL_HASH SHA256=${ZETASQL_HASH}
+      PREFIX ${DEPS_BUILD_DIR}
+      DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/zetasql"
+      DOWNLOAD_NO_EXTRACT True
+      INSTALL_DIR ${DEPS_INSTALL_DIR}
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
   endif()
-  message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
-  # download pre-compiled zetasql from GitHub Release
-  ExternalProject_Add(zetasql
-    URL ${ZETASQL_URL}
-    URL_HASH SHA256=${ZETASQL_HASH}
-    PREFIX ${DEPS_BUILD_DIR}
-    DOWNLOAD_DIR "${DEPS_DOWNLOAD_DIR}/zetasql"
-    DOWNLOAD_NO_EXTRACT True
-    INSTALL_DIR ${DEPS_INSTALL_DIR}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND bash -c "tar xzf <DOWNLOADED_FILE> -C ${DEPS_INSTALL_DIR} --strip-components=1")
 else()
   find_program(BAZEL_EXE NAMES bazel REQUIRED DOC "Compile zetasql require bazel or bazelisk")
   find_program(PYTHON_EXE NAMES python REQUIRED DOC "Compile zetasql require python")

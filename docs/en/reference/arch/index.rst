@@ -7,3 +7,4 @@ Architecture
     :maxdepth: 1
 
     online_arch
+    core_data_structure

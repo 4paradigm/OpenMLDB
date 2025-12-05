@@ -79,7 +79,6 @@ public class HighDiskTableTest {
             }
             i++;
         }
-        log.info("stop stop stop");
     }
 
 

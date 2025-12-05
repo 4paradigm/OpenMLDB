@@ -217,16 +217,16 @@ cases:
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
         rows:
-          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
-          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000]
-          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000]
-          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000]
-          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000]
-          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000]
-          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
-          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
-          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590739998000 ]
-          - [10, "b", "bb", "bbb", "bbbb", "1.0", 1590739999000 ]
+          - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", 1.0, 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", 1.0, 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", 1.0, 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", 1.0, 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", 1.0, 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", 1.0, 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", 1.0, 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", 1.0, 1590739998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", 1.0, 1590739999000 ]
     sql: |
       select * from
       (
@@ -270,16 +270,16 @@ cases:
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
         rows:
-          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
-          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000]
-          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000]
-          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000]
-          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000]
-          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000]
-          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
-          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
-          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590739998000 ]
-          - [10, "b", "bb", "bbb", "bbbb", "1.0", 1590739999000 ]
+          - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", 1.0, 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", 1.0, 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", 1.0, 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", 1.0, 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", 1.0, 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", 1.0, 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", 1.0, 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", 1.0, 1590739998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", 1.0, 1590739999000 ]
     sql: |
       select * from
       (
@@ -299,7 +299,7 @@ cases:
         window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
       ) as out4 on out1_id=out4_id;
     request_plan: |
-      SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6, out2_id, c2, w2_sum_c6, out3_id, c3, w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
+      SIMPLE_PROJECT(sources=(out1.out1_id, out1.c1, out1.w1_sum_c6, out2.out2_id, out2.c2, out2.w2_sum_c6, out3.out3_id, out3.c3, out3.w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
         REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
           REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
             REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
@@ -325,7 +325,7 @@ cases:
                 DATA_PROVIDER(type=Partition, table=auto_t0, index=index4)
 
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6, out2_id, c2, w2_sum_c6, out3_id, c3, w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
+      SIMPLE_PROJECT(sources=(out1.out1_id, out1.c1, out1.w1_sum_c6, out2.out2_id, out2.c2, out2.w2_sum_c6, out3.out3_id, out3.c3, out3.w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
         REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
           REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
             REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
@@ -391,29 +391,29 @@ cases:
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7"]
         rows:
-          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
-          - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000]
-          - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000]
-          - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000]
-          - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000]
-          - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000]
-          - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000 ]
-          - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000 ]
-          - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000 ]
-          - [10, "b", "bb", "bbb", "bbbb", "10.0", 1590738999000 ]
+          - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", 2.0, 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", 3.0, 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", 4.0, 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", 5.0, 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", 6.0, 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", 7.0, 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", 8.0, 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", 9.0, 1590738998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", 10.0, 1590738999000 ]
       - columns: ["rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"]
         indexs: ["index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7", ]
         rows:
-          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000 ]
-          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000 ]
-          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000 ]
-          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000 ]
-          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000 ]
-          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000 ]
-          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
-          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
-          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590738998000 ]
-          - [ 10, "b", "bb", "bbb", "bbbb", "1.0",1590738999000 ]
+          - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000 ]
+          - [ 2, "a", "aa", "aaa", "aaaa", 1.0, 1590738991000 ]
+          - [ 3, "a", "aa", "aaa", "bbbb", 1.0, 1590738992000 ]
+          - [ 4, "a", "aa", "aaa", "bbbb", 1.0, 1590738993000 ]
+          - [ 5, "a", "aa", "bbb", "bbbb", 1.0, 1590738994000 ]
+          - [ 6, "a", "aa", "bbb", "bbbb", 1.0, 1590738995000 ]
+          - [ 7, "a", "bb", "bbb", "bbbb", 1.0, 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", 1.0, 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", 1.0, 1590738998000 ]
+          - [ 10, "b", "bb", "bbb", "bbbb", 1.0,1590738999000 ]
     sql: |
       select id, c1, c2, c3, c4, c6, c7, cur_hour, today
       , w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
@@ -493,16 +493,16 @@ cases:
                 "t1_rid int32", "t2_rid int32", "t3_rid int32", "t4_rid int32"]
       order: id
       rows:
-        - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
-        - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
-        - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
-        - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
-        - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
-        - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
-        - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
-        - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
-        - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
-        - [ 10, "b", "bb", "bbb", "bbbb", "10.0",1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]
+        - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
+        - [ 2, "a", "aa", "aaa", "aaaa", 2.0, 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
+        - [ 3, "a", "aa", "aaa", "bbbb", 3.0, 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
+        - [ 4, "a", "aa", "aaa", "bbbb", 4.0, 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
+        - [ 5, "a", "aa", "bbb", "bbbb", 5.0, 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
+        - [ 6, "a", "aa", "bbb", "bbbb", 6.0, 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
+        - [ 7, "a", "bb", "bbb", "bbbb", 7.0, 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
+        - [ 8, "a", "bb", "bbb", "bbbb", 8.0, 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
+        - [ 9, "b", "bb", "bbb", "bbbb", 9.0, 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
+        - [ 10, "b", "bb", "bbb", "bbbb", 10.0,1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]
 
 
   -
@@ -514,29 +514,29 @@ cases:
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
         indexs: ["index1:c1:c7"]
         rows:
-          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
-          - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000]
-          - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000]
-          - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000]
-          - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000]
-          - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000]
-          - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000 ]
-          - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000 ]
-          - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000 ]
-          - [10, "b", "bb", "bbb", "bbbb", "10.0", 1590738999000 ]
+          - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", 2.0, 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", 3.0, 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", 4.0, 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", 5.0, 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", 6.0, 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", 7.0, 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", 8.0, 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", 9.0, 1590738998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", 10.0, 1590738999000 ]
       - columns: ["rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"]
         indexs: ["index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7", ]
         rows:
-          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000 ]
-          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000 ]
-          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000 ]
-          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000 ]
-          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000 ]
-          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000 ]
-          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
-          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
-          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590738998000 ]
-          - [ 10, "b", "bb", "bbb", "bbbb", "1.0",1590738999000 ]
+          - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000 ]
+          - [ 2, "a", "aa", "aaa", "aaaa", 1.0, 1590738991000 ]
+          - [ 3, "a", "aa", "aaa", "bbbb", 1.0, 1590738992000 ]
+          - [ 4, "a", "aa", "aaa", "bbbb", 1.0, 1590738993000 ]
+          - [ 5, "a", "aa", "bbb", "bbbb", 1.0, 1590738994000 ]
+          - [ 6, "a", "aa", "bbb", "bbbb", 1.0, 1590738995000 ]
+          - [ 7, "a", "bb", "bbb", "bbbb", 1.0, 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", 1.0, 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", 1.0, 1590738998000 ]
+          - [ 10, "b", "bb", "bbb", "bbbb", 1.0,1590738999000 ]
     sql: |
       select id, c1, c2, c3, c4, c6, c7, cur_hour, today
       , w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
@@ -616,13 +616,13 @@ cases:
                 "t1_rid int32", "t2_rid int32", "t3_rid int32", "t4_rid int32"]
       order: id
       rows:
-        - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
-        - [ 2, "a", "aa", "aaa", "aaaa", "2.0", 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
-        - [ 3, "a", "aa", "aaa", "bbbb", "3.0", 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
-        - [ 4, "a", "aa", "aaa", "bbbb", "4.0", 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
-        - [ 5, "a", "aa", "bbb", "bbbb", "5.0", 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
-        - [ 6, "a", "aa", "bbb", "bbbb", "6.0", 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
-        - [ 7, "a", "bb", "bbb", "bbbb", "7.0", 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
-        - [ 8, "a", "bb", "bbb", "bbbb", "8.0", 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
-        - [ 9, "b", "bb", "bbb", "bbbb", "9.0", 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
-        - [ 10, "b", "bb", "bbb", "bbbb", "10.0",1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]
+        - [ 1, "a", "aa", "aaa", "aaaa", 1.0, 1590738990000, 15, 29, 1.0, 1.0, 1.0, 1.0, 1, NULL, NULL, NULL, NULL]
+        - [ 2, "a", "aa", "aaa", "aaaa", 2.0, 1590738991000, 15, 29, 3.0, 2.0, 1.0, 1.5, 2, 1, NULL, NULL, NULL ]
+        - [ 3, "a", "aa", "aaa", "bbbb", 3.0, 1590738992000, 15, 29, 6.0, 3.0, 1.0, 2.0, 3, 2 , 1, NULL, NULL]
+        - [ 4, "a", "aa", "aaa", "bbbb", 4.0, 1590738993000, 15, 29, 10.0, 4.0, 1.0, 2.5, 4, 3 , 2, 1, NULL]
+        - [ 5, "a", "aa", "bbb", "bbbb", 5.0, 1590738994000, 15, 29, 15.0, 5.0, 1.0, 3.0, 5, 4 , 3, NULL, NULL]
+        - [ 6, "a", "aa", "bbb", "bbbb", 6.0, 1590738995000, 15, 29, 21.0, 6.0, 1.0, 3.5, 6, 5 , 4, NULL, NULL]
+        - [ 7, "a", "bb", "bbb", "bbbb", 7.0, 1590738996000, 15, 29, 28.0, 7.0, 1.0, 4.0, 7, 6 , NULL, NULL, 3]
+        - [ 8, "a", "bb", "bbb", "bbbb", 8.0, 1590738997000, 15, 29, 36.0, 8.0, 1.0, 4.5, 8, 7 , NULL, 5, 4]
+        - [ 9, "b", "bb", "bbb", "bbbb", 9.0, 1590738998000, 15, 29, 9.0, 9.0, 9.0, 9.0, 1, NULL , 7, 6, 5]
+        - [ 10, "b", "bb", "bbb", "bbbb", 10.0,1590738999000,15, 29, 19.0, 10.0, 9.0, 9.5, 2, 9, 8, 7, 6]

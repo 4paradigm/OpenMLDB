@@ -351,6 +351,23 @@ public class TaskManagerImpl implements TaskManagerInterface {
     }
 
     @Override
+    public TaskManager.ShowJobResponse InsertOfflineData(TaskManager.InsertOfflineDataRequest request) {
+        try {
+            JobInfo jobInfo = OpenmldbBatchjobManager.insertOfflineData(request.getSql(), request.getConfMap(),
+                request.getDefaultDb());
+            if (request.getSyncJob()) {
+                // wait for final state
+                jobInfo = waitJobInfoWrapper(jobInfo.getId());
+            }
+            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
+                .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage()).build();
+        }
+    }
+
+    @Override
     public TaskManager.DropOfflineTableResponse DropOfflineTable(TaskManager.DropOfflineTableRequest request) {
         try {
             JobInfoManager.dropOfflineTable(request.getDb(), request.getTable());
@@ -464,7 +481,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
         }
         // log if save failed
         if (!jobResultSaver.saveFile(request.getResultId(), request.getJsonData())) {
-            log.error("save job result failed(write to local file) for resultId: {}", request.getResultId());
+            logger.error("save job result failed(write to local file) for resultId: " + request.getResultId());
             return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.FAILED)
                     .setMsg("save job result failed(write to local file)").build();
         }

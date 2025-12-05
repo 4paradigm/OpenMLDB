@@ -17,23 +17,24 @@
 #include "udf/default_udf_library.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
+#include <queue>
 #include <string>
 #include <tuple>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <queue>
-#include <functional>
 
+#include "absl/cleanup/cleanup.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/containers.h"
+#include "udf/default_defs/date_and_time_def.h"
+#include "udf/default_defs/expr_def.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
-#include "udf/default_defs/expr_def.h"
-#include "udf/default_defs/date_and_time_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -46,7 +47,8 @@ namespace hybridse {
 namespace udf {
 
 DefaultUdfLibrary* DefaultUdfLibrary::MakeDefaultUdf() {
-    LOG(INFO) << "Creating DefaultUdfLibrary";
+    absl::Time begin = absl::Now();
+    absl::Cleanup clean = [&]() { LOG(INFO) << "Created DefaultUdfLibrary in " << absl::Now() - begin; };
     return new DefaultUdfLibrary();
 }
 
@@ -662,9 +664,11 @@ void DefaultUdfLibrary::Init() {
 
     InitWindowFunctions();
     InitUdaf();
+    InitFeatureSignature();
     InitFeatureZero();
 
     InitArrayUdfs();
+    InitMapUdfs();
     InitEarthDistanceUdf();
     InitJsonUdfs();
 
@@ -794,7 +798,7 @@ void DefaultUdfLibrary::InitStringUdf() {
     RegisterCodeGenUdf("concat").variadic_args<>(
         /* infer */
         [](UdfResolveContext* ctx,
-           const std::vector<const ExprAttrNode*>& arg_attrs,
+           const std::vector<ExprAttrNode>& arg_attrs,
            ExprAttrNode* out) {
             out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
             out->SetNullable(false);
@@ -802,7 +806,7 @@ void DefaultUdfLibrary::InitStringUdf() {
         },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
-           NativeValue* out) {
+           const ExprAttrNode& return_info, NativeValue* out) {
             codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
             return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
         })
@@ -821,16 +825,16 @@ void DefaultUdfLibrary::InitStringUdf() {
     RegisterCodeGenUdf("concat_ws")
         .variadic_args<AnyArg>(
             /* infer */
-            [](UdfResolveContext* ctx, const ExprAttrNode* arg,
-               const std::vector<const ExprAttrNode*>& arg_types,
+            [](UdfResolveContext* ctx, const ExprAttrNode& arg,
+               const std::vector<ExprAttrNode>& arg_types,
                ExprAttrNode* out) {
                 out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
                 out->SetNullable(false);
                 return Status::OK();
             },
             /* gen */
-            [](CodeGenContext* ctx, NativeValue arg,
-               const std::vector<NativeValue>& args, NativeValue* out) {
+            [](CodeGenContext* ctx, NativeValue arg, const std::vector<NativeValue>& args,
+               const ExprAttrNode& return_info, NativeValue* out) {
                 codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
 
                 return string_ir_builder.ConcatWS(ctx->GetCurrentBlock(), arg,
@@ -906,6 +910,47 @@ void DefaultUdfLibrary::InitStringUdf() {
             @since 0.1.0)");
 
     RegisterAlias("substr", "substring");
+
+    RegisterExternal("locate")
+    .args<StringRef, StringRef>(
+        static_cast<int32_t (*)(StringRef*, StringRef*)>(udf::v1::locate))
+    .doc(R"(
+        @brief Returns the position of the first occurrence of substr in str. The given pos and return value are 1-based.
+                This is a version of the `locate` function where `pos` has a default value of 1.
+
+        Example:
+
+        @code{.sql}
+
+            select locate("wo", "hello world");
+            --output 7
+            
+        @endcode)");
+
+    RegisterExternal("locate")
+        .args<StringRef, StringRef, int32_t>(
+            static_cast<int32_t (*)(StringRef*, StringRef*, int32_t)>(udf::v1::locate))
+        .doc(R"(
+            @brief Returns the position of the first occurrence of substr in str after position pos. The given pos and return value are 1-based.
+
+            Example:
+
+            @code{.sql}
+
+                select locate("wo", "hello world", 2);
+                --output 7
+                
+                select locate("Wo", "hello world", 2);
+                --output 0
+                
+            @endcode
+
+            @param substr
+            @param str
+            @param pos: define the begining search position of the str.
+             - Negetive value is illegal and will return 0 directly;
+             - If substr is "" and pos less equal len(str) + 1, return pos, other case return 0;
+        )");
 
     RegisterExternal("strcmp")
         .args<StringRef, StringRef>(
@@ -1651,7 +1696,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
     RegisterExprUdf("round")
         .variadic_args<AnyArg>(
-        [](UdfResolveContext* ctx, ExprNode* x, const std::vector<ExprNode*>& other) -> ExprNode* {
+        [](UdfResolveContext* ctx, ExprNode* x, absl::Span<ExprNode* const> other) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic() || x->GetOutputType()->IsBool()) {
                 ctx->SetError("round do not support first parameter of type " + x->GetOutputType()->GetName());
                 return nullptr;
@@ -2233,18 +2278,15 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )");
 
     RegisterCodeGenUdf("year")
-        .args<Date>(
-            [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
-                codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
-                ::llvm::Value* ret = nullptr;
-                Status status;
-                CHECK_TRUE(date_ir_builder.Year(ctx->GetCurrentBlock(),
-                                                date.GetRaw(), &ret, status),
-                           kCodegenError,
-                           "Fail to build udf year(date): ", status.str());
-                *out = NativeValue::Create(ret);
-                return status;
-            })
+        .args<Date>([](CodeGenContext* ctx, NativeValue date, const node::ExprAttrNode& return_info, NativeValue* out) {
+            codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
+            ::llvm::Value* ret = nullptr;
+            Status status;
+            CHECK_TRUE(date_ir_builder.Year(ctx->GetCurrentBlock(), date.GetRaw(), &ret, status), kCodegenError,
+                       "Fail to build udf year(date): ", status.str());
+            *out = NativeValue::Create(ret);
+            return status;
+        })
         .returns<int32_t>();
 
     RegisterExternal("month")
@@ -2264,7 +2306,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
     RegisterCodeGenUdf("month")
         .args<Date>(
-            [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
+            [](CodeGenContext* ctx, NativeValue date, const node::ExprAttrNode& ri, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
                 ::llvm::Value* ret = nullptr;
                 Status status;
@@ -2298,7 +2340,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         )");
 
     RegisterCodeGenUdf("dayofmonth").args<Date>(
-            [](CodeGenContext* ctx, NativeValue date, NativeValue* out) {
+            [](CodeGenContext* ctx, NativeValue date, const node::ExprAttrNode& ri, NativeValue* out) {
                 codegen::DateIRBuilder date_ir_builder(ctx->GetModule());
                 ::llvm::Value* ret = nullptr;
                 Status status;
@@ -2554,13 +2596,13 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         .variadic_args<>(
             /* infer */
             [](UdfResolveContext* ctx,
-               const std::vector<const ExprAttrNode*>& args,
+               const std::vector<ExprAttrNode>& args,
                ExprAttrNode* out) {
                 auto nm = ctx->node_manager();
                 auto tuple_type = nm->MakeTypeNode(node::kTuple);
                 for (auto attr : args) {
-                    tuple_type->generics_.push_back(attr->type());
-                    tuple_type->generics_nullable_.push_back(attr->nullable());
+                    tuple_type->generics_.push_back(attr.type());
+                    tuple_type->generics_nullable_.push_back(attr.nullable());
                 }
                 out->SetType(tuple_type);
                 out->SetNullable(false);
@@ -2568,7 +2610,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             },
             /* gen */
             [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
-               NativeValue* out) {
+               const ExprAttrNode& return_info, NativeValue* out) {
                 *out = NativeValue::CreateTuple(args);
                 return Status::OK();
             });

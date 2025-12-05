@@ -115,7 +115,8 @@ class Collector:
                 tm_conf_path = server_info.conf_path_pair("")[0]
                 config_name = "spark.home="
                 log.debug("get %s from %s", config_name, tm_conf_path)
-                grep_str, _ = server_info.cmd_on_host(f"grep {config_name} {tm_conf_path}")
+                # last one option
+                grep_str, _ = server_info.cmd_on_host(f"grep {config_name} {tm_conf_path} | tail -n 1")
 
                 if not grep_str:
                     # TODO(hw):no config in file, get env SPARK_HOME?

@@ -46,6 +46,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.text.ParseException;
+
+import org.apache.commons.lang3.time.DateUtils;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -69,6 +72,12 @@ public class BufferedRecords {
   private StatementBinder updateStatementBinder;
   private StatementBinder deleteStatementBinder;
   private boolean deletesInBatch = false;
+
+  private static String[] parsePatterns = {"yyyy-MM-dd",
+    "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm",
+    "yyyy/MM/dd","yyyy-MM-dd HH:mm:ss.S",
+    "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", 
+    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"};
 
   public BufferedRecords(JdbcSinkConfig config, TableId tableId, DatabaseDialect dbDialect,
       DbStructure dbStructure, Connection connection) {
@@ -96,26 +105,40 @@ public class BufferedRecords {
     }
   }
 
-  private Object convertToLogicalType(Field field, Object value) {
-    if (field.schema().name() != null && value != null) {
-      switch (field.schema().name()) {
-        case Date.LOGICAL_NAME:
-          // date in json is day int, convert to millisecond
-          return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
-        case Time.LOGICAL_NAME:
-        case Timestamp.LOGICAL_NAME:
-          return new java.util.Date((Long) value);
-        default:
-      }
-    }
-    return null;
-  }
-
-  private Object convertToSchemaType(Field field, Object value) {
-    if (value == null) {
-      log.trace("value is null");
+  private static Object convertToLogicalType(Field field, Object value) {
+    // may don't have logical name
+    if (field.schema().name() == null) {
       return null;
     }
+    switch (field.schema().name()) {
+      case Date.LOGICAL_NAME:
+        // support string to Date(able to have time, ref spark)
+        if (value instanceof String) {
+          try {
+            return DateUtils.parseDate((String) value, parsePatterns);
+          } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid date format");
+          }
+        }
+        // date in json can be day int, convert to millisecond
+        return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
+      case Time.LOGICAL_NAME:
+      case Timestamp.LOGICAL_NAME:
+        // support string to Date, int type to Date(if not, let it crash)
+        if (value instanceof String) {
+          try {
+            return DateUtils.parseDate((String) value, parsePatterns);
+          } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid timestamp format");
+          }
+        }
+        return new java.util.Date((Long) value);
+      default:
+        throw new IllegalArgumentException("Unsupported logical type " + field.schema().name());
+    }
+  }
+
+  private static Object convertToSchemaType(Field field, Object value) {
     Object result = value;
     switch (field.schema().type()) {
       case INT16: {
@@ -147,21 +170,41 @@ public class BufferedRecords {
             value.getClass().getSimpleName());
       }
     }
+    // no need to convert type, use origin type(e.g. Long, Double, String, etc.)
     return result;
   }
 
-  private Object convertToStruct(Schema valueSchema, Object value) {
-    Struct structValue = new Struct(valueSchema);
-    HashMap<String, Object> map = (HashMap) value;
+  public static Struct convertToStruct(Schema valueSchema, Object value) {
+    SchemaBuilder validSchemaBuilder = SchemaBuilder.struct();
+    HashMap<String, Object> valueCache = new HashMap<String, Object>();
+    @SuppressWarnings("unchecked")
+    HashMap<String, Object> map = (HashMap<String, Object>) value;
     for (Field field : valueSchema.fields()) {
-      Object v = map.get(field.name());
-      // convert to the right type with schema(logical type first, if not, schema type)
-      Object newV = convertToLogicalType(field, v);
-      if (newV == null) {
-        newV = convertToSchemaType(field, v);
+      // 1. field is not in map, schema should remove it
+      // 2. filed is set to null, schema should keep it and don't set it,
+      // set null will throw exception in Struct
+      if (map.containsKey(field.name())) {
+        Object v = map.get(field.name());
+        Object newV = v;
+        if (v != null) {
+          // convert to the right type with schema(logical type first, if not, schema type)
+          newV = convertToLogicalType(field, v);
+          if (newV == null) {
+            newV = convertToSchemaType(field, v);
+          }
+        }
+        // if null value, don't put it into struct, but should add it into schema
+        validSchemaBuilder.field(field.name(), field.schema());
+        if (newV != null) {
+          valueCache.put(field.name(), newV);
+        }
       }
-      structValue.put(field.name(), newV);
     }
+
+    Struct structValue = new Struct(validSchemaBuilder.build());
+    valueCache.forEach((k, v) -> {
+      structValue.put(k, v);
+    });
     return structValue;
   }
 
@@ -174,10 +217,13 @@ public class BufferedRecords {
       if (!(record.value() instanceof HashMap)) {
         log.warn("auto schema convertToStruct only support hashmap to struct");
       }
-      Object structValue = convertToStruct(valueSchema, record.value());
-      log.debug("auto schema convertToStruct {}", structValue);
+      // schema may <= valueSchema, some columns may not in sink record
+      // TODO: what if json send column with empty value? is it be null in map?
+      Struct structValue = convertToStruct(valueSchema, record.value());
+      log.debug("auto schema convertToStruct schema {}, {}, origin {}", 
+          structValue.schema().fields(), structValue, record.value());
       record = new SinkRecord(record.topic(), record.kafkaPartition(), record.keySchema(),
-          record.key(), valueSchema, structValue, record.kafkaOffset(), record.timestamp(),
+          record.key(), structValue.schema(), structValue, record.kafkaOffset(), record.timestamp(),
           record.timestampType(), record.headers());
     }
 

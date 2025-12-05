@@ -985,3 +985,29 @@ cases:
       data: |
         1, 10, 1000
         2, 30, 2000
+
+  - id: 108
+    mode: request-unsupport
+    inputs:
+      # t1 as request table, only one request row concerned
+      # from SQL config options
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx2:b:ts"]
+        data: |
+          1, 10, 1000
+      - name: t2
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx2:b:ts"]
+        data: |
+          3, 10, 1000
+          4, 30, 2000
+    sql: |
+      select t1.*, t2.id as ix from t1
+      last join t2 on t1.b = t2.b
+      config (execute_mode = 'request', values = (5, 10, timestamp(4000)))
+    expect:
+      columns: ["id int32", "b int32", "ts int64", "ix int32"]
+      order: id
+      data: |
+        5, 10, 4000, 3

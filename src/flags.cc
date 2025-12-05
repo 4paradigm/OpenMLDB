@@ -21,9 +21,12 @@ DEFINE_string(log_level, "debug", "Set the log level of servers, eg: debug or in
 DEFINE_int32(glog_level, 1, "set the glog level of CLI, default is WARN");
 DEFINE_string(glog_dir, "", "set the glog dir of CLI, default is empty, print to stdout");
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir of glog, for all log macro");
+DEFINE_int32(log_overdue_days, 0, "config the number of days to retain log files");
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
 DEFINE_string(cmd, "", "the command str, DO NOT add multi sqls");
+DEFINE_string(user, "root", "specify the user");
+DEFINE_string(password, "", "config the password");
 DEFINE_int32(zk_session_timeout, 2000,
              "config the zk session timeout of cli in milliseconds, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline. unit is milliseconds");
@@ -34,6 +37,7 @@ DEFINE_string(zk_auth_schema, "digest", "config the id of authentication schema"
 DEFINE_string(zk_cert, "", "config the application credentials");
 DEFINE_string(tablet, "", "config the endpoint of tablet");
 DEFINE_string(nameserver, "", "config the endpoint of nameserver");
+DEFINE_int32(get_sys_mem_interval, 10000, "config the interval of get system memory. unit is milliseconds");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check. unit is milliseconds");
 DEFINE_uint32(zk_log_level, 0,
               "CLI: set level integer, DISABLE_LOGGING=0, "
@@ -76,7 +80,8 @@ DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when d
 DEFINE_string(bucket_size, "1d", "the default bucket size in pre-aggr table");
 
 // scan configuration
-DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
+// max bytes size: write all even if scan result is too large, let it fail in client(receiver)
+DEFINE_uint32(scan_max_bytes_size, 0, "config the max size of scan bytes size, 0 means unlimit");
 DEFINE_uint32(scan_reserve_size, 1024, "config the size of vec reserve");
 DEFINE_uint32(preview_limit_max_num, 1000, "config the max num of preview limit");
 DEFINE_uint32(preview_default_limit, 100, "config the default limit of preview");
@@ -154,8 +159,8 @@ DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist
 DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
 DEFINE_uint32(max_col_display_length, 256, "config the max length of column display");
 
-// load table resouce control
-DEFINE_uint32(load_table_batch, 30, "set laod table batch size");
+// load table resource control
+DEFINE_uint32(load_table_batch, 30, "set load table batch size");
 DEFINE_uint32(load_table_thread_num, 3, "set load tabale thread pool size");
 DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
 
@@ -181,3 +186,8 @@ DEFINE_uint32(keep_log_file_num, 5, "Maximal info log files to be kept");
 DEFINE_int32(sync_job_timeout, 30 * 60 * 1000,
              "sync job timeout, unit is milliseconds, should <= server.channel_keep_alive_time in TaskManager");
 DEFINE_int32(deploy_job_max_wait_time_ms, 30 * 60 * 1000, "the max wait time of waiting deploy job");
+DEFINE_bool(skip_grant_tables, true, "skip the grant tables");
+
+// iot 
+// not exactly size, may plus some TODO(hw): too small?
+DEFINE_uint32(cidx_gc_max_size, 1000, "config the max size for one cidx segment gc");

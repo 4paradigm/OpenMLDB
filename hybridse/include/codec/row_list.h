@@ -99,7 +99,11 @@ class ListV {
         while (pos-- > 0 && iter->Valid()) {
             iter->Next();
         }
-        return iter->Valid() ? iter->GetValue() : AtOut<V>::Null();
+
+        if (iter->Valid() && !iter->IsValueNull()) {
+            return iter->GetValue();
+        }
+        return AtOut<V>::Null();
     }
 };
 }  // namespace codec

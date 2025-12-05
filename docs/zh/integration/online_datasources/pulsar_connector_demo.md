@@ -35,7 +35,7 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 ```
 我们更推荐你使用‘host network’模式运行docker，以及绑定文件目录‘files’，sql脚本在该目录中。
 ```
-docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.8.4 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.9.2 bash
 docker exec -it openmldb bash
 ```
 
@@ -85,7 +85,7 @@ OpenMLDB服务已经使用了端口2181，所以此处我们为Pulsar重新设�
 ps axu|grep pulsar
 ```
 
-当你启动一个本地standalone集群，会自动创建'pulic/default' namesapce。这个namespace用于开发，参考[pulsar文档](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
+当你启动一个本地standalone集群，会自动创建'pulic/default' namespace。这个namespace用于开发，参考[pulsar文档](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
 
 **我们将在此namespace中创建sink**
 

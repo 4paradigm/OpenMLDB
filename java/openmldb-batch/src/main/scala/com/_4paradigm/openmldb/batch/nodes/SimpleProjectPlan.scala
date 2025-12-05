@@ -96,7 +96,11 @@ object SimpleProjectPlan {
         val sparkCol = SparkColumnUtil.getColumnFromIndex(inputDf, colIndex)
         val sparkType = inputDf.schema(colIndex).dataType
         val schemaType = DataTypeUtil.sparkTypeToHybridseProtoType(sparkType)
-        val innerType = DataTypeUtil.hybridseProtoTypeToOpenmldbType(schemaType)
+        if (!schemaType.hasBaseType()) {
+          throw new UnsupportedHybridSeException(
+            s"expression output type does not expect to be ${schemaType} for simple project")
+        }
+        val innerType = DataTypeUtil.hybridseProtoTypeToOpenmldbType(schemaType.getBaseType())
         sparkCol -> innerType
 
       case ExprType.kExprPrimary =>
@@ -105,7 +109,7 @@ object SimpleProjectPlan {
 
       case ExprType.kExprCast =>
         val cast = CastExprNode.CastFrom(expr)
-        val castType = cast.getCast_type_
+        val castType = cast.base_cast_type
         val (childCol, childType) =
           createSparkColumn(spark, inputDf, node, cast.GetChild(0))
         val castColumn = ConstProjectPlan.castSparkOutputCol(

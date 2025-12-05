@@ -76,13 +76,37 @@ TEST_F(SegmentTest, PutAndScan) {
     ASSERT_TRUE(it->Valid());
 }
 
-void CheckStatisticsInfo(const StatisticsInfo& expect, const StatisticsInfo& value) {
-    ASSERT_EQ(expect.idx_cnt_vec.size(), value.idx_cnt_vec.size());
-    for (size_t idx = 0; idx < expect.idx_cnt_vec.size(); idx++) {
-        ASSERT_EQ(expect.idx_cnt_vec[idx], value.idx_cnt_vec[idx]);
+// report result, don't need to print args in here, just print the failure
+::testing::AssertionResult CheckStatisticsInfo(const StatisticsInfo& expect, const StatisticsInfo& value) {
+    if (expect.idx_cnt_vec.size() != value.idx_cnt_vec.size()) {
+        return ::testing::AssertionFailure()
+               << "idx_cnt_vec size expect " << expect.idx_cnt_vec.size() << " but got " << value.idx_cnt_vec.size();
     }
-    ASSERT_EQ(expect.record_byte_size, value.record_byte_size);
-    ASSERT_EQ(expect.idx_byte_size, value.idx_byte_size);
+    for (size_t idx = 0; idx < expect.idx_cnt_vec.size(); idx++) {
+        if (expect.idx_cnt_vec[idx] != value.idx_cnt_vec[idx]) {
+            return ::testing::AssertionFailure() << "idx_cnt_vec[" << idx << "] expect " << expect.idx_cnt_vec[idx]
+                                                 << " but got " << value.idx_cnt_vec[idx];
+        }
+    }
+    if (expect.record_byte_size != value.record_byte_size) {
+        return ::testing::AssertionFailure()
+               << "record_byte_size expect " << expect.record_byte_size << " but got " << value.record_byte_size;
+    }
+    if (expect.idx_byte_size != value.idx_byte_size) {
+        return ::testing::AssertionFailure()
+               << "idx_byte_size expect " << expect.idx_byte_size << " but got " << value.idx_byte_size;
+    }
+    return ::testing::AssertionSuccess();
+}
+
+// helper
+::testing::AssertionResult CheckStatisticsInfo(std::initializer_list<size_t> vec, uint64_t idx_byte_size,
+                                               uint64_t record_byte_size, const StatisticsInfo& value) {
+    StatisticsInfo info(0);  // overwrite by set idx_cnt_vec
+    info.idx_cnt_vec = vec;
+    info.idx_byte_size = idx_byte_size;
+    info.record_byte_size = record_byte_size;
+    return CheckStatisticsInfo(info, value);
 }
 
 StatisticsInfo CreateStatisticsInfo(uint64_t idx_cnt, uint64_t idx_byte_size, uint64_t record_byte_size) {
@@ -246,19 +270,32 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
     segment.Put("PK2", 9766, "test2", 5);
     segment.Put("PK2", 9767, "test3", 5);
     StatisticsInfo gc_info(1);
+    // Gc4TTLAndHead only change gc_info.vec[0], check code
+    // no expire
     segment.Gc4TTLAndHead(0, 0, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
-    segment.Gc4TTLAndHead(9765, 0, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({0}, 0, 0, gc_info));
+    // no lat expire, so all records won't be deleted
+    segment.Gc4TTLAndHead(9999, 0, &gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({0}, 0, 0, gc_info));
+    // no abs expire, so all records won't be deleted
     segment.Gc4TTLAndHead(0, 3, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
-    segment.Gc4TTLAndHead(9765, 3, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
-    segment.Gc4TTLAndHead(9766, 2, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(2, 0, 2 * GetRecordSize(5)), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({0}, 0, 0, gc_info));
+    // current_time > expire_time means not expired, so == is outdate and lat 2, so `9765` should be deleted
+    segment.Gc4TTLAndHead(9765, 2, &gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({1}, 0, GetRecordSize(5), gc_info));
+    // gc again, no record expired, info won't update
+    segment.Gc4TTLAndHead(9765, 2, &gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({1}, 0, GetRecordSize(5), gc_info));
+    // new info
     gc_info.Reset();
+    // time <= 9770 is abs expired, but lat 1, so just 1 record per key left, 4 deleted
     segment.Gc4TTLAndHead(9770, 1, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(3, 0, 3 * GetRecordSize(5)), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({4}, 0, 4 * GetRecordSize(5), gc_info));
+    uint64_t cnt = 0;
+    ASSERT_EQ(0, segment.GetCount("PK1", cnt));
+    ASSERT_EQ(1, cnt);
+    ASSERT_EQ(0, segment.GetCount("PK2", cnt));
+    ASSERT_EQ(1, cnt);
 }
 
 TEST_F(SegmentTest, TestGc4TTLOrHead) {
@@ -271,21 +308,24 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
     segment.Put("PK2", 9766, "test2", 5);
     segment.Put("PK2", 9767, "test3", 5);
     StatisticsInfo gc_info(1);
+    // no expire
     segment.Gc4TTLOrHead(0, 0, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({0}, 0, 0, gc_info));
+    // all record <= 9765 should be deleted, no matter the lat expire
     segment.Gc4TTLOrHead(9765, 0, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({1}, 0, GetRecordSize(5), gc_info));
     gc_info.Reset();
+    // even abs no expire, only lat 3 per key
     segment.Gc4TTLOrHead(0, 3, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({1}, 0, GetRecordSize(5), gc_info));
     gc_info.Reset();
     segment.Gc4TTLOrHead(9765, 3, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({0}, 0, 0, gc_info));
     segment.Gc4TTLOrHead(9766, 2, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(2, 0, 2 * GetRecordSize(5)), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({2}, 0, 2 * GetRecordSize(5), gc_info));
     gc_info.Reset();
     segment.Gc4TTLOrHead(9770, 1, &gc_info);
-    CheckStatisticsInfo(CreateStatisticsInfo(3, 0, 3 * GetRecordSize(5)), gc_info);
+    ASSERT_TRUE(CheckStatisticsInfo({3}, 0, 3 * GetRecordSize(5), gc_info));
 }
 
 TEST_F(SegmentTest, TestStat) {
@@ -422,6 +462,148 @@ TEST_F(SegmentTest, TestDeleteRange) {
     StatisticsInfo gc_info(1);
     segment.GcFreeList(&gc_info);
     CheckStatisticsInfo(CreateStatisticsInfo(20, 1012, 20 * (6 + sizeof(DataBlock))), gc_info);
+}
+
+TEST_F(SegmentTest, PutIfAbsent) {
+    {
+        Segment segment(8);  // so ts_cnt_ == 1
+        // check all time == false
+        segment.Put("PK", 1, "test1", 5, true);
+        segment.Put("PK", 1, "test2", 5, true);  // even key&time is the same, different value means different record
+        ASSERT_EQ(2, (int64_t)segment.GetIdxCnt());
+        ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
+        segment.Put("PK", 2, "test3", 5, true);
+        segment.Put("PK", 2, "test4", 5, true);
+        segment.Put("PK", 3, "test5", 5, true);
+        segment.Put("PK", 3, "test6", 5, true);
+        ASSERT_EQ(6, (int64_t)segment.GetIdxCnt());
+        // insert exists rows
+        segment.Put("PK", 2, "test3", 5, true);
+        segment.Put("PK", 1, "test1", 5, true);
+        segment.Put("PK", 1, "test2", 5, true);
+        segment.Put("PK", 3, "test6", 5, true);
+        ASSERT_EQ(6, (int64_t)segment.GetIdxCnt());
+        // new rows
+        segment.Put("PK", 2, "test7", 5, true);
+        ASSERT_EQ(7, (int64_t)segment.GetIdxCnt());
+        segment.Put("PK", 0, "test8", 5, true);  // seek to last, next is empty
+        ASSERT_EQ(8, (int64_t)segment.GetIdxCnt());
+    }
+
+    {
+        // support when ts_cnt_ != 1 too
+        std::vector<uint32_t> ts_idx_vec = {1, 3};
+        Segment segment(8, ts_idx_vec);
+        ASSERT_EQ(2, (int64_t)segment.GetTsCnt());
+        std::string key = "PK";
+        uint64_t ts = 1669013677221000;
+        // the same ts
+        for (int j = 0; j < 2; j++) {
+            DataBlock* data = new DataBlock(2, key.c_str(), key.length());
+            std::map<int32_t, uint64_t> ts_map = {{1, ts}, {3, ts}};
+            segment.Put(Slice(key), ts_map, data, true);
+        }
+        ASSERT_EQ(1, GetCount(&segment, 1));
+        ASSERT_EQ(1, GetCount(&segment, 3));
+    }
+
+    {
+        // put ts_map contains DEFAULT_TS_COL_ID
+        std::vector<uint32_t> ts_idx_vec = {DEFAULT_TS_COL_ID};
+        Segment segment(8, ts_idx_vec);
+        ASSERT_EQ(1, (int64_t)segment.GetTsCnt());
+        std::string key = "PK";
+        std::map<int32_t, uint64_t> ts_map = {{DEFAULT_TS_COL_ID, 100}};  // cur time == 100
+        auto* block = new DataBlock(1, "test1", 5);
+        segment.Put(Slice(key), ts_map, block, true);
+        ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));
+        ts_map = {{DEFAULT_TS_COL_ID, 200}};
+        block = new DataBlock(1, "test1", 5);
+        segment.Put(Slice(key), ts_map, block, true);
+        ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));
+    }
+
+    {
+        // put ts_map contains DEFAULT_TS_COL_ID
+        std::vector<uint32_t> ts_idx_vec = {DEFAULT_TS_COL_ID, 1, 3};
+        Segment segment(8, ts_idx_vec);
+        ASSERT_EQ(3, (int64_t)segment.GetTsCnt());
+        std::string key = "PK";
+        std::map<int32_t, uint64_t> ts_map = {{DEFAULT_TS_COL_ID, 100}};  // cur time == 100
+        auto* block = new DataBlock(1, "test1", 5);
+        segment.Put(Slice(key), ts_map, block, true);
+        ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));
+        ts_map = {{DEFAULT_TS_COL_ID, 200}};
+        block = new DataBlock(1, "test1", 5);
+        segment.Put(Slice(key), ts_map, block, true);
+        ASSERT_EQ(1, GetCount(&segment, DEFAULT_TS_COL_ID));
+    }
+}
+
+TEST_F(SegmentTest, TestGcAllType) {
+    std::vector<uint32_t> ts_idx_vec = {1, 2};
+    Segment segment(8, ts_idx_vec);
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    for (int idx = 0; idx < 10; idx++) {
+        std::map<int32_t, uint64_t> ts_map = {
+            {1, cur_time - idx * 60 * 1000},
+            {2, cur_time - idx * 60 * 1000},
+        };
+        std::string key = absl::StrCat("key", idx);
+        std::string value = absl::StrCat("value", idx);
+        auto* block = new DataBlock(2, value.c_str(), value.length());
+        segment.Put(Slice(key), ts_map, block, false);
+    }
+    for (int idx = 0; idx < 10; idx++) {
+        std::map<int32_t, uint64_t> ts_map = {
+            {1, cur_time - idx * 60 * 1000},
+            {2, cur_time - idx * 60 * 1000},
+        };
+        std::string key = absl::StrCat("key", idx);
+        Ticket ticket;
+        std::unique_ptr<MemTableIterator> it(segment.NewIterator(key, 1, ticket, type::CompressType::kNoCompress));
+        auto ts = cur_time - idx * 60 * 1000;
+        it->Seek(ts);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(it->GetKey(), ts);
+        it.reset(segment.NewIterator(key, 2, ticket, type::CompressType::kNoCompress));
+        it->Seek(ts);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(it->GetKey(), ts);
+    }
+
+    StatisticsInfo statistics_info(1);
+    std::map<uint32_t, TTLSt> ttl_st_map = {
+        {1, TTLSt(5 * 60 * 1000, 0, TTLType::kAbsoluteTime)},
+        {2, TTLSt(3 * 60 * 1000, 0, TTLType::kAbsoluteTime)}
+    };
+    segment.ExecuteGc(ttl_st_map, &statistics_info, std::optional<uint32_t>());
+    for (int idx = 0; idx < 10; idx++) {
+        std::map<int32_t, uint64_t> ts_map = {
+            {1, cur_time - idx * 60 * 1000},
+            {2, cur_time - idx * 60 * 1000},
+        };
+        std::string key = absl::StrCat("key", idx);
+        Ticket ticket;
+        std::unique_ptr<MemTableIterator> it(segment.NewIterator(key, 1, ticket, type::CompressType::kNoCompress));
+        auto ts = cur_time - idx * 60 * 1000;
+        it->Seek(ts);
+        if (idx < 5) {
+            ASSERT_TRUE(it->Valid()) << "Iterator invalid at key: " << key;
+            ASSERT_EQ(it->GetKey(), ts);
+        } else if (idx > 5) {
+            ASSERT_FALSE(it->Valid()) << "Iterator valid at key: " << key;
+        }
+        it.reset(segment.NewIterator(key, 2, ticket, type::CompressType::kNoCompress));
+        it->Seek(ts);
+        if (idx < 3) {
+            ASSERT_TRUE(it->Valid()) << "Iterator invalid at key: " << key;
+            ASSERT_EQ(it->GetKey(), ts);
+        } else if (idx > 3) {
+            ASSERT_FALSE(it->Valid()) << "Iterator valid at key: " << key;
+        }
+    }
+
 }
 
 }  // namespace storage

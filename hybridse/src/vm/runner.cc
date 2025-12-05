@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "base/texttable.h"
+#include "gflags/gflags.h"
 #include "node/node_enum.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
@@ -39,6 +40,57 @@ namespace vm {
 #define MAX_DEBUG_BATCH_SiZE 5
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
+
+static absl::flat_hash_map<RunnerType, absl::string_view> CreateRunnerTypeToNamesMap() {
+    absl::flat_hash_map<RunnerType, absl::string_view> map = {
+        {kRunnerData, "DATA"},
+        {kRunnerRequest, "REQUEST"},
+        {kRunnerGroup, "GROUP"},
+        {kRunnerGroupAndSort, "GROUP_AND_SORT"},
+        {kRunnerFilter, "FILTER"},
+        {kRunnerConstProject, "CONST_PROJECT"},
+        {kRunnerTableProject, "TABLE_PROJECT"},
+        {kRunnerRowProject, "ROW_PROJECT"},
+        {kRunnerSimpleProject, "SIMPLE_PROJECT"},
+        {kRunnerSelectSlice, "SELECT_SLICE"},
+        {kRunnerGroupAgg, "GROUP_AGG_PROJECT"},
+        {kRunnerAgg, "AGG_PROJECT"},
+        {kRunnerReduce, "REDUCE_PROJECT"},
+        {kRunnerWindowAgg, "WINDOW_AGG_PROJECT"},
+        {kRunnerRequestUnion, "REQUEST_UNION"},
+        {kRunnerRequestAggUnion, "REQUEST_AGG_UNION"},
+        {kRunnerPostRequestUnion, "POST_REQUEST_UNION"},
+        {kRunnerIndexSeek, "INDEX_SEEK"},
+        {kRunnerJoin, "JOIN"},
+        {kRunnerConcat, "CONCAT"},
+        {kRunnerRequestJoin, "REQUEST_JOIN"},
+        {kRunnerLimit, "LIMIT"},
+        {kRunnerRequestRunProxy, "REQUEST_RUN_PROXY"},
+        {kRunnerBatchRequestRunProxy, "BATCH_REQUEST_RUN_PROXY"},
+        {kRunnerOrder, "ORDRE"},
+        {kRunnerSetOperation, "SET_OPERATION"},
+        {kRunnerUnknow, "UNKOWN_RUNNER"},
+    };
+    for (auto kind = 0; kind < RunnerType::kRunnerUnknow; ++kind) {
+        DCHECK(map.find(static_cast<RunnerType>(kind)) != map.end())
+            << "name of " << kind << " not exist";
+    }
+    return map;
+}
+
+static const auto& GetRunnerTypeToNamesMap() {
+    static const auto &map = *new auto(CreateRunnerTypeToNamesMap());
+    return map;
+}
+
+std::string RunnerTypeName(RunnerType type) {
+    auto& map = GetRunnerTypeToNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "kUnknow";
+}
 
 bool Runner::GetColumnBool(const int8_t* buf, const RowView* row_view, int idx,
                            type::Type type) {
@@ -458,9 +510,31 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
-    auto row = std::dynamic_pointer_cast<RowHandler>(inputs[0]);
-    return std::shared_ptr<RowHandler>(
-        new MemRowHandler(project_gen_.Gen(row->GetValue(), ctx.GetParameterRow())));
+    auto& parameter = ctx.GetParameterRow();
+    auto input = inputs[0];
+    switch (input->GetHandlerType()) {
+        case kTableHandler: {
+            return std::shared_ptr<TableHandler>(new TableProjectWrapper(
+                std::dynamic_pointer_cast<TableHandler>(input),
+                parameter, &project_gen_.fun_));
+        }
+        case kPartitionHandler: {
+            return std::shared_ptr<TableHandler>(new PartitionProjectWrapper(
+                std::dynamic_pointer_cast<PartitionHandler>(input),
+                parameter, &project_gen_.fun_));
+        }
+        case kRowHandler: {
+            return std::shared_ptr<RowHandler>(new RowProjectWrapper(
+                std::dynamic_pointer_cast<RowHandler>(input),
+                parameter, &project_gen_.fun_));
+        }
+        default: {
+            LOG(WARNING) << "Fail run row project, invalid handler type "
+                         << input->GetHandlerTypeName();
+        }
+    }
+
+    return std::shared_ptr<DataHandler>();
 }
 
 std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
@@ -651,6 +725,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     HistoryWindow window(instance_window_gen_.range_gen_->window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
     window.set_exclude_current_time(exclude_current_time_);
+    window.set_without_order_by(without_order_by());
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_.has_value() && cnt >= limit_cnt_) {
@@ -1730,7 +1805,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     }
 
     // 2. iterate over agg table from end_base until start_base (both inclusive)
-    int64_t prev_ts_start = INT64_MAX;
+    uint64_t prev_ts_start = UINT64_MAX;
     while (start_base.has_value() && start_base <= end_base && agg_it != nullptr && agg_it->Valid()) {
         if (max_size > 0 && cnt >= max_size) {
             break;
@@ -1754,7 +1829,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             // FIXME(zhanghao): check cnt and rows_start_preceding meanings
             int next_incr = num_rows > 0 ? num_rows - 1 : 0;
             auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
-                                                                     ts_start > end, ts_start < start);
+			static_cast<int64_t>(ts_start) > end, static_cast<int64_t>(ts_start) < start);
             if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
                 start_base = ts_end + 1;
                 break;
@@ -1815,7 +1890,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
 
             int next_incr = total_rows > 0 ? total_rows - 1 : 0;
             auto range_status = window_range.GetWindowPositionStatus(cnt + next_incr > rows_start_preceding,
-                                                                     ts_start > end, ts_start < start);
+	            static_cast<int64_t>(ts_start) > end, static_cast<int64_t>(ts_start) < start);
             if ((max_size > 0 && cnt + next_incr >= max_size) || WindowRange::kExceedWindow == range_status) {
                 start_base = ts_end_range + 1;
                 break;
@@ -2557,5 +2632,28 @@ int32_t IteratorStatus::FindFirstIteratorWithMaximizeKey(const std::vector<Itera
     return min_union_pos;
 }
 
+std::shared_ptr<DataHandler> SetOperationRunner::Run(RunnerContext& ctx,
+                                                     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    bool opt = true;
+    for (auto& n : inputs) {
+        if (n->GetHandlerType() != kPartitionHandler) {
+            opt = false;
+            break;
+        }
+    }
+    if (opt) {
+        std::vector<std::shared_ptr<PartitionHandler>> in;
+        for (auto n : inputs) {
+            in.emplace_back(PartitionHandler::Cast(n));
+        }
+        return std::shared_ptr<DataHandler>(new SetOperationPartitionHandler(op_type_, in, distinct_));
+    }
+
+    std::vector<std::shared_ptr<TableHandler>> in;
+    for (auto n : inputs) {
+        in.emplace_back(TableHandler::Cast(n));
+    }
+    return std::shared_ptr<DataHandler>(new SetOperationHandler(op_type_, in, distinct_));
+}
 }  // namespace vm
 }  // namespace hybridse

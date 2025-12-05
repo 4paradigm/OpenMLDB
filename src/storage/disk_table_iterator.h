@@ -81,7 +81,7 @@ class DiskTableTraverseIterator : public TraverseIterator {
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
     uint32_t record_idx_;
-    ::openmldb::storage::TTLSt expire_value_;
+    ::openmldb::storage::ExpiredChecker expire_value_;
     std::string pk_;
     uint64_t ts_;
     bool has_ts_idx_;
@@ -126,7 +126,7 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
     uint32_t record_idx_;
-    TTLSt expire_value_;
+    ExpiredChecker expire_value_;
     std::string pk_;
     std::string row_pk_;
     uint64_t ts_;

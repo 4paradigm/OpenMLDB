@@ -37,7 +37,7 @@ USE db1;
 -- SUCCEED: Database changed
 ```
 
-创建两张表:
+创建一张自定义索引的表:
 
 ```sql
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
@@ -64,6 +64,37 @@ desc t1;
 
 ```
 
+有离线数据的表:
+
+```sql
+ --- ------- ----------- ------ ---------
+  #   Field   Type        Null   Default
+ --- ------- ----------- ------ ---------
+  1   c1      Varchar     YES
+  2   c2      Int         YES
+  3   c3      BigInt      YES
+  4   c4      Float       YES
+  5   c5      Double      YES
+  6   c6      Timestamp   YES
+  7   c7      Date        YES
+ --- ------- ----------- ------ ---------
+ --- -------------------- ------ ---- ------ ---------------
+  #   name                 keys   ts   ttl    ttl_type
+ --- -------------------- ------ ---- ------ ---------------
+  1   INDEX_0_1705743486   c1     -    0min   kAbsoluteTime
+ --- -------------------- ------ ---- ------ ---------------
+ ---------------------------------------------------------- ------------------------------------------ --------- ---------
+  Data path                                                  Symbolic paths                             Format    Options
+ ---------------------------------------------------------- ------------------------------------------ --------- ---------
+  file:///tmp/openmldb_offline_storage/demo_db/demo_table1   file:///work/taxi-trip/data/data.parquet   parquet
+ ---------------------------------------------------------- ------------------------------------------ --------- ---------
+
+ --------------- --------------
+  compress_type   storage_mode
+ --------------- --------------
+  NoCompress      Memory
+ --------------- --------------
+```
 
 
 ## 相关语句

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(ABSL_URL https://github.com/abseil/abseil-cpp/archive/a50ae369a30f99f79d7559002aba3413dac1bd48.tar.gz)
+set(ABSL_URL https://github.com/abseil/abseil-cpp/archive/2e94e5b6e152df9fa9c2fe8c1b96e1393973d32c.zip)
 message(STATUS "build abseil-cpp from ${ABSL_URL}")
 
 ExternalProject_Add(
   absl
   URL ${ABSL_URL}
-  URL_HASH SHA256=be2a9d7ea7ee15f9317b57beff37e8ffb67418fb0df64592366b04c8618c2584
+  URL_HASH SHA256=485f7488f2102edd702d1cac1c30f30efa6f3bc793999aeb92f161b2dbe707dd
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/absl
   INSTALL_DIR ${DEPS_INSTALL_DIR}

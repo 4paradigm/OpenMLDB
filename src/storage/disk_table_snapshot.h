@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "proto/common.pb.h"
 #include "storage/disk_table.h"
@@ -35,6 +36,11 @@ class DiskTableSnapshot : public Snapshot {
     int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset, uint64_t end_offset,
                      uint64_t term = 0) override;
     bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
+
+    base::Status ExtractIndexData(const std::shared_ptr<Table>& table,
+            const std::vector<::openmldb::common::ColumnKey>& add_indexs,
+            const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
+            uint64_t offset, bool dump_data) override;
 
  private:
     std::string db_root_path_;

@@ -48,7 +48,8 @@ object ConfigReflections {
           setters += name -> { (config: OpenmldbBatchConfig, value: Any) =>
             try {
               val im = mirror.reflect(config)
-              logger.info("Native Spark Configuration: " + name + " -> " + value)
+              logger.info("OpenMLDB Batch Configuration: " + name + " -> " + value)
+
               val typedValue = parseValue(value, term.info.toString)
               if (typedValue != null) {
                 im.reflectField(term).set(typedValue)

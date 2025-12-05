@@ -17,10 +17,7 @@
 #include "vm/core_api.h"
 #include "base/sig_trace.h"
 #include "codec/fe_row_codec.h"
-#include "udf/default_udf_library.h"
-#include "udf/udf.h"
 #include "vm/jit_runtime.h"
-#include "vm/jit_wrapper.h"
 #include "vm/mem_catalog.h"
 #include "vm/runner.h"
 #include "vm/schemas_context.h"
@@ -30,7 +27,7 @@ namespace vm {
 
 WindowInterface::WindowInterface(bool instance_not_in_window, bool exclude_current_time, bool exclude_current_row,
                                  const std::string& frame_type_str, int64_t start_offset, int64_t end_offset,
-                                 uint64_t rows_preceding, uint64_t max_size) {
+                                 uint64_t rows_preceding, uint64_t max_size, bool without_order_by) {
     if (exclude_current_row && max_size > 0 && end_offset == 0) {
         max_size++;
     }
@@ -38,6 +35,7 @@ WindowInterface::WindowInterface(bool instance_not_in_window, bool exclude_curre
         WindowRange(ExtractFrameType(frame_type_str), start_offset, end_offset, rows_preceding, max_size));
     window_impl_->set_instance_not_in_window(instance_not_in_window);
     window_impl_->set_exclude_current_time(exclude_current_time);
+    window_impl_->set_without_order_by(without_order_by);
 }
 
 bool WindowInterface::BufferData(uint64_t key, const Row& row) {

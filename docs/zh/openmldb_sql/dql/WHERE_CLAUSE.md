@@ -4,10 +4,9 @@ Where 子句用于设置过滤条件，查询结果中只会包含满足条件�
 
 ## Syntax
 
-```sql
-WhereClause
-         ::= 'WHERE' Expression
-         
+```yacc
+where_clause:
+  WHERE bool_expression
 ```
 
 ## SQL语句模版

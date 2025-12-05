@@ -17,16 +17,15 @@
 #include "node/expr_node.h"
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/substitute.h"
 #include "codec/fe_row_codec.h"
-#include "codegen/arithmetic_expr_ir_builder.h"
-#include "codegen/type_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "passes/expression/expr_pass.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
-#include "vm/transform.h"
 
 using ::hybridse::common::kTypeError;
 
@@ -41,13 +40,17 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_STATUS(
         schemas_ctx->ResolveColumnRefIndex(this, &schema_idx, &col_idx),
         "Fail to resolve column ", GetExprString());
-    type::Type col_type =
-        schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
-               "Fail to convert type: ", col_type);
+    auto& col = schemas_ctx->GetSchema(schema_idx)->Get(col_idx);
+    type::ColumnSchema sc;
+    if (col.has_schema()) {
+        sc = col.schema();
+    } else {
+        sc.set_base_type(col.type());
+    }
     auto nm = ctx->node_manager();
-    SetOutputType(nm->MakeTypeNode(node::kList, dtype));
+    auto s = codegen::ColumnSchema2Type(sc, nm);
+    CHECK_TRUE(s.ok(), kTypeError, s.status());
+    SetOutputType(nm->MakeNode<node::TypeNode>(node::kList, s.value()));
     return Status::OK();
 }
 
@@ -58,13 +61,17 @@ Status ColumnIdNode::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_STATUS(schemas_ctx->ResolveColumnIndexByID(this->GetColumnID(),
                                                      &schema_idx, &col_idx),
                  "Fail to resolve column ", GetExprString());
-    type::Type col_type =
-        schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
-               "Fail to convert type: ", col_type);
+    auto& col = schemas_ctx->GetSchema(schema_idx)->Get(col_idx);
+    type::ColumnSchema sc;
+    if (col.has_schema()) {
+        sc = col.schema();
+    } else {
+        sc.set_base_type(col.type());
+    }
     auto nm = ctx->node_manager();
-    SetOutputType(nm->MakeTypeNode(node::kList, dtype));
+    auto s = codegen::ColumnSchema2Type(sc, nm);
+    CHECK_TRUE(s.ok(), kTypeError, s.status());
+    SetOutputType(nm->MakeNode<node::TypeNode>(node::kList, s.value()));
     return Status::OK();
 }
 Status ParameterExpr::InferAttr(ExprAnalysisContext *ctx) {
@@ -72,11 +79,16 @@ Status ParameterExpr::InferAttr(ExprAnalysisContext *ctx) {
                "Fail to get parameter type with NULL parameter types")
     CHECK_TRUE(position() > 0 &&  position() <= ctx->parameter_types()->size(), common::kTypeError,
                "Fail to get parameter type with position ", position())
-    type::Type parameter_type = ctx->parameter_types()->Get(position()-1).type();
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(parameter_type, &dtype), kTypeError,
-               "Fail to convert type: ", parameter_type);
-    SetOutputType(ctx->node_manager()->MakeTypeNode(dtype));
+    auto& col = ctx->parameter_types()->Get(position()-1);
+    type::ColumnSchema sc;
+    if (col.has_schema()) {
+        sc = col.schema();
+    } else {
+        sc.set_base_type(col.type());
+    }
+    auto s = codegen::ColumnSchema2Type(sc, ctx->node_manager());
+    CHECK_TRUE(s.ok(), kTypeError, s.status());
+    SetOutputType(s.value());
     return Status::OK();
 }
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
@@ -108,8 +120,9 @@ Status ExprIdNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+node::DataType CastExprNode::base_cast_type() const { return cast_type_->base(); }
 Status CastExprNode::InferAttr(ExprAnalysisContext* ctx) {
-    SetOutputType(ctx->node_manager()->MakeTypeNode(cast_type_));
+    SetOutputType(cast_type_);
     return Status::OK();
 }
 
@@ -128,7 +141,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
         }
 
     } else if (input_type->base() == node::kRow) {
-        auto row_type = dynamic_cast<const RowTypeNode*>(input_type);
+        auto row_type = input_type->GetAsOrNull<RowTypeNode>();
         const auto schemas_context = row_type->schemas_ctx();
 
         size_t schema_idx;
@@ -137,14 +150,17 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
                          GetColumnID(), &schema_idx, &col_idx),
                      "Fail to resolve column ", GetExprString());
 
-        type::Type col_type =
-            schemas_context->GetSchema(schema_idx)->Get(col_idx).type();
-        node::DataType dtype;
-        CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
-                   "Fail to convert type: ", col_type);
+        auto& col = schemas_context->GetSchema(schema_idx)->Get(col_idx);
+        type::ColumnSchema sc;
+        if (col.has_schema()) {
+            sc = col.schema();
+        } else {
+            sc.set_base_type(col.type());
+        }
+        auto s = codegen::ColumnSchema2Type(sc, ctx->node_manager());
+        CHECK_TRUE(s.ok(), kTypeError, s.status());
 
-        auto nm = ctx->node_manager();
-        SetOutputType(nm->MakeTypeNode(dtype));
+        SetOutputType(s.value());
         SetNullable(true);
     } else {
         return Status(common::kTypeError,
@@ -210,18 +226,26 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
 
 // this handles compatible type when both lhs and rhs are basic types
 // composited types like array, list, tuple are not handled correctly, so do not expect the function to handle those
-// types
 absl::StatusOr<const TypeNode*> ExprNode::CompatibleType(NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs) {
     if (*lhs == *rhs) {
         // include Null = Null
         return rhs;
     }
+
+    if (lhs->base() == kVoid && rhs->base() == kNull) {
+        return lhs;
+    }
+
+    if (lhs->base() == kNull && rhs->base() == kVoid) {
+        return rhs;
+    }
+
     if (lhs->IsNull()) {
-        // NULL + T -> T
+        // NULL/VOID + T -> T
         return rhs;
     }
     if (rhs->IsNull()) {
-        // T + NULL -> T
+        // T + NULL/VOID -> T
         return lhs;
     }
 
@@ -259,16 +283,27 @@ absl::StatusOr<const TypeNode*> ExprNode::CompatibleType(NodeManager* nm, const 
 
 /**
 * support rules:
-*  case target_type
-*   bool         -> from_type is bool
-*   int*         -> from_type is bool or from_type is equal/smaller integral type
-*   float|double -> from_type is bool or equal/smaller float type
-*   timestamp    -> from_type is timestamp or integral type
+* 1. case target_type
+*    bool            -> from_type is bool
+*    intXX           -> from_type is bool or from_type is equal/smaller integral type
+*    float | double  -> from_type is bool or equal/smaller float type
+*    timestamp       -> from_type is timestamp or integral type
+*    string | date   -> not convertible from other type
+*    MAP<KEY, VALUE> ->
+*      from_type: MAP<VOID, VOID> (consturct by map()) -> OK
+*      from_type: MAP<K, V> -> SafeCast(K -> KEY) && SafeCast(V -> VALUE)
+*
+* 2. from_type of NOT_NULL = false can not cast to target_type of NOT_NULL = True
+*    TODO(someone): TypeNode should contains NOT_NULL ATtribute.
 */
 bool ExprNode::IsSafeCast(const TypeNode* from_type,
                           const TypeNode* target_type) {
     if (from_type == nullptr || target_type == nullptr) {
         return false;
+    }
+    if (from_type->IsNull()) {
+        // VOID -> T
+        return true;
     }
     if (TypeEquals(from_type, target_type)) {
         return true;
@@ -292,8 +327,9 @@ bool ExprNode::IsSafeCast(const TypeNode* from_type,
         case kTimestamp:
             return from_base == kTimestamp || from_type->IsInteger();
         default:
-            return false;
+            break;
     }
+    return false;
 }
 
 bool ExprNode::IsIntFloat2PointerCast(const TypeNode* lhs,
@@ -845,21 +881,15 @@ Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
         return Status::OK();
     }
 
-    // auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
     TypeNode* top_type = nullptr;
     auto nm = ctx->node_manager();
-    if (children_.empty()) {
-        FAIL_STATUS(kTypeError, "element type unknown for empty array expression");
-    } else {
-        const TypeNode* ele_type = children_[0]->GetOutputType();
-        for (size_t i = 1; i < children_.size() ; ++i) {
-            auto res = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
-            CHECK_TRUE(res.ok(), kTypeError, res.status());
-            ele_type = res.value();
-        }
-        CHECK_TRUE(!ele_type->IsNull(), kTypeError, "unable to infer array type, all elements are null");
-        top_type = nm->MakeArrayType(ele_type, children_.size());
+    const TypeNode* ele_type = nm->MakeNode<TypeNode>();  // void type
+    for (size_t i = 0; i < children_.size(); ++i) {
+        auto res = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
+        CHECK_TRUE(res.ok(), kTypeError, res.status());
+        ele_type = res.value();
     }
+    top_type = nm->MakeArrayType(ele_type, children_.size());
     SetOutputType(top_type);
     // array is nullable
     SetNullable(true);
@@ -879,7 +909,7 @@ ExprIdNode* ExprIdNode::ShadowCopy(NodeManager* nm) const {
 }
 
 CastExprNode* CastExprNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeCastNode(cast_type_, GetChild(0));
+    return nm->MakeNode<CastExprNode>(cast_type_, GetChild(0));
 }
 
 WhenExprNode* WhenExprNode::ShadowCopy(NodeManager* nm) const {
@@ -1133,6 +1163,20 @@ UdafDefNode* UdafDefNode::DeepCopy(NodeManager* nm) const {
                                new_merge, new_output);
 }
 
+VariadicUdfDefNode* VariadicUdfDefNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeNode<VariadicUdfDefNode>(name_, init_, update_, output_);
+}
+
+VariadicUdfDefNode* VariadicUdfDefNode::DeepCopy(NodeManager* nm) const {
+    FnDefNode* new_init = init_ ? init_->DeepCopy(nm) : nullptr;
+    std::vector<FnDefNode*> new_update;
+    for (FnDefNode* update_func : update_) {
+        new_update.push_back(update_func ? update_func->DeepCopy(nm): nullptr);
+    }
+    FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
+    return nm->MakeNode<VariadicUdfDefNode>(name_, new_init, new_update, new_output);
+}
+
 // Default expr deep copy: shadow copy self and deep copy children
 ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
     auto root = this->ShadowCopy(nm);
@@ -1142,5 +1186,90 @@ ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
     return root;
 }
 
+ArrayElementExpr::ArrayElementExpr(ExprNode* array, ExprNode* pos) : ExprNode(kExprArrayElement) {
+    AddChild(array);
+    AddChild(pos);
+}
+
+void ArrayElementExpr::Print(std::ostream& output, const std::string& org_tab) const {
+    // Print for ExprNode just talk too much, I don't intend impl that
+    // GetExprString is much simpler
+    output << org_tab << GetExprString();
+}
+
+const std::string ArrayElementExpr::GetExprString() const {
+    return absl::StrCat(array()->GetExprString(), "[", position()->GetExprString(), "]");
+}
+
+ArrayElementExpr* ArrayElementExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeNode<ArrayElementExpr>(array(), position());
+}
+
+Status ArrayElementExpr::InferAttr(ExprAnalysisContext* ctx) {
+    auto* arr_type = array()->GetOutputType();
+    auto* pos_type = position()->GetOutputType();
+
+    if (arr_type->IsMap()) {
+        auto map_type = arr_type->GetAsOrNull<MapType>();
+        CHECK_TRUE(node::ExprNode::IsSafeCast(pos_type, map_type->key_type()), common::kTypeError,
+                   "incompatiable key type for ArrayElement, expect ", map_type->key_type()->DebugString(), ", got ",
+                   pos_type->DebugString());
+
+        SetOutputType(map_type->value_type());
+        SetNullable(map_type->value_nullable());
+    } else if (arr_type->IsArray()) {
+        CHECK_TRUE(pos_type->IsInteger(), common::kTypeError,
+                   "index type mismatch for ArrayElement, expect integer, got ", pos_type->DebugString());
+        CHECK_TRUE(arr_type->GetGenericSize() == 1, common::kTypeError, "internal error: array of empty T");
+
+        SetOutputType(arr_type->GetGenericType(0));
+        SetNullable(arr_type->IsGenericNullable(0));
+    } else {
+        FAIL_STATUS(common::kTypeError, "can't get element from ", arr_type->DebugString(), ", expect map or array");
+    }
+    return {};
+}
+ExprNode *ArrayElementExpr::array() const { return GetChild(0); }
+ExprNode *ArrayElementExpr::position() const { return GetChild(1); }
+
+
+void LetExpr::Print(std::ostream &output, const std::string &org_tab) const {}
+const std::string LetExpr::GetExprString() const {
+    return absl::Substitute("LET $0 IN $1",
+                            absl::StrJoin(ctx_.bindings, ",",
+                                          [](std::string* out, const decltype(LetContext::bindings)::value_type& kv) {
+                                              absl::StrAppend(out, kv.id_node->GetExprString(), "=",
+                                                              kv.expr->GetExprString());
+                                          }),
+                            expr_->GetExprString());
+}
+LetExpr* LetExpr::ShadowCopy(NodeManager* nm) const { return nm->MakeNode<LetExpr>(expr_, ctx_); }
+
+Status LetExpr::InferAttr(ExprAnalysisContext* ctx) {
+    for (auto& [k, v, _] : ctx_.bindings) {
+        CHECK_TRUE(k->GetOutputType() != nullptr, common::kTypeError, "expr id node not resolved");
+        CHECK_TRUE(k->GetOutputType() == v->GetOutputType(), common::kTypeError,
+                   "expr id node return type does not match binding expr");
+    }
+    SetOutputType(expr_->GetOutputType());
+    SetNullable(expr_->nullable());
+    return {};
+}
+
+StructCtorWithParens* StructCtorWithParens::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeNode<StructCtorWithParens>(fields());
+}
+const std::string StructCtorWithParens::GetExprString() const {
+    return absl::StrCat(
+        "(",
+        absl::StrJoin(fields(), ", ",
+                      [](std::string* out, const ExprNode* e) { absl::StrAppend(out, e->GetExprString()); }),
+        ")");
+}
+
+Status StructCtorWithParens::InferAttr(ExprAnalysisContext* ctx) {
+    // TODO
+    return {};
+}
 }  // namespace node
 }  // namespace hybridse

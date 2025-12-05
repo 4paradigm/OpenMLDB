@@ -12,7 +12,6 @@ TableName ::=
 
 **说明**
 
-- `DELETE` 语句删除在线表满足指定条件的数据
 - `WHERE` 指定的筛选列必须是索引列。如果是key列只能用等于
 
 ## Examples

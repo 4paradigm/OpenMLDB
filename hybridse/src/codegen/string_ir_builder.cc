@@ -66,7 +66,7 @@ bool StringIRBuilder::CreateDefault(::llvm::BasicBlock* block,
 
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
                                 ::llvm::Value** output) {
-    if (!Create(block, output)) {
+    if (!Allocate(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
         return false;
     }
@@ -86,7 +86,7 @@ bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
 }
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block, ::llvm::Value* size,
                                 ::llvm::Value* data, ::llvm::Value** output) {
-    if (!Create(block, output)) {
+    if (!Allocate(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
         return false;
     }
@@ -402,6 +402,18 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
                "fail to concat string: create concat string fail");
     *output = NativeValue::CreateWithFlag(concat_str, ret_null);
     return base::Status();
+}
+absl::Status StringIRBuilder::CastFrom(llvm::BasicBlock* block, llvm::Value* src, llvm::Value* alloca) {
+    if (IsStringPtr(src->getType())) {
+        return absl::UnimplementedError("not necessary to cast string to string");
+    }
+    ::llvm::IRBuilder<> builder(block);
+    ::std::string fn_name = "string." + TypeName(src->getType());
+
+    auto cast_func = m_->getOrInsertFunction(
+        fn_name, ::llvm::FunctionType::get(builder.getVoidTy(), {src->getType(), alloca->getType()}, false));
+    builder.CreateCall(cast_func, {src, alloca});
+    return absl::OkStatus();
 }
 }  // namespace codegen
 }  // namespace hybridse

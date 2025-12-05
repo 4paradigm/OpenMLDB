@@ -152,7 +152,8 @@ TEST_P(TableIteratorTest, latest) {
             dim->set_key(key);
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
+            auto st = table->Put(0, value, request.dimensions());
+            ASSERT_TRUE(st.ok()) << st.ToString();
         }
     }
     ::hybridse::vm::WindowIterator* it = table->NewWindowIterator(0);
@@ -216,7 +217,8 @@ TEST_P(TableIteratorTest, smoketest2) {
             dim->set_key(key);
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
+            auto st = table->Put(0, value, request.dimensions());
+            ASSERT_TRUE(st.ok()) << st.ToString();
         }
     }
     ::hybridse::vm::WindowIterator* it = table->NewWindowIterator(0);
@@ -383,7 +385,8 @@ TEST_P(TableIteratorTest, releaseKeyIterator) {
             dim->set_key(key);
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
+            auto st = table->Put(0, value, request.dimensions());
+            ASSERT_TRUE(st.ok()) << st.ToString();
         }
     }
 
@@ -429,7 +432,8 @@ TEST_P(TableIteratorTest, SeekNonExistent) {
             dim->set_key(key);
             std::string value;
             ASSERT_EQ(0, codec.EncodeRow(row, &value));
-            table->Put(0, value, request.dimensions());
+            auto st = table->Put(0, value, request.dimensions());
+            ASSERT_TRUE(st.ok()) << st.ToString();
         }
     }
 
@@ -450,7 +454,7 @@ TEST_P(TableIteratorTest, SeekNonExistent) {
     ASSERT_EQ(0, now - wit->GetKey());
 }
 
-INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableIteratorTest,
+INSTANTIATE_TEST_SUITE_P(TestMemAndHDD, TableIteratorTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
 }  // namespace storage

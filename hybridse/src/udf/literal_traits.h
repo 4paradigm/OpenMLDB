@@ -18,15 +18,12 @@
 #define HYBRIDSE_SRC_UDF_LITERAL_TRAITS_H_
 
 #include <limits>
-#include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "base/fe_status.h"
 #include "base/string_ref.h"
 #include "base/type.h"
 #include "codec/fe_row_codec.h"
@@ -139,8 +136,10 @@ static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
 // ===================================== //
 //         ArrayRef
 // ===================================== //
-template <typename T, typename CType = typename DataTypeTrait<T>::CCallArgType>
+template <typename T>
 struct ArrayRef {
+    using CType = typename DataTypeTrait<T>::CCallArgType;
+
     CType* raw;
     bool* nullables;
     uint64_t size;
@@ -588,6 +587,7 @@ codec::Schema MakeLiteralSchema() {
         ::hybridse::type::ColumnDef* col = schema.Add();
         col->set_name("col_" + std::to_string(i));
         col->set_type(static_cast<::hybridse::type::Type>(types[i]));
+        col->mutable_schema()->set_base_type(col->type());
     }
     return schema;
 }

@@ -6,10 +6,11 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.8.4-SNAPSHOT</version>
+        <version>0.9.3-SNAPSHOT</version>
     </parent>
 
     <artifactId>openmldb-spark-connector</artifactId>
+    <name>openmldb-spark-connector</name>
     <packaging>jar</packaging>
 
     <description>OpenMLDB Spark Connector is the connector to the OpenMLDB online storage.</description>

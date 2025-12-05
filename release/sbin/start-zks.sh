@@ -32,7 +32,13 @@ do
   dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
   echo "start zookeeper in $dir with endpoint $host:$port "
-  cmd="cd $dir && bin/zkServer.sh start"
-  run_auto "$host" "$cmd"
+  cmd="cd $dir && bin/zkServer.sh start $dir/conf/zoo.cfg"
+  # special for java
+  pre=""
+  if [[ -n $RUNNER_JAVA_HOME ]]; then
+    echo "overwrite java env by RUNNER_JAVA_HOME:$RUNNER_JAVA_HOME"
+    pre="export JAVA_HOME=$RUNNER_JAVA_HOME && export PATH=$JAVA_HOME/bin:$PATH &&"
+  fi
+  run_auto "$host" "$pre $cmd"
 done
 IFS="$old_IFS"

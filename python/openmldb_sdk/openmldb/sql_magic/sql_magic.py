@@ -32,7 +32,7 @@ class SqlMagic(Magics):
         else:
             sqlText = cell.replace("\n", " ")
 
-        is_query = sqlText.strip().lower().startswith("select")
+        is_query = sqlText.strip().lower().startswith("select") or sqlText.strip().lower().startswith("show") or sqlText.strip().lower().startswith("load")
         if is_query:
             rows = self.cursor.execute(sqlText).fetchall()
             schema_map = self.cursor.get_resultset_schema()

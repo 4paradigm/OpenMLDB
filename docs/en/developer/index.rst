@@ -10,4 +10,3 @@ Developers
     built_in_function_develop_guide
     sdk_develop
     python_dev
-    udf_develop_guide

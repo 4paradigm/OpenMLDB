@@ -28,13 +28,11 @@
 #include <vector>
 
 #include "base/fe_status.h"
-#include "codec/list_iterator_codec.h"
 #include "codegen/context.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "udf/literal_traits.h"
 #include "udf/udf_library.h"
-#include "vm/schemas_context.h"
 
 namespace hybridse {
 namespace udf {
@@ -394,10 +392,11 @@ class LlvmUdfGenBase {
  public:
     virtual Status gen(codegen::CodeGenContext* ctx,
                        const std::vector<codegen::NativeValue>& args,
+                       const ExprAttrNode& return_info,
                        codegen::NativeValue* res) = 0;
 
     virtual Status infer(UdfResolveContext* ctx,
-                         const std::vector<const ExprAttrNode*>& args,
+                         const std::vector<ExprAttrNode>& args,
                          ExprAttrNode*) = 0;
 
     node::TypeNode* fixed_ret_type() const { return fixed_ret_type_; }
@@ -417,33 +416,36 @@ struct LlvmUdfGen : public LlvmUdfGenBase {
     using FType = std::function<Status(
         codegen::CodeGenContext* ctx,
         typename std::pair<Args, codegen::NativeValue>::second_type...,
+        const ExprAttrNode& return_info,
         codegen::NativeValue*)>;
 
     using InferFType = std::function<Status(
         UdfResolveContext*,
-        typename std::pair<Args, const ExprAttrNode*>::second_type...,
+        typename std::pair<Args, const ExprAttrNode&>::second_type...,
         ExprAttrNode*)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
+               const ExprAttrNode& return_info,
                codegen::NativeValue* result) override {
         CHECK_TRUE(args.size() == sizeof...(Args), common::kCodegenError,
                    "Fail to invoke LlvmUefGen::gen, args size do not "
                    "match with template args)");
-        return gen_internal(ctx, args, result,
+        return gen_internal(ctx, args, return_info, result,
                             std::index_sequence_for<Args...>());
     }
 
     template <std::size_t... I>
     Status gen_internal(codegen::CodeGenContext* ctx,
                         const std::vector<codegen::NativeValue>& args,
+                        const ExprAttrNode& return_info,
                         codegen::NativeValue* result,
                         const std::index_sequence<I...>&) {
-        return gen_func(ctx, args[I]..., result);
+        return gen_func(ctx, args[I]..., return_info, result);
     }
 
     Status infer(UdfResolveContext* ctx,
-                 const std::vector<const ExprAttrNode*>& args,
+                 const std::vector<ExprAttrNode>& args,
                  ExprAttrNode* out) override {
         return infer_internal(ctx, args, out,
                               std::index_sequence_for<Args...>());
@@ -451,7 +453,7 @@ struct LlvmUdfGen : public LlvmUdfGenBase {
 
     template <std::size_t... I>
     Status infer_internal(UdfResolveContext* ctx,
-                          const std::vector<const ExprAttrNode*>& args,
+                          const std::vector<ExprAttrNode>& args,
                           ExprAttrNode* out, const std::index_sequence<I...>&) {
         if (this->infer_func) {
             return infer_func(ctx, args[I]..., out);
@@ -475,39 +477,39 @@ struct LlvmUdfGen : public LlvmUdfGenBase {
 template <typename... Args>
 struct VariadicLLVMUdfGen : public LlvmUdfGenBase {
     using FType = std::function<Status(
-        codegen::CodeGenContext*,
-        typename std::pair<Args, codegen::NativeValue>::second_type...,
-        const std::vector<codegen::NativeValue>&, codegen::NativeValue*)>;
+        codegen::CodeGenContext*, typename std::pair<Args, codegen::NativeValue>::second_type...,
+        const std::vector<codegen::NativeValue>&, const ExprAttrNode& return_info, codegen::NativeValue*)>;
 
     using InferFType = std::function<Status(
         UdfResolveContext*,
-        typename std::pair<Args, const ExprAttrNode*>::second_type...,
-        const std::vector<const ExprAttrNode*>&, ExprAttrNode*)>;
+        typename std::pair<Args, const ExprAttrNode&>::second_type...,
+        const std::vector<ExprAttrNode>&, ExprAttrNode*)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
+               const ExprAttrNode& return_info,
                codegen::NativeValue* result) override {
         CHECK_TRUE(args.size() >= sizeof...(Args), common::kCodegenError,
                    "Fail to invoke VariadicLLVMUdfGen::gen, "
                    "args size do not match with template args)");
-        return gen_internal(ctx, args, result,
-                            std::index_sequence_for<Args...>());
+        return gen_internal(ctx, args, return_info, result, std::index_sequence_for<Args...>());
     };
 
     template <std::size_t... I>
     Status gen_internal(codegen::CodeGenContext* ctx,
                         const std::vector<codegen::NativeValue>& args,
+                        const ExprAttrNode& return_info,
                         codegen::NativeValue* result,
                         const std::index_sequence<I...>&) {
         std::vector<codegen::NativeValue> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
         }
-        return this->gen_func(ctx, args[I]..., variadic_args, result);
+        return this->gen_func(ctx, args[I]..., variadic_args, return_info, result);
     }
 
     Status infer(UdfResolveContext* ctx,
-                 const std::vector<const ExprAttrNode*>& args,
+                 const std::vector<ExprAttrNode>& args,
                  ExprAttrNode* out) override {
         return infer_internal(ctx, args, out,
                               std::index_sequence_for<Args...>());
@@ -515,9 +517,9 @@ struct VariadicLLVMUdfGen : public LlvmUdfGenBase {
 
     template <std::size_t... I>
     Status infer_internal(UdfResolveContext* ctx,
-                          const std::vector<const ExprAttrNode*>& args,
+                          const std::vector<ExprAttrNode>& args,
                           ExprAttrNode* out, const std::index_sequence<I...>&) {
-        std::vector<const ExprAttrNode*> variadic_args;
+        std::vector<ExprAttrNode> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
         }
@@ -723,9 +725,8 @@ class CodeGenUdfTemplateRegistryHelper {
             LlvmUdfRegistryHelper& helper) {  // NOLINT
             helper.args<Args...>(
                 [](codegen::CodeGenContext* ctx,
-                   typename std::pair<
-                       Args, codegen::NativeValue>::second_type... args,
-                   codegen::NativeValue* result) {
+                   typename std::pair<Args, codegen::NativeValue>::second_type... args,
+                   const ExprAttrNode& return_info, codegen::NativeValue* result) {
                     return FTemplate<T>()(ctx, args..., result);
                 });
             return helper.cur_def();
@@ -1115,11 +1116,51 @@ struct TypeAnnotatedFuncPtrImpl<std::tuple<Args...>> {
     GetTypeF get_ret_type_func;
 };
 
+template <typename Ret, typename... Args>
+struct TypeAnnotatedFuncPtrImpl<Ret(Args...)> {
+    using GetTypeF =
+        typename std::function<void(node::NodeManager*, node::TypeNode**)>;
+
+    // TypeAnnotatedFuncPtr can only be bulit from non-void return type
+    // Extra return type information should be provided for return-by-arg
+    // function.
+    template <typename CRet, typename... CArgs>
+    TypeAnnotatedFuncPtrImpl(CRet (*fn)(CArgs...)) {  // NOLINT
+        // Check signature, assume return type is same
+        using CheckType = StaticFuncTypeCheck<Ret, std::tuple<Args...>, CRet, std::tuple<CArgs...>>;
+        CheckType::check();
+
+        using RetType = typename CheckType::Checker::RetType;
+        static_assert(std::is_same<Ret, RetType>::value, "");
+        this->ptr = reinterpret_cast<void*>(fn);
+        this->return_by_arg = CheckType::Checker::return_by_arg;
+        this->return_nullable = IsNullableTrait<RetType>::value;
+        this->get_ret_type_func = [](node::NodeManager* nm, node::TypeNode** ret) {
+            *ret = DataTypeTrait<RetType>::to_type_node(nm);
+        };
+    }
+
+    TypeAnnotatedFuncPtrImpl() {}
+
+    void* ptr;
+    bool return_by_arg;
+    bool return_nullable;
+    GetTypeF get_ret_type_func;
+};
+
+
 // used to instantiate tuple type from template param pack
 template <typename... Args>
 struct TypeAnnotatedFuncPtr {
     using type = TypeAnnotatedFuncPtrImpl<std::tuple<Args...>>;
 };
+
+// used to instantiate tuple type from template param pack
+template <typename Ret, typename... Args>
+struct WithReturnTypeAnnotatedFuncPtr {
+    using type = TypeAnnotatedFuncPtrImpl<Ret(Args...)>;
+};
+
 
 class ExternalFuncRegistryHelper : public UdfRegistryHelper {
  public:
@@ -1221,6 +1262,20 @@ class ExternalFuncRegistryHelper : public UdfRegistryHelper {
         const typename TypeAnnotatedFuncPtr<Args...>::type& fn_ptr) {
         variadic_args<Args...>(fn_ptr.ptr);
         update_return_info(fn_ptr);
+        return *this;
+    }
+
+    template <typename Ret, typename... Args>
+    ExternalFuncRegistryHelper& with_return_args(
+        const typename WithReturnTypeAnnotatedFuncPtr<Ret, Args...>::type& fn_ptr) {
+        args<Args...>(fn_ptr.ptr);
+        node::TypeNode* dtype = nullptr;
+        fn_ptr.get_ret_type_func(node_manager(), &dtype);
+        if (dtype != nullptr) {
+            return_type_ = dtype;
+        }
+        return_by_arg_ = fn_ptr.return_by_arg;
+        return_nullable_ = fn_ptr.return_nullable;
         return *this;
     }
 
@@ -1383,6 +1438,16 @@ class ExternalTemplateFuncRegistryHelper {
         node::ExternalFnDefNode* operator()(ExternalFuncRegistryHelper& helper,    // NOLINT
                                             CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
             helper.args<Args...>(FTemplateInst<T, CArgs...>::fcompute).finalize();
+            return helper.cur_def();
+        }
+    };
+
+    template <typename T, typename Ret, typename... Args>
+    struct RegisterSingle<T, Ret(Args...)> {
+        template <typename CRet, typename... CArgs>
+        node::ExternalFnDefNode* operator()(ExternalFuncRegistryHelper& helper,    // NOLINT
+                                            CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
+            helper.with_return_args<Ret, Args...>(FTemplateInst<T, CArgs...>::fcompute).finalize();
             return helper.cur_def();
         }
     };
@@ -1855,6 +1920,211 @@ class UdafTemplateRegistryHelper : public UdfRegistryHelper {
     UdafRegistryHelper helper_;
     std::vector<int> results_;
 };
+
+class VariadicUdfDefGenBase {
+ public:
+    VariadicUdfDefGenBase() {}
+    virtual Status infer(UdfResolveContext* ctx,
+                         const std::vector<ExprAttrNode>& args,
+                         ExprAttrNode* out) = 0;
+
+    std::shared_ptr<UdfRegistry> init_gen;
+    ArgSignatureTable update_gen;
+    std::unordered_map<std::string, std::shared_ptr<UdfRegistry>> output_gen;
+    int variadic_pos;
+};
+
+template <typename... Args>
+class VariadicUdfDefGen: public VariadicUdfDefGenBase {
+ public:
+    using InferFType = typename VariadicLLVMUdfGen<Args...>::InferFType;
+    template <std::size_t... I>
+    Status infer_internal(UdfResolveContext* ctx,
+                                 const std::vector<ExprAttrNode>& args,
+                                 ExprAttrNode* out, const std::index_sequence<I...>&) {
+        std::vector<ExprAttrNode> variadic_args;
+        for (size_t i = sizeof...(I); i < args.size(); ++i) {
+            variadic_args.emplace_back(args[i]);
+        }
+        return infer_func(ctx, args[I]..., variadic_args, out);
+    }
+
+    VariadicUdfDefGen() {}
+    Status infer(UdfResolveContext* ctx,
+                         const std::vector<ExprAttrNode>& args,
+                         ExprAttrNode* out) override {
+        if (infer_func == nullptr) {
+            CHECK_TRUE(output_type != nullptr, common::kCodegenError, "No output type");
+            out->SetType(output_type);
+            out->SetNullable(output_nullable);
+            return Status::OK();
+        }
+        return infer_internal(ctx, args, out, std::index_sequence_for<Args...>());
+    }
+
+    InferFType infer_func = nullptr;
+    node::TypeNode* output_type = nullptr;
+    bool output_nullable = false;
+};
+
+class VariadicUdfRegistry : public UdfRegistry {
+ public:
+    explicit VariadicUdfRegistry(const std::string& name,
+                             std::shared_ptr<VariadicUdfDefGenBase> cur_def,
+                             size_t fixed_arg_size,
+                             const std::vector<size_t>& nullable_arg_indices)
+        : UdfRegistry(name),
+          cur_def_(cur_def),
+          fixed_arg_size_(fixed_arg_size),
+          nullable_arg_indices_(nullable_arg_indices) {}
+
+    Status ResolveFunction(UdfResolveContext* ctx,
+                           node::FnDefNode** result) override;
+
+ private:
+    std::shared_ptr<VariadicUdfDefGenBase> cur_def_;
+    size_t fixed_arg_size_;
+    std::vector<size_t> nullable_arg_indices_;
+};
+
+template<typename ST, typename... Args>
+class VariadicUdfRegistryHelper : public UdfRegistryHelper {
+    using InferFType = typename VariadicLLVMUdfGen<Args...>::InferFType;
+
+ public:
+    VariadicUdfRegistryHelper(const std::string& name, UdfLibrary* library, InferFType infer = nullptr)
+        : UdfRegistryHelper(name, library),
+          arg_tys_({DataTypeTrait<Args>::to_type_node(library->node_manager())...}),
+          arg_nullable_({IsNullableTrait<Args>::value...}),
+          state_ty_(DataTypeTrait<ST>::to_type_node(library->node_manager())),
+          state_nullable_(IsNullableTrait<ST>::value),
+          name_prefix_(name),
+          cur_def_(std::make_shared<VariadicUdfDefGen<Args...>>()) {
+        cur_def_->infer_func = infer;
+        for (const node::TypeNode* arg_type : arg_tys_) {
+            name_prefix_.append(".").append(arg_type->GetName());
+        }
+    }
+
+    ~VariadicUdfRegistryHelper() { finalize(); }
+
+    VariadicUdfRegistryHelper& init(const typename TypeAnnotatedFuncPtr<Args...>::type& fn_ptr) {
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_ret_type_func(library()->node_manager(), &ret_type);
+        if (ret_type == nullptr) {
+            LOG(WARNING) << "Fail to get return type of function ptr";
+            return *this;
+        }
+        std::string fname = name_prefix_;
+        fname.append("@init");
+        if (!ret_type->Equals(state_ty_) || fn_ptr.return_nullable != state_nullable_) {
+            LOG(WARNING)
+                << "Illegal return type of variadic external function '"
+                << fname << "': expected "
+                << (state_nullable_ ? "nullable " : "") << state_ty_->GetName()
+                << " but get " << (fn_ptr.return_nullable ? "nullable " : "")
+                << ret_type->GetName();
+            return *this;
+        }
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
+                ret_type, fn_ptr.return_nullable, arg_tys_, arg_nullable_, -1, fn_ptr.return_by_arg));
+        cur_def_->init_gen = std::make_shared<ExternalFuncRegistry>(fname, fn);
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
+        return *this;
+    }
+
+    template<typename IN>
+    VariadicUdfRegistryHelper& update(const typename TypeAnnotatedFuncPtr<ST, IN>::type& fn_ptr) {
+        std::vector<const node::TypeNode*> update_tys;
+        update_tys.push_back(state_ty_);
+        update_tys.push_back(DataTypeTrait<IN>::to_type_node(library()->node_manager()));
+        std::vector<int> update_nullable;
+        update_nullable.push_back(state_nullable_);
+        update_nullable.push_back(IsNullableTrait<IN>::value);
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_ret_type_func(library()->node_manager(), &ret_type);
+        if (ret_type == nullptr) {
+            LOG(WARNING) << "Fail to get return type of function ptr";
+            return *this;
+        }
+
+        std::string fname = name_prefix_;
+        fname.append("@update");
+        fname.append(".").append(update_tys[0]->GetName());
+        fname.append(".").append(update_tys[1]->GetName());
+        if (!ret_type->Equals(state_ty_) || fn_ptr.return_nullable != state_nullable_) {
+            LOG(WARNING)
+                << "Illegal return type of variadic external function '"
+                << fname << "': expected "
+                << (state_nullable_ ? "nullable " : "") << state_ty_->GetName()
+                << " but get " << (fn_ptr.return_nullable ? "nullable " : "")
+                << ret_type->GetName();
+            return *this;
+        }
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
+                ret_type, fn_ptr.return_nullable, update_tys, update_nullable, -1, fn_ptr.return_by_arg));
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
+        cur_def_->update_gen.Register(update_tys, false, registry);
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
+        return *this;
+    }
+
+    VariadicUdfRegistryHelper& output(const typename TypeAnnotatedFuncPtr<ST>::type& fn_ptr) {
+        node::TypeNode* ret_type = nullptr;
+        fn_ptr.get_ret_type_func(library()->node_manager(), &ret_type);
+        if (ret_type == nullptr) {
+            LOG(WARNING) << "Fail to get return type of function ptr";
+            return *this;
+        }
+        if (cur_def_->infer_func == nullptr) {
+            cur_def_->output_type = ret_type;
+            cur_def_->output_nullable = fn_ptr.return_nullable;
+        }
+
+        std::string fname = name_prefix_;
+        fname.append("@output@").append(ret_type->GetName());
+        fname.append(".").append(state_ty_->GetName());
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr.ptr,
+                ret_type, fn_ptr.return_nullable, {state_ty_}, {state_nullable_}, -1, fn_ptr.return_by_arg));
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
+        cur_def_->output_gen[ret_type->GetName()] = registry;
+        library()->AddExternalFunction(fname, fn_ptr.ptr);
+        return *this;
+    }
+
+    void finalize() {
+        // find nullable arg positions
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<Args>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(i);
+            }
+        }
+        auto registry = std::make_shared<VariadicUdfRegistry>(
+            name(), cur_def_, sizeof...(Args), null_indices);
+        this->InsertRegistry(
+            {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
+            registry);
+    }
+
+    VariadicUdfRegistryHelper& doc(const std::string& doc) {
+        SetDoc(doc);
+        return *this;
+    }
+
+ private:
+    std::vector<const node::TypeNode*> arg_tys_;
+    std::vector<int> arg_nullable_;
+    node::TypeNode* state_ty_;
+    bool state_nullable_;
+    std::string name_prefix_;
+    std::shared_ptr<VariadicUdfDefGen<Args...>> cur_def_ = nullptr;
+};
+
 
 }  // namespace udf
 }  // namespace hybridse

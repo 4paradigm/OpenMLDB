@@ -71,7 +71,7 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
     for (int32_t i = 0; i < schema_.size(); i++) {
         const ::hybridse::type::ColumnDef& column = schema_.Get(i);
         ::hybridse::vm::ColInfo col_info;
-        col_info.type = column.type();
+        col_info.schema.set_base_type(column.type());
         col_info.idx = i;
         col_info.name = column.name();
         types_.insert(std::make_pair(column.name(), col_info));

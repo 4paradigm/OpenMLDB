@@ -183,8 +183,10 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
         schemas_context.GetRowFormat(schema_idx)->GetColumnInfo(col_idx);
 
     codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
-    node::TypeNode type;
-    codegen::SchemaType2DataType(info->type, &type);
+    node::NodeManager nm;
+    auto rs = codegen::ColumnSchema2Type(info->schema, &nm);
+    ASSERT_TRUE(rs.ok());
+    auto* type = rs.value();
 
     uint32_t col_size;
     ASSERT_TRUE(codegen::GetLlvmColumnSize(&type, &col_size));
@@ -193,7 +195,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
 
     ASSERT_EQ(0, ::hybridse::codec::v1::GetCol(
                      reinterpret_cast<int8_t*>(&list_table_ref), 0, info->idx,
-                     info->offset, info->type, buf));
+                     info->offset, info->type(), buf));
 
     {
         switch (mode) {

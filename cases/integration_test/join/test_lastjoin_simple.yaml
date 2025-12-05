@@ -123,7 +123,10 @@ cases:
           - [ "cc",41,121,1590738991000 ]
     sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
     expect:
-      success: false
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,131,1590738990000 ]
   - id: 4-2
     desc: Last Join 无order by, 部分拼表条件命中索引
     inputs:
@@ -172,7 +175,12 @@ cases:
           - [ "cc",41,121,1590738991000 ]
     sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
     expect:
-      success: false
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "aa",20,15,1590738991000 ]        
+        - [ "bb",21,131,1590738990000 ]
+        - [ "dd",41,null,null ]
   - id: 4-4
     desc: Last Join 无order by, 拼表条件命中部分的组合索引(后缀索引)
     mode: non-performance-sensitive-unsupport, offline-unsupport
@@ -194,7 +202,12 @@ cases:
           - [ "cc",41,121,1590738991000 ]
     sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
     expect:
-      success: false
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "aa",20,15,1590738991000 ]        
+        - [ "bb",21,131,1590738990000 ]
+        - [ "dd",41,null,null ]
   - id: 4-5
     desc: Last Join 无order by, 拼表条件命中索引, 副表多条命中
     tags: [ "注意offline随机拼接最后一条，改变结果顺序可能导致Spark结果不符合预期" ]

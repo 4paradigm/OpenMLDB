@@ -35,28 +35,28 @@ class CodecBenchmarkTest : public ::testing::Test {
 };
 
 void RunHasTs(::openmldb::storage::DataBlock* db) {
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> datas;
+    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.emplace_back(1000, std::move(::openmldb::base::Slice(db->data, db->size)));
+        data.emplace_back(1000, std::move(::openmldb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     butil::IOBuf buf;
-    for (const auto& pair : datas) {
+    for (const auto& pair : data) {
         Encode(pair.first, pair.second.data(), pair.second.size(), &buf);
     }
 }
 
 void RunNoneTs(::openmldb::storage::DataBlock* db) {
-    std::vector<::openmldb::base::Slice> datas;
-    datas.reserve(1000);
+    std::vector<::openmldb::base::Slice> data;
+    data.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(::openmldb::base::Slice(db->data, db->size));
+        data.push_back(::openmldb::base::Slice(db->data, db->size));
         total_block_size += db->size;
     }
     butil::IOBuf buf;
-    for (const auto& v : datas) {
+    for (const auto& v : data) {
         Encode(0, v.data(), v.size(), &buf);
     }
 }

@@ -1,20 +1,42 @@
-# Backup and Restore
+# High Availability and Recovery
 
-## High Availability Description
+## Best Practice
 
-* The nameserver nodes cannot all fail. Failover and recovery cannot be done if all fail.
-* High availability is not guaranteed in the case of no secondary replica
-* In the case of two replicas and two nodes, only one node of tablet can fail.
-* In the case of two replicas and multiple nodes, the two tablet nodes where the same partition is located cannot fail at the same time.
-* In the case of three replicas and three nodes, a tablet failure node can automatically perform failover and data recovery. Failure of two tablet nodes does not guarantee automatic failover and data recovery, but reads and writes can return to normal within minutes.
-* In the case of three replicas and multiple nodes, if the two tablets where the same partition is located hangs, the automatic failover and data recovery of the partition are not guaranteed, but the read and write can return to normal within minutes.
-* If there is a leader partition in the failed node and there is always write traffic, a small amount of data may be lost.
+For production environment, the following configurations is recommended for high availability:
 
-## Downtime and Recovery
+| Components / Parameters   | Deployment Count | Description                                                         |
+| ----------- | ---- | ------------------------------------------------------------ |
+| Nameserver  | = 2  | Determined at deployment time                                                   |
+| TaskManager | = 2  | Determined at deployment time                                                   |
+| Tablet      | >= 3 | Determined at deployment time, can be scaled                                        |
+| Physical nodes    | >= 3 | Determined at deployment time, recommend to be the same as tablet, can bot scaled                 |
+| Replica count    | = 3  | Specified when `CREATE TABLE`, (if tablet count >= 3，replica count defaults to be 3) |
+| Daemon    | in use | Determined at deployment time (see [Install and Deploy](../deploy/install_deploy.md) - Daemon Startup Method) |
 
-OpenMLDB high availability can be configured in automatic mode and manual mode. In automatic mode, if the node fails and recovers, the system will automatically perform failover and data recovery, otherwise manual processing is required
+Best practice illustration:
 
-The mode can be switched by modifying the auto_failover configuration. The default is to open the automatic mode. You can get the configuration status and modify the configuration in the following ways
+- Nameserver and TaskManager each require only one instance during system runtime, and instances that go offline unexpectedly will be automatically restarted by the daemon process. Therefore, deploying two instances is generally sufficient.
+- The number of Tablets and replicas together determine the high availability of data and services. In typical scenarios, recommending three replicas is sufficient. Increasing the number of replicas can increase the probability of data integrity but is not recommended due to the corresponding increase in storage resources. The number of Tablets should ideally match the number of physical nodes, with at least three of each.
+- OpenMLDB's high availability mechanism is based on data shards as the smallest unit. In the optimal configuration, each shard has three replicas, distributed across three different Tablets, including one primary shard (leader) and two secondary shards (followers). The impact on high availability for a shard with offline tablets can vary, as summarized in the table below:
+
+| Number of Offline Tablets for the Shard | Service Availability | Data Integrity of the Shard                                           | Automatic Recovery of Offline Tablets (non-machine restart) |
+| ---------------------------- | ---------- | ------------------------------------------------------------ | ---------------------------------- |
+| 1                            | ✓          | - If the offline tablet is a follower, data integrity is maintained<br />- If the offline tablet is the primary and there is write traffic, a small amount of data loss may occur (some written data may not be synchronized to followers in time) | ✓                                  |
+| 2                            | ✓          | - If all offline tablets are followers, data integrity is maintained<br />- If one offline tablet is the primary and there is write traffic, a small amount of data loss may occur | ✘                                  |
+| 3                            | ✘          | ✘                                                            | ✘                                  |
+
+- Tablet offline situations can include machine restarts, network disconnections, process terminations, etc. If it's a machine restart, manual execution of the OpenMLDB server startup script is required for recovery. For other situations, automatic recovery can be determined based on the table above.
+- **Since a tablet generally stores multiple data shards and must have a primary shard, summarizing for the entire database: (1) when one tablet goes offline, the service is not affected, but if there is write traffic, there may be a small amount of data loss, and the offline tablet can recover automatically; (2) if two tablets go offline simultaneously, the service and data integrity cannot be guaranteed.**
+- Regarding the concepts and architectural design of tablets, replicas, and shards, refer to the [Online Module Architecture documentation](../reference/arch/online_arch.md).
+
+Additionally, if high availability requirements are low, and machine resources are limited, reducing the number of replicas and tablets can be considered:
+
+- 1 replica, 1 tablet: No high availability mechanism.
+- 2 replicas, 2 tablets: (1) when one tablet goes offline, service is not affected, and there may be a small amount of data loss, but the offline tablet can recover automatically; (2) if both tablets go offline simultaneously, neither data integrity nor service can be guaranteed.
+
+## Node Recovery
+
+OpenMLDB's high availability can be configured in automatic mode or manual mode. In automatic mode, the system automatically performs failover and data recovery when a node goes down and recovers. Otherwise, manual intervention is required. The configuration mode can be switched by modifying the `auto_failover` setting, which is enabled by default. You can check the configuration status and modify it using the following methods:
 
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -30,7 +52,7 @@ set auto_failover ok
   auto_failover       false
 ```
 
-**When auto_failover is enabled, if a node goes offline, the is_alive status of the showtable command will change to no. If the node contains a leader of a partition, the partition will re-select the leader. **
+**Note, when auto_failover is enabled, if a node goes offline, the is_alive status of the showtable command will change to no. If the node contains a leader of a partition, the partition will re-select the leader. **
 
 ```
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -45,13 +67,16 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
   flow    4   1    172.27.128.32:8541  follower  0min       no        kNoCompress    0        0           0.000
 ```
 
-When auto_failover is turned off, manual operations are required for node offline and recovery. There are two commands offlineendpoint and recoverendpoint
+When auto_failover is turned off, manual operations are required for node offline and recovery. There are two commands `offlineendpoint` and `recoverendpoint`.
 
-If the node fails, you need to execute offlineendpoint to offline the node
+### Node Offline Command `offlineendpoint`
 
-Command format: offlineendpoint endpoint
+If the node fails, you need to execute `offlineendpoint` to offline the node, the command format is:
 
-endpoint is the endpoint of the failed node. This command will offline the node and perform the following operations on all partitions under the node:
+```
+offlineendpoint $endpoint
+```
+`$endpoint` is the endpoint of the failed node. This command will offline the node and perform the following operations on all partitions under the node:
 
 * If it is the leader, execute the re-election of the leader
 * If it is a follower, find the leader and delete the current endpoint replica from the leader
@@ -77,13 +102,17 @@ offline endpoint ok
   flow    4   1    172.27.128.32:8541  follower  0min       no        kNoCompress    0        0           0.000
 ```
 
-After executing offlineendpoint, each partition will be assigned a new leader. If a partition fails to execute, you can execute changeleader on this partition alone. The command format is: changeleader table_name pid
+After executing `offlineendpoint`, each partition will be assigned a new leader. If a partition fails to execute, you can execute `changeleader` on this partition alone. The command format is: `changeleader $table_name $pid` (refer to [documentation](cli.md#changeleader))
 
-If the node has recovered, you can execute recoverendpoint to recover the data
+### Node Recovery Command `recoverendpoint`
 
-Command format: recoverendpoint endpoint
+If the node has recovered, you can execute `recoverendpoint` to recover the data. Command format:
 
-endpoint is the endpoint of the node whose status has changed to healthy
+```
+recoverendpoint $endpoint
+```
+
+`$endpoint` is the endpoint of the node whose status has changed to `kTabletHealthy`.
 
 ```
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
@@ -108,7 +137,7 @@ recover endpoint ok
   61     kReAddReplicaOP      flow  1    kDoing  20180824200624  4s            -               kLoadTable
 ```
 
-Execute showopstatus to view the running progress of the task. If the status is in the doing state, the task has not been completed.
+Execute `showopstatus` to view the running progress of the task. If the status is `kDoing`, the task has not been completed.
 
 
 ```
@@ -136,20 +165,25 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
   flow    4   1    172.27.128.32:8541  follower  0min       yes       kNoCompress    0        0           0.000
 ```
 
-If showtable turns to yes, it means that the recovery has been successful. If some partitions fail to recover, you can execute recovertable separately. The command format is: recovertable table_name pid endpoint
+If `showtable` turns to yes, it means that the recovery has been successful. If some partitions fail to recover, you can execute `recovertable` separately. The command format is: `recovertable $table_name $pid $endpoint` (refer to [documentation](cli.md#recovertable)).
 
-**Note: offlineendpoint must be executed once before recoverendpoint is executed**
+**Note: `offlineendpoint` must be executed once before `recoverendpoint` is executed**
 
-### One-click recovery
+## One-click recovery
 
-If the cluster is restarted after being offline at the same time, autofailover cannot automatically restore data, and a one-click recovery script needs to be executed. More details refer [here](./openmldb_ops.md)
+If the cluster is restarted after being offline at the same time, autofailover cannot automatically restore data, and a one-click recovery script needs to be executed, to execute command `recoverdata`. More details refer [here](./openmldb_ops.md). An example is shown as follows:
 
-### Manual data recovery
+```bash
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+```
+
+## Manual data recovery
 
 Applicable scenario: The nodes where all replicas of a partition are located are down.
+If one-click recovery has failed, try manual data recovery.
 
-#### 1 Start the process of each node
-#### 2 Turn off autofailover
+### 1 Start the process of each node
+### 2 Turn off autofailover
 
 Execute the confset command on the ns client
 ```
@@ -184,8 +218,8 @@ When restoring data manually, it is necessary to restore the data partition by p
         recovertable table1 1 172.27.128.31:9527 
         ```
 
-#### 4 Restore autofailover
-Execute the confset command on the ns client
+### 4 Restore autofailover
+Execute `confset` command on the ns client
 ```
 confset auto_failover true
 ```

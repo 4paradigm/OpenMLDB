@@ -22,6 +22,8 @@
 #include <memory>
 #include <utility>
 
+#include "absl/cleanup/cleanup.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "brpc/server.h"
 #include "codec/sdk_codec.h"
@@ -32,6 +34,13 @@
 DECLARE_string(endpoint);
 DECLARE_string(tablet);
 DECLARE_string(zk_cluster);
+DECLARE_string(db_root_path);
+DECLARE_string(ssd_root_path);
+DECLARE_string(hdd_root_path);
+DECLARE_string(recycle_bin_ssd_root_path);
+DECLARE_string(recycle_bin_root_path);
+DECLARE_string(recycle_bin_hdd_root_path);
+
 
 namespace openmldb {
 namespace test {
@@ -41,6 +50,37 @@ using ::openmldb::codec::SchemaCodec;
 std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
+
+void SetRootPath(const std::filesystem::path& prefix) {
+    std::filesystem::path tmp_path = prefix / GenRand();
+    LOG(INFO) << "setting root path for test in " << tmp_path;
+    FLAGS_db_root_path = tmp_path / "db_root";
+    FLAGS_ssd_root_path = tmp_path / "ssd_root";
+    FLAGS_hdd_root_path = tmp_path / "hdd_root";
+    FLAGS_recycle_bin_root_path = tmp_path / "recycle_root";
+    FLAGS_recycle_bin_hdd_root_path = tmp_path / "recycle_hdd_root";
+    FLAGS_recycle_bin_ssd_root_path = tmp_path / "recycle_ssd_root";
+}
+
+struct DiskFlagsRAII {
+    // no copy
+    DiskFlagsRAII(const DiskFlagsRAII&) = delete;
+    DiskFlagsRAII(DiskFlagsRAII&&) = default;
+    DiskFlagsRAII& operator=(const DiskFlagsRAII&) = delete;
+    DiskFlagsRAII& operator=(DiskFlagsRAII&&) = default;
+
+    explicit DiskFlagsRAII(const std::filesystem::path& p) : prefix(p){
+        SetRootPath(prefix);
+    }
+
+    ~DiskFlagsRAII() {
+        LOG(INFO) << "removing temp path: " << prefix;
+        std::filesystem::remove_all(prefix);
+    }
+
+    std::filesystem::path prefix;
+};
+static const DiskFlagsRAII* flags_raii_ptr = nullptr;
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
                       ::openmldb::nameserver::TableInfo* table_meta) {
@@ -261,12 +301,15 @@ std::string GetParentDir(const std::string& path) {
     return dir;
 }
 
+// TempPath requires initialize random DiskFlagsRAII explicitly,
+// or abort with error message
 TempPath::TempPath() {
-    std::filesystem::path tmp_path =
-        std::filesystem::temp_directory_path() / "openmldb_test" / ::openmldb::test::GenRand();
+    assert(flags_raii_ptr != nullptr && "use of TempPath must explicitly initialize with InitRandomDiskFlags()");
+    auto& global_tmp_prefix = flags_raii_ptr->prefix;
+    std::filesystem::path tmp_path = global_tmp_prefix / absl::StrCat("tmppath", ::openmldb::test::GenRand());
     base_path_ = tmp_path.string();
 }
-TempPath::~TempPath() { std::filesystem::remove_all(base_path_); }
+TempPath::~TempPath() {}
 
 std::string TempPath::GetTempPath() { return absl::StrCat(base_path_, "/", ::openmldb::test::GenRand()); }
 
@@ -315,5 +358,43 @@ api::TableMeta CreateTableMeta(const std::string& name, uint32_t tid, uint32_t p
     return table_meta;
 }
 
+
+static std::filesystem::path GenerateTmpDirPrefix(absl::string_view tag) {
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "openmldb";
+    const auto& rand = ::openmldb::test::GenRand();
+    return tmp_path / absl::StrCat(tag, rand);
+}
+
+static DiskFlagsRAII GenerateRandomDiskFlags(absl::string_view tag) {
+    return DiskFlagsRAII(GenerateTmpDirPrefix(tag));
+}
+
+static bool InitRandomDiskFlagsImpl(absl::string_view tag) {
+    static DiskFlagsRAII flags_raii = GenerateRandomDiskFlags(tag);
+    auto sig_handler = [](int sig) {
+        LOG(INFO) << "Quit " << sig;
+        flags_raii.~DiskFlagsRAII();
+        _exit(1);
+    };
+    signal(SIGINT, sig_handler);
+    signal(SIGKILL, sig_handler);
+    signal(SIGTERM, sig_handler);
+    // signal(SIGABRT, sig_handler);
+
+    flags_raii_ptr = &flags_raii;
+    return true;
+}
+
+// DiskFlagsRAII instance that initialize exact once:
+// - flags_raii ensure global gflags define and set once
+// - flags_raii_flag also ensure signal handler set once
+bool InitRandomDiskFlags(std::string_view tag) {
+    static bool flags_raii_flag = InitRandomDiskFlagsImpl(tag);
+    return flags_raii_flag;
+}
+
+void ResetRandomDiskFlags() {
+    SetRootPath(flags_raii_ptr->prefix);
+}
 }  // namespace test
 }  // namespace openmldb

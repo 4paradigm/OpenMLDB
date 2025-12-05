@@ -4,7 +4,7 @@
 
 ### Operating System
 
-The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS 12. For Linux, a glibc version of >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [compiling from source code](compile.md) to extend support to other operating systems.
+The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS >= 12.0 (x86 architecture only). For Linux, glibc >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [compiling from source code](compile.md) to extend support to other operating systems.
 
 ````{note}
 Linux users can assess their system's compatibility through the following commands:
@@ -21,6 +21,10 @@ Generally, ldd version should be >= 2.17, and GLIBC_2.17 should be present in li
 ### Third-party Component Dependencies
 
 If you need to deploy ZooKeeper and TaskManager, you need a Java runtime environment.
+
+Servers needs Java 1.8 or above.
+
+Zookeeper Client 3.4.14 requires `Java 1.7` - `Java 13`. Java SDK depends on the same client, so it should use the same Java version, not a higher version. If you wish to use zkCli, please use `Java 1.8` or `Java 11`.
 
 ### Hardware
 
@@ -46,23 +50,23 @@ If your operating system is capable of running pre-compiled packages directly, y
 The compatible operating systems are as follows:
 
 - `openmldb-x.x.x-linux.tar.gz`: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3
-- `openmldb-x.x.x-darwin.tar.gz`: macOS 12
+- `openmldb-x.x.x-darwin.tar.gz`: macOS >= 12.0
 
 If your operating system is not mentioned above or if you want to compile from source code, please refer [here](compile.md) to compile from source code. 
 
-### Linux Platform Compatibility pre-test
+### Linux Platform Compatibility Pre-test
 
-Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. Download the pre-compiled package `openmldb-0.8.4-linux.tar.gz`, and execute:
+Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. Download the pre-compiled package `openmldb-0.9.2-linux.tar.gz`, and execute:
 
 ```
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-./openmldb-0.8.4-linux/bin/openmldb --version
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+./openmldb-0.9.2-linux/bin/openmldb --version
 ```
 
 The result should display the version number of the program, as shown below:
 
 ```
-openmldb version 0.8.4-xxxx
+openmldb version 0.9.2-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -177,9 +181,9 @@ DataCollector and SyncTool currently do not support one-click deployment. Please
 ### Download OpenMLDB
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-cd openmldb-0.8.4-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.2/openmldb-0.9.2-linux.tar.gz
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+cd openmldb-0.9.2-linux
 ```
 
 ### Environment Configuration
@@ -188,10 +192,10 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 
 | Environment Variable              | Default Value                                           | Note                                                         |
 | --------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| OPENMLDB_VERSION                  | 0.8.4                                                   | OpenMLDB version                                             |
+| OPENMLDB_VERSION                  | 0.9.2                                                   | OpenMLDB version                                             |
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster                                        |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root directory                                      |
-| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | openmldb spark root directory，If the directory does not exist,  it will be downloaded automatically.|
+| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | Spark root directory, if the directory does not exist,  it will be downloaded automatically.|
 | OPENMLDB_TABLET_PORT              | 10921                                                   | TabletServer default port                                    |
 | OPENMLDB_NAMESERVER_PORT          | 7527                                                    | NameServer default port                                      |
 | OPENMLDB_TASKMANAGER_PORT         | 9902                                                    | taskmanager default port                                     |
@@ -201,7 +205,7 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 | OPENMLDB_ZK_CLUSTER               | auto derived from `[zookeeper]` section in `conf/hosts` | ZooKeeper cluster address                                    |
 | OPENMLDB_ZK_ROOT_PATH             | /openmldb                                               | OpenMLDB root directory in ZooKeeper                         |
 | OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                                                    | ZooKeeper client port, the client port in zoo.cfg            |
-| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | ZooKeeper peer port，the first port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | ZooKeeper peer port, the first port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
 | OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                                                    | ZooKeeper election port, the second port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
 
 ### Node Configuration
@@ -248,7 +252,7 @@ If multiple TaskManager instances are deployed on distinct machines, the configu
 bash sbin/init_env.sh
 ```
 Note:
-- This script requires root execution. Other scripts does not require root privileges.
+- This script requires root execution. Other scripts do not require root privileges.
 - The script only modifies limit configurations, disabling swap and THP.
 
 ### Deployment
@@ -356,15 +360,15 @@ Enter `quit` or `Ctrl+C` to exit the zk client.
 
 ### Deploy TabletServer
 
-Note that at least two TabletServer need to be deployed, otherwise errors may occur.
+Note that at least two TabletServers need to be deployed, otherwise errors may occur.
 
 **1. Download the OpenMLDB deployment package**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-tablet-0.8.4
-cd openmldb-tablet-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.2/openmldb-0.9.2-linux.tar.gz
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+mv openmldb-0.9.2-linux openmldb-tablet-0.9.2
+cd openmldb-tablet-0.9.2
 ```
 
 **2. Modify the configuration file `conf/tablet.flags`**
@@ -427,15 +431,15 @@ For clustered versions, the number of TabletServers must be 2 or more. If there'
 
 To start the next TabletServer on a different machine, simply repeat the aforementioned steps on that machine. If starting the next TabletServer on the same machine, ensure it's in a different directory, and do not reuse a directory where the TabletServer is already running.
 
-For instance, you can decompress the package again (avoid using a directory where TabletServer is already running, as files generated after startup may be affected), and name the directory `openmldb-tablet-0.8.4-2`.
+For instance, you can decompress the package again (avoid using a directory where TabletServer is already running, as files generated after startup may be affected), and name the directory `openmldb-tablet-0.9.2-2`.
 
 ```
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-tablet-0.8.4-2
-cd openmldb-tablet-0.8.4-2
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+mv openmldb-0.9.2-linux openmldb-tablet-0.9.2-2
+cd openmldb-tablet-0.9.2-2
 ```
 
-Modify the configuration again and start the TabletServer. Note that if all TabletServers are on the same machine, use different port numbers to avoid "Fail to listen" error in the log (`logs/tablet.WARNING`).
+Modify the configuration again and start the TabletServer. Note that if all TabletServers are on the same machine, use different port numbers to avoid the "Fail to listen" error in the log (`logs/tablet.WARNING`).
 
 **Note:**
 
@@ -450,10 +454,10 @@ Please ensure that all TabletServer have been successfully started before deploy
 **1. Download the OpenMLDB deployment package**
 
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-ns-0.8.4
-cd openmldb-ns-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.2/openmldb-0.9.2-linux.tar.gz
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+mv openmldb-0.9.2-linux openmldb-ns-0.9.2
+cd openmldb-ns-0.9.2
 ````
 
 **2.  Modify the configuration file conf/nameserver.flags**
@@ -498,12 +502,12 @@ You can have only one NameServer, but if you need high availability, you can dep
 
 To start the next NameServer on another machine, simply repeat the above steps on that machine. If starting the next NameServer on the same machine, ensure it's in a different directory and do not reuse the directory where NameServer has already been started.
 
-For instance, you can decompress the package again (avoid using the directory where NameServer is already running, as files generated after startup may be affected) and name the directory `openmldb-ns-0.8.4-2`.
+For instance, you can decompress the package again (avoid using the directory where NameServer is already running, as files generated after startup may be affected) and name the directory `openmldb-ns-0.9.2-2`.
 
 ```
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-ns-0.8.4-2
-cd openmldb-ns-0.8.4-2
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+mv openmldb-0.9.2-linux openmldb-ns-0.9.2-2
+cd openmldb-ns-0.9.2-2
 ```
 
 Then modify the configuration and start.
@@ -544,10 +548,10 @@ Before running APIServer, ensure that the TabletServer and NameServer processes 
 **1. Download the OpenMLDB deployment package**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-apiserver-0.8.4
-cd openmldb-apiserver-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.2/openmldb-0.9.2-linux.tar.gz
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+mv openmldb-0.9.2-linux openmldb-apiserver-0.9.2
+cd openmldb-apiserver-0.9.2
 ```
 
 **2. Modify the configuration file conf/apiserver.flags**
@@ -560,6 +564,8 @@ cp conf/apiserver.flags.template conf/apiserver.flags
 * Modify the `endpoint`. The `endpoint` consists of a colon-separated deployment machine IP/domain name and port number (endpoints cannot use 0.0.0.0 and 127.0.0.1, and must be a public IP).
 * Modify `zk_cluster` to point to the address of the ZooKeeper service that has already been started (see [Deploy ZooKeeper - 4. ZooKeeper Service Address and Connection Test](zookeeper_addr)). If the ZooKeeper service is a cluster, separate the addresses with commas, for example, `172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`.
 * Modify `zk_root_path`. In this example, `/openmldb_cluster` is used. Note that **components under the same cluster share the same `zk_root_path`**. So in this deployment, the `zk_root_path` for each component's configuration is `/openmldb_cluster`.
+* You can specify the username and password to connect to the server using `--user` and `--password`.
+* By default, it connects to the server using the root user and an empty password. If you've changed the root password, you need to specify the new password using `--password`.
 
 ```
 --endpoint=172.27.128.33:8080
@@ -602,23 +608,25 @@ The results should include information about all TabletServer and NameServer tha
 
 You can have only one TaskManager, but if you require high availability, you can deploy multiple TaskManagers, taking care to avoid IP and port conflicts. If the TaskManager master node experiences a failure, a slave node will automatically recover and replace the master node. Clients can continue accessing the TaskManager service without any modifications.
 
-**1. Download the OpenMLDB deployment package and Spark distribution for feature engineering optimization**
+**1. Download the OpenMLDB deployment package and Spark distribution **
 
-Spark distribution：
+Download the Spark distribution from the [Spark official website](https://spark.apache.org/downloads.html)。 Then unzip it and set the `SPARK_HOME` environment variable.
+
+Alternatively, use the OpenMLDB Spark distribution.
 
 ```shell
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.4/spark-3.2.1-bin-openmldbspark.tgz
-# Image address (China)：https://www.openmldb.com/download/v0.8.4/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.9.2/spark-3.2.1-bin-openmldbspark.tgz
+# Image address (China)：https://www.openmldb.com/download/v0.9.2/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB deployment package：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.4/openmldb-0.8.4-linux.tar.gz
-tar -zxvf openmldb-0.8.4-linux.tar.gz
-mv openmldb-0.8.4-linux openmldb-taskmanager-0.8.4
-cd openmldb-taskmanager-0.8.4
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.9.2/openmldb-0.9.2-linux.tar.gz
+tar -zxvf openmldb-0.9.2-linux.tar.gz
+mv openmldb-0.9.2-linux openmldb-taskmanager-0.9.2
+cd openmldb-taskmanager-0.9.2
 ```
 
 **2. Modify the configuration file conf/taskmanager.properties**
@@ -636,6 +644,7 @@ cp conf/taskmanager.properties.template conf/taskmanager.properties
 * Modify `offline.data.prefix`: Set it to the storage path for offline tables. In Yarn mode, modify it to the corresponding HDFS path.
 * Modify `spark.master`: Set it according to the desired mode. Currently supports local and yarn modes for running offline tasks.
 * Modify `spark.home`: Set it to the Spark environment path. If not configured, the `SPARK_HOME` environment variable will be used. It should be the directory where the spark-optimized package was extracted in the first step, and it must be an absolute path.
+* You can specify the username and password to connect to the server using `user` and `password`. If you've changed the root password, you'll need to specify the new password for the root user.
 
 ```
 server.host=172.27.128.33
@@ -704,7 +713,7 @@ Insert into t1 values (1, 'a'),(2,'b');
 select * from t1;
 ```
 
-### Deployed in offline synchronization tool (optional)
+### Deployed in Offline Synchronization Tool (optional)
 
 DataCollector in the offline synchronization tool needs to be deployed on the same machine as the TabletServer. Therefore, if offline synchronization is required, DataCollector can be deployed in all TabletServer deployment directories.
 

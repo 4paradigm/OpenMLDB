@@ -118,10 +118,10 @@ class SqlCase {
     const codec::Schema ExtractParameterTypes() const;
 
     bool ExtractInputData(std::vector<hybridse::codec::Row>& rows,  // NOLINT
-                          int32_t input_idx = 0) const;
-    bool ExtractInputData(
-        const TableInfo& info,
-        std::vector<hybridse::codec::Row>& rows) const;  // NOLINT
+                          int32_t input_idx, const codec::Schema& sc) const;
+    bool ExtractInputData(const TableInfo& info,
+                          std::vector<hybridse::codec::Row>& rows,  // NOLINT
+                          const codec::Schema&) const;
     bool ExtractOutputData(
         std::vector<hybridse::codec::Row>& rows) const;  // NOLINT
 
@@ -221,6 +221,9 @@ class SqlCase {
     }
     static std::set<std::string> HYBRIDSE_LEVEL();
 
+    // Get the base directory searching for yaml test cases.
+    // It is by default directory to current git repository, or you can override
+    // the base directory with 'SQL_CASE_BASE_DIR' environment variable
     static std::string SqlCaseBaseDir();
 
     static bool IsDebug() {
@@ -331,6 +334,10 @@ std::vector<SqlCase> InitCases(std::string yaml_path, std::vector<std::string> f
 void InitCases(std::string yaml_path, std::vector<SqlCase>& cases);  // NOLINT
 void InitCases(std::string yaml_path, std::vector<SqlCase>& cases, // NOLINT
                const std::vector<std::string>& filters);
+
+// TODO(someone): consider move the function to production code so others will take usage.
+absl::StatusOr<std::vector<codec::Row>> ExtractInsertRow(vm::HybridSeJitWrapper*, absl::string_view insert,
+                                                         const codec::Schema* table_schema);
 }  // namespace sqlcase
 }  // namespace hybridse
 #endif  // HYBRIDSE_INCLUDE_CASE_SQL_CASE_H_

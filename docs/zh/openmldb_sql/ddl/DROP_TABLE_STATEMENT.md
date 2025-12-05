@@ -1,7 +1,7 @@
 # DROP TABLE
 
 ```
-DROP TABLE table_name
+DROP TABLE [IF EXISTS] table_name
 ```
 
 `DROP TABLE`语句用于删除指定的一张表。
@@ -48,7 +48,7 @@ SHOW TABLES;
 DROP TABLE t1;
 -- Drop table t1? yes/no
 -- yes
--- SUCCEED: Drop successfully
+-- SUCCEED
 ```
 
 再次查看数据库下的表：
@@ -62,6 +62,14 @@ SHOW TABLES;
  -------- 
 1 rows in set
 
+```
+
+使用`IF EXISTS`选项删除不存在的表
+```sql
+DROP TABLE IF EXISTS t3;
+-- Drop table t3? yes/no
+-- yes
+-- SUCCEED
 ```
 
 

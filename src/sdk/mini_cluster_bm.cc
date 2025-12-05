@@ -77,7 +77,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
         }
 
         std::vector<hybridse::codec::Row> request_rows;
-        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
+        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows, request_table.columns())) {
             state.SkipWithError("benchmark error: hybridse case input data invalid");
             return;
         }
@@ -190,7 +190,7 @@ void MiniBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case, BmRunMode engine_
             break;
         }
         default: {
-            FAIL() << "Unsupport Engine Mode " << engine_mode;
+            FAIL() << "Unsupported Engine Mode " << engine_mode;
         }
     }
 }
@@ -243,7 +243,7 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
         }
 
         std::vector<hybridse::codec::Row> request_rows;
-        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
+        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows, request_table.columns())) {
             state.SkipWithError("benchmark error: hybridse case input data invalid");
             return;
         }

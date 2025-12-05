@@ -2,58 +2,33 @@
 
 ## Syntax
 
-```sql
-WindowClauseOptional
-        ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
+```yacc
+window_clause:
+  WINDOW named_window_expression [, ...]
 
-WindowDefinition
-        ::= WindowName 'AS' WindowSpec
+named_window_expression:
+  named_window AS { named_window | ( window_specification ) }
 
-WindowSpec
-        ::= '(' WindowSpecDetails ')'
+window_specification:
+  [ UNION ( from_item [, ...] ) ]
+  PARTITION BY expression [ ORDER BY ordering_expression ]
+  window_frame_clause [ window_attr [, ...] ]
 
-WindowSpecDetails
-        ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
+window_frame_clause:
+  frame_units BETWEEN frame_bound AND frame_bound [ MAXSIZE numeric_expression ] )
 
-WindowUnionClause
-        :: = ( 'UNION' TableRefs)
+frame_unit:
+  ROWS 
+  | ROWS_RANGE
 
-WindowPartitionClause
-        ::= ( 'PARTITION' 'BY' ByList )
+frame_boud:
+  { UNBOUNDED | numeric_expression | interval_expression } [ OPEN ] PRECEDING
+  | CURRENT ROW
 
-WindowOrderByClause
-        ::= ( 'ORDER' 'BY' ByList )
-
-WindowFrameClause
-        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
-
-WindowFrameUnits
-        ::= 'ROWS'
-          | 'ROWS_RANGE'
-
-WindowFrameBounds
-        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
-
-WindowFrameBound
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
-
-WindowAttribute
-        ::= WindowExcludeCurrentTime
-          | WindowExcludeCurrentRow
-          | WindowInstanceNotInWindow
-
-WindowExcludeCurrentTime
-        ::= 'EXCLUDE' 'CURRENT_TIME'
-
-WindowExcludeCurrentRow
-        ::= 'EXCLUDE' 'CURRENT_ROW'
-
-WindowInstanceNotInWindow
-        :: = 'INSTANCE_NOT_IN_WINDOW'
-
-WindowFrameMaxSize
-        :: = 'MAXSIZE' NumLiteral
+window_attr:
+  EXCLUDE CURRENT_TIME
+  | EXCLUDE CURRENT_ROW
+  | INSTANCE_NOT_IN_WINDOW
 ```
 
 *窗口调用函数*实现了类似于聚合函数的功能。 不同的是，窗口调用函数不需要将查询结果打包成一行输出—在查询输出中，每一行都是分开的。 然而，窗口调用函数可以扫描所有的行，根据窗口调用函数的分组规范(`PARTITION BY`列)， 这些行可能会是当前行所在组的一部分。一个窗口调用函数的语法是下列之一：
@@ -230,6 +205,7 @@ from t1;
 SELECT sum(col2) OVER w1 as w1_col2_sum FROM t1
 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 1000 PRECEDING AND CURRENT ROW);
 ```
+
 - **ROWS_RANGE 类型窗口**
 
 定义一个ROWS_RANGE类型窗口，窗口范围是当前行前10s的所有行，以及当前行。
@@ -334,7 +310,7 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 ![Figure 6: window exclude current time](../dql/images/window_exclude_current_row.png)  
 
-### 4. Window with MAXSIZE
+### 4. WINDOW with MAXSIZE
 
 OpenMLDB定义了`MAXSIZE`关键字，来限制有效窗口内最大数据条数。
 

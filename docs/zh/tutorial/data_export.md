@@ -2,13 +2,13 @@
 
 在线数据导出工具位于[src/tools](https://github.com/4paradigm/OpenMLDB/tree/main/src/tools)。支持导出远程机器中单机或集群模式的数据。
 
-## 1. 导出工具工具安装
+## 导出工具安装
 
 Unix Executable文件生成：src目录下使用make。
 
-## 2. 导数工具使用
+## 导数工具使用
 
-### 2.1 命令参数
+### 命令参数
 
 所有的配置项如下，星号表示必填项。
 
@@ -24,7 +24,7 @@ Usage: ./data_exporter [--delimiter=<delimiter>] --db_name=<dbName>
       --user_name=<userName>      user name of the remote machine
 ```
 
-### 2.2 重要参数配置说明
+### 重要参数配置说明
 
 重要配置的项目说明：
 
@@ -32,7 +32,7 @@ Usage: ./data_exporter [--delimiter=<delimiter>] --db_name=<dbName>
 - `--table_name=<tableName>`: 表名。表名必须是存在的，如果不存在则报错：表不存在。
 - `--config_path=<configPath]`: OpenMLDB远程机器的配置文件，文件格式是yaml。
 
-### 2.3 配置文件用例：
+### 配置文件用例：
 
      mode: cluster
      zookeeper:
@@ -53,6 +53,6 @@ Usage: ./data_exporter [--delimiter=<delimiter>] --db_name=<dbName>
          endpoint: 172.17.0.2:10922
          path: /work/openmldb
 
-## 3. 错误处理
+## 错误处理
 
 如果数据导出失败，可以根据Glog的错误信息来判断错误原因。

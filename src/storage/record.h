@@ -18,8 +18,10 @@
 #define SRC_STORAGE_RECORD_H_
 
 #include <vector>
-#include "base/slice.h"
+
+#include "absl/strings/str_cat.h"
 #include "base/skiplist.h"
+#include "base/slice.h"
 #include "storage/key_entry.h"
 
 namespace openmldb {
@@ -67,9 +69,7 @@ struct StatisticsInfo {
         }
     }
 
-    uint64_t GetIdxCnt(uint32_t idx) const {
-        return idx >= idx_cnt_vec.size() ? 0 : idx_cnt_vec[idx];
-    }
+    uint64_t GetIdxCnt(uint32_t idx) const { return idx >= idx_cnt_vec.size() ? 0 : idx_cnt_vec[idx]; }
 
     uint64_t GetTotalCnt() const {
         uint64_t total_cnt = 0;
@@ -77,6 +77,15 @@ struct StatisticsInfo {
             total_cnt += cnt;
         }
         return total_cnt;
+    }
+
+    std::string DebugString() {
+        std::string str;
+        absl::StrAppend(&str, "idx_byte_size: ", idx_byte_size, " record_byte_size: ", record_byte_size, " idx_cnt: ");
+        for (uint32_t i = 0; i < idx_cnt_vec.size(); i++) {
+            absl::StrAppend(&str, i, ":", idx_cnt_vec[i], " ");
+        }
+        return str;
     }
 
     std::vector<uint64_t> idx_cnt_vec;

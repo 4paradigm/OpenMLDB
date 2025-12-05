@@ -48,6 +48,7 @@ hybridse_add_src_and_tests(vm)
 hybridse_add_src_and_tests(codec)
 hybridse_add_src_and_tests(case)
 hybridse_add_src_and_tests(passes)
+hybridse_add_src_and_tests(rewriter)
 
 get_property(SRC_FILE_LIST_STR GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 string(REPLACE " " ";" SRC_FILE_LIST ${SRC_FILE_LIST_STR})
@@ -58,7 +59,7 @@ if (LLVM_EXT_ENABLE)
     add_definitions(-DLLVM_EXT_ENABLE)
 endif ()
 
-add_library(hybridse_flags STATIC ${CMAKE_CURRENT_SOURCE_DIR}/flags.cc)
+add_library(hybridse_flags ${CMAKE_CURRENT_SOURCE_DIR}/flags.cc)
 target_link_libraries(hybridse_flags ${GFLAGS_LIBRARY})
 
 # hybridse core library, enable BUILD_SHARED_LIBS to build shared lib

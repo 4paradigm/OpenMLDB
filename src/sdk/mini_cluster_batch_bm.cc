@@ -27,6 +27,7 @@
 #include "sdk/sql_router.h"
 #include "sdk/table_reader.h"
 #include "test/base_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 DECLARE_bool(enable_distsql);
@@ -85,9 +86,9 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
-    ::openmldb::sdk::ClusterOptions option;
-    option.zk_cluster = mc->GetZkCluster();
-    option.zk_path = mc->GetZkPath();
+    auto option = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+    option->zk_cluster = mc->GetZkCluster();
+    option->zk_path = mc->GetZkPath();
     ::openmldb::sdk::ClusterSDK sdk(option);
     sdk.Init();
     std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablet;
@@ -96,7 +97,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     uint32_t tid = sdk.GetTableId(db, name);
     {
         for (int32_t i = 0; i < 1000; i++) {
-            ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value);
+            tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value);
         }
     }
     std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
@@ -895,6 +896,7 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetupGlog(true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("mini_cluster_batch_bm");
     FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IsCluster();
     FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();
     ::benchmark::Initialize(&argc, argv);

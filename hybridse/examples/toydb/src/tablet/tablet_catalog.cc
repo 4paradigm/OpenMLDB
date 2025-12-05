@@ -59,7 +59,7 @@ bool TabletTableHandler::Init() {
     // init types var
     for (int32_t i = 0; i < schema_.size(); i++) {
         const type::ColumnDef& column = schema_.Get(i);
-        codec::ColInfo col_info(column.name(), column.type(), i, 0);
+        codec::ColInfo col_info(column.name(), column.schema(), i, 0);
         types_.insert(std::make_pair(column.name(), col_info));
     }
 

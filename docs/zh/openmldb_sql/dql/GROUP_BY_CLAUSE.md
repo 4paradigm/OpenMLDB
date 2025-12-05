@@ -2,9 +2,9 @@
 
 ## Syntax
 
-```SQL
-GroupByClause
-         ::= 'GROUP' 'BY' ByList
+```yacc
+group_by_clause:
+  GROUP BY group_by_specification
 ```
 
 ## SQL语句模版

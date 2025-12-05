@@ -1,0 +1,108 @@
+{
+	"nodes": [
+		{
+			"id": -1,
+			"uuid": "8a41c2a7-5259-4dbd-9423-66f9d24f0194",
+			"type": "FeatureCompute",
+			"script": "select t3.*, csv(regression_label(t3.job)) from t1 last join t3 on t1.id \u003d t3.id",
+			"isDebug": false,
+			"isCurrent": false,
+			"parents": [
+				"15810afc-b62f-4165-a027-a198f7e5a375",
+				"f84bb5fe-b247-4b43-8ae0-9c865c80052e"
+			],
+			"inputTables": [
+				"t1",
+				"t3"
+			],
+			"tableNameMap": {
+				"t1": "modelIDE/train-QueryExec-1715152021-021413.table",
+				"t3": "modelIDE/train-QueryExec-1715152182-85b06d.table"
+			},
+			"outputTables": [],
+			"instanceType": null,
+			"tables": {},
+			"loader": null,
+			"originConfig": null,
+			"enablePrn": true
+		}
+	],
+	"schemas": [
+        {
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152021-021413.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "y",
+					"type": "Int"
+				},
+				{
+					"name": "f1_bool",
+					"type": "Boolean"
+				},
+				{
+					"name": "f2_sint",
+					"type": "SmallInt"
+				},
+				{
+					"name": "f3_int",
+					"type": "Int"
+				},
+				{
+					"name": "f4_bint",
+					"type": "BigInt"
+				},
+				{
+					"name": "f5_float",
+					"type": "Float"
+				},
+				{
+					"name": "f6_double",
+					"type": "Double"
+				},
+				{
+					"name": "f7_date",
+					"type": "Date"
+				},
+				{
+					"name": "f8_ts",
+					"type": "Timestamp"
+				},
+				{
+					"name": "f9_str",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		},
+		{
+			"uuid": null,
+			"prn": "modelIDE/train-QueryExec-1715152182-85b06d.table",
+			"cols": [{
+					"name": "id",
+					"type": "Int"
+				},
+				{
+					"name": "age",
+					"type": "Int"
+				},
+				{
+					"name": "job",
+					"type": "String"
+				},
+				{
+					"name": "marital",
+					"type": "String"
+				},
+				{
+					"name": "education",
+					"type": "String"
+				}
+			],
+			"isOutput": null
+		}
+	]
+}

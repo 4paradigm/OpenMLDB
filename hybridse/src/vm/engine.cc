@@ -15,26 +15,31 @@
  */
 
 #include "vm/engine.h"
+
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "absl/time/clock.h"
 #include "boost/none.hpp"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
+#include "plan/plan_api.h"
 #include "udf/default_udf_library.h"
+#include "vm/internal/node_helper.h"
 #include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
-#include "vm/sql_compiler.h"
-#include "vm/internal/node_helper.h"
 #include "vm/runner_ctx.h"
+#include "vm/sql_compiler.h"
+#include "zetasql/parser/parser.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
+#define EXECUTE_MODE_OPT "execute_mode"
+#define VALUES_OPT "values"
 
 namespace hybridse {
 namespace vm {
-
-static bool LLVM_IS_INITIALIZED = false;
 
 EngineOptions::EngineOptions()
     : keep_ir_(false),
@@ -48,16 +53,23 @@ EngineOptions::EngineOptions()
       max_sql_cache_size_(50) {
 }
 
+static absl::Status ExtractRows(const node::ExprNode* expr, const codec::Schema* sc, std::vector<codec::Row>* out)
+    ABSL_ATTRIBUTE_NONNULL();
+
 Engine::Engine(const std::shared_ptr<Catalog>& catalog) : cl_(catalog), options_(), mu_(), lru_cache_() {}
 Engine::Engine(const std::shared_ptr<Catalog>& catalog, const EngineOptions& options)
     : cl_(catalog), options_(options), mu_(), lru_cache_() {}
 Engine::~Engine() {}
-void Engine::InitializeGlobalLLVM() {
-    if (LLVM_IS_INITIALIZED) return;
+
+static bool InitializeLLVM() {
+    absl::Time begin = absl::Now();
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
-    LLVM_IS_INITIALIZED = true;
+    LOG(INFO) << "initialize llvm native target and asm printer, takes " << absl::Now() - begin;
+    return true;
 }
+
+void Engine::InitializeGlobalLLVM() { [[maybe_unused]] static bool LLVM_IS_INITIALIZED = InitializeLLVM(); }
 
 void Engine::InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt) {
     FLAGS_enable_spark_unsaferow_format = isUnsafeRowOpt;
@@ -160,6 +172,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     sql_context.enable_expr_optimize = options_.IsEnableExprOptimize();
     sql_context.jit_options = options_.jit_options();
     sql_context.options = session.GetOptions();
+    sql_context.index_hints = session.index_hints_;
     if (session.engine_mode() == kBatchMode) {
         sql_context.parameter_types = dynamic_cast<BatchRunSession*>(&session)->GetParameterSchema();
     } else if (session.engine_mode() == kBatchRequestMode) {
@@ -181,6 +194,15 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
         }
     }
 
+    {
+        auto s = ExtractRequestRowsInSQL(&sql_context);
+        if (!s.ok()) {
+            status.code = common::kCodegenError;
+            status.msg = s.ToString();
+            return false;
+        }
+    }
+
     SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
     if (session.is_debug_) {
@@ -190,7 +212,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
             LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
         }
         std::ostringstream runner_oss;
-        sql_context.cluster_job.Print(runner_oss, "");
+        sql_context.cluster_job->Print(runner_oss, "");
         LOG(INFO) << "cluster job:\n" << runner_oss.str() << std::endl;
     }
     return true;
@@ -374,23 +396,93 @@ bool RunSession::SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info
     return true;
 }
 
+absl::Status ExtractRows(const node::ExprNode* expr, const codec::Schema* sc, std::vector<codec::Row>* out) {
+    switch (expr->GetExprType()) {
+        case node::kExprStructCtorParens: {
+            auto struct_expr = expr->GetAsOrNull<node::StructCtorWithParens>();
+            base::Status s;
+            auto jit =
+                std::shared_ptr<hybridse::vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::CreateWithDefaultSymbols(&s));
+            CHECK_STATUS_TO_ABSL(s);
+            codec::RowBuilder2 builder(jit.get(), {*sc});
+            CHECK_STATUS_TO_ABSL(builder.Init());
+            codec::Row r;
+            CHECK_STATUS_TO_ABSL(builder.Build(struct_expr->children_, &r));
+            out->push_back(r);
+            break;
+        }
+        case node::kExprArray: {
+            auto arr = expr->GetAsOrNull<node::ArrayExpr>();
+            if (arr->GetChildNum() == 0) {
+                return absl::FailedPreconditionError("element number of the request values must not empty");
+            }
+            for (auto e : arr->children_) {
+                CHECK_ABSL_STATUS(ExtractRows(e, sc, out));
+            }
+            break;
+        }
+        default: {
+            // try build as request schema size = 1, necessary since AST parser simplify '(expr1)' to 'expr1'.
+            // this also allows syntax like 'values = [12, 12]', where request table schema is '[int]',
+            // it is a special rule to go with AST parser, not recommanded to users generally.
+            base::Status s;
+            auto jit =
+                std::shared_ptr<hybridse::vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::CreateWithDefaultSymbols(&s));
+            CHECK_STATUS_TO_ABSL(s);
+            codec::RowBuilder2 builder(jit.get(), {*sc});
+            CHECK_STATUS_TO_ABSL(builder.Init());
+            codec::Row r;
+            CHECK_STATUS_TO_ABSL(builder.Build({const_cast<node::ExprNode*>(expr)}, &r));
+            out->push_back(r);
+        }
+    }
+
+    return absl::OkStatus();
+}
+
+absl::Status Engine::ExtractRequestRowsInSQL(SqlContext* sql_ctx) {
+    if ((sql_ctx->engine_mode == kRequestMode || sql_ctx->engine_mode == kBatchRequestMode) &&
+        !sql_ctx->request_schema.empty() && sql_ctx->request_expressions != nullptr) {
+        // extract rows if request table and request values expression both exists
+        vm::Engine::InitializeGlobalLLVM();
+        CHECK_ABSL_STATUS(ExtractRows(sql_ctx->request_expressions, &sql_ctx->request_schema, &sql_ctx->request_rows));
+    }
+    return absl::OkStatus();
+}
+
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
-    return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.main_task_id(),
+    return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job->main_task_id(),
                in_row, out_row);
 }
-int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, Row* out_row) {
-    auto task = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)
-                    ->get_sql_context()
-                    .cluster_job.GetTask(task_id)
-                    .GetRoot();
+int32_t RequestRunSession::Run(int32_t task_id, const Row& in_row, Row* out_row) {
+    ::hybridse::codec::Row row = in_row;
+    std::vector<::hybridse::codec::Row>& sql_request_rows =
+        std::dynamic_pointer_cast<SqlCompileInfo>(GetCompileInfo())->get_sql_context().request_rows;
+    if (!sql_request_rows.empty()) {
+        row = sql_request_rows.at(0);
+    }
+
+    auto info = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_);
+    auto main_task_id = info->GetClusterJob()->main_task_id();
+    if (task_id == main_task_id && !info->GetRequestSchema().empty() && row.empty()) {
+        // a non-empty request row required but it not.
+        // checks only happen for a top level query, not subquery,
+        // since query internally may construct a empty row as input row,
+        // not meaning row with no columns, but row with all column values NULL
+        LOG(WARNING) << "request SQL requires a non-empty request row, but empty row received";
+        // TODO(someone): use status
+        return common::StatusCode::kRunSessionError;
+    }
+
+    auto task = info->get_sql_context().cluster_job->GetTask(task_id).GetRoot();
+
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id << " not exist!";
         return -2;
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
-    RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job, in_row,
-                      sp_name_, is_debug_);
+    RunnerContext ctx(info->get_sql_context().cluster_job, row, sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "Run request plan output is null";
@@ -404,15 +496,29 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row, Row* o
 }
 
 int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch, std::vector<Row>& output) {
-    return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.main_task_id(),
+    return Run(std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job->main_task_id(),
                request_batch, output);
 }
-int32_t BatchRequestRunSession::Run(const uint32_t id, const std::vector<Row>& request_batch,
+int32_t BatchRequestRunSession::Run(int32_t id, const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(&std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job,
-                      request_batch, sp_name_, is_debug_);
-    auto task =
-        std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context().cluster_job.GetTask(id).GetRoot();
+    auto info = std::dynamic_pointer_cast<SqlCompileInfo>(GetCompileInfo());
+    std::vector<::hybridse::codec::Row>& sql_request_rows = info->get_sql_context().request_rows;
+
+    std::vector<::hybridse::codec::Row> rows = sql_request_rows;
+    if (rows.empty()) {
+        rows = request_batch;
+    }
+
+    auto main_task_id = info->GetClusterJob()->main_task_id();
+    if (id != main_task_id && !info->GetRequestSchema().empty() && rows.empty()) {
+        // a non-empty request row list required but it not
+        LOG(WARNING) << "batchrequest SQL requires a non-empty request row list, but empty row list received";
+        // TODO(someone): use status
+        return common::StatusCode::kRunSessionError;
+    }
+
+    RunnerContext ctx(info->get_sql_context().cluster_job, rows, sp_name_, is_debug_);
+    auto task = info->get_sql_context().cluster_job->GetTask(id).GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "Fail to run request plan: taskid" << id << " not exist!";
         return -2;
@@ -434,8 +540,8 @@ int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
 }
 int32_t BatchRunSession::Run(const Row& parameter_row, std::vector<Row>& rows, uint64_t limit) {
     auto& sql_ctx = std::dynamic_pointer_cast<SqlCompileInfo>(compile_info_)->get_sql_context();
-    RunnerContext ctx(&sql_ctx.cluster_job, parameter_row, is_debug_);
-    auto output = sql_ctx.cluster_job.GetTask(0).GetRoot()->RunWithCache(ctx);
+    RunnerContext ctx(sql_ctx.cluster_job, parameter_row, is_debug_);
+    auto output = sql_ctx.cluster_job->GetTask(0).GetRoot()->RunWithCache(ctx);
     if (!output) {
         DLOG(INFO) << "Run batch plan output is empty";
         return 0;
@@ -538,6 +644,49 @@ std::shared_ptr<TableHandler> LocalTablet::SubQuery(uint32_t task_id, const std:
         }
     }
     return std::make_shared<LocalTabletTableHandler>(task_id, session, in_rows, request_is_common);
+}
+
+EngineMode Engine::TryDetermineEngineMode(absl::string_view sql, EngineMode default_mode) {
+    // DESIGN ISSUE as compiler need EngineMode before compilation,
+    // give this method as a distinct function to SQL Compile function.
+    std::unique_ptr<zetasql::ParserOutput> ast;
+    auto s = hybridse::plan::ParseStatement(sql, &ast);
+    if (!s.ok()) {
+        return default_mode;
+    }
+
+    EngineMode mode = default_mode;
+    if (ast->statement() &&
+        ast->statement()->node_kind() == zetasql::AST_QUERY_STATEMENT ) {
+        auto query = ast->statement()->GetAsOrNull<zetasql::ASTQueryStatement>();
+        if (query && query->config_clause()) {
+            auto options = query->config_clause()->options_list()->options_entries();
+            bool values_arr_size_gt_1 = false;
+            for (auto kv : options) {
+                auto name = kv->name()->GetAsStringView();
+                if (absl::EqualsIgnoreCase(name, EXECUTE_MODE_OPT)) {
+                    auto val = kv->value()->GetAsOrNull<zetasql::ASTStringLiteral>();
+                    if (val) {
+                        auto m = UnparseEngineMode(val->string_value());
+                        mode = m.value_or(default_mode);
+                    }
+                }
+
+                if (absl::EqualsIgnoreCase(name, VALUES_OPT)) {
+                    auto arr_expr = kv->value()->GetAsOrNull<zetasql::ASTArrayConstructor>();
+                    if (arr_expr) {
+                        values_arr_size_gt_1 = arr_expr->elements().size() > 1;
+                    }
+                }
+            }
+
+            if (mode == vm::kRequestMode && values_arr_size_gt_1) {
+                mode = kBatchRequestMode;
+            }
+        }
+    }
+
+    return mode;
 }
 }  // namespace vm
 }  // namespace hybridse

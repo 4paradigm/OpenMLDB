@@ -257,6 +257,8 @@ class TableHandler : public DataHandler {
     virtual std::shared_ptr<Tablet> GetTablet(const std::string& index_name, const std::vector<std::string>& pks) {
         return std::shared_ptr<Tablet>();
     }
+
+    static std::shared_ptr<TableHandler> Cast(std::shared_ptr<DataHandler> in);
 };
 
 /// \brief A table dataset's error handler, representing a error table
@@ -335,9 +337,7 @@ class PartitionHandler : public TableHandler {
     // Return null by default
     RowIterator* GetRawIterator() override { return nullptr; }
 
-    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
-        return std::unique_ptr<WindowIterator>();
-    }
+    using TableHandler::GetWindowIterator;
 
     /// Return WindowIterator to iterate datasets
     /// segment-by-segment.
@@ -366,6 +366,8 @@ class PartitionHandler : public TableHandler {
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
+
+    static std::shared_ptr<PartitionHandler> Cast(std::shared_ptr<DataHandler> in);
 };
 
 /// \brief A wrapper of table handler which is used as a asynchronous row

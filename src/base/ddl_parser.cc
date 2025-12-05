@@ -22,17 +22,17 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <set>
 
-#include "absl/strings/match.h"
+#include "absl/strings/str_split.h"
 #include "codec/schema_codec.h"
-#include "common/timer.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/common.pb.h"
 #include "proto/fe_type.pb.h"
+#include "proto/type.pb.h"
 #include "sdk/base_impl.h"
-#include "sdk/sql_insert_row.h"
 #include "vm/physical_op.h"
 
 namespace openmldb::base {
@@ -47,27 +47,21 @@ using hybridse::vm::PhysicalOpType;
 using hybridse::vm::SchemasContext;
 using hybridse::vm::Sort;
 
-// Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
-// TODO(hw): hybridse should open this method
-bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                     std::string* source_name);
-
-class IndexMapBuilder {
+class IndexMapBuilder final : public ::hybridse::vm::IndexHintHandler {
  public:
-    IndexMapBuilder() = default;
-    // Create the index with unset TTLSt, return false if the index(same table, same keys, same ts) existed
-    bool CreateIndex(const std::shared_ptr<hybridse::vm::TableHandler>& table, const hybridse::node::ExprListNode* keys,
-                     const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
-    bool UpdateIndex(const hybridse::vm::Range& range);
-    // After ToMap, inner data will be cleared
+    IndexMapBuilder() {}
+    ~IndexMapBuilder() override {}
+
+    void Report(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys, absl::string_view ts,
+                const PhysicalOpNode* expr_node) override;
+
     MultiDBIndexMap ToMap();
 
  private:
-    static std::vector<std::string> NormalizeColumns(const std::vector<hybridse::node::ExprNode*>& nodes,
-                                                     const SchemasContext* ctx);
+    void UpdateTTLByWindow(const hybridse::vm::WindowOp&, common::TTLSt*);
     // db, table, keys and ts -> db$table:key1,key2,...;ts
-    std::string Encode(const std::string& db, const std::string& table, const hybridse::node::ExprListNode* keys,
-                       const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
+    std::string Encode(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
+                       absl::string_view ts);
 
     // return db, table, index_str(key1,key2,...;ts), column_key
     static std::tuple<std::string, std::string, std::string, common::ColumnKey> Decode(const std::string& index_str);
@@ -102,78 +96,8 @@ class IndexMapBuilder {
     static constexpr char TS_MARK = ';';
 
     uint64_t index_id_ = 0;
-    std::string latest_record_;
     // map<db_table_keys_and_order_str, ttl_st>
     std::map<std::string, common::TTLSt*> index_map_;
-};
-
-// no plan_ctx_, node_manager_: we assume that creating new op won't affect the upper level structure.
-class GroupAndSortOptimizedParser {
- public:
-    GroupAndSortOptimizedParser() = default;
-
-    // LRD
-    void Parse(PhysicalOpNode* cur_op) {
-        if (!cur_op) {
-            LOG(DFATAL) << "parse nullptr";
-            return;
-        }
-
-        // just parse, won't modify, but need to cast ptr, so we use non-const producers.
-        auto& producers = cur_op->producers();
-        for (auto& producer : producers) {
-            Parse(producer);
-        }
-
-        DLOG(INFO) << "parse " << hybridse::vm::PhysicalOpTypeName(cur_op->GetOpType());
-        TransformParse(cur_op);
-    }
-
-    MultiDBIndexMap GetIndexes() { return index_map_builder_.ToMap(); }
-
- private:
-    // recursive parse, return true iff kProviderTypeTable optimized
-    // new_in is useless, but we keep it, GroupAndSortOptimizedParser will be more similar to GroupAndSortOptimized.
-    bool KeysOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
-                            Key* right_key, Sort* sort, PhysicalOpNode** new_in);
-
-    bool KeysAndOrderFilterOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* group,
-                                          Key* hash, Sort* sort, PhysicalOpNode** new_in) {
-        return KeysOptimizedParse(root_schemas_ctx, in, group, hash, nullptr, sort, new_in);
-    }
-
-    bool JoinKeysOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Join* join,
-                                PhysicalOpNode** new_in) {
-        if (nullptr == join) {
-            return false;
-        }
-        return FilterAndOrderOptimizedParse(root_schemas_ctx, in, join, &join->right_sort_, new_in);
-    }
-    bool FilterAndOrderOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Filter* filter,
-                                      Sort* sort, PhysicalOpNode** new_in) {
-        return KeysOptimizedParse(root_schemas_ctx, in, &filter->left_key_, &filter->index_key_, &filter->right_key_,
-                                  sort, new_in);
-    }
-    bool FilterOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Filter* filter,
-                              PhysicalOpNode** new_in) {
-        return FilterAndOrderOptimizedParse(root_schemas_ctx, in, filter, nullptr, new_in);
-    }
-    bool KeyAndOrderOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* group, Sort* sort,
-                                   PhysicalOpNode** new_in) {
-        Key mock_key;
-        return KeysAndOrderFilterOptimizedParse(root_schemas_ctx, in, group, &mock_key, sort, new_in);
-    }
-    bool GroupOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* group,
-                             PhysicalOpNode** new_in) {
-        return KeyAndOrderOptimizedParse(root_schemas_ctx, in, group, nullptr, new_in);
-    }
-
-    static std::vector<PhysicalOpNode*> InitJoinList(hybridse::vm::PhysicalWindowAggrerationNode* op);
-
-    void TransformParse(PhysicalOpNode* in);
-
- private:
-    IndexMapBuilder index_map_builder_;
 };
 
 // multi database
@@ -186,13 +110,19 @@ MultiDBIndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::str
 MultiDBIndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::string& used_db,
                                           const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog) {
     hybridse::vm::MockRequestRunSession session;
-    if (!GetPlan(sql, used_db, catalog, &session)) {
-        LOG(ERROR) << "sql get plan failed";
-        return {};
-    }
-    auto compile_info = session.GetCompileInfo();
-    auto plan = session.GetCompileInfo()->GetPhysicalPlan();
-    return ParseIndexes(const_cast<hybridse::vm::PhysicalOpNode*>(plan));
+    auto index_hints = std::make_shared<IndexMapBuilder>();
+    session.SetIndexHintsHandler(index_hints);
+
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::EngineOptions options;
+    options.SetKeepIr(true);
+    options.SetCompileOnly(true);
+    auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
+
+    hybridse::base::Status status;
+    engine->Get(sql, used_db, session, status);
+
+    return index_hints->ToMap();
 }
 
 std::string DDLParser::PhysicalPlan(const std::string& sql, const ::hybridse::type::Database& db) {
@@ -425,19 +355,6 @@ std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(
     return std::make_shared<hybridse::sdk::SchemaImpl>(*output_schema_ptr);
 }
 
-// SQL transform added pass, ref AddDefaultPasses(): kPassSimpleProjectsOptimized, kPassFilterOptimized,
-// kPassLeftJoinOptimized, kPassGroupAndSortOptimized, kPassLimitOptimized, kPassClusterOptimized.
-// kPassGroupAndSortOptimized & kPassLeftJoinOptimized need index support, but only kPassGroupAndSortOptimized will
-// find best index. So we just do GroupAndSortOptimizedParser
-// TODO(hw): what about kPassClusterOptimized(cluster_optimized_mode_)?
-MultiDBIndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
-    // This physical plan has already been optimized, but no real optimization about index(cuz no index in fake
-    // catalog). So we can run GroupAndSortOptimizedParser on the plan(very like transformer's pass-ApplyPasses)
-    GroupAndSortOptimizedParser parser;
-    parser.Parse(node);
-    return parser.GetIndexes();
-}
-
 bool DDLParser::GetPlan(const std::string& sql, const std::string& db,
                         const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog,
                         hybridse::vm::RunSession* session) {
@@ -523,28 +440,65 @@ std::vector<std::string> DDLParser::ValidateSQLInRequest(const std::string& sql,
     return ValidateSQLInRequest(sql, db, catalog);
 }
 
-bool IndexMapBuilder::CreateIndex(const std::shared_ptr<hybridse::vm::TableHandler>& table,
-                                  const hybridse::node::ExprListNode* keys, const hybridse::node::OrderByNode* ts,
-                                  const SchemasContext* ctx) {
+void IndexMapBuilder::Report(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
+                             absl::string_view ts, const PhysicalOpNode* expr_node) {
     // we encode table, keys and ts to one string
-    auto index = Encode(table->GetDatabase(), table->GetName(), keys, ts, ctx);
+    // keys may be dup, dedup in encode
+    auto index = Encode(db, table, keys, ts);
     if (index.empty()) {
-        LOG(WARNING) << "index encode failed for table " << table;
-        return false;
+        LOG(WARNING) << "index encode failed for table " << db << "." << table;
+        return;
     }
 
     if (index_map_.find(index) != index_map_.end()) {
         // index id has unique idx, can't be dup. It's a weird case
-        LOG(DFATAL) << "index " << index << " existed in cache";
-        return false;
+        LOG(DFATAL) << db << "." << table << " index " << index << " existed in cache";
+        return;
     }
-    DLOG(INFO) << "create index with unset ttl: " << index;
 
     // default TTLSt is abs and ttl=0, rows will never expire.
     // default TTLSt debug string is {}, but if we get, they will be the default values.
-    index_map_[index] = new common::TTLSt;
-    latest_record_ = index;
-    return true;
+    auto* ttl = new common::TTLSt;
+
+    if (expr_node != nullptr) {
+        switch (expr_node->GetOpType()) {
+            case hybridse::vm::kPhysicalOpRequestUnion: {
+                auto ru = expr_node->GetAsOrNull<hybridse::vm::PhysicalRequestUnionNode>();
+                UpdateTTLByWindow(ru->window(), ttl);
+                break;
+            }
+            case hybridse::vm::kPhysicalOpProject: {
+                auto ru = expr_node->GetAsOrNull<hybridse::vm::PhysicalProjectNode>();
+                if (ru != nullptr && ru->project_type_ == hybridse::vm::ProjectType::kWindowAggregation) {
+                    auto win_project = ru->GetAsOrNull<hybridse::vm::PhysicalWindowAggrerationNode>();
+                    UpdateTTLByWindow(win_project->window_, ttl);
+                }
+                break;
+            }
+            case hybridse::vm::kPhysicalOpRequestJoin: {
+                auto join_node = expr_node->GetAsOrNull<hybridse::vm::PhysicalRequestJoinNode>();
+                if (join_node->join().join_type() == hybridse::node::JoinType::kJoinTypeLeft) {
+                    ttl->set_ttl_type(type::TTLType::kAbsoluteTime);
+                    ttl->set_abs_ttl(0);
+                }
+                break;
+            }
+            case hybridse::vm::kPhysicalOpJoin: {
+                auto join_node = expr_node->GetAsOrNull<hybridse::vm::PhysicalJoinNode>();
+                if (join_node->join().join_type() == hybridse::node::JoinType::kJoinTypeLeft) {
+                    ttl->set_ttl_type(type::TTLType::kAbsoluteTime);
+                    ttl->set_abs_ttl(0);
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    index_map_[index] = ttl;
+
+    LOG(INFO) << "suggest creating index for " << db << "." << table << ": " << index << ", " << ttl->ShortDebugString();
 }
 
 int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded) {
@@ -573,51 +527,38 @@ int64_t LatTTLConvert(int64_t history_rows_start) {
     return history_rows_start == INT64_MIN ? 0 : LatTTLConvert(-1 * history_rows_start, false);
 }
 
-bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
-    if (latest_record_.empty() || index_map_.find(latest_record_) == index_map_.end()) {
-        LOG(DFATAL) << "want to update ttl status, but index is not created before";
-        return false;
-    }
-    // TODO(hw): it's better to check the ts col name
-    //  but range's column names may be renamed, needs schema context
-
-    if (!range.Valid()) {
-        DLOG(INFO) << "range is invalid, can't update ttl, still use the default ttl";
-        return true;
-    }
+void IndexMapBuilder::UpdateTTLByWindow(const hybridse::vm::WindowOp& window, common::TTLSt* ttl_st_ptr) {
+    auto& range = window.range();
 
     std::stringstream ss;
     range.frame()->Print(ss, "");
     DLOG(INFO) << "frame info: " << ss.str();
 
-    auto ttl_st_ptr = index_map_[latest_record_];
     auto frame = range.frame();
     auto type = frame->frame_type();
     switch (type) {
-        case hybridse::node::kFrameRows:
+        case hybridse::node::kFrameRows: {
             ttl_st_ptr->set_ttl_type(type::TTLType::kLatestTime);
             ttl_st_ptr->set_lat_ttl(LatTTLConvert(frame->GetHistoryRowsStart()));
             break;
+        }
         case hybridse::node::kFrameRange:
-        case hybridse::node::kFrameRowsRange:
+        case hybridse::node::kFrameRowsRange: {
             ttl_st_ptr->set_ttl_type(type::TTLType::kAbsoluteTime);
             ttl_st_ptr->set_abs_ttl(AbsTTLConvert(frame->GetHistoryRangeStart()));
             break;
-        case hybridse::node::kFrameRowsMergeRowsRange:
+        }
+        case hybridse::node::kFrameRowsMergeRowsRange: {
             // use abs and ttl, only >abs_ttl and > lat_ttl will be expired
             ttl_st_ptr->set_ttl_type(type::TTLType::kAbsAndLat);
             ttl_st_ptr->set_abs_ttl(AbsTTLConvert(frame->GetHistoryRangeStart()));
             ttl_st_ptr->set_lat_ttl(LatTTLConvert(frame->GetHistoryRowsStart()));
             break;
+        }
         default:
             LOG(WARNING) << "invalid type";
-            return false;
+            return;
     }
-
-    DLOG(INFO) << latest_record_ << " update ttl " << index_map_[latest_record_]->DebugString();
-    // to avoid double update
-    latest_record_.clear();
-    return true;
 }
 
 MultiDBIndexMap IndexMapBuilder::ToMap() {
@@ -629,7 +570,7 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
             pair.second->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
             pair.second->set_lat_ttl(1);
         }
-        auto[db, table, idx_str, column_key] = Decode(pair.first);
+        auto [db, table, idx_str, column_key] = Decode(pair.first);
         DLOG(INFO) << "decode index '" << pair.first << "': " << db << " " << table << " " << idx_str << " "
                    << column_key.ShortDebugString();
         auto& idx_map_of_table = tmp_map[db][table];
@@ -663,11 +604,11 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
     return result;
 }
 
-std::string IndexMapBuilder::Encode(const std::string& db, const std::string& table,
-                                    const hybridse::node::ExprListNode* keys, const hybridse::node::OrderByNode* ts,
-                                    const SchemasContext* ctx) {
+std::string IndexMapBuilder::Encode(absl::string_view db, absl::string_view table, absl::Span<std::string const> keys,
+                                    absl::string_view ts) {
     // children are ColumnRefNode
-    auto cols = NormalizeColumns(keys->children_, ctx);
+    // dedup and sort keys
+    std::set<std::string> cols(keys.begin(), keys.end());
     if (cols.empty()) {
         return {};
     }
@@ -683,39 +624,11 @@ std::string IndexMapBuilder::Encode(const std::string& db, const std::string& ta
         ss << KEY_SEP << (*iter);
     }
     ss << TS_MARK;
-
-    if (ts != nullptr && ts->order_expressions_ != nullptr) {
-        for (auto order : ts->order_expressions_->children_) {
-            auto cast = dynamic_cast<hybridse::node::OrderExpression*>(order);
-            if (cast && cast->expr() != nullptr) {
-                auto res = NormalizeColumns({const_cast<hybridse::node::ExprNode*>(cast->expr())}, ctx);
-                if (res.size() != 1 || res[0].empty()) {
-                    LOG(DFATAL) << "parse ts col from order node failed, skip it. " << cast->GetExprString();
-                } else {
-                    ss << res[0];
-                }
-            }
-        }
+    if (!ts.empty()) {
+        ss << ts;
     }
+
     return ss.str();
-}
-
-std::vector<std::string> IndexMapBuilder::NormalizeColumns(const std::vector<hybridse::node::ExprNode*>& nodes,
-                                                           const SchemasContext* ctx) {
-    std::vector<std::string> result;
-    for (auto& node : nodes) {
-        if (nullptr != node && node->GetExprType() == hybridse::node::kExprColumnRef) {
-            auto cast = hybridse::node::ColumnRefNode::CastFrom(node);
-            std::string name;
-            if (!ResolveColumnToSourceColumnName(cast, ctx, &name)) {
-                return {};
-            }
-            result.emplace_back(name);
-        }
-    }
-    // sort to avoid dup index
-    std::sort(result.begin(), result.end());
-    return result;
 }
 
 // ColumnKey in result doesn't set ttl
@@ -725,15 +638,14 @@ std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBui
         return {};
     }
 
-    const auto[db_name, table_name] = GetTable(index_str);
+    const auto [db_name, table_name] = GetTable(index_str);
 
     common::ColumnKey column_key;
     auto key_sep = index_str.find(KEY_MARK);
     auto ts_sep = index_str.find(TS_MARK);
     auto keys_str = index_str.substr(key_sep + 1, ts_sep - key_sep - 1);
     // split keys
-    std::vector<std::string> keys;
-    boost::split(keys, keys_str, boost::is_any_of(std::string(1, KEY_SEP)));
+    std::vector<std::string> keys = absl::StrSplit(keys_str, std::string(1, KEY_SEP));
     for (auto& key : keys) {
         DCHECK(!key.empty());
         column_key.add_col_name(key);
@@ -744,246 +656,6 @@ std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBui
         column_key.set_ts_name(ts_col);
     }
     return std::make_tuple(db_name, table_name, index_str.substr(key_sep + 1), column_key);
-}
-
-bool GroupAndSortOptimizedParser::KeysOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in,
-                                                     Key* left_key, Key* index_key, Key* right_key, Sort* sort,
-                                                     PhysicalOpNode**) {
-    if (nullptr == left_key || nullptr == index_key || !left_key->ValidKey()) {
-        return false;
-    }
-
-    if (right_key != nullptr && !right_key->ValidKey()) {
-        return false;
-    }
-
-    if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
-        auto scan_op = dynamic_cast<hybridse::vm::PhysicalDataProviderNode*>(in);
-        // Do not optimize with Request DataProvider (no index has been provided)
-        if (DataProviderType::kProviderTypeRequest == scan_op->provider_type_) {
-            return false;
-        }
-
-        if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ ||
-            DataProviderType::kProviderTypePartition == scan_op->provider_type_) {
-            const hybridse::node::ExprListNode* right_partition =
-                right_key == nullptr ? left_key->keys() : right_key->keys();
-
-            size_t key_num = right_partition->GetChildNum();
-            std::vector<bool> bitmap(key_num, false);
-            hybridse::node::ExprListNode order_values;
-
-            if (DataProviderType::kProviderTypeTable == scan_op->provider_type_) {
-                // Apply key columns and order column optimization with all indexes binding to
-                // scan_op->table_handler_ Return false if fail to find an appropriate index
-                auto groups = right_partition;
-                auto order = (nullptr == sort ? nullptr : sort->orders_);
-                DLOG(INFO) << "keys and order optimized: keys=" << hybridse::node::ExprString(groups)
-                           << ", order=" << (order == nullptr ? "null" : hybridse::node::ExprString(order))
-                           << " for table " << scan_op->table_handler_->GetName();
-
-                // columns in groups or order, may be renamed
-                index_map_builder_.CreateIndex(scan_op->table_handler_, groups, order, root_schemas_ctx);
-                // parser won't create partition_op
-                return true;
-            } else {
-                auto partition_op = dynamic_cast<hybridse::vm::PhysicalPartitionProviderNode*>(scan_op);
-                DCHECK(partition_op != nullptr);
-                auto index_name = partition_op->index_name_;
-                // -- return false won't change index_name
-                LOG(WARNING) << "What if the index is not best index? Do we need to adjust index?";
-                return false;
-            }
-        }
-    } else if (PhysicalOpType::kPhysicalOpSimpleProject == in->GetOpType()) {
-        auto simple_project = dynamic_cast<hybridse::vm::PhysicalSimpleProjectNode*>(in);
-        PhysicalOpNode* new_depend;
-        return KeysOptimizedParse(root_schemas_ctx, simple_project->producers()[0], left_key, index_key, right_key,
-                                  sort, &new_depend);
-
-    } else if (PhysicalOpType::kPhysicalOpRename == in->GetOpType()) {
-        PhysicalOpNode* new_depend;
-        return KeysOptimizedParse(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort,
-                                  &new_depend);
-    }
-    return false;
-}
-
-std::vector<PhysicalOpNode*> GroupAndSortOptimizedParser::InitJoinList(
-    hybridse::vm::PhysicalWindowAggrerationNode* op) {
-    std::vector<PhysicalOpNode*> joined_op_list;
-    auto& window_joins = op->window_joins_.window_joins();
-    PhysicalOpNode* cur = op->GetProducer(0);
-    for (auto& pair : window_joins) {
-        auto joined = new hybridse::vm::PhysicalJoinNode(cur, pair.first, pair.second);
-        joined_op_list.push_back(joined);
-        cur = joined;
-    }
-    return joined_op_list;
-}
-
-void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
-    switch (in->GetOpType()) {
-        case PhysicalOpType::kPhysicalOpGroupBy: {
-            auto group_op = dynamic_cast<hybridse::vm::PhysicalGroupNode*>(in);
-            DCHECK(group_op);
-            PhysicalOpNode* new_producer;
-            if (GroupOptimizedParse(group_op->schemas_ctx(), group_op->GetProducer(0), &group_op->group_,
-                                    &new_producer)) {
-                // no orders->no sort->no ttl info
-                DLOG(INFO) << "ttl won't update by node:\n" << group_op->GetTreeString();
-            }
-            break;
-        }
-        case PhysicalOpType::kPhysicalOpProject: {
-            auto project_op = dynamic_cast<hybridse::vm::PhysicalProjectNode*>(in);
-            DCHECK(project_op);
-            if (hybridse::vm::ProjectType::kWindowAggregation == project_op->project_type_) {
-                auto window_agg_op = dynamic_cast<hybridse::vm::PhysicalWindowAggrerationNode*>(project_op);
-                CHECK_NOTNULL(window_agg_op);
-                PhysicalOpNode* input = window_agg_op->GetProducer(0);
-
-                PhysicalOpNode* new_producer;
-                if (!window_agg_op->instance_not_in_window()) {
-                    if (KeyAndOrderOptimizedParse(input->schemas_ctx(), input, &window_agg_op->window_.partition_,
-                                                  &window_agg_op->window_.sort_, &new_producer)) {
-                        index_map_builder_.UpdateIndex(window_agg_op->window_.range());
-                    }
-                }
-                // must prepare for window join column infer
-                auto& window_joins = window_agg_op->window_joins();
-                auto& window_unions = window_agg_op->window_unions();
-                auto joined_op_list = InitJoinList(window_agg_op);
-                if (!window_joins.Empty()) {
-                    size_t join_idx = 0;
-                    for (auto& window_join : window_joins.window_joins()) {
-                        PhysicalOpNode* cur_joined = joined_op_list[join_idx];
-
-                        PhysicalOpNode* new_join_right;
-                        if (JoinKeysOptimizedParse(cur_joined->schemas_ctx(), window_join.first, &window_join.second,
-                                                   &new_join_right)) {
-                            // no range info
-                            DLOG(INFO) << "ttl won't update by node:\n" << window_agg_op->GetTreeString();
-                        }
-                        join_idx += 1;
-                    }
-                }
-                // joined_op_list need to be deleted
-                for (auto& op : joined_op_list) {
-                    delete op;
-                }
-
-                if (!window_unions.Empty()) {
-                    for (auto& window_union : window_unions.window_unions_) {
-                        PhysicalOpNode* new_producer1;
-                        if (KeyAndOrderOptimizedParse(window_union.first->schemas_ctx(), window_union.first,
-                                                      &window_union.second.partition_, &window_union.second.sort_,
-                                                      &new_producer1)) {
-                            index_map_builder_.UpdateIndex(window_union.second.range());
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        case PhysicalOpType::kPhysicalOpRequestUnion: {
-            auto union_op = dynamic_cast<hybridse::vm::PhysicalRequestUnionNode*>(in);
-            DCHECK(union_op);
-            PhysicalOpNode* new_producer;
-            if (!union_op->instance_not_in_window()) {
-                if (KeysAndOrderFilterOptimizedParse(union_op->schemas_ctx(), union_op->GetProducer(1),
-                                                     &union_op->window_.partition_, &union_op->window_.index_key_,
-                                                     &union_op->window_.sort_, &new_producer)) {
-                    index_map_builder_.UpdateIndex(union_op->window().range());
-                }
-            }
-
-            if (!union_op->window_unions().Empty()) {
-                for (auto& window_union : union_op->window_unions_.window_unions_) {
-                    PhysicalOpNode* new_producer1;
-                    auto& window = window_union.second;
-                    if (KeysAndOrderFilterOptimizedParse(window_union.first->schemas_ctx(), window_union.first,
-                                                         &window.partition_, &window.index_key_, &window.sort_,
-                                                         &new_producer1)) {
-                        index_map_builder_.UpdateIndex(window.range());
-                    }
-                }
-            }
-            break;
-        }
-        case PhysicalOpType::kPhysicalOpRequestJoin: {
-            auto* join_op = dynamic_cast<hybridse::vm::PhysicalRequestJoinNode*>(in);
-            DCHECK(join_op);
-            PhysicalOpNode* new_producer;
-            // Optimized Right Table Partition
-            if (JoinKeysOptimizedParse(join_op->schemas_ctx(), join_op->GetProducer(1), &join_op->join_,
-                                       &new_producer)) {
-                // no range info
-                DLOG(INFO) << "ttl won't update by node:\n" << join_op->GetTreeString();
-            }
-
-            break;
-        }
-        case PhysicalOpType::kPhysicalOpJoin: {
-            auto* join_op = dynamic_cast<hybridse::vm::PhysicalJoinNode*>(in);
-            DCHECK(join_op);
-            PhysicalOpNode* new_producer;
-            // Optimized Right Table Partition
-            if (JoinKeysOptimizedParse(join_op->schemas_ctx(), join_op->GetProducer(1), &join_op->join_,
-                                       &new_producer)) {
-                // no range info
-                DLOG(INFO) << "ttl won't update by node:\n" << join_op->GetTreeString();
-            }
-
-            break;
-        }
-        case PhysicalOpType::kPhysicalOpFilter: {
-            auto* filter_op = dynamic_cast<hybridse::vm::PhysicalFilterNode*>(in);
-            DCHECK(filter_op);
-            PhysicalOpNode* new_producer;
-            if (FilterOptimizedParse(filter_op->schemas_ctx(), filter_op->GetProducer(0), &filter_op->filter_,
-                                     &new_producer)) {
-                // no range info
-                DLOG(INFO) << "ttl won't update by node:\n" << filter_op->GetTreeString();
-            }
-        }
-        default: { break; }
-    }
-}
-
-bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                     std::string* source_name) {
-    // use detailed column resolve utility
-    size_t column_id;
-    int path_idx;
-    size_t child_column_id;
-    size_t source_column_id;
-    const PhysicalOpNode* source;
-    hybridse::base::Status status =
-        schemas_ctx->ResolveColumnID(col->GetDBName(), col->GetRelationName(), col->GetColumnName(), &column_id,
-                                     &path_idx, &child_column_id, &source_column_id, &source);
-
-    // try loose the relation
-    if (!status.isOK() && !col->GetRelationName().empty()) {
-        status = schemas_ctx->ResolveColumnID("", "", col->GetColumnName(), &column_id, &path_idx, &child_column_id,
-                                              &source_column_id, &source);
-    }
-
-    if (!status.isOK()) {
-        LOG(WARNING) << "Illegal index column: " << col->GetExprString();
-        return false;
-    }
-    if (source == nullptr || source->GetOpType() != PhysicalOpType::kPhysicalOpDataProvider) {
-        LOG(WARNING) << "Index column is not from any source table: " << col->GetExprString();
-        return false;
-    }
-    status = source->schemas_ctx()->ResolveColumnNameByID(source_column_id, source_name);
-    if (!status.isOK()) {
-        LOG(WARNING) << "Illegal source column id #" << source_column_id << " for index column "
-                     << col->GetExprString();
-        return false;
-    }
-    return true;
 }
 
 // return merged result: return new if new is bigger, else return old
@@ -1005,69 +677,98 @@ void TTLValueMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, c
     result->set_lat_ttl(tmp_result);
 }
 
-// 4(same type merge): same type and max ttls
-// 12(A(4,2)): see in code
-bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result) {
-    // TTLSt has type and two values, updated is complex, so we just check result==old_ttl in the end
-    result->CopyFrom(old_ttl);
-
-    // merge case 1. same type, just merge values(max ttls)
-    // it's ok to merge both abs and lat ttl value even type is only abs or lat(just unused and default is 0)
-    // merge case 2. different type
-    if (old_ttl.ttl_type() == new_ttl.ttl_type()) {
-        TTLValueMerge(old_ttl, new_ttl, result);
-    } else {
-        // type is different
-        if (old_ttl.ttl_type() == type::TTLType::kAbsAndLat) {
-            // 3 cases, abs&lat + ?. ?: abs / lat / abs||lat(new_ttl type != abs&lat). Use new ttl, merge values.
-            // abs&lat + abs -> abs, abs&lat + lat -> lat, abs&lat + abs||lat -> abs||lat. Use the max range, it's ok to
-            // merge two ttl(e.g. abs 10s&lat 1 + abs 10s(lat 0) -> abs 10s), we won't use the another ttl if result is
-            // lat or abs.
-            result->set_ttl_type(new_ttl.ttl_type());
-            TTLValueMerge(old_ttl, new_ttl, result);
-        } else if (new_ttl.ttl_type() == type::TTLType::kAbsAndLat) {
-            // 3 cases, ? + abs&lat. ?: abs / lat / abs||lat
-            result->set_ttl_type(old_ttl.ttl_type());
-            TTLValueMerge(old_ttl, new_ttl, result);
-        } else if (old_ttl.ttl_type() == type::TTLType::kAbsOrLat) {
-            // 2 cases, abs||lat + ? -> abs||lat. Stay old, merge values
-            // ?: abs / lat 2 cases(abs||lat + abs&lat is in 2)
-            TTLValueMerge(old_ttl, new_ttl, result);
-        } else if (new_ttl.ttl_type() == type::TTLType::kAbsOrLat) {
-            // 2 cases, abs + abs||lat -> abs||lat, lat + abs||lat -> abs||lat. Use new, merge can't use lat ttl(0) if
-            // type is abs abs&lat + abs||lat is in 1
-            result->set_ttl_type(type::TTLType::kAbsOrLat);
-            if (old_ttl.ttl_type() == type::TTLType::kAbsoluteTime) {
-                result->set_abs_ttl(TTLValueMerge(old_ttl.abs_ttl(), new_ttl.abs_ttl()));
-                result->set_lat_ttl(new_ttl.lat_ttl());
-            } else {
-                result->set_abs_ttl(new_ttl.abs_ttl());
-                result->set_lat_ttl(TTLValueMerge(old_ttl.lat_ttl(), new_ttl.lat_ttl()));
-            }
-        } else {
-            // 2 cases, abs + lat -> abs||lat, lat + abs -> abs||lat. Set type, merge can't use lat ttl(0) if type is
-            // abs
-            result->set_ttl_type(type::TTLType::kAbsOrLat);
-            if (old_ttl.ttl_type() == type::TTLType::kAbsoluteTime) {
-                DCHECK(new_ttl.ttl_type() == type::TTLType::kLatestTime);
-                result->set_abs_ttl(old_ttl.abs_ttl());
-                result->set_lat_ttl(new_ttl.lat_ttl());
-            } else {
-                DCHECK(old_ttl.ttl_type() == type::TTLType::kLatestTime);
-                result->set_abs_ttl(new_ttl.abs_ttl());
-                result->set_lat_ttl(old_ttl.lat_ttl());
-            }
+common::TTLSt stdTTL(const common::TTLSt& ttl) {
+    common::TTLSt result(ttl);
+    DCHECK(result.has_ttl_type() && result.ttl_type() != type::TTLType::kRelativeTime)
+        << "invalid ttl type" << ttl.ShortDebugString();
+    if (result.ttl_type() == type::TTLType::kAbsoluteTime) {
+        // if no lat ttl, set a default 0
+        DCHECK(!result.has_lat_ttl() || result.lat_ttl() == 0);
+        result.set_lat_ttl(0);
+    } else if (result.ttl_type() == type::TTLType::kLatestTime) {
+        // if no abs ttl, set a default 0
+        DCHECK(!result.has_abs_ttl() || result.abs_ttl() == 0);
+        result.set_abs_ttl(0);
+    } else if (result.ttl_type() == type::TTLType::kAbsAndLat) {
+        DCHECK(result.has_abs_ttl() && result.has_lat_ttl());
+        // if any one is 0, won't expire any data, just set abs 0
+        if (result.abs_ttl() == 0 || result.lat_ttl() == 0) {
+            result.set_abs_ttl(0);
+            result.set_lat_ttl(0);
+            result.set_ttl_type(type::TTLType::kAbsoluteTime);
+        }
+    } else if (result.ttl_type() == type::TTLType::kAbsOrLat) {
+        DCHECK(result.has_abs_ttl() && result.has_lat_ttl());
+        // if any one is 0, just use the another one, if both 0, set abs 0
+        if (result.lat_ttl() == 0) {
+            result.set_ttl_type(type::TTLType::kAbsoluteTime);
+        } else if (result.abs_ttl() == 0) {
+            result.set_ttl_type(type::TTLType::kLatestTime);
         }
     }
+    return result;
+}
 
-    // old ttl may not have one ttl value, but the result must have, so fix the cmp
-    common::TTLSt old_ttl_fixed(old_ttl);
-    if (!old_ttl_fixed.has_abs_ttl()) {
-        old_ttl_fixed.set_abs_ttl(0);
+bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result) {
+    // TTLSt has type and two values, updated is complex, so we just check result==old_ttl in the end
+
+    // we should std type first, absorlat(10,0) -> abs(10)
+    // e.g. merge absorlat(1,0) and absorlat(0,2), we need to check the values, otherwise we'll get absorlat(0,0), it's
+    // too large and if no abs when type is lat, just set a abs 0, to make compare simple(no need to check has_xxx_ttl)
+    auto left = stdTTL(old_ttl);
+    auto right = stdTTL(new_ttl);
+    using type::TTLType;
+    // complex ttl(absandlat or absorlat) won't have ttl value 0, it has been converted to simple ttl
+    // merge case 1. same type, just merge values(0 means max)
+    // merge case 2. different type
+    if (left.ttl_type() == right.ttl_type()) {
+        // it's ok to merge both abs and lat ttl value even type is only abs or lat, just 0 merge 0
+        result->set_ttl_type(left.ttl_type());
+        TTLValueMerge(left, right, result);
+    } else {
+        // old type != new type, and absandlat or absorlat won't have ttl value 0
+        // swap first, try to make left type is complex type or (abs + lat)
+        if (right.ttl_type() == TTLType::kAbsAndLat ||
+            (right.ttl_type() == TTLType::kAbsOrLat && left.ttl_type() != TTLType::kAbsAndLat)) {
+            std::swap(left, right);
+        }
+        if (left.ttl_type() == TTLType::kLatestTime && right.ttl_type() == TTLType::kAbsoluteTime) {
+            std::swap(left, right);
+        }
+
+        if (left.ttl_type() == TTLType::kAbsAndLat) {
+            // 3 cases
+            // absandlat(x,y)+abs(z), absandlat(x,y)+abs(0): don't merge lat(cuz abs type lat is 0), use absandlat's
+            // lat. absandlat(x,y)+lat(z), absandlat(x,y)+lat(0): the same absandlat(x,y)+absorlat(k,j): we need to
+            // store more to avoid delete valid records, merge both. No 0 value, so don't worry about set too large
+            result->CopyFrom(left);
+            if (right.ttl_type() == TTLType::kAbsoluteTime) {
+                result->set_abs_ttl(TTLValueMerge(left.abs_ttl(), right.abs_ttl()));
+            } else if (right.ttl_type() == TTLType::kLatestTime) {
+                result->set_lat_ttl(TTLValueMerge(left.lat_ttl(), right.lat_ttl()));
+            } else {
+                DCHECK(right.ttl_type() == TTLType::kAbsOrLat);
+                TTLValueMerge(left, right, result);
+            }
+        } else if (left.ttl_type() == TTLType::kAbsOrLat) {
+            // 2 cases
+            // absorlat + abs/lat = lat/abs, leave the simple type, ignore another one
+            // merged result will be std, don't worry about the new value of ignored type
+            DCHECK(right.ttl_type() == TTLType::kAbsoluteTime || right.ttl_type() == TTLType::kLatestTime);
+            result->set_ttl_type(right.ttl_type());
+            TTLValueMerge(left, right, result);
+        } else {
+            DCHECK(left.ttl_type() == TTLType::kAbsoluteTime && right.ttl_type() == TTLType::kLatestTime);
+            // 1 case
+            // abs + lat -> absandlat: set type, merge can't use lat ttl(0) if type is abs, so custom merge
+            result->set_ttl_type(TTLType::kAbsAndLat);
+            result->set_abs_ttl(left.abs_ttl());
+            result->set_lat_ttl(right.lat_ttl());
+        }
     }
-    if (!old_ttl_fixed.has_lat_ttl()) {
-        old_ttl_fixed.set_lat_ttl(0);
-    }
-    return !google::protobuf::util::MessageDifferencer::Equals(old_ttl_fixed, *result);
+    // after merge, may get complex ttl with 0
+    result->CopyFrom(stdTTL(*result));
+
+    return !google::protobuf::util::MessageDifferencer::Equals(old_ttl, *result);
 }
 }  // namespace openmldb::base

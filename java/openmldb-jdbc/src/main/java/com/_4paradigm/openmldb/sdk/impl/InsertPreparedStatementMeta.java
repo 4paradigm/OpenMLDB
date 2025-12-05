@@ -31,6 +31,7 @@ public class InsertPreparedStatementMeta {
     private Set<Integer> indexPos = new HashSet<>();
     private Map<Integer, List<Integer>> indexMap = new HashMap<>();
     private Map<Integer, String> defaultIndexValue = new HashMap<>();
+    private boolean putIfAbsent;
 
     public InsertPreparedStatementMeta(String sql, NS.TableInfo tableInfo, SQLInsertRow insertRow) {
         this.sql = sql;
@@ -51,6 +52,7 @@ public class InsertPreparedStatementMeta {
         VectorUint32 idxArray = insertRow.GetHoleIdx();
         buildHoleIdx(idxArray);
         idxArray.delete();
+        putIfAbsent = insertRow.IsPutIfAbsent();
     }
 
     private void buildIndex(NS.TableInfo tableInfo) {
@@ -214,5 +216,9 @@ public class InsertPreparedStatementMeta {
 
     Map<Integer, String> getDefaultIndexValue() {
         return defaultIndexValue;
+    }
+
+    public boolean isPutIfAbsent() {
+        return putIfAbsent;
     }
 }

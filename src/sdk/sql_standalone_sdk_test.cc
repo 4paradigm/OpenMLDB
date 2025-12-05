@@ -33,12 +33,12 @@
 #include "sdk/sql_cluster_router.h"
 #include "sdk/db_sdk.h"
 #include "test/base_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 namespace openmldb {
 namespace sdk {
 
-MiniCluster* mc_ = nullptr;
 std::shared_ptr<SQLRouter> router_ = std::shared_ptr<SQLRouter>();
 ::openmldb::sdk::DBSDK * cs_;
 /// TODO(cj): replace rtidb-unsupport with performance-sensitive-unsupport
@@ -876,13 +876,15 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::test::InitRandomDiskFlags("sql_standalone_sdk_test");
     srand(time(NULL));
 
     ::openmldb::base::SetupGlog(true);
     ::openmldb::sdk::StandaloneEnv env;
     env.SetUp();
     // connect to nameserver
-    ::openmldb::sdk::DBSDK *cs = new ::openmldb::sdk::StandAloneSDK("127.0.0.1", env.GetNsPort());
+    auto sopt = std::make_shared<::openmldb::sdk::StandaloneOptions>("127.0.0.1", env.GetNsPort());
+    ::openmldb::sdk::DBSDK *cs = new ::openmldb::sdk::StandAloneSDK(sopt);
     bool ok = cs->Init();
     if (!ok) {
         std::cout << "Fail to connect to db" << std::endl;

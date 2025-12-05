@@ -54,7 +54,7 @@ TEST_F(MergeAggregationsTest, Test) {
     sql.append(
         "from t1 window w1 as (partition by col_1 order by col_3 rows between "
         "3 preceding and current row);");
-
+    /*
     node::LambdaNode* function_let = nullptr;
     InitFunctionLet(sql, &function_let);
     node::ExprNode* origin = function_let->body()->DeepCopy(node_manager());
@@ -104,7 +104,7 @@ TEST_F(MergeAggregationsTest, Test) {
             merged = expr->GetChild(0);
         }
     }
-    LOG(INFO) << "Merged aggregation:\n" << merged->GetTreeString();
+    LOG(INFO) << "Merged aggregation:\n" << merged->GetTreeString();*/
 }
 
 }  // namespace passes

@@ -11,7 +11,7 @@ The current functionality support of the Go SDK is not yet complete. It is curre
 ## Go SDK installation
 
 ```bash
-go get github.com/4paradigm/OpenMLDB/go
+go get github.com/4paradigm/openmldb-go-sdk
 ```
 
 ## Go SDK usage
@@ -79,7 +79,7 @@ import (
   "database/sql"
 
   // Load OpenMLDB SDK
-  _ "github.com/4paradigm/OpenMLDB/go"
+  _ "github.com/4paradigm/openmldb-go-sdk
 )
 
 func main() {

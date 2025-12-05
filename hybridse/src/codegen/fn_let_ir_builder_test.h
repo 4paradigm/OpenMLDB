@@ -134,7 +134,6 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager, v
     auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(
         vm::HybridSeJitWrapper::Create());
     jit->Init();
-    vm::HybridSeJitWrapper::InitJitSymbols(jit.get());
 
     ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
     auto address = jit->FindFunction("test_at_fn");

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "datacollector/data_collector.h"
-
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
+#include <vector>
 
 #include "codec/sdk_codec.h"
+#include "datacollector/data_collector.h"
+#include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "vm/engine.h"
 
 using openmldb::client::TabletClient;

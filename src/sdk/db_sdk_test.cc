@@ -29,6 +29,7 @@
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "sdk/mini_cluster.h"
+#include "test/util.h"
 
 namespace openmldb::sdk {
 
@@ -79,17 +80,17 @@ class DBSDKTest : public ::testing::Test {
 };
 
 TEST_F(DBSDKTest, smokeEmptyCluster) {
-    ClusterOptions option;
-    option.zk_cluster = mc_->GetZkCluster();
-    option.zk_path = mc_->GetZkPath();
+    auto option = std::make_shared<sdk::SQLRouterOptions>();
+    option->zk_cluster = mc_->GetZkCluster();
+    option->zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 }
 
 TEST_F(DBSDKTest, smokeTest) {
-    ClusterOptions option;
-    option.zk_cluster = mc_->GetZkCluster();
-    option.zk_path = mc_->GetZkPath();
+    auto option = std::make_shared<sdk::SQLRouterOptions>();
+    option->zk_cluster = mc_->GetZkCluster();
+    option->zk_path = mc_->GetZkPath();
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
 
@@ -121,7 +122,7 @@ TEST_F(DBSDKTest, standAloneMode) {
     ASSERT_TRUE(sep != std::string::npos);
     auto host = ns.substr(0, sep);
     auto port = ns.substr(sep + 1);
-    StandAloneSDK sdk(host, std::stoi(port));
+    StandAloneSDK sdk(std::make_shared<sdk::StandaloneOptions>(host, std::stoi(port)));
     ASSERT_TRUE(sdk.Init());
 
     CreateTable();
@@ -148,5 +149,6 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     srand(time(nullptr));
     ::openmldb::base::SetupGlog(true);
+    ::openmldb::test::InitRandomDiskFlags("db_sdk_test");
     return RUN_ALL_TESTS();
 }

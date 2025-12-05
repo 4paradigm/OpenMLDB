@@ -17,16 +17,13 @@
 #ifndef HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_
 #define HYBRIDSE_SRC_PASSES_LAMBDAFY_PROJECTS_H_
 
-#include <map>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "node/expr_node.h"
-#include "node/plan_node.h"
 #include "node/sql_node.h"
-#include "udf/udf_library.h"
-#include "vm/schemas_context.h"
 
 namespace hybridse {
 namespace passes {
@@ -55,27 +52,41 @@ class LambdafyProjects {
      * expressions num maybe larger than original projects num.
      */
     Status Transform(const std::vector<const node::ExprNode*>& exprs,
+                     const std::vector<const node::FrameNode*>& frames,
                      node::LambdaNode** out_lambda,
                      std::vector<int>* require_agg);
 
+ private:
+    struct CACHE_VAL {
+        CACHE_VAL(node::ExprNode* lambdafied, bool has_agg, node::ExprIdNode* id_node)
+            : lambdafied(lambdafied), has_agg(has_agg), id_node(id_node) {}
+
+        node::ExprNode* lambdafied;
+        bool has_agg;
+        node::ExprIdNode* id_node;
+    };
+    // expr node -> (lambdafied expr node, has aggregate, is aggregate call itself)
+    using CACHE_TYPE = absl::flat_hash_map<const node::ExprNode*, CACHE_VAL>;
+    using LET_CTX_TYPE = node::LetExpr::LetContext;
     /**
      * Transform original expression under lambda scope with arg
-     *     @arg "row":    Current input row.
-     *     @arg "window": Associating multi row list.
+     *     @arg row_arg:    Current input row.
+     *     @arg window_arg: Associating multi row list.
+     *     @arg inside_agg_ctx:     whether `expr` is inside aggregate context or not
      *
      * Return transformed expression and fill two flags:
      *   "has_agg": Whether there exist agg expr node in output tree.
      */
-    Status VisitExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
-                     node::ExprIdNode* window_arg, node::ExprNode** out,
-                     bool* has_agg);
+    Status VisitExpr(const node::ExprNode* expr, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
+                     const node::FrameNode* frame,
+                     bool inside_agg_ctx, node::ExprNode** out, bool* has_agg, CACHE_TYPE&, LET_CTX_TYPE&);
 
     Status VisitLeafExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
                          node::ExprNode** out);
 
-    Status VisitAggExpr(node::CallExprNode* call, node::ExprIdNode* row_arg,
-                        node::ExprIdNode* window_arg, node::ExprNode** out,
-                        bool* is_window_agg);
+    Status VisitAggExpr(const node::CallExprNode* call, node::ExprIdNode* row_arg, node::ExprIdNode* window_arg,
+                        const node::FrameNode* frame, node::ExprNode** out, bool* is_window_agg, CACHE_TYPE&,
+                        LET_CTX_TYPE&);
 
  private:
     node::ExprAnalysisContext* ctx_;
@@ -85,6 +96,8 @@ class LambdafyProjects {
     bool legacy_agg_opt_;
     std::unordered_set<std::string> agg_opt_fn_names_ = {"sum", "min", "max",
                                                          "count", "avg"};
+
+    std::atomic<int> counter_ = 0;
 };
 
 }  // namespace passes

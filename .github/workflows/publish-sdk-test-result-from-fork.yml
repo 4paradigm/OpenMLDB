@@ -21,3 +21,5 @@ jobs:
       files: artifacts/linux-ut-result-*/**/*.xml
       check_name: SDK Test Report
       comment_title: SDK Test Report
+      event_name: ${{ github.event.workflow_run.event }}
+      run_id: ${{ github.event.workflow_run.id }}

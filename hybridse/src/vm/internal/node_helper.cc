@@ -52,8 +52,10 @@ absl::StatusOr<PhysicalOpNode*> ExtractRequestNode(PhysicalOpNode* in) {
             // generally it is of type Partition, but can be Table as well e.g window (t1 instance_not_in_window)
             return nullptr;
         }
+        case vm::kPhysicalOpSetOperation: {
+            return ExtractRequestNode(in->GetProducer(0));
+        }
         case vm::kPhysicalOpJoin:
-        case vm::kPhysicalOpUnion:
         case vm::kPhysicalOpPostRequestUnion:
         case vm::kPhysicalOpRequestUnion:
         case vm::kPhysicalOpRequestAggUnion:

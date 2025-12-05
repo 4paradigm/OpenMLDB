@@ -17,10 +17,8 @@
 #ifndef HYBRIDSE_SRC_VM_JIT_H_
 #define HYBRIDSE_SRC_VM_JIT_H_
 
-#include <map>
 #include <memory>
 #include <string>
-#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "vm/jit_wrapper.h"
 
@@ -87,22 +85,21 @@ std::string LlvmToString(const T& value) {
 
 class HybridSeLlvmJitWrapper : public HybridSeJitWrapper {
  public:
-    HybridSeLlvmJitWrapper() {}
-    ~HybridSeLlvmJitWrapper() {}
+    explicit HybridSeLlvmJitWrapper(const JitOptions& options = {});
+    ~HybridSeLlvmJitWrapper() override {}
 
     bool Init() override;
 
     bool OptModule(::llvm::Module* module) override;
 
-    bool AddModule(std::unique_ptr<llvm::Module> module,
-                   std::unique_ptr<llvm::LLVMContext> llvm_ctx) override;
+    bool AddModule(std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::LLVMContext> llvm_ctx) override;
 
     bool AddExternalFunction(const std::string& name, void* addr) override;
 
-    hybridse::vm::RawPtrHandle FindFunction(
-        const std::string& funcname) override;
+    hybridse::vm::RawPtrHandle FindFunction(const std::string& funcname) override;
 
  private:
+    const JitOptions jit_options_;
     std::unique_ptr<HybridSeJit> jit_;
     std::unique_ptr<::llvm::orc::MangleAndInterner> mi_;
 };

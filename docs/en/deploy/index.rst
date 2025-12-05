@@ -7,8 +7,8 @@ Deployment
 
     install_deploy
     conf
+    auth
     compile
-    integrate_hadoop
     offline_integrate_kubernetes
-    [Alpha] Online engine based on Kubernetes deployment <https://github.com/4paradigm/openmldb-k8s>
+    [Alpha] Kubernetes Deployment for OpenMLDB Online Engine <https://github.com/4paradigm/openmldb-k8s>
 

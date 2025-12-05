@@ -25,8 +25,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/fe_status.h"
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -49,6 +47,7 @@ class Planner {
     virtual ~Planner() {}
     virtual base::Status CreatePlanTree(const NodePointVector &parser_trees,
                                         PlanNodeList &plan_trees) = 0;  // NOLINT (runtime/references)
+
     static base::Status TransformTableDef(const std::string &table_name, const NodePointVector &column_desc_list,
                                           type::TableDef *table);
     bool MergeWindows(const std::map<const node::WindowDefNode *, node::ProjectListNode *> &map,
@@ -67,7 +66,7 @@ class Planner {
     ABSL_MUST_USE_RESULT base::Status ConvertGuard(const node::SqlNode *node, OutputType **output, ConvertFn &&func) {
         auto specific_node = dynamic_cast<std::add_pointer_t<std::add_const_t<NodeType>>>(node);
         CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "unable to cast");
-        return func(specific_node, output);
+        return func(specific_node, node_manager_, output);
     }
 
     static absl::StatusOr<node::TablePlanNode *> IsTable(node::PlanNode *node);
@@ -80,9 +79,9 @@ class Planner {
     // currently only apply to rows window
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
-    base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
-    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::QueryPlanNode **plan_tree);
-    base::Status CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree);
+    base::Status CreateQueryPlan(const node::QueryNode *root, node::QueryPlanNode **plan_tree);
+    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::PlanNode **plan_tree);
+    base::Status CreateSetOperationPlan(const node::SetOperationNode *root, node::SetOperationPlanNode **plan_tree);
     base::Status CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output);
     base::Status CreateTableReferencePlanNode(const node::TableRefNode *root, node::PlanNode **output);
     base::Status CreateCmdPlan(const SqlNode *root, node::PlanNode **output);
@@ -132,11 +131,11 @@ class SimplePlanner : public Planner {
                   bool enable_batch_window_parallelization = true,
                   const std::unordered_map<std::string, std::string>* extra_options = nullptr)
         : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization, extra_options) {}
-    ~SimplePlanner() {}
+    ~SimplePlanner() override {}
 
  protected:
     base::Status CreatePlanTree(const NodePointVector &parser_trees,
-                                PlanNodeList &plan_trees);  // NOLINT
+                                PlanNodeList &plan_trees) override;  // NOLINT
 };
 
 }  // namespace plan

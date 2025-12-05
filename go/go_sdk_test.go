@@ -37,6 +37,15 @@ func Test_driver(t *testing.T) {
 		_, err := db.ExecContext(ctx, createTableStmt)
 		assert.NoError(t, err, "fail to exec %s", createTableStmt)
 	}
+
+	defer func() {
+		dropTableStmt := "DROP TABLE demo;"
+		_, err := db.ExecContext(ctx, dropTableStmt)
+		if err != nil {
+			t.Errorf("fail to drop table: %s", err)
+		}
+	}()
+
 	{
 		insertValueStmt := `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`
 		_, err := db.ExecContext(ctx, insertValueStmt)

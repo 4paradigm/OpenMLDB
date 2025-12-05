@@ -59,7 +59,7 @@ The main features of the online preview mode are:
 - Online preview mode is mainly used for previewing limited data. Selecting and viewing data directly through SELECT in OpenMLDB CLI or SDKs may result in data truncation. If the data volume is large, it is recommended to use an [export tool](../../tutorial/data_export.html) to view the complete data.
 - SELECT statements in online preview mode currently do not support more complex queries such as `LAST JOIN` and `ORDER BY`. Refer to [SELECT](../../openmldb_sql/dql/SELECT_STATEMENT.html).
 - The server in the online preview mode executes SQL statements on a single thread. For large data processing, it may be slow and may trigger a timeout. To increase the timeout period, the `--request_timeout` can be configured on the client.
-- To prevent impact on online services, online preview mode limits the maximum number of accessed records and the number of different keys. This can be configured using `--max_traverse_cnt` and `--max_traverse_key_cnt`. Similarly, the maximum result size can be set using `--scan_max_bytes_size`. For detailed configuration, refer to the [configuration file](../../deploy/conf.md).
+- To prevent impact on online services, you can limit the maximum number of accessed records and the number of different keys in online preview mode. This can be configured using `--max_traverse_cnt` and `--max_traverse_key_cnt`. Similarly, the maximum result size can be set using `--scan_max_bytes_size`. For detailed configuration, refer to the [configuration file](../../deploy/conf.md).
 
 The command for setting online preview mode in OpenMLDB CLI: `SET @@execute_mode='online'`
 
@@ -69,9 +69,9 @@ After deploying feature scripts and accessing online data, the real-time feature
 
 The online request mode requires three inputs:
 
-1. SQL feature script, which is the SQL script used in the feature deployment and online process, specifying the calculation logic for feature extraction.
-2. Online data, which is the online data that has been imported during cold start or in real-time. Generally, it is the latest data for window computing in conjunction with SQL. For example, if the aggregation function in the SQL script defines a time window of the latest three months, then the online storage needs to retain the corresponding latest three months of data.
-3. Real-time request row, which includes the current real-time behavior and is used for real-time feature extraction. For example, credit card information in anti-fraud scenarios or search keywords in recommendation scenarios.
+- SQL feature script, which is the SQL script used in the feature deployment and online process, specifying the calculation logic for feature extraction.
+- Online data, which is the online data that has been imported during cold start or in real-time. Generally, it is the latest data for window computing in conjunction with SQL. For example, if the aggregation function in the SQL script defines a time window of the latest three months, then the online storage needs to retain the corresponding latest three months of data.
+- Real-time request row, which includes the current real-time behavior and is used for real-time feature extraction. For example, credit card information in anti-fraud scenarios or search keywords in recommendation scenarios.
 
 Based on the above inputs, for each real-time request row, the online request mode will return a feature extraction result. The computing logic is as follows: The request row is virtually inserted into the correct position of the online data table based on the logic in the SQL script (such as `PARTITION BY`, `ORDER BY`, etc.), and then only the feature aggregation computing is performed on that row, returning the unique corresponding extraction result. The following diagram intuitively explains the operation process of the online request mode.
 
@@ -80,11 +80,7 @@ Based on the above inputs, for each real-time request row, the online request mo
 Online request mode is supported in the following ways:
 
 - OpenMLDB CLI: Not supported
-
-- [REST API](https://openmldb.ai/docs/zh/main/quickstart/sdk/rest_api.html): Supports requests for single or multiple request rows
-
-- [Java SDK](https://openmldb.ai/docs/zh/main/quickstart/sdk/java_sdk.html): Supports requests for single or multiple request rows
-
-- [Python SDK](https://openmldb.ai/docs/zh/main/quickstart/sdk/python_sdk.html): Only supports requests for a single request row
-
-- [C++ SDK](https://openmldb.ai/docs/zh/main/quickstart/sdk/cxx_sdk.html): Only supports requests for a single request row
+- [REST API](../sdk/rest_api.md): Supports requests for single or multiple request rows
+- [Java SDK](../sdk/java_sdk.md): Supports requests for single or multiple request rows
+- [Python SDK](../sdk/python_sdk.md): Only supports requests for a single request row
+- [C++ SDK](../sdk/cxx_sdk.md): Only supports requests for a single request row

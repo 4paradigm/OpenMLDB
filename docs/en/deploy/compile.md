@@ -5,25 +5,25 @@
 This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql), mainly for quick start and development purposes in the docker container.
 The docker image has packed the required tools and dependencies, so there is no need to set them up separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) below.
 
-Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.8.4](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.8.4) under `hybridsql:0.8.4` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
+Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.9.2](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.9.2) under `hybridsql:0.9.2` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
 
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.8
+    docker pull 4pdosc/hybridsql:0.9
    ```
 
 2. Create a docker container
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.8 bash
+   docker run -it 4pdosc/hybridsql:0.9 bash
    ```
 
-3. Download the OpenMLDB source code inside the docker container, and set the branch into v0.8.4
+3. Download the OpenMLDB source code inside the docker container, and set the branch into v0.9.2
 
    ```bash
    cd ~
-   git clone -b v0.8.4 https://github.com/4paradigm/OpenMLDB.git
+   git clone -b v0.9.2 https://github.com/4paradigm/OpenMLDB.git
    ```
 
 4. Compile OpenMLDB
@@ -49,8 +49,8 @@ This chapter discusses compiling source code without relying on pre-built contai
 
 - **Memory**: 8GB+ recommended.
 - **Disk Space**: >=25GB of free disk space for full compilation.
-- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 10.15, other systems are not carefully tested but issue/PR welcome
-- **CPU Architecture**: Currently, only x86 architecture is supported, and other architectures like ARM are not supported at the moment (please note that running x86 images on heterogeneous systems like M1 Mac is also not supported at this time).
+- **Operating System**: CentOS 7, Ubuntu 20.04 or macOS >= 12.0 (Intel Chip), other systems are not carefully tested but issue/PR welcome
+- **CPU Architecture**: x86 only, other architectures like ARM are not supported (note that running x86 container heterogeneously on machines like Mac with Apple Silicon is not supported neither).
 
 💡 Note: By default, the parallel build is disabled, and it usually takes an hour to finish all the compile jobs. You can enable the parallel build by tweaking the `NPROC` option if your machine's resource is enough. This will reduce the compile time but also consume more memory. For example, the following command sets the number of concurrent build jobs to 4:
 
@@ -67,10 +67,10 @@ make NPROC=4
 
 ### Build and Install OpenMLDB
 
-Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
+Building OpenMLDB requires certain thirdparty dependencies. Hence a `Makefile` is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
-- **Method One: Download Pre-Compiled Thirdparty:**  Command is `make && make install`. It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS.
-- **Method Two: Compile Thirdparty from Source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 8 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
+- **Method One: Download Pre-Compiled Thirdparty(limited OSs only):**  Command is `make && make install`. It downloads necessary pre-compiled libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS >= 12.0.
+- **Method Two: Compile Thirdparty from Source(all supported OSs):** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 8 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
   
    ```bash
    make BUILD_BUNDLED=ON
@@ -150,7 +150,7 @@ The built jar packages are in the `target` path of each submodule. If you want t
 1. Downloading the pre-built OpenMLDB Spark distribution:
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.4/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.9.2/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 Alternatively, you can also download the source code and compile from scratch:
@@ -209,12 +209,40 @@ After forking the OpenMLDB repository, you can trigger the `Other OS Build` work
 
 - Do not change the `Use workflow from` setting to a specific tag; it can be another branch.
 - Choose the desired `OS name`, which in this case is `centos6`.
-- If you are not compiling the main branch, provide the name of the branch, tag (e.g., v0.8.4), or SHA you want to compile in the `The branch, tag, or SHA to checkout, otherwise use the branch` field.
+- If you are not compiling the main branch, provide the name of the branch, tag (e.g., v0.9.2), or SHA you want to compile in the `The branch, tag, or SHA to checkout, otherwise use the branch` field.
 - The compilation output will be accessible in "runs", as shown in an example [here](https://github.com/4paradigm/OpenMLDB/actions/runs/6044951902).
   - The workflow will definitely produce the OpenMLDB binary file.
   - If you don't need the Java or Python SDK, you can configure `java sdk enable` or `python sdk enable` to be "OFF" to save compilation time.
 
 Please note that this compilation process involves building third-party dependencies from source code, and it may take a while to complete due to limited resources. The approximate time for this process is around 3 hours and 5 minutes (2 hours for third-party dependencies and 1 hour for OpenMLDB). However, the workflow caches the compilation output for third-party dependencies, so the second compilation will be much faster, taking approximately 1 hour and 15 minutes for OpenMLDB.
+
+### Linux for ARM64
+
+It's possible to run OpenMLDB on Linux for ARM64(AArch64), which you may compile the source from scratch. ARM version of compile image `ghcr.io/4paradigm/hybridsql` is recommended:
+
+```sh
+docker run -it ghcr.io/4paradigm/hybridsql:latest
+ 
+# inside docker container
+git clone https://github.com/4paradigm/OpenMLDB
+cd OpenMLDB
+ 
+#  necessary deps for all third-party
+yum install -y flex autoconf automake unzip bc expect libtool \
+    rh-python38-python-devel gettext byacc xz tcl cppunit-devel rh-python38-python-wheel patch java-1.8.0-openjdk-devel
+# bazel
+curl --create-dirs -SLo /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-arm64
+chmod +x /usr/local/bin/bazel
+ 
+# third-party
+cmake -S third-party -B .deps -DBUILD_BUNDELD=ON -DMAKEOPTS=-j$(nproc)
+cmake --build .deps
+ 
+# OpenMLDB source
+cmake -S . -B build -DCMKAE_PREFIX_PATH=$(pwd)/.deps/usr -DSQL_JAVASDK_ENABLE=ON -DSQL_PYSDK_ENABLE=ON
+cmake --build build -- -j$(nproc)
+```
+
 
 ### Macos 10.15, 11
 

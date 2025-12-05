@@ -192,6 +192,8 @@ class RowView {
     std::vector<uint32_t> offset_vec_;
 };
 
+bool ColumnSupportLegacyCodec(const openmldb::common::ColumnDesc&);
+
 namespace v1 {
 
 inline int8_t GetAddrSpace(uint32_t size) {

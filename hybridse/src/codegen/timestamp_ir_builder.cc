@@ -267,7 +267,7 @@ bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::Value* timestamp;
-    if (!Create(block, &timestamp)) {
+    if (!Allocate(block, &timestamp)) {
         return false;
     }
     if (!SetTs(block, timestamp,
@@ -286,7 +286,7 @@ bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::Value* timestamp;
-    if (!Create(block, &timestamp)) {
+    if (!Allocate(block, &timestamp)) {
         return false;
     }
     if (!SetTs(block, timestamp, ts)) {

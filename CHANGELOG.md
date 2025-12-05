@@ -1,5 +1,114 @@
 # Changelog
 
+## [0.9.2] - 2024-07-26
+
+### Bug Fixes
+- Fix upgrade openmldb sdk version in self host (#3962 @aceforeverd)
+- Fix select from JOB_INFO should always in online mode (#3963 @aceforeverd)
+- Fix update create-pull-request action to v6 in udf-doc-gen workflow & rm deprecated file sync (#3964 @Jayaprakash0511)
+- Fix build in centos7 EOL (#3965 @aceforeverd)
+- Fix numpy version lock (#3966 @aceforeverd)
+
+## [0.9.1] - 2024-07-17
+
+### Features
+- Support merge DAG SQL in Java SDK (#3911 @wyl4pd)
+- Support tablets get user table remotely (#3918 @oh2024)
+- Support set global variable @@execute_mode = 'request' (#3924 @aceforeverd)
+- Support crud users synchronously (#3928 @oh2024)
+- Support simple ANSI SQL rewriter(#3934 @aceforeverd)
+- Support execute mode batchrequest(#3938 @aceforeverd)
+- Support new UDF of isin, array_combine, array_join and locate, (#3939 #3945 @aceforeverd #3940 #3943 @howdb)
+- Support server side authorization (#3941 @oh2024)
+- Support new index type and IoT Table (#3944 @vagetablechicken)
+
+### Bug Fixes
+- Fix setup script uses incorrect ZooKeeper configuration file(#3901 @greatljn)
+- Fix make clients use always send auth info(#3906 @oh2024)
+- Fix drop aggr tables in drop table (#3908 @vagetablechicken)
+- Fix checkout execute_mode in config clause in sql client (#3909 @aceforeverd)
+- Fix continuous sign for gcformat with space (#3921 @wyl4pd)
+- Fix package issues by removing s3 dependencies and fix package conflict of curator (#3929 @tobegit3hub)
+- Fix repeated sort keys and sort as int(#3947 @oh2024)
+- Fix checkout action on old glibc OS (#3955 @aceforeverd)
+- Fix CICD issue of deploying spark correctly(#3958 @aceforeverd)
+
+### Testing
+- Set NPROC in intergration test(#3782 @dl239)
+- Support map data type in yaml testing framework(#3765 @aceforeverd)
+- Add automatic table cleanup after go sdk tests(#3799 @oh2024)
+- Fix sql_cmd_test and no impl for MakeMergeNode(#3829 @aceforeverd)
+- Add query performance benchmark(#3855 @gaoboal)
+
+## [0.9.0] - 2024-04-25
+
+### Breaking Changes
+- Upgrade SQLAlchemy to 2.0.27 and SQLAlchemy 1.x is not supported(#3805 @yht520100)
+- Correct semantic for `first_value` which will be compatible with ANSI SQL(#3861 @aceforeverd)
+- Set execute_mode default to `online` which was `offline` before 0.9.0(#3862 @aceforeverd)
+- The client-side authentication is deprecated and we can enable authentication in server-side(#3835 #3885 @oh2024)
+
+### Features
+- Support offline building docker image(#3773 #3787 @QiChenX, #3778 @aceforeverd)
+- Support MySQL protocol with new module OpenM(ysq)LDB(#3800 @tobegit3hub #3816 #3820 #3823 #3824 #3831 @yangwucheng)
+- Support map datatype for SQL engine(#3841 #3847 @aceforeverd)
+- Support TiDB backend for online and offline storage(#3815 #3839 @yht520100)
+- Kafka connector support string timestamp and partial insert(#3834 @vagetablechicken)
+- Support arbitrary spark distribution and remove dependency of OpenMLDB Spark(#3849 @tobegit3hub)
+- Support insert function in offline mode(#3854 @Matagits)
+- Support feature signature with SQL functions(#3877 @wyl4pd)
+- Support request mode in raw SQL(#3874 @aceforeverd)
+
+### Bug Fixes
+- Fix delete with same ts(#3780 @dl239)
+- Fix '\x00' Issue in Python SDK Precompiled SQL Inserts(#3788 @yht520100)
+- Fix import spark config when creating like hive(@3792 @vagetablechicken)
+- Fix select constant return empty value in offline (#3825 @Matagits)
+- Fix show and load sql to print result set for notebook magic function(#3856 @tobegit3hub)
+- Fix TTL merge for different types(#3859 @vagetablechicken)
+- Fix ddl parser when getting duplicated column keys(#3873 @vagetablechicken)
+- Fix initializing nameserver bug when calling zk RegisterName(#3869 @oh2024)
+
+### Testing
+- Set NPROC in intergration test(#3782 @dl239)
+- Support map data type in yaml testing framework(#3765 @aceforeverd)
+- Add automatic table cleanup after go sdk tests(#3799 @oh2024)
+- Fix sql_cmd_test and no impl for MakeMergeNode(#3829 @aceforeverd)
+- Add query performance benchmark(#3855 @gaoboal)
+
+## [0.8.5] - 2024-02-27
+
+### Features
+- Support Iceberg as an offline storage (#3737 @vagetablechicken)
+- Support `UNION ALL` statement (#3590 #3653 @aceforeverd)
+- Support `SELECT ... INTO OUTFILE` to OpenMLDB online tables (#3616 @tobegit3hub)
+- Support `LAST JOIN` and `WINDOW` without `ORDER BY` in offline mode (#3619 @aceforeverd)
+- Support `CREATE/ALTER/DROP USER` statement (#3678 #3745 #3747 @dl239, #3744 @tobegit3hub)
+- Support specifying Spark configurations in the SDK (#3613 @tobegit3hub)
+- `INSERT`returns failure if the server-side memory usage exceeds the specified limit (#3631 @dl239)
+- Add a new interfact for SQLs to DAG (#3630 @aceforeverd)
+- If the deployed SQL contains the `LEFT JOIN`, the indexs will be created automatically. (#3667 @aceforeverd)
+- Support automatic deletion of logs (#3704 #3736 #3706 @dl239)
+- Support `absandlat/absorlat` TTL type for disktable (#3716 @dl239)
+- Optimize error messages for insert failures (#3725 @vagetablechicken)
+- Improve the documents (#3617 #3519 #3690 #3699 @vagetablechicken, #3612 @dl239, #3609 #3672 #3687 @aceforeverd, #3649 #3570 #3569 @TanZiYen @Elliezza, #3665 @DrDub, #3585 #3584 #3579 #3578 #3574 #3573 #3552 #3539 #3488 #3477 #3475 #3586 #3470 #3474 #3568 #3583 #3564 #3764 @TanZiYen, #3688 #3697 #3753 #3721 #3731 #3739 #3754 #3720 #3756 #3762 #3752 #3757 #3719 @Elliezza, #3075 @Elliezza @tobegit3hub, #3710 @tobegit3hub)
+- Other minor features (#3623 #3636 @aceforeverd, #3651 @tobegit3hub, #3641 #3692 @vagetablechicken, #3582 #3702 @dl239, #3674 @lqy222)
+
+### Bug Fixes
+- Executing offline tasks will consume an excessive number of ZooKeeper connections (#3642 @dl239)
+- There is no automatic reconnection after ZooKeeper disconnection in SDK. (#3656 #3668 @vagetablechicken)
+- The `FlexibleRowBuilder` will throw a `NullPointerException` if set with a null value (#3649 @dl239)
+- If the length of strings in the imported data exceeds 255, it may throw a `BufferOverflowException`. (#3729 @ljwh)
+- If a table contains a large amount of data, querying the data may still be possible after executing `TRUNCATE` (#3677 @dl239)
+- After deleting data, it can still be retrieved from other indexes (#3693 @dl239)
+- Delete dirty data when insertion fails (#3681 @dl239)
+- When there are no tables, getting databases using `GetAllDbs` fails. (#3742 @vagetablechicken)
+- Adding a deleted index fails if the index name is different from the previous name (#3635 @dl239)
+- Other minor bug fixes (#3638 #3654 #3717 #3726 #3743 @vagetablechicken, #3607 #3775 @dl239, #3640 @tobegit3hub, #3686 #3735 #3738 #3740 @aceforeverd, #3759 @yangwucheng)
+
+### Code Refactoring
+#3666 @vagetablechicken
+
 ## [0.8.4] - 2023-11-17
 
 ### Features

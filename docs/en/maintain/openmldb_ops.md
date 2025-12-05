@@ -29,15 +29,17 @@ OpenMLDB provides an operation tool for user to use & maintain OpenMLDB convenie
 | `showopstatus`    | check the op status                                                                                                                                                                                                                                                                                                  | --filter: only show the records with status `filter`. Valid statuses are `kInited`, `kDoing`, `kDone`, `kFailed` and `kCanceled`.Its default is `None`, meaning showing all the records |
 | `showtablestatus` | check the table status                                                                                                                                                                                                                                                                                               | --filter: the required database pattern. Its matching rule is the same as `LIKE` op. Its default is `'%'`，meaning showing the tables under all the databases                            |
 
-### Example
+**Example**
 ```
-python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=scaleout
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=0.0.0.0:2181 --zk_root_path=/openmldb --cmd=scaleout
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=0.0.0.0:2181 --zk_root_path=/openmldb --cmd=recoverdata
 ```
 
-### Parameter Description
+You can focus on whether there are ERROR-level logs in the running results. If there are, please keep the complete log records for technical personnel to investigate the issue.
 
-- --endpoints: specified the endpoints to migrate out. If there are two or more endoints, use `,` as delimiter. It will execute failed if the leftover tablet number less than replica number of tables
 
 ### System Requirements
 - python >= 2.7
+- Note: In theory, `openmldb_ops` does not require version matching. A higher version of `openmldb_ops` can operate on a lower version of the `openmldb` 
+cluster.
 - `showopstatus` and `showtablestatus` require `prettytable` dependency

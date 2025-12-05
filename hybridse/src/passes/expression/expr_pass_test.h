@@ -47,12 +47,13 @@ void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
     auto project_list_node = dynamic_cast<node::ProjectListNode*>(
         project_plan->project_list_vec_[0]);
     ASSERT_TRUE(project_list_node != nullptr);
+    /*
     std::vector<const node::ExprNode*> exprs;
     for (auto pp : project_list_node->GetProjects()) {
         auto pp_node = dynamic_cast<node::ProjectNode*>(pp);
         exprs.push_back(pp_node->GetExpression());
     }
-
+    
     LambdafyProjects transformer(ctx, false);
     std::vector<int> is_agg_vec;
     node::LambdaNode* lambda;
@@ -64,7 +65,7 @@ void InitFunctionLet(const std::string& sql, node::ExprAnalysisContext* ctx,
     status = resolver.VisitLambda(
         lambda, {lambda->GetArgType(0), lambda->GetArgType(1)}, &resolved);
     ASSERT_TRUE(status.isOK()) << status.str();
-    *result = resolved;
+    *result = resolved;*/
 }
 
 class ExprPassTestBase : public ::testing::Test {

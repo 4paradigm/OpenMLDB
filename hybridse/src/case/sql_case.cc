@@ -16,6 +16,7 @@
 
 #include "case/sql_case.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -23,7 +24,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/cleanup/cleanup.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
@@ -34,7 +34,12 @@
 #include "codec/fe_row_codec.h"
 #include "glog/logging.h"
 #include "node/sql_node.h"
-#include "yaml-cpp/yaml.h"
+#include "plan/plan_api.h"
+#include "case/test_cfg.h"
+#include "vm/engine.h"
+#include "zetasql/parser/parser.h"
+#include "planv2/ast_node_converter.h"
+#include "vm/jit_wrapper.h"
 
 namespace hybridse {
 namespace sqlcase {
@@ -43,6 +48,23 @@ using hybridse::codec::Row;
 static absl::Mutex mtx;
 // working directory, where the yaml file lives
 static std::filesystem::path working_dir;
+
+static vm::HybridSeJitWrapper* createJitWrapper() {
+    hybridse::vm::Engine::InitializeGlobalLLVM();
+    base::Status s;
+    auto wrapper = vm::HybridSeJitWrapper::CreateWithDefaultSymbols(&s);
+    if (!s.isOK()) {
+        LOG(ERROR) << "fail to get jit: " << s;
+        std::exit(1);
+    }
+    return wrapper;
+}
+
+static vm::HybridSeJitWrapper* getJitWrapper() {
+    // ensuare call once by local static
+    static vm::HybridSeJitWrapper* wrapper = createJitWrapper();
+    return wrapper;
+}
 
 bool SqlCase::TTLParse(const std::string& org_type_str,
                        std::vector<int64_t>& ttls) {
@@ -271,6 +293,20 @@ bool SqlCase::ExtractSchema(const std::vector<std::string>& columns,
         LOG(WARNING) << "Invalid Schema Format";
         return false;
     }
+    // expect the string of table column schema:
+    // 1. {name}<colon>{type}
+    //    legacy specification, issues may arrise when dealing with type contains options
+    // 2. {name}<any space>{type}
+    //    favored specification, which is exactly the same as SQL table column schema,
+    //    you may nest any composed type like map in {type}
+
+    auto column_list = absl::StrJoin(columns, ",");
+    auto rs = plan::ParseTableColumSchema(column_list);
+    if (rs.ok()) {
+        table.mutable_columns()->CopyFrom(rs.value());
+        return true;
+    }
+    // fallback legacy approach
     try {
         for (auto col : columns) {
             boost::trim(col);
@@ -295,6 +331,7 @@ bool SqlCase::ExtractSchema(const std::vector<std::string>& columns,
             }
             column->set_type(type);
             column->set_is_not_null(false);
+            column->mutable_schema()->set_base_type(column->type());
         }
     } catch (const std::exception& ex) {
         LOG(WARNING) << "Fail to ExtractSchema: " << ex.what();
@@ -309,11 +346,13 @@ bool SqlCase::BuildCreateSqlFromSchema(const type::TableDef& table,
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
-        sql.append(column.name()).append(" ").append(TypeString(column.type()));
-
-        if (column.is_not_null()) {
-            sql.append(" NOT NULL");
+        auto s = codec::ColumnSchemaStr(column.schema());
+        if (!s.ok()) {
+            LOG(WARNING) << s.status();
+            return false;
         }
+        sql.append(column.name()).append(" ").append(s.value());
+
         if (isGenerateIndex || i < table.columns_size() - 1) {
             sql.append(",\n");
         }
@@ -408,13 +447,15 @@ bool SqlCase::AddInput(const TableInfo& table_data) {
     return true;
 }
 bool SqlCase::ExtractInputData(std::vector<Row>& rows,
-                               int32_t input_idx) const {
-    return ExtractInputData(inputs_[input_idx], rows);
+                               int32_t input_idx,
+                               const codec::Schema& sc) const {
+    return ExtractInputData(inputs_[input_idx], rows, sc);
 }
 bool SqlCase::ExtractInputData(const TableInfo& input,
-                               std::vector<Row>& rows) const {
+                               std::vector<Row>& rows,
+                               const codec::Schema& sc) const {
     try {
-        if (input.data_.empty() && input.rows_.empty()) {
+        if (input.data_.empty() && input.rows_.empty() && input.inserts_.empty()) {
             LOG(WARNING) << "Empty Data String";
             return false;
         }
@@ -424,7 +465,20 @@ bool SqlCase::ExtractInputData(const TableInfo& input,
             return false;
         }
 
-        if (!input.data_.empty()) {
+        if (!input.inserts_.empty()) {
+            for (auto& sql : input.inserts_) {
+                // shit happens, resue jit cause duplcate symbols
+                // FIXME(#3748): use getJitWrapper
+                auto jit = std::unique_ptr<vm::HybridSeJitWrapper>(createJitWrapper());
+                auto rs = ExtractInsertRow(jit.get(), sql, &sc);
+                if (!rs.ok()) {
+                    LOG(ERROR) << rs.status();
+                    return false;
+                }
+
+                rows.insert(rows.end(), rs.value().begin(), rs.value().end());
+            }
+        } else if (!input.data_.empty()) {
             if (!ExtractRows(table.columns(), input.data_, rows)) {
                 return false;
             }
@@ -751,7 +805,7 @@ const std::string SqlCase::case_name() const {
 }
 bool SqlCase::ExtractInputTableDef(type::TableDef& table,
                                    int32_t input_idx) const {
-    if (inputs_.size() <= input_idx) {
+    if (inputs_.size() <= static_cast<size_t>(input_idx)) {
         return false;
     }
     return ExtractInputTableDef(inputs_[input_idx], table);
@@ -849,6 +903,9 @@ bool SqlCase::BuildInsertSqlListFromInput(
             }
             sql_list->push_back(insert_sql);
         }
+    } else if (!inputs_[input_idx].inserts_.empty()) {
+        auto& inserts  = inputs_[input_idx].inserts_;
+        sql_list->insert(sql_list->end(), inserts.begin(), inserts.end());
     }
     return true;
 }
@@ -1706,11 +1763,50 @@ std::string SqlCase::SqlCaseBaseDir() {
     if (value != nullptr) {
         return std::string(value);
     }
-    value = getenv("YAML_CASE_BASE_DIR");
-    if (value != nullptr) {
-        return std::string(value);
+    return SQL_CASE_BASE_DIR;
+}
+
+absl::StatusOr<std::vector<codec::Row>> ExtractInsertRow(vm::HybridSeJitWrapper* jit, absl::string_view insert,
+                                                         const codec::Schema* table_schema) {
+    zetasql::ParserOptions parser_opts;
+    zetasql::LanguageOptions language_opts;
+    language_opts.EnableLanguageFeature(zetasql::FEATURE_V_1_3_COLUMN_DEFAULT_VALUE);
+    parser_opts.set_language_options(&language_opts);
+    std::unique_ptr<zetasql::ParserOutput> parser_output;
+    auto zetasql_status = zetasql::ParseStatement(insert, parser_opts, &parser_output);
+    CHECK_ABSL_STATUS(zetasql_status);
+
+    node::SqlNode* sql_node = nullptr;
+    node::NodeManager nm;
+    CHECK_STATUS_TO_ABSL(plan::ConvertStatement(parser_output->statement(), &nm, &sql_node));
+
+    auto* insert_stmt = sql_node->GetAsOrNull<node::InsertStmt>();
+    if (insert_stmt == nullptr) {
+        return absl::FailedPreconditionError("not a insert statement");
     }
-    return "";
+
+    if (!insert_stmt->columns_.empty()) {
+        // implementation limitation
+        return absl::UnimplementedError("insert with custom columns not support");
+    }
+
+    codec::RowBuilder2 builder(jit, std::vector<codec::Schema>{*table_schema});
+
+    CHECK_STATUS_TO_ABSL(builder.Init());
+
+    std::vector<codec::Row> rows;
+    for (auto expr : insert_stmt->values_) {
+        auto expr_list = expr->GetAsOrNull<node::ExprListNode>();
+        if (expr_list == nullptr) {
+            return absl::FailedPreconditionError(
+                absl::Substitute("unexpected insert statement value: $0", expr->GetExprString()));
+        }
+        codec::Row row;
+        CHECK_STATUS_TO_ABSL(builder.Build(expr_list->children_, &row));
+        rows.push_back(row);
+    }
+
+    return rows;
 }
 }  // namespace sqlcase
 }  // namespace hybridse

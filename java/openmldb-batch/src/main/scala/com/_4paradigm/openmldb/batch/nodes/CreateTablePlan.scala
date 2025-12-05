@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.node.CreateTableLikeClause.LikeKind
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.PhysicalCreateTableNode
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, OpenmldbTableUtil}
+import com._4paradigm.openmldb.batch.utils.{DataSourceUtil, OpenmldbTableUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import org.slf4j.LoggerFactory
 
@@ -44,7 +44,7 @@ object CreateTablePlan {
     val df = likeKind match {
       case LikeKind.HIVE =>
         val hivePath = node.getData_.GetLikePath()
-        HybridseUtil.autoLoad(ctx.getOpenmldbSession, hivePath, "hive", Map[String, String](), null)
+        DataSourceUtil.autoLoad(ctx.getOpenmldbSession, hivePath, "hive", Map[String, String](), null)
       case LikeKind.PARQUET =>
         val parquetPath = node.getData_.GetLikePath()
         ctx.getSparkSession.read.parquet(parquetPath)

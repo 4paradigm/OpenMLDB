@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
-import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
+import com._4paradigm.openmldb.batch.utils.DataSourceUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.log4j.{Level, Logger}
@@ -68,11 +68,13 @@ class OpenmldbSession {
     }
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
-      logger.info(s"Try to connect OpenMLDB with zk ${this.config.openmldbZkCluster} and root path " +
-        s"${this.config.openmldbZkRootPath}")
+      logger.info(s"Try to connect OpenMLDB with zk cluster: ${this.config.openmldbZkCluster}, root path: " +
+        s"${this.config.openmldbZkRootPath}, user: ${this.config.openmldbUser}, password: " +
+        s"${this.config.openmldbPassword}")
       try {
         openmldbCatalogService = new OpenmldbCatalogService(this.config.openmldbZkCluster,
-          this.config.openmldbZkRootPath, config.openmldbJsdkLibraryPath)
+          this.config.openmldbZkRootPath, this.config.openmldbUser, this.config.openmldbPassword,
+          config.openmldbJsdkLibraryPath)
         registerOpenmldbOfflineTable(openmldbCatalogService)
       } catch {
         case e: Exception => logger.warn("Fail to connect OpenMLDB cluster and register tables, " + e.getMessage)
@@ -174,6 +176,8 @@ class OpenmldbSession {
    * @return
    */
   def openmldbSql(sqlText: String): OpenmldbDataframe = {
+    logger.info("Try to execute OpenMLDB SQL: " + sqlText)
+
     if (config.enableSparksql) {
       return OpenmldbDataframe(this, sparksql(sqlText))
     }
@@ -278,7 +282,15 @@ class OpenmldbSession {
   def close(): Unit = stop()
 
   def registerOpenmldbOfflineTable(catalogService: OpenmldbCatalogService): Unit = {
+    if (catalogService == null) {
+      return
+    }
+
     val databases = catalogService.getDatabases
+    if (databases == null) {
+      return
+    }
+
     databases.map(dbName => {
       val tableInfos = catalogService.getTableInfos(dbName)
       tableInfos.map(tableInfo => {
@@ -323,7 +335,7 @@ class OpenmldbSession {
             }
           } catch {
             case e: Exception => {
-              logger.warn(s"Fail to register table $dbName.$tableName " + ExceptionUtils.getStackTrace(e))
+              logger.warn(s"Fail to register table $dbName.$tableName, exception: " + ExceptionUtils.getStackTrace(e))
             }
           }
         }

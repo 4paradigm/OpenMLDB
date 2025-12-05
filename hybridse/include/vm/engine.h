@@ -17,21 +17,15 @@
 #ifndef HYBRIDSE_INCLUDE_VM_ENGINE_H_
 #define HYBRIDSE_INCLUDE_VM_ENGINE_H_
 
-#include <map>
 #include <memory>
-#include <mutex>  //NOLINT
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <unordered_map>
-#include "base/raw_buffer.h"
+
 #include "base/spin_lock.h"
 #include "codec/fe_row_codec.h"
-#include "codec/list_iterator_codec.h"
-#include "gflags/gflags.h"
-#include "llvm-c/Target.h"
-#include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/engine_context.h"
 #include "vm/router.h"
@@ -43,6 +37,7 @@ using ::hybridse::codec::Row;
 
 inline constexpr const char* LONG_WINDOWS = "long_windows";
 
+class SqlContext;
 class Engine;
 /// \brief An options class for controlling engine behaviour.
 class EngineOptions {
@@ -155,7 +150,7 @@ class RunSession {
     }
 
     /// Return query related compile information.
-    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetCompileInfo() {
+    virtual std::shared_ptr<hybridse::vm::CompileInfo> GetCompileInfo() const {
         return compile_info_;
     }
 
@@ -183,12 +178,17 @@ class RunSession {
         options_ = options;
     }
 
+    void SetIndexHintsHandler(std::shared_ptr<IndexHintHandler> handler) { index_hints_ = handler; }
+
  protected:
     std::shared_ptr<hybridse::vm::CompileInfo> compile_info_;
     hybridse::vm::EngineMode engine_mode_;
     bool is_debug_;
     std::string sp_name_;
     std::shared_ptr<const std::unordered_map<std::string, std::string>> options_ = nullptr;
+
+    // [ALPHA] output possible diagnostic infos from compiler
+    std::shared_ptr<IndexHintHandler> index_hints_;
     friend Engine;
 };
 
@@ -256,7 +256,7 @@ class RequestRunSession : public RunSession {
     /// \param in_row: request row
     /// \param[out] output: result is written to this variable
     /// \return `0` if run successfully else negative integer
-    int32_t Run(uint32_t task_id, const Row& in_row, Row* output);  // NOLINT
+    int32_t Run(int32_t task_id, const Row& in_row, Row* output);  // NOLINT
 
     /// \brief Return the schema of request row
     virtual const Schema& GetRequestSchema() const {
@@ -303,7 +303,7 @@ class BatchRequestRunSession : public RunSession {
     /// \param request_batch: a batch of request rows
     /// \param output: query results will be returned as std::vector<Row> in output
     /// \return 0 if runs successfully else negative integer
-    int32_t Run(const uint32_t id, const std::vector<Row>& request_batch, std::vector<Row>& output);  // NOLINT
+    int32_t Run(int32_t id, const std::vector<Row>& request_batch, std::vector<Row>& output);  // NOLINT
 
     /// \brief Add common column idx
     void AddCommonColumnIdx(size_t idx) { common_column_indices_.insert(idx); }
@@ -354,6 +354,8 @@ class Engine {
     /// \brief Create an Engine with a specific Catalog object.
     explicit Engine(const std::shared_ptr<Catalog>& cl);
 
+    ~Engine();
+
     /// \brief Create an Engine a specific Catalog object, configuring it with EngineOptions
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
 
@@ -362,7 +364,9 @@ class Engine {
 
     static void InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt);
 
-    ~Engine();
+    /// determine engine mode for `sql`, `sql` may contains option defining
+    /// execute_mode, `default_mode` used if not or error.
+    static EngineMode TryDetermineEngineMode(absl::string_view sql, EngineMode default_mode);
 
     /// \brief Compile sql in db and stored the results in the session
     bool Get(const std::string& sql, const std::string& db,
@@ -420,6 +424,17 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
+    /// extract request rows info in SQL.
+    /// A SQL e.g 'SELECT ... FROM t1 options (execute_mode = "request", values = ...)'
+    /// request row info exists in 'values' option, as a format of:
+    /// 1. [(col1_expr, col2_expr, ... ), (...), ...]
+    /// 2. (col1_expr, col2_expr, ... )
+    //
+    // This function only check on request/batchrequest mode, for batch mode it does nothing.
+    // As for old-fashioned usage, request row does not need to appear in SQL, so it won't report
+    // error even request rows is empty, instead checks should performed at the very beginning of Compute.
+    static absl::Status ExtractRequestRowsInSQL(SqlContext* ctx);
+
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode);

@@ -79,6 +79,7 @@ void NodeCache::Free(uint64_t version, StatisticsInfo* gc_info) {
         node1 = key_entry_node_list_.Split(version);
         node2 = value_node_list_.Split(version);
     }
+    DLOG(INFO) << "free version " << version << ", node1 " << node1 << ", node2 " << node2;
     while (node1) {
         auto entry_node_list = node1->GetValue();
         for (auto& entry_node : *entry_node_list) {
@@ -113,11 +114,11 @@ void NodeCache::FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, S
     }
     gc_info->IncrIdxCnt(idx);
     gc_info->idx_byte_size += GetRecordTsIdxSize(node->Height());
-    DLOG(INFO) << "delete key " << node->GetKey() << " with height " << node->Height();
+    VLOG(1) << "delete key " << node->GetKey() << " with height " << (unsigned int)node->Height();
     if (node->GetValue()->dim_cnt_down > 1) {
         node->GetValue()->dim_cnt_down--;
     } else {
-        DLOG(INFO) << "delele data block for key " << node->GetKey();
+        VLOG(1) << "delete data block for key " << node->GetKey();
         gc_info->record_byte_size += GetRecordSize(node->GetValue()->size);
         delete node->GetValue();
     }

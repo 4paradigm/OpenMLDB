@@ -70,9 +70,12 @@ public class TaskManagerServer {
             logger.info("The server becomes active master and prepare to do business logic");
             if (TaskManagerConfig.getTrackUnfinishedJobs()) {
                 // Start threads to track unfinished jobs
-                JobTrackerService.startTrackerThreads();
+                JobTrackerService.startTrackerThreads(); // may throw exception
             }
-
+            // if blocking, start a bg thread to reconnect zk
+            if (blocking) {
+                failoverWatcher.startReconnectThread();
+            }
             // Start brpc server
             startRpcServer(blocking);
         }
@@ -102,8 +105,8 @@ public class TaskManagerServer {
         rpcServer = new RpcServer(TaskManagerConfig.getServerPort(), options);
         rpcServer.registerService(new TaskManagerImpl());
         rpcServer.start();
-        log.info("Start TaskManager on {} with worker thread number {}", TaskManagerConfig.getServerPort(),
-                TaskManagerConfig.getServerWorkerThreads());
+        logger.info(String.format("Start TaskManager on %d with worker thread number %d",
+                        TaskManagerConfig.getServerPort(), TaskManagerConfig.getServerWorkerThreads()));
 
         if (blocking) {
             // make server keep running

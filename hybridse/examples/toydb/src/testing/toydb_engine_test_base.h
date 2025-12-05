@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/substitute.h"
 #include "case/case_data_mock.h"
 #include "case/sql_case.h"
 #include "glog/logging.h"
@@ -98,6 +99,14 @@ class ToydbBatchEngineTestRunner : public BatchEngineTestRunner {
             CheckSqliteCompatible(sql_case_, GetSession()->GetSchema(), output_rows);
         }
     }
+    const type::TableDef* GetTableDef(absl::string_view db, absl::string_view table) override {
+        auto it = name_table_map_.find(std::make_pair(std::string(db), std::string(table)));
+        if (it == name_table_map_.end()) {
+            return nullptr;
+        }
+
+        return &it->second->GetTableDef();
+    }
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;
@@ -141,6 +150,15 @@ class ToydbRequestEngineTestRunner : public RequestEngineTestRunner {
             return false;
         }
         return table->Put(reinterpret_cast<char*>(row.buf()), row.size());
+    }
+
+    const type::TableDef* GetTableDef(absl::string_view db, absl::string_view table) override {
+        auto it = name_table_map_.find(std::make_pair(std::string(db), std::string(table)));
+        if (it == name_table_map_.end()) {
+            return nullptr;
+        }
+
+        return &it->second->GetTableDef();
     }
 
  private:
@@ -188,6 +206,15 @@ class ToydbBatchRequestEngineTestRunner : public BatchRequestEngineTestRunner {
         }
         return table->Put(reinterpret_cast<char*>(row.buf()), row.size());
     }
+
+    const type::TableDef* GetTableDef(absl::string_view db, absl::string_view table) override {
+            auto it = name_table_map_.find(std::make_pair(std::string(db), std::string(table)));
+            if (it == name_table_map_.end()) {
+                return nullptr;
+            }
+
+            return &it->second->GetTableDef();
+        }
 
  private:
     std::shared_ptr<tablet::TabletCatalog> catalog_;

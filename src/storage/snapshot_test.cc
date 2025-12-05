@@ -1085,7 +1085,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
     SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card|merchant", "", ::openmldb::type::kAbsOrLat, 0,
                           1);
-    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
+    std::shared_ptr<Table> table = std::make_shared<MemTable>(*table_meta);
     table->Init();
 
     LogParts* log_part = new LogParts(12, 4, scmp);
@@ -1119,7 +1119,7 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
         google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> d_list;
         ::openmldb::api::Dimension* d_ptr2 = d_list.Add();
         d_ptr2->CopyFrom(dimensions);
-        ASSERT_EQ(table->Put(i + 1, *result, d_list), true);
+        ASSERT_EQ(table->Put(i + 1, *result, d_list).ok(), true);
     }
 
     table->SchedGc();
@@ -1284,7 +1284,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
-    // not set end falg
+    // not set end flag
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
     // no record binlog
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
@@ -1847,6 +1847,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetLogLevel(DEBUG);
+    ::openmldb::test::InitRandomDiskFlags("snapshot_test");
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
     ::openmldb::test::TempPath tmp_path;

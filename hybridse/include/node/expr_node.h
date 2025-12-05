@@ -18,7 +18,6 @@
 #define HYBRIDSE_INCLUDE_NODE_EXPR_NODE_H_
 
 #include <string>
-#include <vector>
 
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"

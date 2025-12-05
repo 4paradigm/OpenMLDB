@@ -105,6 +105,13 @@ message ExportOfflineDataRequest {
     optional bool sync_job = 4 [default = false];
 }
 
+message InsertOfflineDataRequest {
+    required string sql = 1;
+    map<string, string> conf = 2;
+    optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
+}
+
 message DropOfflineTableRequest {
     required string db = 1;
     required string table = 2;
@@ -174,6 +181,7 @@ service TaskManagerServer {
     rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
     rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);
     rpc ExportOfflineData(ExportOfflineDataRequest) returns (ShowJobResponse);
+    rpc InsertOfflineData(InsertOfflineDataRequest) returns (ShowJobResponse);
     rpc DropOfflineTable(DropOfflineTableRequest) returns (DropOfflineTableResponse);
     rpc GetJobLog(GetJobLogRequest) returns (GetJobLogResponse);
     rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);

@@ -106,11 +106,11 @@ class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
-                         ::llvm::Module* module, const udf::UdfLibrary* library,
-                         bool cluster_optimized_mode = false, bool enable_expr_opt = false,
-                         bool enable_window_parallelization = true,
+                         ::llvm::Module* module, const udf::UdfLibrary* library, bool cluster_optimized_mode = false,
+                         bool enable_expr_opt = false, bool enable_window_parallelization = true,
                          bool enable_window_column_pruning = false,
-                         const std::unordered_map<std::string, std::string>* options = nullptr);
+                         const std::unordered_map<std::string, std::string>* options = nullptr,
+                         std::shared_ptr<IndexHintHandler> = nullptr);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
@@ -155,6 +155,8 @@ class BatchModeTransformer {
 
  protected:
     Status TransformPlanOp(const ::hybridse::node::PlanNode* node, ::hybridse::vm::PhysicalOpNode** ouput);
+
+    Status TransformSetOperation(const node::SetOperationPlanNode* node, PhysicalSetOperationNode** out);
 
     virtual Status TransformLimitOp(const node::LimitPlanNode* node,
                                     PhysicalOpNode** output);
@@ -282,10 +284,10 @@ class RequestModeTransformer : public BatchModeTransformer {
     RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
                            const std::shared_ptr<Catalog>& catalog, const codec::Schema* parameter_types,
                            ::llvm::Module* module, udf::UdfLibrary* library,
-                           const std::set<size_t>& common_column_indices,
-                           const bool cluster_optimized, const bool enable_batch_request_opt, bool enable_expr_opt,
-                           bool performance_sensitive = true,
-                           const std::unordered_map<std::string, std::string>* options = nullptr);
+                           const std::set<size_t>& common_column_indices, const bool cluster_optimized,
+                           const bool enable_batch_request_opt, bool enable_expr_opt, bool performance_sensitive = true,
+                           const std::unordered_map<std::string, std::string>* options = nullptr,
+                           std::shared_ptr<IndexHintHandler> = nullptr);
     virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }
@@ -339,54 +341,6 @@ class RequestModeTransformer : public BatchModeTransformer {
     BatchRequestInfo batch_request_info_;
     node::TablePlanNode* request_table_ = nullptr;
 };
-
-inline bool SchemaType2DataType(const ::hybridse::type::Type type,
-                                ::hybridse::node::DataType* output) {
-    switch (type) {
-        case ::hybridse::type::kBool: {
-            *output = ::hybridse::node::kBool;
-            break;
-        }
-        case ::hybridse::type::kInt16: {
-            *output = ::hybridse::node::kInt16;
-            break;
-        }
-        case ::hybridse::type::kInt32: {
-            *output = ::hybridse::node::kInt32;
-            break;
-        }
-        case ::hybridse::type::kInt64: {
-            *output = ::hybridse::node::kInt64;
-            break;
-        }
-        case ::hybridse::type::kFloat: {
-            *output = ::hybridse::node::kFloat;
-            break;
-        }
-        case ::hybridse::type::kDouble: {
-            *output = ::hybridse::node::kDouble;
-            break;
-        }
-        case ::hybridse::type::kVarchar: {
-            *output = ::hybridse::node::kVarchar;
-            break;
-        }
-        case ::hybridse::type::kTimestamp: {
-            *output = ::hybridse::node::kTimestamp;
-            break;
-        }
-        case ::hybridse::type::kDate: {
-            *output = ::hybridse::node::kDate;
-            break;
-        }
-        default: {
-            LOG(WARNING) << "unrecognized schema type "
-                         << ::hybridse::type::Type_Name(type);
-            return false;
-        }
-    }
-    return true;
-}
 
 Status ExtractProjectInfos(const node::PlanNodeList& projects, const node::FrameNode* primary_frame,
                            ColumnProjects* output);

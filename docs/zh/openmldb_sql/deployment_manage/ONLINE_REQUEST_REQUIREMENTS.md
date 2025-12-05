@@ -14,17 +14,17 @@ OpenMLDB仅支持上线[SELECT查询语句](../dql/SELECT_STATEMENT.md)。
 
 | SELECT 子句                              | 说明                                                         |
 | :--------------------------------------- | :----------------------------------------------------------- |
-| 单张表的简单表达式计算                   | 简单的单表查询是对一张表进行列运算、使用运算表达式或单行处理函数（Scalar Function)以及它们的组合表达式作计算。需要遵循[在线请求模式下单表查询的使用规范](#在线请求模式下单表查询的使用规范) |
+| 单张表的简单查询                   | 简单的单表查询是对一张表进行列运算、使用运算表达式或单行处理函数（Scalar Function)以及它们的组合表达式作计算。需要遵循[在线请求模式下单表简单查询的使用规范](#在线请求模式下单表简单查询的使用规范) |
 | [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下-last-join-的使用规范) |
 | [`WINDOW` 子句](../dql/WINDOW_CLAUSE.md) | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数进行分析计算。需要遵循[在线请求模式下Window的使用规范](#在线请求模式下window的使用规范) |
 
 ## 在线请求模式下 `SELECT` 子句的使用规范
 
-### 在线请求模式下单表查询的使用规范
+### 在线请求模式下单表简单查询的使用规范
 
-- 仅支持列运算，表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算。
-- 单表查询不包含[GROUP BY子句](../dql/JOIN_CLAUSE.md)，[WHERE子句](../dql/WHERE_CLAUSE.md)，[HAVING子句](../dql/HAVING_CLAUSE.md)、[WINDOW子句](../dql/WINDOW_CLAUSE.md)， [LIMIT 子句](../dql/LIMIT_CLAUSE.md)。
-- 单表查询只涉及单张表的计算，不涉及[JOIN](../dql/JOIN_CLAUSE.md)多张表的计算。
+- 语法结构上只有两部分: `select list` 和 `FROM table`, 其他部分例如 [GROUP BY子句](../dql/JOIN_CLAUSE.md)，[WHERE子句](../dql/WHERE_CLAUSE.md)，[HAVING子句](../dql/HAVING_CLAUSE.md)、[WINDOW子句](../dql/WINDOW_CLAUSE.md)， [LIMIT 子句](../dql/LIMIT_CLAUSE.md) 都为空.
+- `select_list` 仅有列投影，单行处理函数（Scalar Function), 不能有聚合函数。
+- table` 代表一张实际表, 即只涉及单张表的计算，不涉及多张表的操作, 例如 [JOIN](../dql/JOIN_CLAUSE.md), UNION。
 
 **Example: 支持上线的简单SELECT查询语句范例**
 
@@ -70,6 +70,7 @@ SELECT substr(COL7, 3, 6) FROM t1;
     - **OpenMLDB >= 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
     - **[ALPHA] OpenMLDB >= 0.8.4** 右表是带 LAST JOIN 的子查询 `subquery`, 要求 `subquery` 最左的表能被 JOIN 条件优化, `subquery`剩余表能被自身 LAST JOIN 的 JOIN 条件优化 
     - **[ALPHA] OpenMLDB >= 0.8.4** LEFT JOIN. 要求 LEFT JOIN 的右表能被 LEFT JOIN 条件优化, LEFT JOIN 的左表能被上层的 LAST JOIN 条件优化
+    - **[ALPHA] OpenMLDB >= 0.8.5** UNION ALL query. 要求 UNION ALL 内的每一个 query 都可以被 LAST JOIN 的条件优化
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。

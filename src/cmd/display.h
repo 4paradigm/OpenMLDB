@@ -105,6 +105,7 @@ __attribute__((unused)) static void PrintColumnKey(
     t.add("ts");
     t.add("ttl");
     t.add("ttl_type");
+    t.add("type");
     t.end_of_row();
     int index_pos = 1;
     for (int i = 0; i < column_key_field.size(); i++) {
@@ -141,7 +142,7 @@ __attribute__((unused)) static void PrintColumnKey(
             t.add("-");  // ttl
             t.add("-");  // ttl_type
         }
-
+        t.add(common::IndexType_Name(column_key.type()));
         t.end_of_row();
     }
     stream << t;
@@ -586,6 +587,21 @@ __attribute__((unused)) static void PrintProcedureInfo(
         sql = boost::regex_replace(sql, boost::regex(pattern_sp), "DEPLOY");
         std::string pattern_blank = "(.*)(\\(.*\\) )(BEGIN )(.*)( END;)";
         sql = boost::regex_replace(sql, boost::regex(pattern_blank), "$1$4");
+        if (!sp_info.GetOption()->empty()) {
+            std::stringstream ss;
+            ss << " OPTIONS(";
+            for (auto iter = sp_info.GetOption()->begin(); iter != sp_info.GetOption()->end(); iter++) {
+                if (iter != sp_info.GetOption()->begin()) {
+                    ss << ", ";
+                }
+                ss << absl::AsciiStrToUpper(iter->first) << "=\"" << iter->second << "\"";
+            }
+            ss << ")";
+            std::string prefix = absl::StrCat("DEPLOY ", sp_info.GetSpName());
+            absl::string_view old_sql = sql;
+            old_sql.remove_prefix(prefix.size());
+            sql = absl::StrCat(prefix, ss.str(), old_sql);
+        }
     }
 
     PrintItemTable({"DB", type_name}, {vec}, stream);

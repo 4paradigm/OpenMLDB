@@ -16,10 +16,9 @@
 
 #ifndef HYBRIDSE_INCLUDE_BASE_RAW_BUFFER_H_
 #define HYBRIDSE_INCLUDE_BASE_RAW_BUFFER_H_
-#include <assert.h>
+
 #include <stddef.h>
 #include <string.h>
-#include <string>
 
 #include "glog/logging.h"
 

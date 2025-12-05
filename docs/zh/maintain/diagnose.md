@@ -13,7 +13,7 @@ openmldb_tool # 注意下划线
 ```
 有以下几个子命令可选择执行：
 ```bash
-usage: openmldb_tool [-h] [--helpfull] {status,inspect,rpc,test,static-check} ...
+usage: openmldb_tool [-h] [--helpful] {status,inspect,rpc,test,static-check} ...
 ```
 
 注意`-c/--cluster`参数，格式为`<zk_cluster>/<zk_root_path>`，默认将访问`127.0.0.1:2181/openmldb`。如果是自行设置的OpenMLDB集群，请配置此参数。其他参数根据子命令不同而不同，可以使用`-h`查看，或查看各个子命令的详细文档。
@@ -59,7 +59,7 @@ Server:
 
 Table:
 {all healthy | unhealthy tables desc}
-[]Fatal/Warn table, {read/write may fail or still work}, {repair immediatly or not}
+[]Fatal/Warn table, {read/write may fail or still work}, {repair immediately or not}
 {partition detail: if leader healthy, if has unhealthy replicas, if offset too large, related ops}
 
     Make sure all servers online, and no ops for the table is running.
@@ -86,11 +86,11 @@ Table:
 `status`用于查看OpenMLDB集群的状态，包括服务组件的地址，角色，连接时间，状态等，等价于`SHOW COMPONENTS`。如果发现集群表现不正常，请先查询各服务组件的实时状态。
 ```
 openmldb_tool status -h
-usage: openmldb_tool status [-h] [--helpfull] [--diff]
+usage: openmldb_tool status [-h] [--helpful] [--diff]
 
 optional arguments:
   -h, --help  show this help message and exit
-  --helpfull  show full help message and exit
+  --helpful  show full help message and exit
   --diff      check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`
   --conn                check network connection of all servers
 ```
@@ -129,7 +129,7 @@ openmldb_tool status --diff -f=/work/openmldb/conf/hosts
 
 ```
 openmldb_tool inspect -h
-usage: openmldb_tool inspect [-h] [--helpfull] {online,offline,job} ...
+usage: openmldb_tool inspect [-h] [--helpful] {online,offline,job} ...
 
 positional arguments:
   {online,offline,job}
@@ -185,15 +185,15 @@ JOB 检查是更灵活的离线任务检查命令，可以按条件筛选job，�
 
 ### static-check 静态检查
 
-`static-check`静态检查，根据集群部署配置文件（通过参数`-f,--conf_file`指定），登录各个服务组件的部署地址，可以收集版本信息、配置文件、日志文件，检查版本是否一致，对收集到的配置文件和日志文件做分析。可以在集群未部署前进行检查，避免因程序版本或配置文件错误导致的集群部署失败。或在集群异常时，将分布式的日志文件收集在一起，方便调查问题。
+`static-check`静态检查，根据集群部署配置文件（通过参数`-f,--conf_file`指定），登录各个服务组件的部署地址，可以收集版本信息、配置文件、日志文件，检查版本是否一致，对收集到的配置文件和日志文件做分析。可以在集群*未部署前*进行检查，避免因程序版本或配置文件错误导致的集群部署失败。或在集群异常时，将分布式的日志文件收集在一起，方便调查问题。
 
 ```bash
 openmldb_tool static-check -h
-usage: openmldb_tool static-check [-h] [--helpfull] [--version] [--conf] [--log]
+usage: openmldb_tool static-check [-h] [--helpful] [--version] [--conf] [--log]
 
 optional arguments:
   -h, --help     show this help message and exit
-  --helpfull     show full help message and exit
+  --helpful     show full help message and exit
   --version, -V  check version
   --conf, -C     check conf
   --log, -L      check log
@@ -260,7 +260,7 @@ nameserver:
 
 检查可通过组合FLAG来来指定检查哪些内容，例如，`-V`只检查版本，`-CL`只检查配置文件和日志，`-VCL`检查全部。
 
-- `-V,--version`检查版本，检查各个组件的版本是否一致，如果不一致，会输出不一致的组件和版本信息。
+- `-V,--version`检查版本，检查各个组件的版本是否一致，如果不一致，会输出不一致的组件和版本信息（由于复杂度较高，openmldb-batch包的地址可能查不到，将忽略检查，替换batch包非常容易，可以推后检查）。
 - `-C,--conf`收集配置文件，检查各个组件的配置文件中ZooKeeper地址是否一致等。
 - `-L,--log`收集日志，输出WARNING及以上的日志。
 
@@ -296,4 +296,4 @@ You should input json like this, ignore round brackets in the key and double quo
 
 ## 附加
 
-可使用`openmldb_tool --helpfull`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。
+可使用`openmldb_tool --helpful`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。

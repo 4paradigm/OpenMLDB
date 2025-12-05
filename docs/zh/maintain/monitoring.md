@@ -9,6 +9,40 @@ OpenMLDB 的监控方案概述如下：
 - 每个组件作为独立的 server 暴露组件级别的监控指标
 - 使用 [node_exporter](https://github.com/prometheus/node_exporter) 暴露机器和操作系统相关指标
 
+## 快速部署
+
+1. [可选]OpenMLDB各台机器上部署node_exporter，如不部署，不影响Grafana OpenMLDB Dashboard展示
+2. [可选]部署一个OpenMLDB exporter，如不部署，只会导致Grafana OpenMLDB Dashboard中的少数图表缺失数据，不影响读写方面的监控
+3. 启动Prometheus，配置文件最简版本如下，填对应IP，注意不要填TaskManager的IP（不支持metric）：
+```yaml
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: openmldb_components
+    metrics_path: /brpc_metrics
+    static_configs:
+      - targets:
+        - nameserver_ip
+        - tablet_ip
+        - tablet_ip
+        - apiserver_ip
+```
+完整配置参考[openmldb_mixin/prometheus_example.yml](https://github.com/4paradigm/openmldb-exporter/blob/main/openmldb_mixin/prometheus_example.yml)。
+
+参考命令：`docker run -d -v <config_file>:/etc/prometheus/prometheus.yml -p 9090:9090 -name prometheus prom/prometheus`
+
+4. 启动Grafana，并使用OpenMLDB Dashboard模版
+
+参考命令：`docker run -d -p 3000:3000 --name=grafana grafana/grafana-oss`
+
+使用Dashboard模版创建Dashboard，模版ID：17843，URL：https://grafana.com/grafana/dashboards/17843 。如果是空Dashboard，可以到设置中修改`JSON Model`，将模版内容粘贴进去。
+
+5. 统计Deployment执行，还需要配置OpenMLDB全局变量`SET GLOBAL deploy_stats = 'on';`。
+
 ## 安装运行 OpenMLDB exporter
 
 ### 简介
@@ -22,6 +56,15 @@ OpenMLDB exporter 是以 Python 实现的 Prometheus exporter，核心是通过�
 
 - Python >= 3.8
 - OpenMLDB >= 0.5.0
+
+### 兼容性说明
+
+**请根据部署的 OpenMLDB 版本选择正确的 openmldb-exporter.**
+
+| [OpenMLDB Exporter version](https://pypi.org/project/openmldb-exporter/) | [OpenMLDB supported version](https://github.com/4paradigm/OpenMLDB/releases) | [Grafana Dashboard revision](https://grafana.com/grafana/dashboards/17843-openmldb-dashboard/?tab=revisions) | Explanation |
+| ---- | ---- | ---- | ------- |
+| >= 0.9.0 | >= 0.8.4 | >=4 | OpenMLDB 0.8.4 移除了数据库表里的 deploy response time 信息 |
+| < 0.9.0  | >= 0.5.0, < 0.8.4 | 3 | |
 
 ### 准备
 
@@ -71,7 +114,7 @@ curl http://<IP>:8000/metrics
 <details><summary>样例输出</summary>
 
 ```sh
-# HELP openmldb_connected_seconds_total duration for a component conncted time in seconds                              
+# HELP openmldb_connected_seconds_total duration for a component connected time in seconds                              
 # TYPE openmldb_connected_seconds_total counter                                                                        
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9520",role="tablet"} 208834.70900011063                         
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9521",role="tablet"} 208834.70700001717                         
@@ -79,7 +122,7 @@ openmldb_connected_seconds_total{endpoint="172.17.0.15:9522",role="tablet"} 2088
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9622",role="nameserver"} 208833.70000004768                     
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9623",role="nameserver"} 208831.70900011063                     
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9624",role="nameserver"} 208829.7230000496                      
-# HELP openmldb_connected_seconds_created duration for a component conncted time in seconds                            
+# HELP openmldb_connected_seconds_created duration for a component connected time in seconds                            
 # TYPE openmldb_connected_seconds_created gauge                                                                        
 openmldb_connected_seconds_created{endpoint="172.17.0.15:9520",role="tablet"} 1.6501813860467942e+09                   
 openmldb_connected_seconds_created{endpoint="172.17.0.15:9521",role="tablet"} 1.6501813860495396e+09                   
@@ -126,10 +169,9 @@ optional arguments:
 
 </details>
 
-
 ## 部署 node exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) 是 Prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。
+[node_exporter](https://github.com/prometheus/node_exporter) 是 Prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。要在Grafana中展示这部分指标，使用Prometheus提供的官方Dashboard 1860。
 
 
 ## 部署 Prometheus 和 Grafana

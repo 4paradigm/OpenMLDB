@@ -1,0 +1,31 @@
+# README
+
+## 参数配置脚本 
+
+```
+test/format_config.sh {openmldbPath} {jobName} {portFrom} {portTo} {type} {Dependency}
+```
+配置生成在 out/openmldb_info.yaml
+
+Dependency为hadoop时使用hadoop config 
+
+Dependency为ssd时禁止部署在node-1
+
+## 一键运行脚本 
+```
+test/openmldb-integration-test.sh -c {caseXML} -d {deployMode} -j {jarVersion} -l {caseLevel} -s {tableStorageMode} -m {executeMode}
+```
+
+### 版本兼容性测试
+openmldb包版本设置: test/format_config.sh {openmldbPath}
+
+jar版本设置: test/openmldb-integration-test.sh -j {jarVersion} 
+
+### kafka测试
+```
+test/integration-test/openmldb-test-java/kafka_test.sh
+```
+环境配置于node-4: kakfa_test(docker)
+
+## 回归测试workflow
+hadoop配置文件位于 /mnt/hdd0/denglong/openmldb_runner_work/hadoop

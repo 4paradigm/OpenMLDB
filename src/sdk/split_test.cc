@@ -57,14 +57,23 @@ INSTANTIATE_TEST_SUITE_P(SplitLine, SplitTest, testing::ValuesIn(cases));
 
 TEST_P(SplitTest, SplitLineWithDelimiterForStrings) {
     auto& c = GetParam();
-    std::vector<std::string> splited;
-    SplitLineWithDelimiterForStrings(c.input, c.delimit, &splited, c.enclosed);
+    std::vector<std::string> split;
+    SplitLineWithDelimiterForStrings(c.input, c.delimit, &split, c.enclosed);
 
-    ASSERT_EQ(c.expect.size(), splited.size()) << "splited list size not match";
+    ASSERT_EQ(c.expect.size(), split.size()) << "split list size not match";
 
     for (size_t i = 0; i < c.expect.size(); i++) {
-        EXPECT_STREQ(c.expect[i].c_str(), splited[i].c_str());
+        EXPECT_STREQ(c.expect[i].c_str(), split[i].c_str());
     }
+}
+
+TEST_F(SplitTest, failedCases) {
+    // escape
+    std::vector<std::string> split;
+    // "abc\"", quote is ", should be abc\"(char 4), but this method will return abc\, missing the last char
+    SplitLineWithDelimiterForStrings("\"abc\\\"\"", ",", &split, '"');
+    ASSERT_EQ(1, split.size());
+    EXPECT_STREQ("abc\\", split[0].c_str());
 }
 
 }  // namespace sdk

@@ -28,8 +28,6 @@ class DateIRBuilder : public StructTypeIRBuilder {
     explicit DateIRBuilder(::llvm::Module* m);
     ~DateIRBuilder();
 
-    void InitStructType() override;
-    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) override;
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist) override;
     base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src, NativeValue* output) override;
 
@@ -46,6 +44,9 @@ class DateIRBuilder : public StructTypeIRBuilder {
                ::llvm::Value** output, base::Status& status);  // NOLINT
     bool Year(::llvm::BasicBlock* block, ::llvm::Value* date,
               ::llvm::Value** output, base::Status& status);  // NOLINT
+ private:
+    void InitStructType() override;
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) override;
 };
 }  // namespace codegen
 }  // namespace hybridse

@@ -17,13 +17,14 @@
 
 package com._4paradigm.openmldb.spark.read;
 
+import com._4paradigm.openmldb.spark.OpenmldbConfig;
 import org.apache.spark.sql.connector.read.Scan;
 import org.apache.spark.sql.connector.read.ScanBuilder;
 
 public class OpenmldbScanBuilder implements ScanBuilder {
-    private final OpenmldbReadConfig config;
+    private final OpenmldbConfig config;
 
-    public OpenmldbScanBuilder(OpenmldbReadConfig config) {
+    public OpenmldbScanBuilder(OpenmldbConfig config) {
         this.config = config;
     }
 

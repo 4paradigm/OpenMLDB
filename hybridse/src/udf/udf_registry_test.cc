@@ -384,14 +384,14 @@ TEST_F(UdfRegistryTest, test_codegen_udf_register) {
 
     library.RegisterCodeGenUdf("add").args<AnyArg, AnyArg>(
         /* infer */
-        [](UdfResolveContext* ctx, const ExprAttrNode* x, const ExprAttrNode* y,
+        [](UdfResolveContext* ctx, const ExprAttrNode& x, const ExprAttrNode& y,
            ExprAttrNode* out) {
-            out->SetType(x->type());
+            out->SetType(x.type());
             return Status::OK();
         },
         /* gen */
         [](CodeGenContext* ctx, NativeValue x, NativeValue y,
-           NativeValue* out) {
+           const ExprAttrNode& ri, NativeValue* out) {
             *out = x;
             return Status::OK();
         });
@@ -409,14 +409,14 @@ TEST_F(UdfRegistryTest, test_variadic_codegen_udf_register) {
     library.RegisterCodeGenUdf("concat").variadic_args<>(
         /* infer */
         [](UdfResolveContext* ctx,
-           const std::vector<const ExprAttrNode*>& arg_attrs,
+           const std::vector<ExprAttrNode>& arg_attrs,
            ExprAttrNode* out) {
-            out->SetType(arg_attrs[0]->type());
+            out->SetType(arg_attrs[0].type());
             return Status::OK();
         },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
-           NativeValue* out) {
+           const ExprAttrNode& return_info, NativeValue* out) {
             *out = args[0];
             return Status::OK();
         });

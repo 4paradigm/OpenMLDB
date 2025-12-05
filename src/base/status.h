@@ -82,7 +82,7 @@ enum ReturnCode {
     kSnapshotRecycled = 147,
     kQueryFailed = 148,
     kPutBadFormat = 149,
-    kUnkownTableType = 150,
+    kUnknownTableType = 150,
     kColNameNotFound = 151,
     kEncodeError = 152,
     kAddTypeToColumnDescFailed = 153,
@@ -96,6 +96,7 @@ enum ReturnCode {
     kInvalidArgs = 161,
     kCheckIndexFailed = 162,
     kCatalogUpdateFailed = 163,
+    kExceedPutMemoryLimit = 164,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -143,7 +144,7 @@ enum ReturnCode {
     kTermLeCurTerm = 406,
     kZoneNameNotEqual = 407,
     kAlreadyJoinZone = 408,
-    kUnkownServerMode = 409,
+    kUnknownServerMode = 409,
     kZoneNotEmpty = 410,
     kCreateZkFailed = 450,
     kGetZkFailed = 451,
@@ -182,11 +183,15 @@ enum ReturnCode {
     kSQLRunError = 1001,
     kRPCRunError = 1002,
     kServerConnError = 1003,
-    kRPCError = 1004  // brpc controller error
+    kRPCError = 1004,  // brpc controller error
+
+    // auth
+    kFlushPrivilegesFailed = 1100,  // brpc controller error
+    kNotAuthorized = 1101  // brpc controller error
 };
 
 struct Status {
-    Status(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    Status(int code_i, const std::string& msg_i) : code(code_i), msg(msg_i) {}
     Status() : code(ReturnCode::kOk), msg("ok") {}
     inline bool OK() const { return code == ReturnCode::kOk; }
     inline const std::string& GetMsg() const { return msg; }

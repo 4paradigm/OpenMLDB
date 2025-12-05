@@ -29,6 +29,8 @@ bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_cli
 - sync_job_timeout: CLI执行离线同步任务的默认同步等待时间0.5h，如果离线同步任务需要等待更长的时间，可改变这一配置，但注意还需要改变集群中TaskManager的配置，详情见[离线命令配置详情](../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
 - zk_log_level & zk_log_file: CLI连接ZooKeeper产生的日志默认是不打印的，如果需要展示日志，可以调整`zk_log_level`。打印的日志默认是打印到stderr，且由于ZooKeeper连接是后台线程，可能出现CLI交互界面突然出现ZooKeeper相关的日志，不影响CLI的使用但影响界面展示，可以使用`zk_log_file`将ZooKeeper相关的日志输出到文件中。
 - zk_session_timeout: 期望的ZooKeeper session超时时间，并不一定是真实的session超时时间。如果调整过大，也需要调整ZooKeeper Server的tickTime或maxSessionTimeout。
+- user: 指定登录用的用户名。如果不指定默认为root。
+- password: 指定登录用的密码。如果不指定，需要再交互模式下输入密码。
 
 ## 非交互式使用方法
 

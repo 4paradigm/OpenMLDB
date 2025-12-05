@@ -90,6 +90,38 @@ public class RowCodecTest {
     }
 
     @Test(dataProvider = "builder")
+    public void testValueNull(String builderName) {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            schema.add(ColumnDesc.newBuilder().setName("col1").setDataType(DataType.kTimestamp).build());
+            schema.add(ColumnDesc.newBuilder().setName("col2").setDataType(DataType.kDate).build());
+            schema.add(ColumnDesc.newBuilder().setName("col3").setDataType(DataType.kVarchar).build());
+            RowBuilder builder;
+            if (builderName.equals("classic")) {
+                ClassicRowBuilder cBuilder = new ClassicRowBuilder(schema);
+                int size = cBuilder.calTotalLength(0);
+                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+                cBuilder.setBuffer(buffer, size);
+                builder = cBuilder;
+            } else {
+                builder = new FlexibleRowBuilder(schema);
+            }
+            Assert.assertTrue(builder.appendTimestamp(null));
+            Assert.assertTrue(builder.appendDate(null));
+            Assert.assertTrue(builder.appendString(null));
+            Assert.assertTrue(builder.build());
+            ByteBuffer buffer = builder.getValue();
+            RowView rowView = new RowView(schema, buffer, buffer.capacity());
+            Assert.assertTrue(rowView.isNull(0));
+            Assert.assertTrue(rowView.isNull(1));
+            Assert.assertTrue(rowView.isNull(2));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test(dataProvider = "builder")
     public void testNormal(String builderName) {
         try {
             List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
@@ -984,6 +1016,42 @@ public class RowCodecTest {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
+        }
+    }
+
+    @Test
+    public void testLongString() {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            schema.add(ColumnDesc.newBuilder().setName("col1").setDataType(DataType.kInt).build());
+            schema.add(ColumnDesc.newBuilder().setName("col2").setDataType(DataType.kString).build());
+            schema.add(ColumnDesc.newBuilder().setName("col3").setDataType(DataType.kInt).build());
+            schema.add(ColumnDesc.newBuilder().setName("col4").setDataType(DataType.kString).build());
+            schema.add(ColumnDesc.newBuilder().setName("col5").setDataType(DataType.kString).build());
+            RowBuilder builder = new FlexibleRowBuilder(schema);
+            for (int i = 0; i < 20; i++) {
+                String str1 = genRandomString(100);
+                String str2 = i % 2 == 0 ? genRandomString(255) : genRandomString(20);
+                String str3 = i % 2 == 0 ? genRandomString(1000) : genRandomString(10);
+                Assert.assertTrue(builder.appendInt(1));
+                Assert.assertTrue(builder.appendString(str1));
+                Assert.assertTrue(builder.appendInt(10));
+                Assert.assertTrue(builder.appendString(str2));
+                Assert.assertTrue(builder.appendString(str3));
+                builder.build();
+
+                ByteBuffer buffer = builder.getValue();
+                RowView rowView = new RowView(schema, buffer, buffer.capacity());
+                Assert.assertEquals(rowView.getInt(0), new Integer(1));
+                Assert.assertEquals(rowView.getString(1), str1);
+                Assert.assertEquals(rowView.getString(3), str2);
+                Assert.assertEquals(rowView.getString(4), str3);
+
+                ((FlexibleRowBuilder)builder).clear();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
         }
     }
 }

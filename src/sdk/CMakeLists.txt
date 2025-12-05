@@ -68,9 +68,12 @@ if(TESTING_ENABLE)
 
     add_executable(split_test split_test.cc)
     target_link_libraries(split_test ${BIN_LIBS})
+
+    add_executable(options_map_parser_test options_map_parser_test.cc)
+    target_link_libraries(options_map_parser_test ${BIN_LIBS})
 endif()
 
-set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt)
+set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base auth hybridse_sdk zookeeper_mt)
 
 if(SQL_PYSDK_ENABLE)
     find_package(Python3 COMPONENTS Interpreter Development)
@@ -127,7 +130,18 @@ if(SQL_PYSDK_ENABLE)
                 COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb/native/
                 COMMAND echo "Do not strip library for MacOS, refer to https://github.com/4paradigm/OpenMLDB/issues/905")
     else()
-        set(PYTHON_PLATFORM manylinux1_x86_64)
+        # ref https://peps.python.org/pep-0600/ 
+        # centos7 is glibc 2.17, so 'manylinux2014' should preferred, 
+        # 'manylinux2014' is just legacy alias 'manylinux_2_17', we keep this legacy name 
+        # since there still installation issue on python 3.8 for new the name.
+        if (CMAKE_SYSTEM_PROCESSOR MATCHES "(amd64)|(x86_64)")
+            set(PYTHON_PLATFORM manylinux1_x86_64)
+        elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+            set(PYTHON_PLATFORM manylinux2014_aarch64)
+        else()
+            message(FATAL_ERROR "unsupported architecture ${CMAKE_SYSTEM_PROCESSOR}")
+        endif()
+
         add_custom_target(strip_python_so ALL DEPENDS sql_router_sdk
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb/native/
             COMMAND strip ${PROJECT_SOURCE_DIR}/python/openmldb_sdk/openmldb/native/_sql_router_sdk.so)
@@ -189,7 +203,7 @@ if(SQL_JAVASDK_ENABLE)
     add_dependencies(cp_native_so cp_hybridse_native_so)
 
     add_custom_target(sql_javasdk_package ALL
-        COMMAND ./mvnw clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
+        COMMAND ./mvnw package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true ${MAVEN_FLAGS}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/java)
     add_dependencies(sql_javasdk_package cp_native_so)
 
@@ -228,6 +242,11 @@ if (APPLE)
     message(STATUS "skip c++ sdk build on macos")
     return()
 endif()
+if (BUILD_SHARED_LIBS)
+    message(STATUS "skip c++ sdk when BUILD_SHARED_LIBS ON")
+    return()
+endif()
+
 
 add_library(openmldb_api STATIC openmldb_api.cc)
 target_include_directories (
@@ -247,6 +266,7 @@ target_link_libraries(openmldb_api openmldb_sdk
     client
     zk_client
     base
+    auth
     openmldb_flags
     hybridse_sdk
     hybridse_core
@@ -279,9 +299,9 @@ macro(getAllLinkedLibraries iTarget iReturnValue)
             list(APPEND ${iReturnValue} ${iTarget})
         endif()
 
-        get_target_property(linkedLibrairies ${iTarget} INTERFACE_LINK_LIBRARIES)
-        if(NOT "${linkedLibrairies}" STREQUAL "linkedLibrairies-NOTFOUND")
-            FOREACH(linkedLibrary ${linkedLibrairies})
+        get_target_property(linkedLibraries ${iTarget} INTERFACE_LINK_LIBRARIES)
+        if(NOT "${linkedLibraries}" STREQUAL "linkedLibraries-NOTFOUND")
+            FOREACH(linkedLibrary ${linkedLibraries})
                 getAllLinkedLibraries(${linkedLibrary} ${iReturnValue})
             ENDFOREACH()
         endif()

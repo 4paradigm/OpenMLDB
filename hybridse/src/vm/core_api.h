@@ -17,7 +17,6 @@
 #ifndef HYBRIDSE_SRC_VM_CORE_API_H_
 #define HYBRIDSE_SRC_VM_CORE_API_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include "codec/fe_row_codec.h"
@@ -41,7 +40,13 @@ class WindowInterface {
  public:
     WindowInterface(bool instance_not_in_window, bool exclude_current_time, bool execlude_current_row,
                     const std::string& frame_type_str, int64_t start_offset, int64_t end_offset,
-                    uint64_t rows_preceding, uint64_t max_size);
+                    uint64_t rows_preceding, uint64_t max_size) {
+        WindowInterface(instance_not_in_window, exclude_current_time, execlude_current_row, frame_type_str,
+                        start_offset, end_offset, rows_preceding, max_size, false);
+    }
+    WindowInterface(bool instance_not_in_window, bool exclude_current_time, bool execlude_current_row,
+                    const std::string& frame_type_str, int64_t start_offset, int64_t end_offset,
+                    uint64_t rows_preceding, uint64_t max_size, bool without_order_by);
 
     bool BufferData(uint64_t key, const Row& row);
 

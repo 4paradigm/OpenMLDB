@@ -90,7 +90,7 @@ function parse_host {
 run_auto() {
   local host=$1
   local cmd=$2
-  if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
+  if [[ "$OPENMLDB_FORCE_LOCAL" = true || "$host" = "localhost" || "$host" = "127.0.0.1" ]]; then
     local cur_dir
     cur_dir=$(pwd)
     bash -c "$cmd"
@@ -105,7 +105,11 @@ if [ -z "${OPENMLDB_HOME}" ]; then
   export OPENMLDB_HOME
 fi
 
-if [ -z "${SPARK_HOME}" ]; then
+if [ -n "$RUNNER_EXISTING_SPARK_HOME" ]; then
+  echo "use existing spark $RUNNER_EXISTING_SPARK_HOME on runner, overwrite SPARK_HOME"
+  SPARK_HOME="$RUNNER_EXISTING_SPARK_HOME"
+  export SPARK_HOME
+elif [ -z "${SPARK_HOME}" ]; then
   SPARK_HOME=${OPENMLDB_HOME}/spark
   export SPARK_HOME
 fi

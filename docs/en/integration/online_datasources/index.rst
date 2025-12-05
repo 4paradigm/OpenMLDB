@@ -1,5 +1,5 @@
 =============================
-online data source
+Online Data Source
 =============================
 
 .. toctree::

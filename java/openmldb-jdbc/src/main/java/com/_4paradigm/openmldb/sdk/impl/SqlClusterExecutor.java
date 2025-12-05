@@ -49,9 +49,13 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -62,27 +66,28 @@ public class SqlClusterExecutor implements SqlExecutor {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private SQLRouter sqlRouter;
     private DeploymentManager deploymentManager;
-    private ZKClient zkClient;
     private InsertPreparedStatementCache insertCache;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
-
+        ZKClient zkClient = null;
         if (option.isClusterMode()) {
             SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
-            zkClient = new ZKClient(ZKConfig.builder()
-                    .cluster(option.getZkCluster())
-                    .namespace(option.getZkPath())
-                    .sessionTimeout((int)option.getSessionTimeout())
-                    .build());
-            try {
-                if (!zkClient.connect()) {
-                    throw new SqlException("zk client connect failed.");
+            if (!option.isLight()) {
+                zkClient = new ZKClient(ZKConfig.builder()
+                        .cluster(option.getZkCluster())
+                        .namespace(option.getZkPath())
+                        .sessionTimeout((int)option.getSessionTimeout())
+                        .build());
+                try {
+                    if (!zkClient.connect()) {
+                        throw new SqlException("zk client connect failed.");
+                    }
+                } catch (Exception e) {
+                    throw new SqlException("init zk client failed", e);
                 }
-            } catch (Exception e) {
-                throw new SqlException("init zk client failed. " + e.getMessage());
             }
         } else {
             StandaloneOptions sqlOpt = option.buildStandaloneOptions();
@@ -663,5 +668,67 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     public boolean refreshCatalog() {
         return sqlRouter.RefreshCatalog();
+    }
+
+    @Override
+    public DAGNode SQLToDAG(String query) throws SQLException {
+        Status status = new Status();
+        final com._4paradigm.openmldb.DAGNode dag = sqlRouter.SQLToDAG(query, status);
+
+        try {
+            if (status.getCode() != 0) {
+                throw new SQLException(status.ToString());
+            }
+            return convertDAG(dag);
+        } finally {
+            dag.delete();
+            status.delete();
+        }
+    }
+
+    private static DAGNode convertDAG(com._4paradigm.openmldb.DAGNode dag) {
+        ArrayList<DAGNode> convertedProducers = new ArrayList<>();
+        for (com._4paradigm.openmldb.DAGNode producer : dag.getProducers()) {
+            final DAGNode converted = convertDAG(producer);
+            convertedProducers.add(converted);
+        }
+
+        return new DAGNode(dag.getName(), dag.getSql(), convertedProducers);
+    }
+
+    private static String mergeDAGSQLMemo(DAGNode dag, Map<DAGNode, String> memo, Set<DAGNode> visiting) {
+        if (visiting.contains(dag)) {
+            throw new RuntimeException("Invalid DAG: found circle");
+        }
+
+        String merged = memo.get(dag);
+        if (merged != null) {
+            return merged;
+        }
+
+        visiting.add(dag);
+        StringBuilder with = new StringBuilder();
+        for (DAGNode node : dag.producers) {
+            String sql = mergeDAGSQLMemo(node, memo, visiting);
+            if (with.length() == 0) {
+                with.append("WITH ");
+            } else {
+                with.append(",\n");
+            }
+            with.append(node.name).append(" as (\n");
+            with.append(sql).append("\n").append(")");
+        }
+        if (with.length() == 0) {
+            merged = dag.sql;
+        } else {
+            merged = with.append("\n").append(dag.sql).toString();
+        }
+        visiting.remove(dag);
+        memo.put(dag, merged);
+        return merged;
+    }
+
+    public static String mergeDAGSQL(DAGNode dag) {
+        return mergeDAGSQLMemo(dag, new HashMap<DAGNode, String>(), new HashSet<DAGNode>());
     }
 }

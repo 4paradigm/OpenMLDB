@@ -42,8 +42,8 @@ python3 -m pip install "${whl_name_sdk}[test]"
 cd "${ROOT_DIR}"/python/openmldb_tool/dist/
 whl_name_tool=$(ls openmldb*.whl)
 echo "whl_name_tool:${whl_name_tool}"
-# pip 23.1.2 just needs to install test(rpc is required by test)
-python3 -m pip install "${whl_name_tool}[rpc,test]"
+# pip 23.1.2 just needs to install test
+python3 -m pip install "${whl_name_tool}[test]"
 
 python3 -m pip install pytest-cov
 

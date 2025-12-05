@@ -55,7 +55,7 @@ bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value** output) {
         return false;
     }
     ::llvm::Value* date;
-    if (!Create(block, &date)) {
+    if (!Allocate(block, &date)) {
         return false;
     }
     if (!SetDate(block, date,
@@ -73,7 +73,7 @@ bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value* days,
         return false;
     }
     ::llvm::Value* date;
-    if (!Create(block, &date)) {
+    if (!Allocate(block, &date)) {
         return false;
     }
     if (!SetDate(block, date, days)) {

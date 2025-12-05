@@ -98,7 +98,7 @@ message TableInfo {
     repeated openmldb.common.ColumnDesc column_desc = 9;
     repeated openmldb.common.ColumnKey column_key = 10;
     repeated openmldb.common.ColumnDesc added_column_desc = 11;
-    optional uint32 format_version = 12 [default = 1];
+    optional uint32 format_version = 12 [default = 1, deprecated = true];
     optional string db = 13 [default = ""];
     repeated string partition_key = 14;
     repeated common.VersionPair schema_versions = 15;
@@ -351,11 +351,17 @@ message UpdateTableAliveRequest {
     optional string db = 5 [default = ""];
 }
 
-message ShowOPStatusRequest{
+message ShowOPStatusRequest {
     optional string name = 1;
     optional uint32 pid = 2;
     optional string db = 3;
     optional uint64 op_id = 4;
+}
+
+message DeleteOPRequest {
+    optional string db = 1;
+    optional uint64 op_id = 2;
+    optional openmldb.api.TaskStatus status = 3;
 }
 
 message ConnectZKRequest {}
@@ -527,6 +533,33 @@ message TableIndex {
     repeated openmldb.common.ColumnKey column_key = 3;
 }
 
+message PutUserRequest {
+    required string host = 1;
+    required string name = 2;
+    required string password = 3;
+}
+
+message DeleteUserRequest {
+    required string host = 1;
+    required string name = 2;
+}
+
+enum PrivilegeLevel {
+    NO_PRIVILEGE = 0;
+    PRIVILEGE = 1;
+    PRIVILEGE_WITH_GRANT_OPTION = 2;
+}
+
+message PutPrivilegeRequest {
+    repeated string grantee = 1;
+    repeated string privilege = 2;
+    optional string target_type = 3;
+    required string database = 4;
+    required string target = 5;
+    required bool is_all_privileges = 6;
+    required PrivilegeLevel privilege_level = 7;
+}
+
 message DeploySQLRequest {
     optional openmldb.api.ProcedureInfo sp_info = 3;
     repeated TableIndex index = 4;
@@ -549,6 +582,7 @@ service NameServer {
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
+    rpc DeleteOP(DeleteOPRequest) returns (GeneralResponse);
     rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
@@ -595,4 +629,11 @@ service NameServer {
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
     rpc ShowProcedure(openmldb.api.ShowProcedureRequest) returns (openmldb.api.ShowProcedureResponse);
     rpc DeploySQL(DeploySQLRequest) returns (DeploySQLResponse);
+
+    // user related interfaces
+    rpc PutUser(PutUserRequest) returns (GeneralResponse);
+    rpc DeleteUser(DeleteUserRequest) returns (GeneralResponse);
+
+    // authz related interfaces
+    rpc PutPrivilege(PutPrivilegeRequest) returns (GeneralResponse);
 }

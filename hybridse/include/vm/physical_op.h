@@ -47,7 +47,7 @@ enum PhysicalOpType {
     kPhysicalOpRename,
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
-    kPhysicalOpUnion,
+    kPhysicalOpSetOperation,
     kPhysicalOpWindow,
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnion,
@@ -153,6 +153,7 @@ class FnComponent {
 // Sort Component can only handle single order expressions
 class Sort : public FnComponent {
  public:
+    Sort() = default;
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
 
@@ -183,6 +184,8 @@ class Sort : public FnComponent {
 
     base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
                              node::NodeManager *nm, Sort *out) const;
+
+    Sort ShadowCopy() { return Sort(orders_); }
 
     const node::OrderByNode *orders_;
 };
@@ -285,7 +288,6 @@ class Key : public FnComponent {
     const node::ExprListNode *keys() const { return keys_; }
     void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
 
-    const node::ExprListNode *PhysicalProjectNode() const { return keys_; }
     const std::string FnDetail() const { return "keys=" + fn_info_.fn_name(); }
 
     void ResolvedRelatedColumns(
@@ -295,6 +297,8 @@ class Key : public FnComponent {
 
     base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
                              node::NodeManager *nm, Key *out) const;
+
+    Key ShadowCopy() { return Key(keys_); }
 
     const node::ExprListNode *keys_;
 };
@@ -325,6 +329,8 @@ class ColumnProjects : public FnComponent {
     void SetPrimaryFrame(const node::FrameNode *frame) {
         primary_frame_ = frame;
     }
+
+    std::vector<const node::FrameNode *> frames() const { return frames_; }
 
     const node::FrameNode *GetPrimaryFrame() const { return primary_frame_; }
 
@@ -384,11 +390,18 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     // get a list of PhysicalOpNodes that current node depends on
     virtual std::vector<PhysicalOpNode*> GetDependents() const;
 
+    // trace from column ID in current node, to possible producre nodes (one level down)
+    // multiple results may returned, indicating column of ID `col_id` may comes from any of the result list
+    virtual absl::StatusOr<ColProducerTraceInfo> TraceColID(size_t col_id) const;
+
+    virtual absl::StatusOr<ColProducerTraceInfo> TraceColID(absl::string_view col_name) const;
+
+    absl::StatusOr<ColLastDescendantTraceInfo> TraceLastDescendants(size_t col_id) const;
+
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
     std::vector<PhysicalOpNode *> &producers() { return producers_; }
-    void UpdateProducer(int i, PhysicalOpNode *producer);
 
     void AddProducer(PhysicalOpNode *producer) {
         producers_.push_back(producer);
@@ -445,7 +458,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     // limit always >= 0 so it is safe to do that
     int32_t GetLimitCntValue() const { return limit_cnt_.value_or(-1); }
 
-    bool IsSameSchema(const vm::Schema &schema, const vm::Schema &exp_schema) const;
+    static bool IsSameSchema(const codec::Schema* schema, const codec::Schema* exp_schema);
 
     // `lhs` schema contains `rhs` and is start with `rhs` schema
     //
@@ -466,6 +479,22 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
      * functions in template.
      */
     size_t GetNodeId() const { return node_id(); }
+
+    // Return this node cast as a NodeType.
+    // Use only when this node is known to be that type, otherwise, behavior is undefined.
+    template <typename NodeType>
+    const NodeType *GetAsOrNull() const {
+        static_assert(std::is_base_of<PhysicalOpNode, NodeType>::value,
+                      "NodeType must be a member of the PhysicalOpNode class hierarchy");
+        return dynamic_cast<const NodeType *>(this);
+    }
+
+    template <typename NodeType>
+    NodeType *GetAsOrNull() {
+        static_assert(std::is_base_of<PhysicalOpNode, NodeType>::value,
+                      "NodeType must be a member of the PhysicalOpNode class hierarchy");
+        return dynamic_cast<NodeType *>(this);
+    }
 
  protected:
     const PhysicalOpType type_;
@@ -834,7 +863,6 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
     Key group_;
 };
 
-class PhysicalUnionNode;
 class PhysicalJoinNode;
 
 class WindowOp {
@@ -1410,23 +1438,41 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     }
 };
 
-class PhysicalUnionNode : public PhysicalBinaryNode {
+class PhysicalSetOperationNode : public PhysicalOpNode {
  public:
-    PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
-        : PhysicalBinaryNode(left, right, kPhysicalOpUnion, true),
-          is_all_(is_all) {
-        output_type_ = kSchemaTypeTable;
-    }
-    virtual ~PhysicalUnionNode() {}
-    base::Status InitSchema(PhysicalPlanContext *) override;
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    PhysicalSetOperationNode(node::SetOperationType type, absl::Span<PhysicalOpNode *const> inputs, bool distinct)
+        : PhysicalOpNode(kPhysicalOpSetOperation, false), set_type_(type), distinct_(distinct) {
+        for (auto n : inputs) {
+            AddProducer(n);
+        }
+        bool group_optimized = true;
+        for (auto n : producers_) {
+            if (n-> GetOutputType() != kSchemaTypeGroup) {
+                group_optimized = false;
+                break;
+            }
+        }
 
-    base::Status WithNewChildren(node::NodeManager *nm,
-                                 const std::vector<PhysicalOpNode *> &children,
+        if (group_optimized && set_type_ == node::SetOperationType::UNION) {
+            output_type_ = kSchemaTypeGroup;
+        } else {
+            output_type_ = kSchemaTypeTable;
+        }
+    }
+    ~PhysicalSetOperationNode() override {}
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
 
-    const bool is_all_;
-    static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
+    absl::StatusOr<ColProducerTraceInfo> TraceColID(size_t col_id) const override;
+
+    absl::StatusOr<ColProducerTraceInfo> TraceColID(absl::string_view col_name) const override;
+
+    node::SetOperationType set_type_;
+    const bool distinct_ = false;
+    static PhysicalSetOperationNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalPostRequestUnionNode : public PhysicalBinaryNode {
@@ -1515,9 +1561,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                 << "Fail to add window union : producer is empty or null";
             return false;
         }
-        if (output_request_row() &&
-            !IsSameSchema(*node->GetOutputSchema(),
-                          *producers_[0]->GetOutputSchema())) {
+        if (output_request_row() && !IsSameSchema(node->GetOutputSchema(), producers_[0]->GetOutputSchema())) {
             LOG(WARNING)
                 << "Union Table and window input schema aren't consistent";
             return false;
@@ -1793,14 +1837,14 @@ class PhysicalSelectIntoNode : public PhysicalUnaryNode {
             return nullptr;
         }
         auto it = options_->find(option);
-        return it == options_->end() ? nullptr : it->second;
+        return it == options_->end() ? nullptr : it->second->GetAsOrNull<hybridse::node::ConstNode>();
     }
     const hybridse::node::ConstNode *GetConfigOption(const std::string &option) const {
         if (!config_options_) {
             return nullptr;
         }
         auto it = config_options_->find(option);
-        return it == config_options_->end() ? nullptr : it->second;
+        return it == config_options_->end() ? nullptr : it->second->GetAsOrNull<hybridse::node::ConstNode>();
     }
 
     std::string query_str_, out_file_;
@@ -1836,7 +1880,7 @@ class PhysicalLoadDataNode : public PhysicalOpNode {
             return nullptr;
         }
         auto it = options_->find(option);
-        return it == options_->end() ? nullptr : it->second;
+        return it == options_->end() ? nullptr : it->second->GetAsOrNull<hybridse::node::ConstNode>();
     }
 
     std::string file_;
@@ -1902,6 +1946,8 @@ class PhysicalInsertNode : public PhysicalOpNode {
     }
 
     const node::InsertStmt* GetInsertStmt() const { return insert_stmt_; }
+
+    static PhysicalInsertNode *CastFrom(PhysicalOpNode *node);
 
  private:
     const node::InsertStmt* insert_stmt_;

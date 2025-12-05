@@ -16,6 +16,11 @@
 
 #include "base/ddl_parser.h"
 
+#include <utility>
+
+#include "absl/cleanup/cleanup.h"
+#include "absl/strings/strip.h"
+#include "absl/strings/str_split.h"
 #include "codec/schema_codec.h"
 #include "glog/logging.h"
 #include "google/protobuf/util/message_differencer.h"
@@ -48,7 +53,7 @@ std::ostream& operator<<(std::ostream& os, const std::map<std::string, std::vect
 
 void CheckEqual(const IndexMap& map1, const IndexMap& map2) {
     ASSERT_EQ(map1.size(), map2.size()) << "map size not equal";
-    for (const auto & [ key, value ] : map1) {
+    for (const auto& [key, value] : map1) {
         auto it = map2.find(key);
         if (it == map2.end()) {
             FAIL() << "can't find key " << key << " in map2";
@@ -67,9 +72,9 @@ void StrToTTLType(const std::string& ttl_type, type::TTLType* type) {
         *type = type::TTLType::kAbsoluteTime;
     } else if (ttl_type == "lat") {
         *type = type::TTLType::kLatestTime;
-    } else if (ttl_type == "abs&lat") {
+    } else if (ttl_type == "absandlat") {
         *type = type::TTLType::kAbsAndLat;
-    } else if (ttl_type == "abs||lat") {
+    } else if (ttl_type == "absorlat") {
         *type = type::TTLType::kAbsOrLat;
     } else {
         FAIL() << "unknown ttl type " << ttl_type;
@@ -78,14 +83,12 @@ void StrToTTLType(const std::string& ttl_type, type::TTLType* type) {
 
 common::ColumnKey ParseIndex(const std::string& index_str) {
     common::ColumnKey key;
-    std::vector<std::string> vec;
-    boost::split(vec, index_str, boost::is_any_of(";"));
+    std::vector<std::string> vec = absl::StrSplit(index_str, ";");  
     if (vec.size() != 3) {
         LOG(WARNING) << "invalid index str " << index_str;
         return {};
     }
-    std::vector<std::string> keys;
-    boost::split(keys, vec[0], boost::is_any_of(","));
+    std::vector<std::string> keys = absl::StrSplit(vec[0], ",");
     for (auto& k : keys) {
         key.add_col_name(k);
     }
@@ -93,8 +96,7 @@ common::ColumnKey ParseIndex(const std::string& index_str) {
         key.set_ts_name(vec[1]);
     }
     // parse ttl in vec[2]
-    std::vector<std::string> ttl_parts;
-    boost::split(ttl_parts, vec[2], boost::is_any_of(","));
+    std::vector<std::string> ttl_parts = absl::StrSplit(vec[2], ",");
     if (ttl_parts.size() != 3) {
         LOG(WARNING) << "invalid ttl str " << vec[2];
         return {};
@@ -110,7 +112,7 @@ common::ColumnKey ParseIndex(const std::string& index_str) {
 
 // <table, [index1, index2, ...]>
 // a human readable string for one index: key1,key2,...;ts;<ttl>. (ts is optional and only one, if no ts, it should be
-// key;;<ttl>) <ttl>: type,abs_value,lat_value, e.g. abs,10,0 lat,0,20 abs&lat,10,20 abs||lat,10,20
+// key;;<ttl>) <ttl>: type,abs_value,lat_value, e.g. abs,10,0 lat,0,20 absandlat,10,20 absorlat,10,20
 void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::string>>&& readable_map) {
     auto error_message = [](const IndexMap& map, const std::map<std::string, std::vector<std::string>>& readable) {
         std::stringstream ss;
@@ -119,7 +121,7 @@ void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::stri
     };
 
     ASSERT_EQ(map.size(), readable_map.size()) << "map size not equal" << error_message(map, readable_map);
-    for (const auto & [ key, value ] : map) {
+    for (const auto& [key, value] : map) {
         auto it = readable_map.find(key);
         if (it == readable_map.end()) {
             FAIL() << "can't find key " << key << " in expected map. " << error_message(map, readable_map);
@@ -171,6 +173,9 @@ class DDLParserTest : public ::testing::Test {
         ASSERT_TRUE(AddTableToDB(&db, "t2",
                                  {"col0", "string", "col1", "int32", "col2", "int16", "col3", "float", "col4", "double",
                                   "col5", "int64", "col6", "string"}));
+        ASSERT_TRUE(AddTableToDB(&db, "t3",
+                                 {"col0", "string", "col1", "int32", "col2", "int16", "col3", "float", "col4", "double",
+                                  "col5", "int64", "col6", "string"}));
     }
 
     static bool AddColumnToTable(const std::string& col_name, const std::string& col_type,
@@ -178,8 +183,8 @@ class DDLParserTest : public ::testing::Test {
         // copy to trim
         auto name = col_name;
         auto type = col_type;
-        boost::trim(name);
-        boost::trim(type);
+        absl::StripAsciiWhitespace(&name);
+        absl::StripAsciiWhitespace(&type);
         auto col = table->add_columns();
         col->set_name(name);
         auto t = codec::DATA_TYPE_MAP.find(type);
@@ -208,13 +213,11 @@ class DDLParserTest : public ::testing::Test {
                              const std::string& col_sep, const std::string& name_type_sep) {
         auto table = db->add_tables();
         table->set_name(table_name);
-        std::vector<std::string> cols;
-        boost::split(cols, cols_def, boost::is_any_of(col_sep));
+        std::vector<std::string> cols = absl::StrSplit(cols_def, col_sep);
         for (auto col : cols) {
             // name: type
-            std::vector<std::string> vec;
-            boost::trim(col);
-            boost::split(vec, col, boost::is_any_of(name_type_sep));
+            absl::StripAsciiWhitespace(&col);
+            std::vector<std::string> vec = absl::StrSplit(col, name_type_sep);
             EXPECT_EQ(vec.size(), 2);
 
             auto name = vec[0];
@@ -285,6 +288,12 @@ class DDLParserTest : public ::testing::Test {
         return index_map.begin()->second;
     }
 
+    bool EnsurePass(const std::string& sql) {
+        auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+        catalog->AddDatabase(db);
+        return DDLParser::ValidateSQLInRequest(sql, db.name(), catalog).empty();
+    }
+
  protected:
     std::string DB_NAME = "DDLParserTest";
     ::hybridse::type::Database db;
@@ -292,8 +301,6 @@ class DDLParserTest : public ::testing::Test {
 };
 
 TEST_F(DDLParserTest, ttlMerge) {
-    // old ttl miss some fields
-
     // values: {abs ttl, lat ttl}
     auto test_func = [](type::TTLType old_type, std::initializer_list<uint64_t> old_values, type::TTLType new_type,
                         std::initializer_list<uint64_t> new_values, bool should_update, type::TTLType expect_type,
@@ -307,17 +314,15 @@ TEST_F(DDLParserTest, ttlMerge) {
         new_ttl.set_ttl_type(new_type);
         new_ttl.set_abs_ttl(*new_values.begin());
         new_ttl.set_lat_ttl(*(new_values.begin() + 1));
-
-        ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update)
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
-        ASSERT_TRUE(result.ttl_type() == expect_type);
-        ASSERT_EQ(result.abs_ttl(), *expect_values.begin())
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
-        ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1))
-            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
-            << result.ShortDebugString() << "]";
+        {
+            SCOPED_TRACE(
+                absl::StrCat("old ttl[", old_ttl.ShortDebugString(), "], new ttl[", new_ttl.ShortDebugString(), "]"));
+            ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update);
+            ASSERT_TRUE(result.ttl_type() == expect_type)
+                << "expect " << expect_type << ", but got " << result.ttl_type();
+            ASSERT_EQ(result.abs_ttl(), *expect_values.begin());
+            ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1));
+        }
     };
 
     auto test_same_type = [&](type::TTLType type, std::initializer_list<uint64_t> old_values,
@@ -333,23 +338,56 @@ TEST_F(DDLParserTest, ttlMerge) {
     test_same_type(type::TTLType::kAbsAndLat, {10, 20}, {5, 30}, true, {10, 30});
     test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {20, 30}, true, {20, 30});
     test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {5, 30}, true, {10, 30});
+
+    // just old ttl after merged, but we do std cvt in merge, result will be changed
+    test_func(type::TTLType::kAbsOrLat, {0, 0}, type::TTLType::kAbsOrLat, {1, 2}, true, type::TTLType::kAbsoluteTime,
+              {0, 0});
+    test_func(type::TTLType::kAbsAndLat, {0, 10}, type::TTLType::kAbsOrLat, {1, 2}, true, type::TTLType::kAbsoluteTime,
+              {0, 0});
+
     // different type
     // abs + lat
-    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsOrLat,
+    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsAndLat,
               {1, 2});
-    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsOrLat,
+    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsAndLat,
               {4, 3});
 
     // abs + complex type
-    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, false,
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, true, type::TTLType::kAbsAndLat,
+              {10, 6});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {15, 6}, true,
+              type::TTLType::kAbsAndLat, {15, 6});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, false,
               type::TTLType::kAbsoluteTime, {10, 0});
-    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, true, type::TTLType::kAbsOrLat,
-              {10, 8});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {17, 8}, true,
+              type::TTLType::kAbsoluteTime, {17, 0});
+    // swap
+    test_func(type::TTLType::kAbsAndLat, {5, 6}, type::TTLType::kAbsoluteTime, {10, 0}, true, type::TTLType::kAbsAndLat,
+              {10, 6});
+    test_func(type::TTLType::kAbsAndLat, {15, 6}, type::TTLType::kAbsoluteTime, {10, 0}, false,
+              type::TTLType::kAbsAndLat, {15, 6});
+    test_func(type::TTLType::kAbsOrLat, {7, 8}, type::TTLType::kAbsoluteTime, {10, 0}, true,
+              type::TTLType::kAbsoluteTime, {10, 0});
+    test_func(type::TTLType::kAbsOrLat, {17, 8}, type::TTLType::kAbsoluteTime, {10, 0}, true,
+              type::TTLType::kAbsoluteTime, {17, 0});
     // lat + complex type
-    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, false,
-              type::TTLType::kLatestTime, {0, 11});
-    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kAbsOrLat,
-              {14, 15});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, true, type::TTLType::kAbsAndLat,
+              {12, 11});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kLatestTime,
+              {0, 15});
+    // swap
+    test_func(type::TTLType::kAbsAndLat, {12, 6}, type::TTLType::kLatestTime, {0, 11}, true, type::TTLType::kAbsAndLat,
+              {12, 11});
+    test_func(type::TTLType::kAbsOrLat, {14, 15}, type::TTLType::kLatestTime, {0, 11}, true, type::TTLType::kLatestTime,
+              {0, 15});
+
+    // and + or
+    test_func(type::TTLType::kAbsAndLat, {10, 20}, type::TTLType::kAbsOrLat, {30, 40}, true, type::TTLType::kAbsAndLat,
+              {30, 40});
+    test_func(type::TTLType::kAbsOrLat, {10, 20}, type::TTLType::kAbsAndLat, {30, 40}, true, type::TTLType::kAbsAndLat,
+              {30, 40});
+    test_func(type::TTLType::kAbsAndLat, {0, 20}, type::TTLType::kAbsOrLat, {20, 30}, true,
+              type::TTLType::kAbsoluteTime, {0, 0});
 }
 
 // create procedure: only inner plan will be sql compiled.
@@ -385,19 +423,18 @@ TEST_F(DDLParserTest, joinExtract) {
         LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
-    // TODO: fix later
-    // {
-    //     ClearAllIndex();
-    //     // left join
-    //     auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on t1.col1 = t2.col2;";
-    //
-    //     auto index_map = ExtractIndexesWithSingleDB(sql, db);
-    //     // {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
-    //     CheckEqual(index_map, {{"t2", {"col2;;lat,0,1"}}});
-    //     // the added index only has key, no ts
-    //     AddIndexToDB(index_map, &db);
-    //     LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
-    // }
+    {
+        ClearAllIndex();
+        // left join
+        auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on t1.col1 = t2.col2;";
+
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        // {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
+        CheckEqual(index_map, {{"t2", {"col2;;abs,0,0"}}});
+        // the added index only has key, no ts
+        AddIndexToDB(index_map, &db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
+    }
 }
 
 TEST_F(DDLParserTest, complexJoin) {
@@ -419,26 +456,26 @@ TEST_F(DDLParserTest, complexJoin) {
         LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
-    // {
-    //     ClearAllIndex();
-    //     // no simple equal condition, won't extract index
-    //     auto sql =
-    //         "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
-    //         "timestamp(int64(t2.col6));";
-    //     auto index_map = ExtractIndexesWithSingleDB(sql, db);
-    //     ASSERT_TRUE(index_map.empty());
-    //     // must have a simple equal condition
-    //     sql =
-    //         "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
-    //         "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
-    //     index_map = ExtractIndexesWithSingleDB(sql, db);
-    //     // index is on t2.col2 {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
-    //     CheckEqual(index_map, {{"t2", {"col2;;lat,0,1"}}});
-    //
-    //     // the added index only has key, no ts
-    //     AddIndexToDB(index_map, &db);
-    //     LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
-    // }
+    {
+        ClearAllIndex();
+        // no simple equal condition, won't extract index
+        auto sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6));";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        ASSERT_TRUE(index_map.empty());
+        // must have a simple equal condition
+        sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
+        index_map = ExtractIndexesWithSingleDB(sql, db);
+        // index is on t2.col2 {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
+        CheckEqual(index_map, {{"t2", {"col2;;abs,0,0"}}});
+
+        // the added index only has key, no ts
+        AddIndexToDB(index_map, &db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
+    }
 }
 
 TEST_F(DDLParserTest, multiJoin) {
@@ -630,6 +667,94 @@ TEST_F(DDLParserTest, renameColumns) {
     CheckEqual(index_map, {{"tt1", {"col1;col2;lat,0,1000"}}, {"tt2", {"c1;c2;lat,0,1000"}}});
 }
 
+TEST_F(DDLParserTest, lastJoinOverLastJoin) {
+    absl::Cleanup clean = [&]() { ClearAllIndex(); };
+    auto sql =
+        R"(select * from t1 last join (select * from t2 last join feedbackTable on t2.col1 = feedbackTable.actionValue) tx on t1.col0 = tx.col0)";
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
+    CheckEqual(index_map, {{"t2", {"col0;;lat,0,1"}}, {"feedbackTable", {"actionValue;;lat,0,1"}}});
+
+    AddIndexToDB(index_map, &db);
+    EXPECT_TRUE(EnsurePass(sql));
+}
+
+TEST_F(DDLParserTest, lastJoinWindow) {
+    absl::Cleanup clean = [&]() { ClearAllIndex(); };
+    auto sql =
+        R"(select * from t1 last join (
+            select *, count(col0) over w as agg from t2
+            window w as (partition by col1 order by col5 rows between 3 preceding and current row))
+          tx on t1.col0 = tx.col0)";
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
+    std::map<std::string, std::vector<std::string>> expect = {{"t2", {"col0;;lat,0,1", "col1;col5;lat,0,3"}}};
+    CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+    AddIndexToDB(index_map, &db);
+    EXPECT_TRUE(EnsurePass(sql));
+}
+
+TEST_F(DDLParserTest, lastJoinUnion) {
+    absl::Cleanup clean = [&]() { ClearAllIndex(); };
+    auto sql =
+        R"(select * from t1 last join (
+           select * from t2 union all select * from t3
+           ) tx on t1.col0 = tx.col0)";
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
+    std::map<std::string, std::vector<std::string>> expect = {{"t2", {"col0;;lat,0,1"}}, {"t3", {"col0;;lat,0,1"}}};
+    CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+    AddIndexToDB(index_map, &db);
+    EXPECT_TRUE(EnsurePass(sql));
+}
+
+TEST_F(DDLParserTest, windowWithoutOrderBy) {
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows between unbounded preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        std::map<std::string, std::vector<std::string>> expect = {{"t1", {"col1;;lat,0,0"}}};
+        CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+        AddIndexToDB(index_map, &db);
+        ASSERT_TRUE(EnsurePass(sql));
+    }
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows between 4 preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        std::map<std::string, std::vector<std::string>> expect = {{"t1", {"col1;;lat,0,4"}}};
+        CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+        AddIndexToDB(index_map, &db);
+        ASSERT_TRUE(EnsurePass(sql));
+    }
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows_range between unbounded preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        std::map<std::string, std::vector<std::string>> expect = {{"t1", {"col1;;abs,0,0"}}};
+        CheckEqual(index_map, std::forward<std::map<std::string, std::vector<std::string>>>(expect));
+
+        AddIndexToDB(index_map, &db);
+        ASSERT_TRUE(EnsurePass(sql));
+    }
+    {
+        absl::Cleanup clean = [&]() { ClearAllIndex(); };
+        // invalid SQL
+        auto sql =
+            R"(select *, count(col0) over w as agg from t1
+          window w as (partition by col1 rows_range between 4 preceding and current row))";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        ASSERT_TRUE(index_map.empty());
+    }
+}
+
 TEST_F(DDLParserTest, mergeNode) {
     AddTableToDB(&db, "t1", "id:int, pk1:string, col1:int32, std_ts:timestamp", ",", ":");
     auto sql =
@@ -643,7 +768,7 @@ TEST_F(DDLParserTest, mergeNode) {
         "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     auto index_map = ExtractIndexesWithSingleDB(sql, db);
     // {t1[col_name: "pk1" ts_name: "std_ts" ttl { ttl_type: kAbsAndLat abs_ttl: 1 lat_ttl: 2 }, ]}
-    CheckEqual(index_map, {{"t1", {"pk1;std_ts;abs&lat,1,2"}}});
+    CheckEqual(index_map, {{"t1", {"pk1;std_ts;absandlat,1,2"}}});
 }
 
 TEST_F(DDLParserTest, twoTable) {
@@ -661,6 +786,32 @@ TEST_F(DDLParserTest, twoTable) {
     // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
     // {t2[col_name: "col1" col_name: "col5" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
     CheckEqual(index_map, {{"t1", {"col2;col5;abs,1,0"}}, {"t2", {"col1,col5;col5;lat,0,1"}}});
+}
+
+TEST_F(DDLParserTest, joinOnMulti) {
+    {
+        // dup join condition
+        auto sql = "SELECT * FROM t1 last join t2 on t1.col1=t2.col1 and t1.col1=t2.col1";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        CheckEqual(index_map, {{"t2", {"col1;;lat,0,1"}}});
+    }
+    {
+        // multi cols, they should be sorted
+        auto sql =
+            "SELECT * FROM t1 last join t2 on t1.col3=t2.col3 and t1.col5=t2.col5 and t1.col2=t2.col2 and "
+            "t1.col3=t1.col3";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        CheckEqual(index_map, {{"t2", {"col2,col3,col5;;lat,0,1"}}});
+    }
+    {
+        // when join on t3, conditions have both t1 and t2
+        auto sql =
+            "SELECT * FROM t1 last join t2 on t1.col1=t2.col1 last join t3 on t1.col1=t3.col1 and t2.col1=t3.col1";
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
+        // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
+        // {t2[col_name: "col1" col_name: "col5" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
+        CheckEqual(index_map, {{"t2", {"col1;;lat,0,1"}}, {"t3", {"col1;;lat,0,1"}}});
+    }
 }
 
 TEST_F(DDLParserTest, multiDBExtractIndexes) {

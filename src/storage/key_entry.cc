@@ -36,7 +36,7 @@ void KeyEntry::Release(uint32_t idx, StatisticsInfo* statistics_info) {
         if (node->GetValue()->dim_cnt_down > 1) {
             node->GetValue()->dim_cnt_down--;
         } else {
-            DEBUGLOG("delele data block for key %lu", node->GetKey());
+            VLOG(1) << "delete data block for key " << node->GetKey();
             statistics_info->record_byte_size += GetRecordSize(node->GetValue()->size);
             delete node->GetValue();
         }

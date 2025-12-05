@@ -766,6 +766,30 @@ TEST_F(UdfIRBuilderTest, SubstringPosUdfTest) {
                                             StringRef("1234567890"), -12);
 }
 
+TEST_F(UdfIRBuilderTest, LocateUdfTest) {
+    CheckUdf<int32_t, StringRef, StringRef>("locate", 1, StringRef("ab"), StringRef("abcab"));
+    CheckUdf<int32_t, StringRef, StringRef>("locate", 3, StringRef("ab"), StringRef("bcab"));
+    CheckUdf<int32_t, StringRef, StringRef>("locate", 0, StringRef("ab"), StringRef("bcAb"));
+    CheckUdf<int32_t, StringRef, StringRef>("locate", 1, StringRef(""), StringRef(""));
+}
+
+TEST_F(UdfIRBuilderTest, LocatePosUdfTest) {
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 0, StringRef("ab"), StringRef("ab"), -1);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 0, StringRef("ab"), StringRef("Ab"), 1);
+
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 4, StringRef("ab"), StringRef("abcab"), 2);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 0, StringRef("ab"), StringRef("abcAb"), 2);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 4, StringRef("ab"), StringRef("abcab"), 2);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 0, StringRef("ab"), StringRef("abcab"), 6);
+
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 5, StringRef(""), StringRef("abcab"), 5);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 6, StringRef(""), StringRef("abcab"), 6);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 0, StringRef(""), StringRef("abcab"), 7);
+
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 1, StringRef(""), StringRef(""), 1);
+    CheckUdf<int32_t, StringRef, StringRef, int32_t>("locate", 0, StringRef(""), StringRef(""), 2);
+}
+
 TEST_F(UdfIRBuilderTest, UpperUcase) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("upper", StringRef("SQL"), StringRef("Sql"));
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("ucase", StringRef("SQL"), StringRef("Sql"));

@@ -2026,7 +2026,7 @@ cases:
           - [12, 0, "b"]
     sql: |
       SELECT {0}.id, 
-        count_where(id, ifnull(c1, "a") = ifnull(first_value(c1), "a")) OVER w1 AS count_where
+        count_where(id, ifnull(c1, "a") = ifnull(last_value(c1), "a")) OVER w1 AS count_where
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
@@ -2401,15 +2401,15 @@ cases:
       - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
         indexs: [ "index1:group1:ts" ]
         name: t1
-        data: |
-          1, 1612130400000, g1, 1
-          2, 1612130401000, g1, 2
-          3, 1612130402000, g1, 3
-          4, 1612130403000, g1, 4
-          5, 1612130404000, g1, 5
-          6, 1612130404000, g2, 4
-          7, 1612130405000, g2, 3
-          8, 1612130406000, g2, 2
+        rows: 
+          - [1, 1612130400000, g1, 1]
+          - [2, 1612130401000, g1, 2]
+          - [3, 1612130402000, g1, 3]
+          - [4, 1612130403000, g1, 4]
+          - [5, 1612130404000, g1, 5]
+          - [6, 1612130404000, g2, 4]
+          - [7, 1612130405000, g2, 3]
+          - [8, 1612130406000, g2, 2]
     sql: |
       select
       `id`,
@@ -2440,22 +2440,22 @@ cases:
       - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
         indexs: [ "index1:group1:ts" ]
         name: t1
-        data: |
-          1, 1612130400000, g1, 1
-          2, 1612130401000, g1, 2
-          3, 1612130402000, g1, 3
-          4, 1612130403000, g1, 4
-          5, 1612130404000, g1, 5
-          6, 1612130405000, g2, 4
-          7, 1612130406000, g2, 3
-          8, 1612130407000, g2, 2
+        rows: 
+          - [1, 1612130400000, g1, 1]
+          - [2, 1612130401000, g1, 2]
+          - [3, 1612130402000, g1, 3]
+          - [4, 1612130403000, g1, 4]
+          - [5, 1612130404000, g1, 5]
+          - [6, 1612130405000, g2, 4]
+          - [7, 1612130406000, g2, 3]
+          - [8, 1612130407000, g2, 2]
     sql: |
       select
       `id`,
       `val1`,
       lag(val1, 0) over w1 as agg1,
       lag(val1, 3) over w1 as agg2,
-      first_value(val1) over w1 as agg3
+      last_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
     expect:
@@ -2480,15 +2480,15 @@ cases:
       - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
         indexs: [ "index1:group1:ts" ]
         name: t1
-        data: |
-          1, 1612130400000, g1, 1
-          2, 1612130401000, g1, 2
-          3, 1612130402000, g1, 3
-          4, 1612130403000, g1, 4
-          5, 1612130404000, g1, 5
-          6, 1612130405000, g2, 4
-          7, 1612130406000, g2, 3
-          8, 1612130407000, g2, 2
+        rows: 
+          - [1, 1612130400000, g1, 1]
+          - [2, 1612130401000, g1, 2]
+          - [3, 1612130402000, g1, 3]
+          - [4, 1612130403000, g1, 4]
+          - [5, 1612130404000, g1, 5]
+          - [6, 1612130405000, g2, 4]
+          - [7, 1612130406000, g2, 3]
+          - [8, 1612130407000, g2, 2]
     sql: |
       select
       `id`,
@@ -2519,22 +2519,22 @@ cases:
       - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
         indexs: [ "index1:group1:ts" ]
         name: t1
-        data: |
-          1, 1612130400000, g1, 1
-          2, 1612130401000, g1, 2
-          3, 1612130402000, g1, 3
-          4, 1612130403000, g1, 4
-          5, 1612130404000, g1, 5
-          6, 1612130405000, g2, 4
-          7, 1612130406000, g2, 3
-          8, 1612130407000, g2, 2
+        rows: 
+          - [1, 1612130400000, g1, 1]
+          - [2, 1612130401000, g1, 2]
+          - [3, 1612130402000, g1, 3]
+          - [4, 1612130403000, g1, 4]
+          - [5, 1612130404000, g1, 5]
+          - [ 6, 1612130405000, g2, 4]
+          - [7, 1612130406000, g2, 3]
+          - [8, 1612130407000, g2, 2]
     sql: |
       select
       `id`,
       `val1`,
       lag(val1, 0) over w1 as agg1,
       lag(val1, 3) over w1 as agg2,
-      first_value(val1) over w1 as agg3
+      last_value(val1) over w1 as agg3
       from `t1` WINDOW
         w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
     expect:

@@ -37,20 +37,21 @@ function tool_install() {
     chmod +x bazel
 }
 
-if [ "$USE_DEPS_CACHE" == "true" ]; then
-    echo "use deps cache, exit"
-    exit 0
-else
-    echo "not use deps cache, install tools and build deps"
-fi
-
 if [ "$IN_WORKFLOW" == "true" ]; then
     echo "in workflow"
 else
     echo "in self build"
 fi
 
+echo "always install tools"
 tool_install
+
+if [ "$USE_DEPS_CACHE" == "true" ]; then
+    echo "use deps cache, exit"
+    exit 0
+else
+    echo "no deps cache, build deps"
+fi
 
 echo "set envs, if IN_WORKFLOW, you should set envs in workflow"
 new_path=$PATH:$(pwd)

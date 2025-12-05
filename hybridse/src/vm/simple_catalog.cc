@@ -70,8 +70,14 @@ SimpleCatalogTableHandler::SimpleCatalogTableHandler(
     // init types var
     for (int32_t i = 0; i < table_def.columns_size(); i++) {
         const type::ColumnDef &column = table_def.columns(i);
-        codec::ColInfo col_info(column.name(), column.type(), i, 0);
-        types_dict_.insert(std::make_pair(column.name(), col_info));
+        if (column.has_schema()) {
+            // new schema field
+            types_dict_.emplace(column.name(), ColInfo(column.name(), column.schema(), i, 0));
+        } else {
+            // old type field
+            codec::ColInfo col_info(column.name(), column.type(), i, 0);
+            types_dict_.emplace(column.name(), col_info);
+        }
     }
 
     // init index hint
@@ -165,12 +171,15 @@ bool SimpleCatalogTableHandler::DecodeKeysAndTs(const IndexSt &index,
                                                 uint32_t size, std::string &key,
                                                 int64_t *time_ptr) {
     for (const auto &col : index.keys) {
+        // expect keys and ts as base types, so calling 'type()' is generally safe
+        assert(col.schema.has_base_type());
+
         if (!key.empty()) {
             key.append("|");
         }
         if (row_view_.IsNULL(buf, col.idx)) {
             key.append(codec::NONETOKEN);
-        } else if (col.type == ::hybridse::type::kVarchar) {
+        } else if (col.type() == ::hybridse::type::kVarchar) {
             const char *val = NULL;
             uint32_t length = 0;
             row_view_.GetValue(buf, col.idx, &val, &length);
@@ -181,7 +190,7 @@ bool SimpleCatalogTableHandler::DecodeKeysAndTs(const IndexSt &index,
             }
         } else {
             int64_t value = 0;
-            row_view_.GetInteger(buf, col.idx, col.type, &value);
+            row_view_.GetInteger(buf, col.idx, col.type(), &value);
             key.append(std::to_string(value));
         }
     }

@@ -24,7 +24,7 @@ namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
 
-SchemaImpl::SchemaImpl(const vm::Schema& schema) : schema_(schema) {}
+SchemaImpl::SchemaImpl(const codec::Schema& schema) : schema_(schema) {}
 
 SchemaImpl::~SchemaImpl() {}
 

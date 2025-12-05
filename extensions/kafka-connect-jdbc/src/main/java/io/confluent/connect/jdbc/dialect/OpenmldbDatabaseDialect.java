@@ -196,7 +196,7 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
       default: { }
     }
     if (schemaBuilder == null) {
-      log.warn("openmldb schema builder for sqlType {} is null, "
+      log.debug("openmldb schema builder for sqlType {} is null, "
               + "use GenericDatabaseDialect method",
           sqlType);
       return super.addFieldToSchema(columnDefn, builder, fieldName, sqlType, optional);

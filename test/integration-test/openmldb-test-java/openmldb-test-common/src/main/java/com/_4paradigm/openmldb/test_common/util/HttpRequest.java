@@ -15,7 +15,10 @@
  */
 package com._4paradigm.openmldb.test_common.util;
 
+import com._4paradigm.openmldb.test_common.restful.model.HttpData;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
+import com.google.gson.Gson;
+
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
 import org.apache.commons.collections4.MapUtils;
@@ -58,7 +61,7 @@ public class HttpRequest {
         	link += "?" + mapToHttpString(dataMap);
         	//log.info("请求的data:" + mapToJson(dataMap));
         }
-    	log.info("请求的url:" + link);
+    	log.info("request url:" + link);
         CookieStore cookieStore = new BasicCookieStore();
         CloseableHttpClient httpclient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
         HttpGet httpget = new HttpGet(link);
@@ -75,13 +78,11 @@ public class HttpRequest {
         HttpEntity entity = response.getEntity();
         // 把内容转成字符串
         String resultString = EntityUtils.toString(entity, "utf-8");
-        log.info("请求的返回code:" + code);
-        log.info("请求的返回data:" + resultString);
+        log.info("response code:" + code + " data:"+ resultString);
         return getHttpResult(resultString, code,headers,cookies,beginTime,endTime);
     }
     public static HttpResult postJson(String link, Map<String, Object> dataMap, Map<String, String> headMap) throws Exception {
-        log.info("请求的url:" + link);
-        log.info("请求的data:" + mapToJson(dataMap));
+    	log.info("request url:" + link + " data: "+mapToJson(dataMap));
         CookieStore cookieStore = new BasicCookieStore();
         CloseableHttpClient httpclient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
         HttpPost httpost = new HttpPost(link.toString());
@@ -98,13 +99,11 @@ public class HttpRequest {
         HttpEntity entity = response.getEntity();
         // 把内容转成字符串
         String resultString = EntityUtils.toString(entity);
-        log.info("请求的返回code:" + code);
-        log.info("请求的返回data:" + resultString);
+        log.info("response code:" + code + " data:"+ resultString);
         return getHttpResult(resultString, code,headers,cookies,beginTime,endTime);
     }
     public static HttpResult postJson(String link, String json, Map<String, String> headMap) throws Exception {
-        log.info("请求的url:" + link);
-        log.info("请求的data:" + json);
+    	log.info("request url:" + link + " data: "+json);
         CookieStore cookieStore = new BasicCookieStore();
         CloseableHttpClient httpclient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
         HttpPost httpPost = new HttpPost(link.toString());
@@ -124,13 +123,11 @@ public class HttpRequest {
         HttpEntity entity = response.getEntity();
         // 把内容转成字符串
         String resultString = EntityUtils.toString(entity);
-        log.info("请求的返回code:" + code);
-        log.info("请求的返回data:" + resultString);
+        log.info("response code:" + code + " data:"+ resultString);
         return getHttpResult(resultString, code,headers,cookies,beginTime,endTime);
     }
     public static HttpResult put(String link, String json, Map<String, String> headMap) throws IOException {
-        log.info("请求的url:" + link);
-        log.info("请求的data:" + json);
+    	log.info("request url:" + link + " data: "+json);
         CookieStore cookieStore = new BasicCookieStore();
         CloseableHttpClient httpclient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
         HttpPut httpPut = new HttpPut(link.toString());
@@ -148,8 +145,7 @@ public class HttpRequest {
         HttpEntity entity = response.getEntity();
         // 把内容转成字符串
         String resultString = EntityUtils.toString(entity);
-        log.info("请求的返回code:" + code);
-        log.info("请求的返回data:" + resultString);
+        log.info("response code:" + code + " data:"+ resultString);
         return getHttpResult(resultString, code,headers,cookies,beiginTime,endTime);
     }
     public static String uploadFile(String filename, String url) throws IOException {
@@ -287,8 +283,7 @@ public class HttpRequest {
     }
 
     public static HttpResult put(String link, Map<String, Object> dataMap, Map<String, String> headMap) throws IOException {
-        log.info("请求的url:" + link);
-        log.info("请求的data:" + mapToJson(dataMap));
+    	log.info("request url:" + link + " data: "+mapToJson(dataMap));
         CookieStore cookieStore = new BasicCookieStore();
         CloseableHttpClient httpclient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
         HttpPut httpput = new HttpPut(link.toString());
@@ -305,8 +300,7 @@ public class HttpRequest {
         HttpEntity entity = response.getEntity();
         // 把内容转成字符串
         String resultString = EntityUtils.toString(entity);
-        log.info("请求的返回code:" + code);
-        log.info("请求的返回data:" + resultString);
+        log.info("response code:" + code + " data:"+ resultString);
         return getHttpResult(resultString, code,headers,cookies,beiginTime,endTime);
     }
 
@@ -360,12 +354,12 @@ public class HttpRequest {
         httpResult.setBeginTime(beginTime);
         httpResult.setEndTime(endTime);
         httpResult.setData(result);
-//        if(Tool.isJSONValid(result)) {
-//            JsonElement jsonElement = new JsonParser().parse(result);
-//            httpResult.setData(jsonElement);
-//        }else{
-//            httpResult.setData(result);
-//        }
+    //    if(Tool.isJSONValid(result)) {
+    //        JsonElement jsonElement = new JsonParser().parse(result);
+    //        httpResult.setData(jsonElement);
+    //    }else{
+    //        httpResult.setData(result);
+    //    }
         return httpResult;
     }
 }

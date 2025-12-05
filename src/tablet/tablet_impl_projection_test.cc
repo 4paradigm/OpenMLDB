@@ -33,12 +33,6 @@
 #include "tablet/tablet_impl.h"
 #include "test/util.h"
 
-DECLARE_string(db_root_path);
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
-DECLARE_string(recycle_bin_root_path);
-DECLARE_string(recycle_bin_ssd_root_path);
-DECLARE_string(recycle_bin_hdd_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
@@ -71,31 +65,6 @@ struct TestArgs {
     ::openmldb::common::TTLSt ttl_desc;
     TestArgs() : schema(), plist(), output_schema() {}
     ~TestArgs() {}
-};
-
-class DiskTestEnvironment : public ::testing::Environment{
-    virtual void SetUp() {
-        std::vector<std::string> file_path;
-        ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-        ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-    }
-    virtual void TearDown() {
-        std::vector<std::string> file_path;
-        ::openmldb::base::SplitString(FLAGS_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-        ::openmldb::base::SplitString(FLAGS_recycle_bin_hdd_root_path, ",", file_path);
-        for (uint32_t i = 0; i < file_path.size(); i++) {
-            ::openmldb::base::RemoveDirRecursive(file_path[i]);
-        }
-    }
 };
 
 class TabletProjectTest : public ::testing::TestWithParam<TestArgs*> {
@@ -675,14 +644,9 @@ INSTANTIATE_TEST_SUITE_P(TabletProjectPrefix, TabletProjectTest, testing::Values
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(new ::openmldb::tablet::DiskTestEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_projection_test");
     srand(time(NULL));
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
-    FLAGS_hdd_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());;
-    FLAGS_recycle_bin_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
-    FLAGS_recycle_bin_hdd_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

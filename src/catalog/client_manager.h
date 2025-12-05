@@ -56,6 +56,7 @@ class TabletRowHandler : public ::hybridse::vm::RowHandler {
     ::hybridse::codec::Row row_;
     openmldb::RpcCallback<openmldb::api::QueryResponse>* callback_;
 };
+
 class AsyncTableHandler : public ::hybridse::vm::MemTableHandler {
  public:
     explicit AsyncTableHandler(openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback,
@@ -91,6 +92,7 @@ class AsyncTableHandler : public ::hybridse::vm::MemTableHandler {
     openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback_;
     bool request_is_common_;
 };
+
 class AsyncTablesHandler : public ::hybridse::vm::MemTableHandler {
  public:
     AsyncTablesHandler();
@@ -130,17 +132,20 @@ class AsyncTablesHandler : public ::hybridse::vm::MemTableHandler {
 
 class TabletAccessor : public ::hybridse::vm::Tablet {
  public:
-    explicit TabletAccessor(const std::string& name) : name_(name), tablet_client_() {}
+    explicit TabletAccessor(const std::string& name,
+                            const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : name_(name), tablet_client_(), auth_token_(auth_token) {}
 
-    TabletAccessor(const std::string& name, const std::shared_ptr<::openmldb::client::TabletClient>& client)
-        : name_(name), tablet_client_(client) {}
+    TabletAccessor(const std::string& name, const std::shared_ptr<::openmldb::client::TabletClient>& client,
+                   const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : name_(name), tablet_client_(client), auth_token_(auth_token) {}
 
     std::shared_ptr<::openmldb::client::TabletClient> GetClient() {
         return std::atomic_load_explicit(&tablet_client_, std::memory_order_relaxed);
     }
 
     bool UpdateClient(const std::string& endpoint) {
-        auto client = std::make_shared<::openmldb::client::TabletClient>(name_, endpoint);
+        auto client = std::make_shared<::openmldb::client::TabletClient>(name_, endpoint, auth_token_);
         if (client->Init() != 0) {
             return false;
         }
@@ -168,29 +173,16 @@ class TabletAccessor : public ::hybridse::vm::Tablet {
  private:
     std::string name_;
     std::shared_ptr<::openmldb::client::TabletClient> tablet_client_;
+    const openmldb::authn::AuthToken auth_token_;
 };
+
 class TabletsAccessor : public ::hybridse::vm::Tablet {
  public:
     TabletsAccessor() : name_("TabletsAccessor"), rows_cnt_(0) {}
     ~TabletsAccessor() {}
     const std::string& GetName() const { return name_; }
-    void AddTabletAccessor(std::shared_ptr<Tablet> accessor) {
-        if (!accessor) {
-            LOG(WARNING) << "Fail to add null tablet accessor";
-            return;
-        }
-        auto iter = name_idx_map_.find(accessor->GetName());
-        if (iter == name_idx_map_.cend()) {
-            accessors_.push_back(accessor);
-            name_idx_map_.insert(std::make_pair(accessor->GetName(), accessors_.size() - 1));
-            posinfos_.push_back(std::vector<size_t>({rows_cnt_}));
-            assign_accessor_idxs_.push_back(accessors_.size() - 1);
-        } else {
-            posinfos_[iter->second].push_back(rows_cnt_);
-            assign_accessor_idxs_.push_back(iter->second);
-        }
-        rows_cnt_++;
-    }
+    void AddTabletAccessor(std::shared_ptr<Tablet> accessor);
+
     std::shared_ptr<hybridse::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
                                                        const hybridse::codec::Row& row, const bool is_procedure,
                                                        const bool is_debug) override;
@@ -209,6 +201,7 @@ class TabletsAccessor : public ::hybridse::vm::Tablet {
     std::vector<std::vector<size_t>> posinfos_;
     std::map<std::string, size_t> name_idx_map_;
 };
+
 class PartitionClientManager {
  public:
     PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
@@ -235,65 +228,18 @@ class TableClientManager {
 
     TableClientManager(const ::openmldb::storage::TableSt& table_st, const ClientManager& client_manager);
 
-    void Show() const {
-        DLOG(INFO) << "show client manager ";
-        for (size_t id = 0; id < partition_managers_.size(); id++) {
-            auto pmg = std::atomic_load_explicit(&partition_managers_[id], std::memory_order_relaxed);
-            if (pmg) {
-                if (pmg->GetLeader()) {
-                    DLOG(INFO) << "partition managers (pid, leader) " << id << ", " << pmg->GetLeader()->GetName();
-                } else {
-                    DLOG(INFO) << "partition managers (pid, leader) " << id << ", null leader";
-                }
-            } else {
-                DLOG(INFO) << "partition managers (pid, leader) " << id << ", null mamanger";
-            }
-        }
-    }
-    std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const {
-        if (pid < partition_managers_.size()) {
-            return std::atomic_load_explicit(&partition_managers_[pid], std::memory_order_relaxed);
-        }
-        return std::shared_ptr<PartitionClientManager>();
-    }
+    void Show() const;
+
+    std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const;
 
     bool UpdatePartitionClientManager(const ::openmldb::storage::PartitionSt& partition,
                                       const ClientManager& client_manager);
 
-    std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const {
-        auto partition_manager = GetPartitionClientManager(pid);
-        if (partition_manager) {
-            return partition_manager->GetLeader();
-        }
-        return std::shared_ptr<TabletAccessor>();
-    }
+    std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const;
 
-    std::vector<std::shared_ptr<TabletAccessor>> GetTabletFollowers(uint32_t pid) const {
-        auto partition_manager = GetPartitionClientManager(pid);
-        if (partition_manager) {
-            return partition_manager->GetFollowers();
-        }
-        return {};
-    }
+    std::vector<std::shared_ptr<TabletAccessor>> GetTabletFollowers(uint32_t pid) const;
 
-    std::shared_ptr<TabletsAccessor> GetTablet(std::vector<uint32_t> pids) const {
-        std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
-        for (size_t idx = 0; idx < pids.size(); idx++) {
-            auto partition_manager = GetPartitionClientManager(pids[idx]);
-            if (partition_manager) {
-                auto leader = partition_manager->GetLeader();
-                if (!leader) {
-                    LOG(WARNING) << "fail to get TabletsAccessor, null tablet for pid " << pids[idx];
-                    return std::shared_ptr<TabletsAccessor>();
-                }
-                tablets_accessor->AddTabletAccessor(partition_manager->GetLeader());
-            } else {
-                LOG(WARNING) << "fail to get tablet: pid " << pids[idx] << " not exist";
-                return std::shared_ptr<TabletsAccessor>();
-            }
-        }
-        return tablets_accessor;
-    }
+    std::shared_ptr<TabletsAccessor> GetTablet(std::vector<uint32_t> pids) const;
 
  private:
     std::vector<std::shared_ptr<PartitionClientManager>> partition_managers_;
@@ -301,7 +247,8 @@ class TableClientManager {
 
 class ClientManager {
  public:
-    ClientManager() : real_endpoint_map_(), clients_(), mu_(), rand_(0xdeadbeef) {}
+    explicit ClientManager(const openmldb::authn::AuthToken auth_token = openmldb::authn::ServiceToken{"default"})
+        : real_endpoint_map_(), clients_(), mu_(), rand_(0xdeadbeef), auth_token_(auth_token) {}
     std::shared_ptr<TabletAccessor> GetTablet(const std::string& name) const;
     std::shared_ptr<TabletAccessor> GetTablet() const;
     std::vector<std::shared_ptr<TabletAccessor>> GetAllTablet() const;
@@ -315,6 +262,7 @@ class ClientManager {
     std::unordered_map<std::string, std::shared_ptr<TabletAccessor>> clients_;
     mutable ::openmldb::base::SpinMutex mu_;
     mutable ::openmldb::base::Random rand_;
+    const openmldb::authn::AuthToken auth_token_;
 };
 
 }  // namespace catalog

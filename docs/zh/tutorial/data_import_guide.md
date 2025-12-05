@@ -6,7 +6,7 @@ OpenMLDB分为单机版和集群版。单机版中，数据仅保存在内存中
 
 ## 集群版数据导入
 
-### 1 离线导入（ `LOAD DATA`）
+### 离线导入（ `LOAD DATA`）
 
 - OpenMLDB本身不提供离线存储引擎，但需要指定离线存储的地址，即修改taskmanager配置项`offline.data.prefix`，可以是本地目录、hdfs、s3等存储介质。
 
@@ -21,15 +21,15 @@ OpenMLDB分为单机版和集群版。单机版中，数据仅保存在内存中
 表的离线数据地址如果是软链接，OpenMLDB 不支持追加（append）数据到该表离线存储中，因为我们无权修**软链接目录**下的数据。OpenMLDB 仅支持覆盖（overwrite）该表的离线数据地址。如果覆盖了，原软链接目录下的数据也不会被删除，仅仅是OpenMLDB中丢弃了该原始目录。
 ```
 
-### 2 在线导入
+### 在线导入
 
 OpenMLDB集群版的在线模式提供自建的在线存储引擎（保存于内存中）。因此，在线导入**只有硬拷贝**。
 
-#### 2.1 `LOAD DATA`
+#### `LOAD DATA`
 
 在**在线预览模式**和**在线请求模式**下执行 [`LOAD DATA`命令](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)，支持读取csv和parquet格式的文件。
 
-#### 2.2 流式导入（stream）
+#### 流式导入（stream）
 
 OpenMLDB支持从`Pulsar`， `Kafka` 和 `RocketMQ `在线导入数据，详见
 - [Pulsar Connector](../integration/online_datasources/pulsar_connector_demo)
@@ -42,5 +42,5 @@ OpenMLDB的[openmldb-import工具](../tutorial/data_import.md)，提供了bulk l
 
 但该工具仍处于开发中，因此，目前有诸多限制。包括：
 1. 仅支持导入本地的csv多文件。
-1. 仅支持单机运行工具，单机内存要求较高，可能需要大于“导入数据的总量”。
+2. 仅支持单机运行工具，单机内存要求较高，可能需要大于“导入数据的总量”。
 

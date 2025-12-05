@@ -18,10 +18,7 @@
 #define HYBRIDSE_INCLUDE_CODEC_FE_SCHEMA_CODEC_H_
 
 #include <cstring>
-#include <iostream>
-#include <map>
 #include <string>
-#include <vector>
 #include "vm/catalog.h"
 
 namespace hybridse {
@@ -56,7 +53,7 @@ class SchemaCodec {
             if (it->name().size() >= 128) {
                 return false;
             }
-            uint8_t name_size = (uint8_t)(it->name().size());
+            uint8_t name_size = static_cast<uint8_t>(it->name().size());
             memcpy(cbuffer, static_cast<const void*>(&name_size), 1);
             cbuffer += 1;
             memcpy(cbuffer, static_cast<const void*>(it->name().c_str()),
@@ -66,7 +63,7 @@ class SchemaCodec {
         return true;
     }
 
-    static bool Decode(const std::string& buf, vm::Schema* schema) {
+    static bool Decode(const std::string& buf, codec::Schema* schema) {
         if (schema == NULL) return false;
         if (buf.size() <= 0) return true;
         const char* buffer = buf.c_str();

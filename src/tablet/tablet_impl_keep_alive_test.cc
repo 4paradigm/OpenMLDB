@@ -91,7 +91,6 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_keep_alive_test");
     return RUN_ALL_TESTS();
 }

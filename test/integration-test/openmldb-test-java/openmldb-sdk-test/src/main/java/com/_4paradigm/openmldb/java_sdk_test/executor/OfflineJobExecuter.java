@@ -123,7 +123,12 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
 
                 // write inputs to csv file
                 String filePath = offlineDataPrefix+tableName+ ".csv";
-                ExecUtil.exeCommand("touch "+filePath);
+                try {
+                    ExecUtil.exeCommand("touch "+filePath);
+                } catch (Exception e) {
+                    // TODO: handle exception
+                }
+                
                 try {
                     BufferedWriter bufferedWriter = new BufferedWriter(
                             new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"));

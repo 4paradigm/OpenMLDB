@@ -4,9 +4,9 @@ Limit子句用于限制返回的结果条数。Limit支持接受一个参数，�
 
 ## Syntax
 
-```sql
-LimitClause
-         ::= 'LIMIT' int_leteral
+```yacc
+limit_clause:
+  LIMIT numeric_expression
 ```
 
 ## SQL语句模版

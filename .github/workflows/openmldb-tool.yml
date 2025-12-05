@@ -20,6 +20,8 @@ env:
   GIT_SUBMODULE_STRATEGY: recursive
   DEPLOY_DIR: /mnt/hdd0/openmldb_runner_work/openmldb_env
   NODE_LIST: node-1,node-2,node-3
+  # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   openmldb-tool-test:
@@ -48,7 +50,7 @@ jobs:
             bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
       - name: upload python test results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |
@@ -57,6 +59,9 @@ jobs:
   openmldb-tool-name:
     runs-on: [self-hosted,generic]
     if: github.repository == '4paradigm/OpenMLDB'
+    env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     steps:
@@ -82,7 +87,7 @@ jobs:
             bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
       - name: upload python test results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |

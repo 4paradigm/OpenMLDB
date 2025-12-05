@@ -6,7 +6,12 @@
 mvn package -DskipTests=true
 ```
 
-代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持项目内的测试，`10.5.0-SNAPSHOT-0.8.1`即使用OpenMLDB 0.8.1的发行包，可以脱离OpenMLDB项目进行打包。
+代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持在项目内进行OpenMLDB connect测试，`10.5.0-SNAPSHOT-0.8.1`即使用OpenMLDB 0.8.1的发行包，可以脱离OpenMLDB项目进行打包。
+
+部分功能测试：
+```bash
+mvn test -Dtest="io.confluent.connect.jdbc.sink.BufferedRecordsTest"
+```
 
 ## Auto Schema
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
@@ -44,6 +49,12 @@ auto.create=false
     "c9_timestamp": 1651051906000
 }
 ```
+
+- Json支持传入null，注意，不是双引号格式的字符串。
+
+- 早期版本不支持只写入部分列，timestamp列和date列不支持字符串格式。0.8.5及以后的Kafka connector，支持只导入部分列，也支持timestamp和date列传入字符串格式。
+    - 部分列：Message只有一列`c1_int16`，等价于`insert into t1 (c1_int16) values (?)`，t1表的其余列将填写默认值。
+    - 字符串格式：包括"yyyy-MM-dd","yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm","yyyy/MM/dd","yyyy-MM-dd HH:mm:ss.S","yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"。
 
 ### message convert for auto schema
 

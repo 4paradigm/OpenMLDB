@@ -17,6 +17,8 @@
 
 #include <string>
 #include <utility>
+
+#include "base/cartesian_product.h"
 #include "glog/logging.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
@@ -43,6 +45,8 @@
 namespace hybridse {
 namespace vm {
 
+static void InitBuiltinJitSymbols(HybridSeJitWrapper* jit_ptr);
+
 bool HybridSeJitWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     std::string buf_str(buf.addr, buf.size);
     ::llvm::SMDiagnostic diagnostic;
@@ -50,23 +54,55 @@ bool HybridSeJitWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     auto mem_buf = ::llvm::MemoryBuffer::getMemBuffer(buf_str);
     auto llvm_module = parseIR(*mem_buf, diagnostic, *llvm_ctx);
     if (llvm_module == nullptr) {
-        LOG(WARNING) << "Parse module failed: module string is\n" << buf_str;
+        LOG(WARNING) << "Parse module failed: module string is:\n" << buf_str;
         std::string err_msg;
         llvm::raw_string_ostream err_msg_stream(err_msg);
-        diagnostic.print("", err_msg_stream);
+        diagnostic.print("llvm_module_from_buf", err_msg_stream);
+        err_msg_stream.flush();
+        LOG(WARNING) << err_msg;
         return false;
     }
     return this->AddModule(std::move(llvm_module), std::move(llvm_ctx));
 }
 
+HybridSeJitWrapper::HybridSeJitWrapper() {}
+
+base::Status HybridSeJitWrapper::InitJitSymbols() {
+    // default builitin
+    InitBuiltinJitSymbols(this);
+    // udf external functions
+    if (lib_ == nullptr) {
+        lib_ = udf::DefaultUdfLibrary::get();
+    }
+    lib_->InitJITSymbols(this);
+    return {};
+}
+
 bool HybridSeJitWrapper::InitJitSymbols(HybridSeJitWrapper* jit) {
+    // default builitin
     InitBuiltinJitSymbols(jit);
+    // udf external functions
     udf::DefaultUdfLibrary::get()->InitJITSymbols(jit);
     return true;
 }
 
 HybridSeJitWrapper* HybridSeJitWrapper::Create() {
     return Create(JitOptions());
+}
+
+HybridSeJitWrapper* HybridSeJitWrapper::CreateWithDefaultSymbols(udf::UdfLibrary* lib, base::Status* status,
+                                                                 const JitOptions& options) {
+    auto jit = vm::HybridSeJitWrapper::Create(options);
+    jit->SetLib(lib);
+    if (!jit->Init()) {
+        LOG(WARNING) << "fail to init jit";
+        *status = {common::kCodegenError, "fail to init jit"};
+        return nullptr;
+    }
+    return jit;
+}
+HybridSeJitWrapper* HybridSeJitWrapper::CreateWithDefaultSymbols(base::Status* status, const JitOptions& options) {
+    return CreateWithDefaultSymbols(udf::DefaultUdfLibrary::get(), status, options);
 }
 
 HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
@@ -79,11 +115,10 @@ HybridSeJitWrapper* HybridSeJitWrapper::Create(const JitOptions& jit_options) {
         return new HybridSeLlvmJitWrapper();
 #endif
     } else {
-        if (jit_options.IsEnableVtune() || jit_options.IsEnablePerf() ||
-            jit_options.IsEnableGdb()) {
+        if (jit_options.IsEnableVtune() || jit_options.IsEnablePerf()) {
             LOG(WARNING) << "LLJIT do not support jit events";
         }
-        return new HybridSeLlvmJitWrapper();
+        return new HybridSeLlvmJitWrapper(jit_options);
     }
 }
 
@@ -98,6 +133,7 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
     jit->AddExternalFunction("memset", (reinterpret_cast<void*>(&memset)));
     jit->AddExternalFunction("memcpy", (reinterpret_cast<void*>(&memcpy)));
     jit->AddExternalFunction("__bzero", (reinterpret_cast<void*>(&bzero)));
+    jit->AddExternalFunction("printLog", (reinterpret_cast<void*>(&udf::v1::printLog)));
 
     jit->AddExternalFunction(
         "hybridse_storage_get_bool_field",
@@ -173,6 +209,8 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
 
     jit->AddExternalFunction("hybridse_storage_encode_string_field",
                              reinterpret_cast<void*>(&codec::v1::AppendString));
+    jit->AddExternalFunction("hybridse_storage_encode_string_offset",
+                             reinterpret_cast<void*>(&codec::v1::EncodeStrOffset));
     jit->AddExternalFunction(
         "hybridse_storage_encode_calc_size",
         reinterpret_cast<void*>(&codec::v1::CalcTotalLength));
@@ -215,6 +253,11 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
         "fmod", reinterpret_cast<void*>(
                     static_cast<double (*)(double, double)>(&fmod)));
     jit->AddExternalFunction("fmodf", reinterpret_cast<void*>(&fmodf));
+
+    // cartesian product
+    jit->AddExternalFunction("hybridse_array_combine", reinterpret_cast<void*>(&hybridse::udf::v1::array_combine));
+    jit->AddExternalFunction("hybridse_alloc_array_string",
+                             reinterpret_cast<void*>(&hybridse::udf::v1::AllocManagedArray<codec::StringRef>));
 }
 
 }  // namespace vm

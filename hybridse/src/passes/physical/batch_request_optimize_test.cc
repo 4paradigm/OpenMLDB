@@ -18,6 +18,7 @@
 #include "gtest/gtest.h"
 #include "testing/engine_test_base.h"
 #include "vm/sql_compiler.h"
+#include "vm/engine.h"
 
 namespace hybridse {
 namespace vm {
@@ -48,6 +49,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     BatchRequestUdafQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("cases/query/udaf_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    BatchRequestFeatureSignatureQuery, BatchRequestOptimizeTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/query/feature_signature_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     BatchRequestExtreamQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("cases/query/extream_query.yaml")));
@@ -253,7 +257,6 @@ TEST_P(BatchRequestOptimizeTest, test_with_common_columns) {
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";
     ::testing::InitGoogleTest(&argc, argv);
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

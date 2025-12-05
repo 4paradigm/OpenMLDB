@@ -15,13 +15,14 @@
  */
 
 #include "codegen/fn_let_ir_builder.h"
+
 #include "codegen/aggregate_ir_builder.h"
+#include "codegen/buf_ir_builder.h"
 #include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
-#include "vm/transform.h"
 
 using ::hybridse::common::kCodegenError;
 
@@ -108,9 +109,30 @@ Status RowFnLetIRBuilder::Build(
     std::map<std::string, AggregateIRBuilder> window_agg_builder;
     uint32_t agg_builder_id = 0;
 
-    auto expr_list = compile_func->body();
+    auto fn_body = compile_func->body();
+    auto expr_list = fn_body;
+    auto maybe_let_expr = fn_body->GetAsOrNull<node::LetExpr>();
+    bool is_let_fn_body = maybe_let_expr != nullptr;
+    if (is_let_fn_body) {
+        expr_list = maybe_let_expr->expr();
+    }
     CHECK_TRUE(project_frames.size() == expr_list->GetChildNum(), kCodegenError,
                "Frame num should match expr num");
+
+    if (is_let_fn_body) {
+        for (auto& entry : maybe_let_expr->ctx().bindings) {
+            auto key = entry.id_node;
+            auto exp = entry.expr;
+            auto frame = entry.frame;
+            CHECK_STATUS(BindProjectFrame(&expr_ir_builder, frame, compile_func, ctx_->GetCurrentBlock(), sv));
+            NativeValue exp_out;
+            CHECK_STATUS(expr_ir_builder.Build(exp, &exp_out));
+
+            base::Status s;
+            variable_ir_builder.StoreValue(key->GetExprString(), exp_out, s);
+            CHECK_STATUS(s);
+        }
+    }
 
     for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
         const ::hybridse::node::ExprNode* expr = expr_list->GetChild(i);
@@ -171,7 +193,8 @@ base::Status RowFnLetIRBuilder::EncodeBuf(
     VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
-    BufNativeEncoderIRBuilder encoder(values, &schema, block);
+    BufNativeEncoderIRBuilder encoder(ctx_, values, &schema);
+    CHECK_STATUS(encoder.Init());
     NativeValue row_ptr;
     variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
     CHECK_STATUS(status)
@@ -234,8 +257,9 @@ Status RowFnLetIRBuilder::BuildProject(
                kCodegenError, "Fail to get output type at ", index, ", expect ",
                expr->GetOutputType()->GetName());
 
-    ::hybridse::type::Type ctype;
-    CHECK_TRUE(DataType2SchemaType(*data_type, &ctype), kCodegenError);
+    ::hybridse::type::ColumnSchema schema;
+    auto s = Type2ColumnSchema(data_type, &schema);
+    CHECK_TRUE(s.ok(), kCodegenError, s.ToString());
 
     outputs->insert(std::make_pair(index, expr_out_val));
     return Status::OK();

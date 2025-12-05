@@ -54,7 +54,6 @@ public class JitManager {
             if(!jit.Init()){
                 throw new RuntimeException("Fail to init jit");
             }
-            HybridSeJitWrapper.InitJitSymbols(jit);
             jits.put(tag, jit);
         }
         return jits.get(tag);
@@ -135,6 +134,8 @@ public class JitManager {
      * @param tag module tag
      */
     public static synchronized void removeModule(String tag) {
+        // HybridSeJitWrapper is a proxy class to C pointer, Java do not automatic
+        // lifetime of C pointer, so it must made explicitly
         initializedModuleTags.remove(tag);
         HybridSeJitWrapper jit = jits.remove(tag);
         if (jit != null) {

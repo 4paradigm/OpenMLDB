@@ -4,11 +4,15 @@ OpenMLDB 在 0.7.2 开始支持 WITH 子句。WITH 子句借鉴了 [WITH Clause 
 
 ## Syntax
 
-```
-'WITH' non_recursive_cte [, ... ]
+```yacc
+query:
+  [ WITH {non_recursive_cte}[, ...] ]
+  { select | ( query ) | set_operation }
+  [ ORDER BY ordering_expression ]
+  [ LIMIT count ]
 
-non_recursive_cte
-         ::= cte_name 'AS' '(' SelectStmt ')'
+non_recursive_cte:
+  cte_name AS ( query )
 ```
 
 ## Description

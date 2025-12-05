@@ -89,7 +89,7 @@ void CreateBaseTable(::openmldb::storage::Table*& table,  // NOLINT
         dim->set_key(row[1]);
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
-        ASSERT_TRUE(table->Put(0, value, request.dimensions()));
+        ASSERT_TRUE(table->Put(0, value, request.dimensions()).ok());
     }
     return;
 }
@@ -389,7 +389,7 @@ TEST_P(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
 }
 
-INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletFuncTest,
+INSTANTIATE_TEST_SUITE_P(TabletMemAndHDD, TabletFuncTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD,
                                           ::openmldb::common::kSSD));
 
@@ -399,9 +399,6 @@ INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletFuncTest,
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    ::openmldb::test::TempPath tmp_path;
-    FLAGS_db_root_path = tmp_path.GetTempPath();
-    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
-    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
+    ::openmldb::test::InitRandomDiskFlags("tablet_impl_func_test");
     return RUN_ALL_TESTS();
 }

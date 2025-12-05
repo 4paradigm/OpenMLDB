@@ -58,5 +58,4 @@ class TestUnsafeRowProject extends SparkTestSuite {
     val sparksqlOutputDf = sess.sparksql(sqlText)
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
-
 }

@@ -92,9 +92,9 @@ int main(int argc, char* argv[]) {
     } else {
         std::string zk_cluster, zk_root_path;
         ReadZKFromYaml(FLAGS_config_path, &zk_cluster, &zk_root_path);
-        ::openmldb::sdk::ClusterOptions cluster_options;
-        cluster_options.zk_cluster = zk_cluster;
-        cluster_options.zk_path = zk_root_path;
+        auto cluster_options = std::make_shared<::openmldb::sdk::SQLRouterOptions>();
+        cluster_options->zk_cluster = zk_cluster;
+        cluster_options->zk_path = zk_root_path;
         tablemeta_reader = new ::openmldb::tools::ClusterTablemetaReader(FLAGS_db_name, FLAGS_table_name,
                                                             tablet_map, cluster_options);
     }

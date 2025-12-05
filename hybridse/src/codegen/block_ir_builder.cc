@@ -15,15 +15,15 @@
  */
 
 #include "codegen/block_ir_builder.h"
+
 #include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/list_ir_builder.h"
 #include "codegen/struct_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "codegen/variable_ir_builder.h"
 #include "glog/logging.h"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
 
 using ::hybridse::common::kCodegenError;
@@ -290,16 +290,18 @@ bool BlockIRBuilder::BuildReturnStmt(const ::hybridse::node::FnReturnStmt *node,
     }
     ::llvm::Value *value = value_wrapper.GetValue(&builder);
     if (TypeIRBuilder::IsStructPtr(value->getType())) {
-        StructTypeIRBuilder *struct_builder =
-            StructTypeIRBuilder::CreateStructTypeIRBuilder(block->getModule(),
-                                                           value->getType());
+        auto struct_builder = StructTypeIRBuilder::CreateStructTypeIRBuilder(block->getModule(), value->getType());
+        if (!struct_builder.ok()) {
+            status.code = kCodegenError;
+            status.msg = struct_builder.status().ToString();
+            return false;
+        }
         NativeValue ret_value;
         if (!var_ir_builder.LoadRetStruct(&ret_value, status)) {
             LOG(WARNING) << "fail to load ret struct address";
             return false;
         }
-        if (!struct_builder->CopyFrom(block, value,
-                                      ret_value.GetValue(&builder))) {
+        if (!struct_builder.value()->CopyFrom(block, value, ret_value.GetValue(&builder))) {
             return false;
         }
         value = builder.getInt1(true);

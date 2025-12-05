@@ -38,7 +38,7 @@ windows:
     start: 1d PRECEDING
     end: CURRENT ROW
 
-  - name: w2 # 多表时间窗口配置， 目前UNION只支持同schema的表UION
+  - name: w2 # 多表时间窗口配置， 目前UNION只支持同schema的表进行UNION
     union: t2
     partition_by: vendor_id
     order_by: pickup_datetime

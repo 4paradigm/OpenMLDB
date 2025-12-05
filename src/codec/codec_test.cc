@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "boost/container/deque.hpp"
+#include "codec/encrypt.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
@@ -539,6 +540,13 @@ TEST_F(CodecTest, RowBuilderSet) {
     int64_t ts = 0;
     ASSERT_EQ(view.GetTimestamp(7, &ts), 0);
     ASSERT_EQ(ts, 1668149927000);
+}
+
+TEST_F(CodecTest, Encrypt) {
+    ASSERT_EQ(SHA256("root"), "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2");
+    ASSERT_EQ(SHA256(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    ASSERT_EQ(Encrypt("root"), "14813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2");
+    ASSERT_EQ(Encrypt(""), "1e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 }
 
 }  // namespace codec

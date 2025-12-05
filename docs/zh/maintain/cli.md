@@ -281,6 +281,22 @@ recover table ok
 Cancel op ok!
 ```
 
+### deleteop
+
+删除op。可以指定op\_id删除一个op, 也可以指定op类型删除对应类型的所有op
+
+命令格式: deleteop op\_id / op\_status
+
+* op\_id 需要删除的op id
+* op\_status 需要删除的op的状态。 可以指定的状态有done, failed和canceled
+
+```
+> deleteop 5
+Delete op ok!
+> deleteop done
+Delete op ok!
+```
+
 ### showopstatus
 
 显示操作执行信息
@@ -379,7 +395,7 @@ $ ./openmldb --endpoint=172.27.2.52:9520 --role=client
 
 ### loadtable
 
-1、加载已有表
+加载已有表，只支持内存表
 
 命令格式: loadtable table\_name tid pid ttl segment\_cnt
 

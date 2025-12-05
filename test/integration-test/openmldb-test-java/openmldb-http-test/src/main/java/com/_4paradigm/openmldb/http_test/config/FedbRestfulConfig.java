@@ -77,7 +77,8 @@ public class FedbRestfulConfig {
 
         BASE_PATH = CONFIG.getProperty(RestfulGlobalVar.env + "_base_path");
         // BASE_URL = CONFIG.getProperty(RestfulGlobalVar.env + "_base_url");
-        DB_NAME = CONFIG.getProperty(RestfulGlobalVar.env + "_db_name");
+        // DB_NAME = CONFIG.getProperty(RestfulGlobalVar.env + "_db_name");
+        DB_NAME = "test_restful";
         log.info("HybridSEConfig: db_name: {}", DB_NAME);
         String versionStr = System.getProperty("fedbVersion");
         if (StringUtils.isEmpty(versionStr)) {

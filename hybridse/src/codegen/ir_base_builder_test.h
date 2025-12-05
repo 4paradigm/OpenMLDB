@@ -22,8 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include "codegen/ir_base_builder.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 
 #include "base/fe_status.h"
@@ -34,8 +34,7 @@
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
-#include "udf/udf.h"
-#include "vm/sql_compiler.h"
+#include "vm/jit_wrapper.h"
 
 namespace hybridse {
 namespace codegen {
@@ -198,14 +197,12 @@ class ModuleTestFunction {
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
-        jit = std::unique_ptr<vm::HybridSeJitWrapper>(
-            vm::HybridSeJitWrapper::Create());
-        jit->Init();
-        InitBuiltinJitSymbols(jit.get());
-        if (library != nullptr) {
-            library->InitJITSymbols(jit.get());
-        } else {
-            udf::DefaultUdfLibrary::get()->InitJITSymbols(jit.get());
+        base::Status s;
+        jit =
+            std::unique_ptr<vm::HybridSeJitWrapper>(vm::HybridSeJitWrapper::CreateWithDefaultSymbols(library, &s, {}));
+        if (jit == nullptr || !s.isOK()) {
+            LOG(WARNING) << "create jit failed" << s;
+            return;
         }
 
         llvm::errs() << *(module.get()) << "\n";
@@ -360,9 +357,12 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyArg(
             ::llvm::Value* alloca;
             if (TypeIRBuilder::IsStructPtr(expect_ty)) {
                 auto struct_builder =
-                    StructTypeIRBuilder::CreateStructTypeIRBuilder(
-                        function->getEntryBlock().getModule(), expect_ty);
-                struct_builder->CreateDefault(&function->getEntryBlock(),
+                    StructTypeIRBuilder::CreateStructTypeIRBuilder(function->getEntryBlock().getModule(), expect_ty);
+                if (!struct_builder.ok()) {
+                    LOG(WARNING) << struct_builder.status();
+                    return;
+                }
+                struct_builder.value()->CreateDefault(&function->getEntryBlock(),
                                               &alloca);
                 arg = builder.CreateSelect(
                     is_null, alloca, builder.CreatePointerCast(arg, expect_ty));

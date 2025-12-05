@@ -24,6 +24,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/glog_wrapper.h"
+#include "common/timer.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
@@ -31,15 +33,15 @@
 namespace openmldb::storage {
 
 static constexpr uint32_t MAX_INDEX_NUM = 200;
-static constexpr uint32_t DEFUALT_TS_COL_ID = UINT32_MAX;
-static constexpr const char* DEFUALT_TS_COL_NAME = "default_ts";
+static constexpr uint32_t DEFAULT_TS_COL_ID = UINT32_MAX;
+static constexpr const char* DEFAULT_TS_COL_NAME = "___default_ts___";
 
 enum TTLType { kAbsoluteTime = 1, kRelativeTime = 2, kLatestTime = 3, kAbsAndLat = 4, kAbsOrLat = 5 };
 
 // ttl unit: millisecond
 struct TTLSt {
-    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(::openmldb::storage::TTLType::kAbsoluteTime) {}
-    TTLSt(uint64_t abs, uint64_t lat, ::openmldb::storage::TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    TTLSt() : abs_ttl(0), lat_ttl(0), ttl_type(TTLType::kAbsoluteTime) {}
+    TTLSt(uint64_t abs, uint64_t lat, TTLType type) : abs_ttl(abs), lat_ttl(lat), ttl_type(type) {}
 
     // common::TTLSt::abs_ttl unit is min
     explicit TTLSt(const ::openmldb::common::TTLSt& ttl) : abs_ttl(ttl.abs_ttl() * 60 * 1000), lat_ttl(ttl.lat_ttl()) {
@@ -91,17 +93,17 @@ struct TTLSt {
         }
     }
 
-    bool IsExpired(uint64_t abs, uint32_t record_idx) const {
+    bool IsExpired(uint64_t abs, uint32_t record_idx, uint64_t current_time) const {
         switch (ttl_type) {
             case TTLType::kAbsoluteTime:
                 if (abs_ttl == 0) return false;
-                return abs <= abs_ttl;
+                return (abs + abs_ttl) <= current_time;
             case TTLType::kLatestTime:
                 if (lat_ttl == 0) return false;
                 return record_idx > lat_ttl;
             case TTLType::kAbsAndLat:
                 if (abs_ttl == 0 || lat_ttl == 0) return false;
-                return abs <= abs_ttl && record_idx > lat_ttl;
+                return (abs + abs_ttl) <= current_time && record_idx > lat_ttl;
             case TTLType::kAbsOrLat: {
                 if (abs_ttl == 0) {
                     if (lat_ttl == 0) {
@@ -109,9 +111,9 @@ struct TTLSt {
                     }
                     return record_idx > lat_ttl;
                 } else if (lat_ttl == 0) {
-                    return abs <= abs_ttl;
+                    return (abs + abs_ttl) <= current_time;
                 } else {
-                    return abs <= abs_ttl || record_idx > lat_ttl;
+                    return (abs + abs_ttl) <= current_time || record_idx > lat_ttl;
                 }
             }
             default:
@@ -135,6 +137,40 @@ struct TTLSt {
     }
 
     uint64_t abs_ttl;
+    uint64_t lat_ttl;
+    TTLType ttl_type;
+};
+
+struct ExpiredChecker {
+    ExpiredChecker(uint64_t abs, uint64_t lat, TTLType type) : abs_expired_ttl(abs), lat_ttl(lat), ttl_type(type) {}
+    bool IsExpired(uint64_t abs, uint32_t record_idx) const {
+        switch (ttl_type) {
+            case TTLType::kAbsoluteTime:
+                if (abs_expired_ttl == 0) return false;
+                return abs <= abs_expired_ttl;
+            case TTLType::kLatestTime:
+                if (lat_ttl == 0) return false;
+                return record_idx > lat_ttl;
+            case TTLType::kAbsAndLat:
+                if (abs_expired_ttl == 0 || lat_ttl == 0) return false;
+                return abs <= abs_expired_ttl && record_idx > lat_ttl;
+            case TTLType::kAbsOrLat: {
+                if (abs_expired_ttl == 0) {
+                    if (lat_ttl == 0) {
+                        return false;
+                    }
+                    return record_idx > lat_ttl;
+                } else if (lat_ttl == 0) {
+                    return abs <= abs_expired_ttl;
+                } else {
+                    return abs <= abs_expired_ttl || record_idx > lat_ttl;
+                }
+            }
+            default:
+                return true;
+        }
+    }
+    uint64_t abs_expired_ttl;
     uint64_t lat_ttl;
     TTLType ttl_type;
 };
@@ -163,7 +199,7 @@ class ColumnDef {
         return false;
     }
 
-    inline bool IsAutoGenTs() const { return id_ == DEFUALT_TS_COL_ID; }
+    inline bool IsAutoGenTs() const { return id_ == DEFAULT_TS_COL_ID; }
 
  private:
     std::string name_;
@@ -192,6 +228,11 @@ class IndexDef {
     IndexDef(const std::string& name, uint32_t id, IndexStatus status);
     IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::openmldb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& status, ::openmldb::type::IndexType type,
+             const std::vector<ColumnDef>& column_idx_map, common::IndexType index_type)
+        : IndexDef(name, id, status, type, column_idx_map) {
+        index_type_ = index_type;
+    }
     const std::string& GetName() const { return name_; }
     inline const std::shared_ptr<ColumnDef>& GetTsColumn() const { return ts_column_; }
     void SetTsColumn(const std::shared_ptr<ColumnDef>& ts_column) { ts_column_ = ts_column; }
@@ -208,15 +249,22 @@ class IndexDef {
     inline uint32_t GetInnerPos() const { return inner_pos_; }
     ::openmldb::common::ColumnKey GenColumnKey();
 
+    common::IndexType GetIndexType() const { return index_type_; }
+    bool IsSecondaryIndex() { return index_type_ == common::IndexType::kSecondary; }
+    bool IsClusteredIndex() { return index_type_ == common::IndexType::kClustered; }
+
  private:
     std::string name_;
     uint32_t index_id_;
     uint32_t inner_pos_;
     std::atomic<IndexStatus> status_;
+    // for compatible, type is only kTimeSerise
     ::openmldb::type::IndexType type_;
     std::vector<ColumnDef> columns_;
     std::shared_ptr<TTLSt> ttl_st_;
     std::shared_ptr<ColumnDef> ts_column_;
+    // 0 covering, 1 clustered, 2 secondary, default 0
+    common::IndexType index_type_ = common::IndexType::kCovering;
 };
 
 class InnerIndexSt {
@@ -228,19 +276,28 @@ class InnerIndexSt {
                 ts_.push_back(ts_col->GetId());
             }
         }
+        LOG_IF(DFATAL, ts_.size() != index_.size()) << "ts size not equal to index size";
     }
     inline uint32_t GetId() const { return id_; }
     inline const std::vector<uint32_t>& GetTsIdx() const { return ts_; }
+    // len(ts) == len(type)
+    inline std::vector<common::IndexType> GetTsIdxType() const {
+        std::vector<common::IndexType> ts_idx_type;
+        for (const auto& cur_index : index_) {
+            if (cur_index->GetTsColumn()) ts_idx_type.push_back(cur_index->GetIndexType());
+        }
+        return ts_idx_type;
+    }
     inline const std::vector<std::shared_ptr<IndexDef>>& GetIndex() const { return index_; }
     uint32_t GetKeyEntryMaxHeight(uint32_t abs_max_height, uint32_t lat_max_height) const;
+    // -1 means no clustered idx in here, it's safe to cvt to uint32_t when id >= 0
+    int64_t ClusteredTsId();
 
  private:
     const uint32_t id_;
     const std::vector<std::shared_ptr<IndexDef>> index_;
     std::vector<uint32_t> ts_;
 };
-
-bool ColumnDefSortFunc(const ColumnDef& cd_a, const ColumnDef& cd_b);
 
 class TableIndex {
  public:

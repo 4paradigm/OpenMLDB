@@ -175,7 +175,7 @@ object ExpressionUtil {
         ExpressionUtil.constExprToSparkColumn(const)
       case ExprType.kExprCast =>
         val cast = CastExprNode.CastFrom(expr)
-        val castType = cast.getCast_type_
+        val castType = cast.base_cast_type
         val childCol = recursiveGetSparkColumnFromExpr(cast.GetChild(0), node, leftDf, rightDf, hasIndexColumn)
         // Convert OpenMLDB node datatype to Spark datatype
         childCol.cast(DataTypeUtil.openmldbTypeToSparkType(castType))

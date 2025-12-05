@@ -1,5 +1,5 @@
 =============================
-Upstream and downstream ecology
+Upstream and Downstream Ecology
 =============================
 
 .. toctree::

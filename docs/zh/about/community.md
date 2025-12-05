@@ -8,12 +8,13 @@
 - [GitHub repo](https://github.com/4paradigm/OpenMLDB)：用于存放产品的所有开源代码。
 - [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)：用于提交 bugs 以及反馈产品需求。
 - [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)：用于讨论任何和 OpenMLDB 相关的内容。
-- [Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)：海外用户和开发者交流沟通的社区。
 - [开发者邮件群组和邮件列表](https://groups.google.com/g/openmldb-developers)
 - Email: [contact@openmldb.ai](https://partner.outlook.cn/mail/deeplink/compose?mailtouri=mailto%3Acontact@openmldb.ai)
+- [Slack](https://join.slack.com/t/openmldb/shared_invite/zt-ozu3llie-K~hn9Ss1GZcFW2~K_L5sMg)：海外用户和开发者交流沟通的社区。
 - 微信技术交流群：若你想提问或者获取技术支持，可以微信扫描二维码进入技术交流群。
 
 ![wechat](images/wechat.png)
+
 
 
 ## 参与贡献

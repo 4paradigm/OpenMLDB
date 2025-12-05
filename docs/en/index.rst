@@ -11,6 +11,19 @@ OpenMLDB Docs (|version|)
     tutorial/index
     use_case/index
     deploy/index
+    openmldb_sql/index
+    integration/index
     maintain/index
-    developer/index
     reference/index
+    developer/index
+    faq/index
+    blog_post/index
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+    :caption: 📚 Application Ecosystem
+
+    app_ecosystem/feat_insight/index
+    app_ecosystem/sql_emulator/index
+    app_ecosystem/open_mysql_db/index

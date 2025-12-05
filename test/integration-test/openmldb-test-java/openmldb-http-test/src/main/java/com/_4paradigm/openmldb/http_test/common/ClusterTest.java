@@ -28,6 +28,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
+import com._4paradigm.openmldb.test_common.provider.YamlUtil;
+import com._4paradigm.openmldb.test_common.util.Tool;
 
 @Slf4j
 public class ClusterTest extends BaseTest{
@@ -52,7 +54,9 @@ public class ClusterTest extends BaseTest{
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(false);
             RestfulGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
-        } else {
+        } else if(env.equalsIgnoreCase("deploy")){
+            RestfulGlobalVar.mainInfo = YamlUtil.getObject(Tool.openMLDBDir().getAbsolutePath()+"/out/openmldb_info.yaml",OpenMLDBInfo.class); 
+        }  else {
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
             openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
             openMLDBInfo.setNsNum(2);

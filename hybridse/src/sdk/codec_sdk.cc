@@ -73,7 +73,7 @@ bool RowIOBufView::Reset(const butil::IOBuf& buf) {
         return false;
     }
     str_addr_length_ = codec::GetAddrLength(size_);
-    DLOG(INFO) << "size " << size_ << " addr length " << str_addr_length_;
+    DLOG(INFO) << "size " << size_ << " addr length " << (unsigned int)str_addr_length_;
     return true;
 }
 

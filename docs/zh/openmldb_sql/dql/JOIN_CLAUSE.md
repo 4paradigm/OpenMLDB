@@ -16,16 +16,16 @@ LAST JOIN 是 OpenMLDB SQL 拓展的 JOIN类型. 它的语法和 LEFT JOIN 基�
 
 ## Syntax
 
-```
-join:
-    TableRef "LAST" "JOIN" TableRef [OrderByClause] "ON" Expression 
-    | TableRef join_type "JOIN" TableRef "ON" Expression
+```yacc
+join_operation:
+  condition_join_operation
 
-join_type:
-    'LEFT' [OUTER]
+condition_join_operation:
+  from_item LEFT [ OUTER ] JOIN from_item join_condition
+  | from_item LAST JOIN [ ORDER BY ordering_expression ] from_item join_condition
 
-order_by_clause:
-    'ORDER' 'BY' <COLUMN_NAME>
+join_condition:
+  ON bool_expression
 ```
 
 ### 使用限制说明
@@ -48,7 +48,7 @@ SELECT ... FROM t1 LEFT JOIN t2 ON expression;
 | SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                 |
 | :--------------------------------------------- | --------- | ------------ | ------------ |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | LAST JOIN | **``✓``** | **``x``** | **``✓``** | 表示数据来源多个表JOIN。在线请求模式下，需要遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)                                        |
-| LEFT JOIN | **``x``** | **``x``** | **``✓``** | 由于 LEFT JOIN 是一对多 JOIN, 本身不能直接用于在线请求模式. 但是可以作为其他类型查询内部的子查询, 例如作为 LAST JOIN 的右表. 具体参考[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范) |
+| LEFT JOIN | **``✓``** | **``x``** | **``✓``** | 由于 LEFT JOIN 是一对多 JOIN, 本身不能直接用于在线请求模式. 但是可以作为其他类型查询内部的子查询, 例如作为 LAST JOIN 的右表. 具体参考[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范) |
 
 
 ### 未排序的LAST JOIN 
