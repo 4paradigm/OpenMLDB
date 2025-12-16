@@ -525,7 +525,7 @@ int LogReader::RollRLogFile() {
     LogParts::Iterator* it = logs_->NewIterator();
     if (logs_->GetSize() <= 0) {
         delete it;
-        PDLOG(WARNING, "no log avaliable");
+        PDLOG(WARNING, "no log available");
         return -1;
     }
     it->SeekToFirst();

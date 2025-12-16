@@ -55,7 +55,7 @@ OpenMLDB 是一款开源的高性能全内存 SQL 数据库，在时序数据存
 2. 拉取[测试代码](https://github.com/4paradigm/OpenMLDB/tree/main/benchmark)
 3. 修改配置
     - 配置文件：`src/main/resources/memory.properties` -- [[link](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/resources/memory.properties)]
-    - 配置说明：必须确认`REDIS_HOST_PORT`和`ZK_CLUSTE`配置与实际测试环境一致， 其它配置为测试数据量相关配置，请按需配置。注意：如果数据量过大，测试耗时会比较长。
+    - 配置说明：必须确认`REDIS_HOST_PORT`和`ZK_CLUSTER`配置与实际测试环境一致， 其它配置为测试数据量相关配置，请按需配置。注意：如果数据量过大，测试耗时会比较长。
 4. 运行测试：【github benchmark Readme 中相关路径】
 5. 查看输出结果
 

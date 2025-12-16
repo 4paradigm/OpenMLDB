@@ -17,7 +17,7 @@ SHOW COMPONENTS;
 
 
 ```{note}
-Currently, there are certain limitations of `SHOW COMPONETS`:
+Currently, there are certain limitations of `SHOW COMPONENTS`:
 - It does not include the information of the APIServer.
 - It can only shows the information of one leader task manager, but is not working for followers.
 - The `Connect_time` of nameserver in tha standalone version is inaccurate.  

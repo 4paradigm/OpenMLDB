@@ -459,7 +459,7 @@ class RequestQueryRewriteUnparser : public zetasql::parser::Unparser {
 
     void constSelectListAsConfigClause(const std::vector<const zetasql::ASTExpression*>& selects, void* data) {
         print("CONFIG (execute_mode = 'request', values = (");
-        for (int i = 0; i < selects.size(); ++i) {
+        for (size_t i = 0; i < selects.size(); ++i) {
             selects.at(i)->Accept(this, data);
             if (i + 1 < selects.size()) {
                 print(",");

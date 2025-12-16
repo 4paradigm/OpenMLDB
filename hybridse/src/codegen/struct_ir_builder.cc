@@ -301,7 +301,7 @@ absl::StatusOr<NativeValue> Combine(CodeGenContextBase* ctx, const NativeValue d
     llvm::Value* input_arrays = builder->CreateAlloca(input_arr_type, builder->getInt32(args.size()), "array_data");
     node::NodeManager nm;
     std::vector<NativeValue> casted_args(args.size());
-    for (int i = 0; i < args.size(); ++i) {
+    for (size_t i = 0; i < args.size(); ++i) {
         const node::TypeNode* tp = nullptr;
         if (!GetFullType(&nm, args.at(i).GetType(), &tp)) {
             return absl::InternalError("codegen error: fail to get valid type from llvm value");

@@ -29,6 +29,7 @@ enum FeatureSignatureType {
     kFeatureSignatureBinaryLabel = 200,
     kFeatureSignatureMulticlassLabel = 201,
     kFeatureSignatureRegressionLabel = 202,
+    kFeatureSignatureIndex = 300,
 };
 
 template <typename T>
@@ -115,6 +116,17 @@ struct MulticlassLabel {
     }
 };
 
+template <typename T>
+struct GCFormatIndex {
+    using Args = Tuple<int32_t, Nullable<T>>(Nullable<T>);
+    void operator()(T v, bool is_null, int32_t* feature_signature, T* ret, bool* null_flag) {
+        *feature_signature = kFeatureSignatureIndex;
+        *null_flag = is_null;
+        if (!is_null) {
+            *ret = v;
+        }
+    }
+};
 
 template <typename T>
 struct RegressionLabel {
@@ -246,6 +258,12 @@ struct GCFormat {
                 }
                 break;
             }
+            case kFeatureSignatureIndex: {
+                if (!is_null) {
+                    instance_index = input;
+                }
+                break;
+            }
             default: {
                 ++slot_number;
                 break;
@@ -258,12 +276,18 @@ struct GCFormat {
     }
 
     std::string Output() {
-        return instance_label + " | " + instance_feature;
+        std::string instance_index_str = " ";
+        if (instance_index >= 0) {
+            instance_index_str = " " + std::to_string(instance_index);
+        }
+        return instance_label + instance_index_str + "| " +
+               instance_feature;
     }
 
     size_t slot_number = 1;
     std::string instance_label;
     std::string instance_feature;
+    int64_t instance_index = -1;
 };
 
 struct CSV {
@@ -472,6 +496,19 @@ void DefaultUdfLibrary::InitFeatureSignature() {
              @since 0.9.0
         )")
         .args_in<bool, int16_t, int32_t, int64_t>();
+
+    RegisterExternalTemplate<v1::GCFormatIndex>("gcformat_index")
+        .doc(R"(
+             @brief Set the index/lineno of gcformat output.
+             Example:
+             @code{.sql}
+                select gcformat(gcformat_index(6));
+                -- output 6
+             @endcode
+
+             @since 0.9.3
+        )")
+        .args_in<int16_t, int32_t, int64_t>();
 
     RegisterExternalTemplate<v1::RegressionLabel>("regression_label")
         .doc(R"(

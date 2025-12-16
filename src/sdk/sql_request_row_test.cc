@@ -221,7 +221,7 @@ class SQLRequestRowBatchTest : public ::testing::Test {
     ::hybridse::vm::Schema non_common_schema;
 };
 
-TEST_F(SQLRequestRowBatchTest, batch_test_non_trival) {
+TEST_F(SQLRequestRowBatchTest, batch_test_non_trivial) {
     std::vector<size_t> common_indices = {0, 2};
     SQLRequestRowBatch* batch = NewSimpleBatch(common_indices);
 
@@ -242,7 +242,7 @@ TEST_F(SQLRequestRowBatchTest, batch_test_non_trival) {
     ASSERT_EQ(non_common_view.GetStringUnsafe(0), "world");
 }
 
-TEST_F(SQLRequestRowBatchTest, batch_test_trival) {
+TEST_F(SQLRequestRowBatchTest, batch_test_trivial) {
     std::vector<size_t> common_indices = {0, 1, 2};
     SQLRequestRowBatch* batch = NewSimpleBatch(common_indices);
 

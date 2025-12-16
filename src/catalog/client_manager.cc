@@ -183,7 +183,7 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
             return false;
         }
         if (!iter) {
-            status_.msg = "fail to sync table hander: iter is null";
+            status_.msg = "fail to sync table handler: iter is null";
             status_.code = hybridse::common::kResponseError;
             LOG(WARNING) << status_;
             return false;
@@ -348,7 +348,7 @@ std::shared_ptr<hybridse::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t tas
                                                                     const hybridse::codec::Row& row,
                                                                     const bool is_procedure, const bool is_debug) {
     return std::make_shared<::hybridse::vm::ErrorRowHandler>(::hybridse::common::kRpcError,
-                                                             "TabletsAccessor Unsupport SubQuery with request");
+                                                             "TabletsAccessor Unsupported SubQuery with request");
 }
 
 std::shared_ptr<hybridse::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,

@@ -270,7 +270,7 @@ void GrepGC4Abs(KeyEntry* entry, const Slice& key, const TTLSt& ttl, uint64_t cu
 void GrepGC4Lat(KeyEntry* entry, const Slice& key, const TTLSt& ttl, GCEntryInfo* gc_entry_info) {
     auto keep_cnt = ttl.lat_ttl;
     if (keep_cnt == 0) {
-        return;  // never exipre
+        return;  // never expire
     }
 
     std::unique_ptr<TimeEntries::Iterator> iter(entry->entries.NewIterator());
@@ -292,7 +292,7 @@ void GrepGC4Lat(KeyEntry* entry, const Slice& key, const TTLSt& ttl, GCEntryInfo
 void GrepGC4AbsAndLat(KeyEntry* entry, const Slice& key, const TTLSt& ttl, uint64_t cur_time, uint64_t ttl_offset,
                       GCEntryInfo* gc_entry_info) {
     if (ttl.abs_ttl == 0 || ttl.lat_ttl == 0) {
-        return;  // never exipre
+        return;  // never expire
     }
     // keep both
     uint64_t expire_time = cur_time - ttl_offset - ttl.abs_ttl;

@@ -17,17 +17,22 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 #define HYBRIDSE_INCLUDE_NODE_SQL_NODE_H_
 
+#include <absl/status/status.h>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "base/fe_status.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/filesystem/operations.hpp"
@@ -618,6 +623,7 @@ class ArrayElementExpr : public ExprNode {
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
+
 class FnNode : public SqlNode {
  public:
     FnNode() : SqlNode(kFn, 0, 0), indent(0) {}
@@ -1092,8 +1098,7 @@ class ConstNode : public ExprNode {
         switch (data_type_) {
             case kVarchar: {
                 std::string date_str(val_.vstr);
-                std::vector<std::string> date_vec;
-                boost::split(date_vec, date_str, boost::is_any_of("-"), boost::token_compress_on);
+                std::vector<std::string> date_vec = absl::StrSplit(date_str, absl::ByChar('-'), absl::SkipEmpty());
                 if (date_vec.size() < 3) {
                     LOG(WARNING) << "Invalid Date Format";
                     return false;
@@ -1867,6 +1872,59 @@ class EscapedExpr : public ExprNode {
     ExprNode* GetEscape() const {
         return GetChildOrNull(1);
     }
+};
+
+class LetExpr : public ExprNode {
+ public:
+    class LetCtxEntry {
+     public:
+        LetCtxEntry(ExprIdNode *id_node, ExprNode *expr, const FrameNode *frame)
+            : id_node(id_node), expr(expr), frame(frame) {}
+
+        ExprIdNode *id_node;
+        ExprNode *expr;  // referred udaf call
+        const FrameNode *frame;
+    };
+
+    class LetContext {
+     public:
+        base::Status Append(ExprIdNode *k, ExprNode *v, const FrameNode *frame) {
+            auto it = cache.find(k);
+            if (it == cache.end()) {
+                bindings.emplace_back(k, v, frame);
+                cache.emplace(k, v);
+            } else {
+                CHECK_TRUE(v == it->second, common::kPlanError,
+                           "let context: try mapping id node to two different resolved nodes");
+            }
+
+            return base::Status::OK();
+        }
+
+        bool empty() const noexcept { return bindings.empty(); }
+
+        // necessary let bindings, not all cached entry will appear in bindings
+        std::vector<LetCtxEntry> bindings;
+        absl::flat_hash_map<ExprIdNode *, ExprNode *> cache;
+    };
+
+    LetExpr(ExprNode *expr, const LetContext &ctx) : ExprNode(kExprLet), ctx_(ctx), expr_(expr) {
+        AddChild(expr);
+    }
+    ~LetExpr() override {}
+
+
+    const LetContext& ctx() const {return ctx_; }
+    ExprNode *expr() const { return expr_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    LetExpr *ShadowCopy(NodeManager *nm) const override;
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    LetContext ctx_;
+    ExprNode* expr_;
 };
 
 class ResTarget : public SqlNode {

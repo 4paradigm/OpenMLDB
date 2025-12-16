@@ -137,7 +137,7 @@ class NameServerImpl : public NameServer {
     void LoadTable(RpcController* controller, const LoadTableRequest* request, GeneralResponse* response,
                    Closure* done);
 
-    void CreateTableInternel(GeneralResponse& response,  // NOLINT
+    void CreateTableInternal(GeneralResponse& response,  // NOLINT
                              std::shared_ptr<::openmldb::nameserver::TableInfo> table_info, uint64_t cur_term,
                              uint32_t tid, std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
@@ -158,7 +158,7 @@ class NameServerImpl : public NameServer {
     void DeploySQL(RpcController* controller, const DeploySQLRequest* request, DeploySQLResponse* response,
                    Closure* done);
 
-    void DropTableInternel(const DropTableRequest& request, GeneralResponse& response,  // NOLINT
+    void DropTableInternal(const DropTableRequest& request, GeneralResponse& response,  // NOLINT
                            std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                            std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
 
@@ -407,7 +407,7 @@ class NameServerImpl : public NameServer {
 
     bool RecoverProcedureInfo();
 
-    int SetPartitionInfo(TableInfo& table_info);  // NOLINT
+    base::Status SetPartitionInfo(TableInfo& table_info);  // NOLINT
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
 
@@ -564,7 +564,7 @@ class NameServerImpl : public NameServer {
                             uint64_t parent_id, uint32_t concurrency);
     int CreateReLoadTableOP(const std::string& name, const std::string& db, uint32_t pid, const std::string& endpoint,
                             uint64_t parent_id, uint32_t concurrency, uint64_t remote_op_id,
-                            uint64_t& rep_cluter_op_id);  // NOLINT
+                            uint64_t& rep_cluster_op_id);  // NOLINT
     int CreateUpdatePartitionStatusOP(const std::string& name, const std::string& db, uint32_t pid,
                                       const std::string& endpoint, bool is_leader, bool is_alive, uint64_t parent_id,
                                       uint32_t concurrency);

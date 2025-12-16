@@ -213,7 +213,7 @@ void first_ge_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* i
 
 ### 编译动态库
 - 拷贝include目录 `https://github.com/4paradigm/OpenMLDB/tree/main/include` 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
-- 执行编译命令，其中 -I 指定inlcude目录的路径 -o 指定产出动态库的名称
+- 执行编译命令，其中 -I 指定include目录的路径 -o 指定产出动态库的名称
   
 ```shell
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++17 -fPIC

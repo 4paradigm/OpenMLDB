@@ -143,7 +143,7 @@ Important parameters include:
   - The lower bound time must be `>=` the upper bound time.
   - The lower bound row must follow the upper bound row.
 
-For more features, pleaes referr to [documentation](../openmldb_sql/dql/WHERE_CLAUSE.md).
+For more features, please refer to [documentation](../openmldb_sql/dql/WHERE_CLAUSE.md).
 
 #### Example
 

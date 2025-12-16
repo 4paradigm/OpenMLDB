@@ -87,8 +87,8 @@ class TabletSegmentHandler : public ::hybridse::vm::TableHandler {
 class TabletPartitionHandler : public ::hybridse::vm::PartitionHandler,
                                public std::enable_shared_from_this<hybridse::vm::PartitionHandler> {
  public:
-    TabletPartitionHandler(std::shared_ptr<::hybridse::vm::TableHandler> table_hander, const std::string &index_name)
-        : PartitionHandler(), table_handler_(table_hander), index_name_(index_name) {}
+    TabletPartitionHandler(std::shared_ptr<::hybridse::vm::TableHandler> table_handler, const std::string &index_name)
+        : PartitionHandler(), table_handler_(table_handler), index_name_(index_name) {}
 
     ~TabletPartitionHandler() {}
 

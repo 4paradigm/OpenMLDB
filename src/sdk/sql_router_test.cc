@@ -1013,7 +1013,7 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_TRUE(ok);
 }
 
-TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
+TEST_F(SQLRouterTest, smoketest_on_multi_partitions) {
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;

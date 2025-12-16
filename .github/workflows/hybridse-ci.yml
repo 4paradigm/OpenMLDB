@@ -32,10 +32,10 @@ jobs:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       TESTING_ENABLE_STRIP: ON
       # ref https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - uses: actions/checkout@v2
-
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Build HybridSE
         run: |
           make hybridse-build
@@ -46,7 +46,7 @@ jobs:
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-ut-result-cpp-${{ github.sha }}
           path: |
@@ -54,7 +54,7 @@ jobs:
 
   macos-build:
     name: Build in MacOS
-    runs-on: macos-latest
+    runs-on: macos-13
     env:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
@@ -62,10 +62,19 @@ jobs:
       HYBRIDSE_DEBUG: true
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: recursive
+      - name: Xcode Select Version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '14.1.0'
       - name: Install dependencies
         run: |
           brew install coreutils
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v1
+        with:
+          cmake-version: '3.22.0'
 
       - name: Cache thirdparty
         uses: actions/cache@v3
@@ -85,14 +94,14 @@ jobs:
 
       - name: Upload Event File
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: event-file
           path: ${{ github.event_path }}
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |

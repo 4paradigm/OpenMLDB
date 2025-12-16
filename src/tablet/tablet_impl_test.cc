@@ -2378,7 +2378,7 @@ TEST_P(TabletImplTest, LoadWithIncompleteBinlog) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
-    // not set end falg
+    // not set end flag
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
     // no record binlog
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);

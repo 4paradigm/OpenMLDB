@@ -84,7 +84,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(const PB
         }
         auto iter = STATE_MAP.find(op_status.status());
         if (iter == STATE_MAP.end()) {
-            *status = {-1, "unknow status " + op_status.status()};
+            *status = {-1, "unknown status " + op_status.status()};
             return {};
         }
         std::vector<std::string> vec = {

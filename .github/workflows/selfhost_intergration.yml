@@ -28,7 +28,7 @@ jobs:
     env:
       OS: linux
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: build
         shell: bash
         if: ${{ env.E_VERSION == 'main' }}
@@ -48,7 +48,7 @@ jobs:
          tar -zxf openmldb-${{ env.E_VERSION }}-linux.tar.gz 
          mv openmldb-${{ env.E_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
       - name: upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openmldb-package
           path: | 
@@ -63,12 +63,12 @@ jobs:
     
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb 
@@ -120,12 +120,12 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb
@@ -177,12 +177,12 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb
@@ -204,7 +204,6 @@ jobs:
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
-        shell: bash
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
@@ -235,12 +234,12 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb
@@ -262,7 +261,6 @@ jobs:
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
-        shell: bash
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
@@ -293,17 +291,17 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb
-        run: |
         shell: bash
+        run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
@@ -350,12 +348,12 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb
@@ -409,12 +407,12 @@ jobs:
     needs: build-openmldb
     runs-on: [self-hosted, generic]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name:  before test
         if: ${{ env.ETYPE == 'all' || env.ETYPE == 'java' }}
         run: mkdir ${{ github.job }}
       - name: download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: openmldb-package       
       - name: install openmldb

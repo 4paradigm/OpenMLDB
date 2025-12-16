@@ -24,6 +24,7 @@
 #include "apiserver/interface_provider.h"
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/ascii.h"
 #include "brpc/server.h"
 #include "butil/time.h"
 
@@ -160,7 +161,7 @@ void APIServerImpl::RegisterQuery() {
             writer << resp.Set("Json parse failed, " + req.status().ToString());
             return;
         }
-        auto mode = boost::to_lower_copy(req.mode);
+        auto mode = absl::AsciiStrToLower(req.mode);
         auto it = mode_map.find(mode);
         if (it == mode_map.end()) {
             writer << resp.Set("Invalid mode " + mode);
@@ -435,7 +436,7 @@ void APIServerImpl::RegisterPut() {
 
         for (int i = 0; i < cnt; ++i) {
             if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                writer << resp.Set(absl::StrCat("convertion failed on col ", schema->GetColumnName(i), "[",
+                writer << resp.Set(absl::StrCat("conversion failed on col ", schema->GetColumnName(i), "[",
                                                 schema->GetColumnType(i), "] with value ", arr[i].GetString()));
                 return;
             }

@@ -18,6 +18,7 @@
 
 #include <set>
 #include <utility>
+#include <vector>
 
 #include "passes/expression/window_iter_analysis.h"
 

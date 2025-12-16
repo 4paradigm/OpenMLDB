@@ -33,7 +33,7 @@ scrape_configs:
 ```
 完整配置参考[openmldb_mixin/prometheus_example.yml](https://github.com/4paradigm/openmldb-exporter/blob/main/openmldb_mixin/prometheus_example.yml)。
 
-参考命令：`docker run -d -v <config_file>:/etc/prometheus/prometheus.yml -p 9090:9090 -name promethues prom/prometheus`
+参考命令：`docker run -d -v <config_file>:/etc/prometheus/prometheus.yml -p 9090:9090 -name prometheus prom/prometheus`
 
 4. 启动Grafana，并使用OpenMLDB Dashboard模版
 
@@ -61,7 +61,7 @@ OpenMLDB exporter 是以 Python 实现的 Prometheus exporter，核心是通过�
 
 **请根据部署的 OpenMLDB 版本选择正确的 openmldb-exporter.**
 
-| [OpenMLDB Exporter version](https://pypi.org/project/openmldb-exporter/) | [OpenMLDB supported version](https://github.com/4paradigm/OpenMLDB/releases) | [Grafana Dashboard revision](https://grafana.com/grafana/dashboards/17843-openmldb-dashboard/?tab=revisions) | Explaination |
+| [OpenMLDB Exporter version](https://pypi.org/project/openmldb-exporter/) | [OpenMLDB supported version](https://github.com/4paradigm/OpenMLDB/releases) | [Grafana Dashboard revision](https://grafana.com/grafana/dashboards/17843-openmldb-dashboard/?tab=revisions) | Explanation |
 | ---- | ---- | ---- | ------- |
 | >= 0.9.0 | >= 0.8.4 | >=4 | OpenMLDB 0.8.4 移除了数据库表里的 deploy response time 信息 |
 | < 0.9.0  | >= 0.5.0, < 0.8.4 | 3 | |
@@ -114,7 +114,7 @@ curl http://<IP>:8000/metrics
 <details><summary>样例输出</summary>
 
 ```sh
-# HELP openmldb_connected_seconds_total duration for a component conncted time in seconds                              
+# HELP openmldb_connected_seconds_total duration for a component connected time in seconds                              
 # TYPE openmldb_connected_seconds_total counter                                                                        
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9520",role="tablet"} 208834.70900011063                         
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9521",role="tablet"} 208834.70700001717                         
@@ -122,7 +122,7 @@ openmldb_connected_seconds_total{endpoint="172.17.0.15:9522",role="tablet"} 2088
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9622",role="nameserver"} 208833.70000004768                     
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9623",role="nameserver"} 208831.70900011063                     
 openmldb_connected_seconds_total{endpoint="172.17.0.15:9624",role="nameserver"} 208829.7230000496                      
-# HELP openmldb_connected_seconds_created duration for a component conncted time in seconds                            
+# HELP openmldb_connected_seconds_created duration for a component connected time in seconds                            
 # TYPE openmldb_connected_seconds_created gauge                                                                        
 openmldb_connected_seconds_created{endpoint="172.17.0.15:9520",role="tablet"} 1.6501813860467942e+09                   
 openmldb_connected_seconds_created{endpoint="172.17.0.15:9521",role="tablet"} 1.6501813860495396e+09                   

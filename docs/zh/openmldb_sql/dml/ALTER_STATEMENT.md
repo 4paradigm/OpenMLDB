@@ -39,6 +39,6 @@ ALTER TABLE t1 ADD offline_path 'hdfs://foo/bar';
 -- Drop one offline path
 ALTER TABLE t1 DROP offline_path 'hdfs://foo/bar';
 
--- Add one offline path and drop anthor offline path
+-- Add one offline path and drop another offline path
 ALTER TABLE t1 ADD offline_path 'hdfs://foo/bar', DROP offline_path 'hdfs://foo/bar2';
 ```

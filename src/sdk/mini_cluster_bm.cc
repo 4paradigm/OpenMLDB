@@ -190,7 +190,7 @@ void MiniBenchmarkOnCase(hybridse::sqlcase::SqlCase& sql_case, BmRunMode engine_
             break;
         }
         default: {
-            FAIL() << "Unsupport Engine Mode " << engine_mode;
+            FAIL() << "Unsupported Engine Mode " << engine_mode;
         }
     }
 }

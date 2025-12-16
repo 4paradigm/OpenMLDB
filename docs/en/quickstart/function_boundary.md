@@ -35,7 +35,7 @@ After a successful deployment operation, it may create indexes, and the indexes 
 
 ### Long Window SQL
 
-Long Window SQL: This refers to the `DEPLOY` statement with the `OPTIONS(long_windows=...)` configuration item. For syntax details, please refer to [Long Window](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#long-window-optimazation). Deployment conditions for long-window SQL are relatively strict, and it's essential to ensure that the tables used in the SQL statements do not contain online data. Otherwise, even if deploying SQL that matches the previous one, the operation will still fail.
+Long Window SQL: This refers to the `DEPLOY` statement with the `OPTIONS(long_windows=...)` configuration item. For syntax details, please refer to [Long Window](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#long-window-optimization). Deployment conditions for long-window SQL are relatively strict, and it's essential to ensure that the tables used in the SQL statements do not contain online data. Otherwise, even if deploying SQL that matches the previous one, the operation will still fail.
 
 ### Regular SQL
 
@@ -64,7 +64,7 @@ The key difference between `offline_path` and `symbolic_paths` is that `offline_
 
 Therefore, if `offline_path` already exists offline, the `LOAD DATA` command can only modify `symbolic_paths`. If `symbolic_paths` already exist offline, the `LOAD DATA` command can be used to modify both `offline_path` and `symbolic_paths`.
 
-The `errorifexists` option will raise an error if there is offline information in the table. It will raise errors if performing hard copy when there's soft links, or performing soft copy when a hard copy exisits. 
+The `errorifexists` option will raise an error if there is offline information in the table. It will raise errors if performing hard copy when there's soft links, or performing soft copy when a hard copy exists. 
 
 ### LOAD DATA
 

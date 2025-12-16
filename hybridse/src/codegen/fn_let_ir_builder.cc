@@ -109,9 +109,30 @@ Status RowFnLetIRBuilder::Build(
     std::map<std::string, AggregateIRBuilder> window_agg_builder;
     uint32_t agg_builder_id = 0;
 
-    auto expr_list = compile_func->body();
+    auto fn_body = compile_func->body();
+    auto expr_list = fn_body;
+    auto maybe_let_expr = fn_body->GetAsOrNull<node::LetExpr>();
+    bool is_let_fn_body = maybe_let_expr != nullptr;
+    if (is_let_fn_body) {
+        expr_list = maybe_let_expr->expr();
+    }
     CHECK_TRUE(project_frames.size() == expr_list->GetChildNum(), kCodegenError,
                "Frame num should match expr num");
+
+    if (is_let_fn_body) {
+        for (auto& entry : maybe_let_expr->ctx().bindings) {
+            auto key = entry.id_node;
+            auto exp = entry.expr;
+            auto frame = entry.frame;
+            CHECK_STATUS(BindProjectFrame(&expr_ir_builder, frame, compile_func, ctx_->GetCurrentBlock(), sv));
+            NativeValue exp_out;
+            CHECK_STATUS(expr_ir_builder.Build(exp, &exp_out));
+
+            base::Status s;
+            variable_ir_builder.StoreValue(key->GetExprString(), exp_out, s);
+            CHECK_STATUS(s);
+        }
+    }
 
     for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
         const ::hybridse::node::ExprNode* expr = expr_list->GetChild(i);

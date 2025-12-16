@@ -620,7 +620,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
     }
     if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
         ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-        // for batch request mode, trivally compare last result
+        // for batch request mode, trivially compare last result
         if (!has_batch_request) {
             if (!rows.empty()) {
                 rows = {rows.back()};

@@ -182,9 +182,9 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
         slice_row = kv_it_->GetValue();
     }
     size_t sz = slice_row.size();
-    int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(sz));
-    memcpy(copyed_row_data, slice_row.data(), sz);
-    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+    int8_t* copied_row_data = reinterpret_cast<int8_t*>(malloc(sz));
+    memcpy(copied_row_data, slice_row.data(), sz);
+    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copied_row_data, sz);
     buffered_slices_.push_back(shared_slice);
     value_.Reset(shared_slice);
     return value_;
@@ -419,9 +419,9 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
     size_t sz = slice_row.size();
     // for distributed environment, slice_row's data probably become invalid when the DistributeWindowIterator
     // iterator goes out of scope. so copy action occurred here
-    int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(sz));
-    memcpy(copyed_row_data, slice_row.data(), sz);
-    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
+    int8_t* copied_row_data = reinterpret_cast<int8_t*>(malloc(sz));
+    memcpy(copied_row_data, slice_row.data(), sz);
+    auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copied_row_data, sz);
     row_.Reset(shared_slice);
     DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
     valid_value_ = true;
