@@ -196,7 +196,7 @@ cd openmldb-0.9.2-linux
 | OPENMLDB_MODE                    | cluster                  | standalone或者cluster                                                                                                                         |
 | OPENMLDB_HOME                    | 当前发行版的根目录       | openmldb发行版根目录，不则使用当前根目录，也就是openmldb-0.9.2-linux所在目录。                                                                |
 | SPARK_HOME                       | $OPENMLDB_HOME/spark     | Spark发行版根目录，如果该目录不存在，自动从网上下载。**此路径也将成为TaskManager运行机器上的Spark安装目录。**                        |
-| RUNNER_EXISTING_SPARK_HOME       |                          | 配置此项，运行TaskManager的机器将使用该Spark环境，将不下载、部署OpenMLDB Spark发行版。                                                        |
+| RUNNER_EXISTING_SPARK_HOME       |                          | 如果配置了此项配置，运行TaskManager的机器将使用该Spark环境，将不下载、部署OpenMLDB Spark发行版。                                                        |
 | OPENMLDB_USE_EXISTING_ZK_CLUSTER | false                    | 是否使用已经运行的ZooKeeper集群。如果是`true`，将跳过ZooKeeper集群的部署与管理。                                                              |
 | OPENMLDB_ZK_HOME                 | $OPENMLDB_HOME/zookeeper | ZooKeeper发行版根目录，如果该目录不存在，自动从网上下载。                                                                                     |
 | OPENMLDB_ZK_CLUSTER              |                          | ZooKeeper集群地址，为空时自动从`conf/hosts`中的`[zookeeper]`配置获取。建议自建ZooKeeper集群时在hosts中创建，使用已有ZooKeeper集群时配置此项。 |

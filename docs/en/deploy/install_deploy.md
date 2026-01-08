@@ -196,17 +196,37 @@ The environment variables are defined in `conf/openmldb-env.sh`, as shown in the
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster                                        |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root directory                                      |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | Spark root directory, if the directory does not exist,  it will be downloaded automatically.|
-| OPENMLDB_TABLET_PORT              | 10921                                                   | TabletServer default port                                    |
-| OPENMLDB_NAMESERVER_PORT          | 7527                                                    | NameServer default port                                      |
-| OPENMLDB_TASKMANAGER_PORT         | 9902                                                    | taskmanager default port                                     |
-| OPENMLDB_APISERVER_PORT           | 9080                                                    | APIServer default port                                       |
+| RUNNER_EXISTING_SPARK_HOME       |                          | If this option is configured, the machine running TaskManager will use this Spark environment and will not download or deploy the OpenMLDB Spark distribution.
 | OPENMLDB_USE_EXISTING_ZK_CLUSTER  | false                                                   | Whether to use an already deployed ZooKeeper cluster. If 'false,' the deployment script will automatically start the ZooKeeper cluster. |
 | OPENMLDB_ZK_HOME                  | $OPENMLDB_HOME/zookeeper                                | ZooKeeper root directory                                     |
 | OPENMLDB_ZK_CLUSTER               | auto derived from `[zookeeper]` section in `conf/hosts` | ZooKeeper cluster address                                    |
 | OPENMLDB_ZK_ROOT_PATH             | /openmldb                                               | OpenMLDB root directory in ZooKeeper                         |
-| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                                                    | ZooKeeper client port, the client port in zoo.cfg            |
-| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | ZooKeeper peer port, the first port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
-| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                                                    | ZooKeeper election port, the second port in settings like "server.1=zoo1:2888:3888" in zoo.cfg |
+| OPENMLDB_FORCE_LOCAL             | false                    | If set to true, all deployments will be treated as local copies.
+When deploying a cluster on a single machine but still needing to use a public IP, enable this option to avoid using SSH.                                                   |
+| RUNNER_JAVA_HOME                 |                          | The machines running ZooKeeper and TaskManager may not have the required Java environment variables set over SSH. You can use this option to configure them. If not set, the existing environment variables will not be overridden.                                             |
+| CLEAR_OPENMLDB_INSTALL_DIR       | false                    | sbin/clear-all.sh only cleans up the data and logs generated during runtime. If set to true, it will delete the entire installation directory on the running machine.
+
+Generally, you need to confirm the following points:
+- ZooKeeper cluster address. If you are using an existing ZooKeeper cluster, you need to set `OPENMLDB_USE_EXISTING_ZK_CLUSTER=true` and configure `OPENMLDB_ZK_CLUSTER`.(If you configure an external ZooKeeper cluster in conf/hosts, please add comments indicating that it is not managed by the sbin deployment scripts to avoid confusion.)
+- If you want this tool to deploy a ZooKeeper cluster, configure the [zookeeper] section in `conf/hosts`. Specify multiple ZooKeeper nodes to deploy a ZooKeeper cluster—no additional configuration is required.
+- Spark environment. If you want to use an existing Spark environment on the machine running TaskManager, configure `RUNNER_EXISTING_SPARK_HOME` (the path should be the Spark home directory on the TaskManager machine).If the deployment machine has a Spark environment and you want to use the same environment on the TaskManager machine, you can configure `SPARK_HOME` (it will be deployed to the same path on the TaskManager machine). If `SPARK_HOME` is not configured, a specific Spark distribution will be downloaded and used automatically.
+
+#### Default Port
+|  ENVIRONMENT VARIABLE     | DEFAULT VALUE |   DEFINITION  |
+| ------------------------- | ------ | -------------------- |
+| OPENMLDB_TABLET_PORT      | 10921  | the default port of TabletServer |
+| OPENMLDB_NAMESERVER_PORT  | 7527   | the default port of NameServer |
+| OPENMLDB_TASKMANAGER_PORT | 9902   | the default port of TaskManager |
+| OPENMLDB_APISERVER_PORT   | 9080   | the default port of APIServer   |
+
+The default ports will only be used when no port is explicitly specified in the node configuration. It is recommended to configure the port numbers directly in the hosts node configuration file.
+
+#### ZooKeeper Advanced Configuration
+|  ENVIRONMENT VARIABLE      | DEFAULT VALUE |   DEFINITION  |
+| --------------------------------- | ------ | --------------------------------------------------------------------------------------- |
+| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181   | ZooKeeper client port, 即zoo.cfg里面的clientPort                                        |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888   | ZooKeeper peer port，即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第一个端口配置     |
+| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888   | ZooKeeper election port, 即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第二个端口配置 |
 
 ### Node Configuration
 
@@ -267,6 +287,33 @@ If you wish to include additional customized configurations for each node, you c
 
 For comprehensive configuration instructions, kindly consult the [Configuration File](conf.md). Please pay attention to the detailed configuration of Spark for TaskManager, as outlined in [Spark Config Details](https://chat.openai.com/c/conf.md#spark-config-details).
 
+During the execution phase, the logs look similar to the following. Please pay attention to the host and directory where the deployment is performed.
+
+```
+deploy tablet to localhost:10921 /tmp/openmldb/tablet-1
+copy /work/openmldb to localhost:/tmp/openmldb/tablet-1
+deploy tablet to localhost:10922 /tmp/openmldb/tablet-2
+copy /work/openmldb to localhost:/tmp/openmldb/tablet-2
+deploy nameserver to localhost:7527 /work/openmldb
+skip rsync as dest=src: /work/openmldb
+deploy apiserver to localhost:9080 /work/openmldb
+skip rsync as dest=src: /work/openmldb
+/work/openmldb/spark already exists. Skip deploy spark locally
+deploy taskmanager to localhost:9902 /work/openmldb
+skip rsync as dest=src: /work/openmldb
+/work/openmldb/zookeeper already exists. Skip download zookeeper.
+deploy zookeeper to localhost:2181 /tmp/openmldb/zk-1
+copy /work/openmldb/zookeeper to localhost:/tmp/openmldb/zk-1
+```
+If you have any questions about the environment variables, check the output of `OPENMLDB envs:` in the logs.
+
+- Configuration
+The deploy operation does not support updating the configuration of individual components. To modify a single component, you must use `deploy-all.sh`. If you make changes directly on the deployment host, you should modify the `xx.flags/taskmanager.properties` files rather than the template configurations. However, note that `deploy-all.sh` will overwrite these configurations, so proceed with caution. When checking configurations, refer to the `xx.flags/taskmanager.properties` files in the runtime directory of the host.
+- Logs
+Correspondingly, the logs of each node are located in their respective runtime directories.
+
+To collect logs and configurations, you can use the diagnostic tool Check Content. By default, the configurations and logs of each node are collected into the /tmp/diag_collect directory for unified review.
+
 ### Start the Services
 
 Start in normal mode:
@@ -295,6 +342,14 @@ If you need to stop all services, execute the following script:
 sbin/stop-all.sh
 ```
 
+### Cleaning Data and Logs
+
+If you need to clean up data and logs for all services, you can execute the following script:
+
+```bash
+sbin/clean-all.sh
+```
+If you need to retain cluster data, please do not execute this script.
 
 ## Deployment Method 2: Manual Deployment
 
