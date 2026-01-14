@@ -206,9 +206,9 @@ select * from topic1;
 
 ### 日志
 
-Kafka server的日志在 `log/server.log`。如果Kafka本身无法工作，请检查此日志。
+Kafka server的日志在 `logs/server.log`。如果Kafka本身无法工作，请检查此日志。
 
-Connector的日志在 `log/connect.log`。如果producer运行出错或无法在OpenMLDB中查询到数据，请检查此日志。
+Connector的日志在 `logs/connect.log`。如果producer运行出错或无法在OpenMLDB中查询到数据，请检查此日志。
 
 ### 重新初始化
 
