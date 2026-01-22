@@ -27,6 +27,10 @@ function tool_install() {
     echo "tools install"
     yum install -y bison bison-devel byacc cppunit-devel patch devtoolset-8-gcc devtoolset-8-gcc-c++
     echo "ID=centos" > /etc/os-release
+    if [ -f "bazel" ]; then
+        echo "bazel exists"
+        return 
+    fi
     if [ "$OPENMLDB_SOURCE" == "true" ]; then
         echo "download bazel from openmldb.ai"
         curl -SLo bazel https://openmldb.ai/download/legacy/bazel-1.0.0
@@ -71,7 +75,7 @@ if [ -e ".deps/build/src/zetasql-stamp/zetasql-build" ]; then
     echo "zetasql already exists, skip add patch, if you want, rm .deps/build/src/zetasql-stamp/zetasql-build or whole .deps/build/src/zetasql*"
 else
     echo  "modify in .deps needs a make first, download&build zetasql first(build will fail)"
-    cmake -S third-party -B "$(pwd)"/.deps -DSRC_INSTALL_DIR="$(pwd)"/thirdsrc -DDEPS_INSTALL_DIR="$(pwd)"/.deps/usr -DBUILD_BUNDLED=ON
+    cmake -S third-party -B "$(pwd)"/.deps -DSRC_INSTALL_DIR="$(pwd)"/thirdsrc -DDEPS_INSTALL_DIR="$(pwd)"/.deps/usr -DBUILD_BUNDLED=ON -DMAKEOPTS=-j8
     cmake --build "$(pwd)"/.deps --target zetasql
     echo "add patch in .deps zetasql"
     sed -i'' "26s/lm'/lm:-lrt'/" .deps/build/src/zetasql/build_zetasql_parser.sh
