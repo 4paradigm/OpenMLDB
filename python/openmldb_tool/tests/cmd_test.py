@@ -32,7 +32,7 @@ def test_helpmsg():
     with pytest.raises(SystemExit):
         parse_arg(["foo", "static-check", "-h"])
     with pytest.raises(SystemExit):
-        parse_arg(["foo", "--helpfull"])
+        parse_arg(["foo", "--helpful"])
     with pytest.raises(SystemExit):
         parse_arg(["foo", "rpc", "-h"])
 

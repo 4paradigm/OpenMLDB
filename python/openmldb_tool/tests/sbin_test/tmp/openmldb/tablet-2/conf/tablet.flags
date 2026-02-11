@@ -86,7 +86,7 @@
 #--max_traverse_cnt=0
 # max table traverse pk number（batch query）, default: 0
 #--max_traverse_pk_cnt=0
-# max result size in byte (default: 0 ulimited)
+# max result size in byte (default: 0 unlimited)
 #--scan_max_bytes_size=0
 
 # loadtable
