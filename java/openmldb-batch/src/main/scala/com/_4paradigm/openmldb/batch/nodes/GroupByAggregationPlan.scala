@@ -40,7 +40,7 @@ object GroupByAggregationPlan {
     // Check if we should keep the index column
     val keepIndexColumn = SparkInstance.keepIndexColumn(ctx, node.GetNodeId())
 
-    // Get parition keys
+    // Get partition keys
     val groupByExprs = node.getGroup_.keys()
     val groupByCols = mutable.ArrayBuffer[Column]()
     val groupIdxs = mutable.ArrayBuffer[Int]()
