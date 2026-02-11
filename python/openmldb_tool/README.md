@@ -43,11 +43,11 @@ openmldb_tool status --cluster=127.0.0.1:2181/openmldb
 
 ## Status
 ```
-status [-h] [--helpfull] [--diff DIFF]
+status [-h] [--helpful] [--diff DIFF]
 
 optional arguments:
   -h, --help   show this help message and exit
-  --helpfull   show full help message and exit
+  --helpful   show full help message and exit
   --diff       check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`
 ```
 

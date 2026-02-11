@@ -527,7 +527,7 @@ class Cursor(object):
     def executeRequest(self, sql, parameter):
         command = sql.strip(' \t\n\r')
         if selectRE.match(command) == False:
-            raise Exception("Invalid opertion for request")
+            raise Exception("Invalid operation for request")
 
         ok, rs = self.connection._sdk.doRequestQuery(None, sql, parameter)
         if not ok:
@@ -591,7 +591,7 @@ class Connection(object):
 
     def commit(self):
         """
-        openmldb doesn't suppport transactions
+        openmldb doesn't support transactions
 
         So just do nothing to support this method
         """

@@ -33,7 +33,7 @@ windows:
     window_type: rows_range
     start: 1d PRECEDING
     end: CURRENT ROW
-    # TODO supoort exclude ...
+    # TODO support exclude ...
 
 # ref autoX table relations https://github.com/4paradigm/AutoX/blob/a2b0f8dfe9e8870c8ff5d420dd970a485a0e0f1a/autox/autox_competition/README.md#%E8%A1%A8%E5%85%B3%E7%B3%BB
 # relations:
