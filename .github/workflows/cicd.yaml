@@ -73,6 +73,10 @@ jobs:
         shell: bash
         run: |
           make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 8
 
       - name: build
         shell: bash
