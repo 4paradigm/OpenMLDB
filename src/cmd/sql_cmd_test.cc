@@ -4301,7 +4301,6 @@ int main(int argc, char** argv) {
 
     hybridse::sdk::Status status;
     ::openmldb::cmd::cluster_cli.sr->ExecuteSQL("SET @@ansi_sql_rewriter='false';", &status);
-    ::openmldb::cmd::standalone_cli.sr->ExecuteSQL("SET @@ansi_sql_rewriter='false';", &status);
 
     ok = RUN_ALL_TESTS();
 

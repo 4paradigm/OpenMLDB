@@ -151,6 +151,12 @@ class MiniCluster {
         for (auto tb_endpoint : tb_endpoints_) {
             LOG(INFO) << "----- tb " << tb_endpoint;
         }
+        SQLRouterOptions sql_opt;
+        sql_opt.zk_cluster = zk_cluster_
+        sql_opt.zk_path = zk_path_;
+        auto router = NewClusterSQLRouter(sql_opt);
+        ::hybridse::sdk::Status status;
+        router->ExecuteSQL("SET @@ansi_sql_rewriter='false';", &status);
         return true;
     }
 
@@ -332,6 +338,11 @@ class StandaloneEnv {
         LOG(INFO) << "start standalone env";
         LOG(INFO) << "----- ns " << ns_endpoint;
         LOG(INFO) << "----- tb " << tb_endpoint_;
+
+        ::openmldb::sdk::StandaloneOptions sopt("127.0.0.1", ns_port_);
+        auto router = NewStandaloneSQLRouter(sopt);
+        ::hybridse::sdk::Status status;
+        router->ExecuteSQL("SET @@ansi_sql_rewriter='false';", &status);
         return true;
     }
 
