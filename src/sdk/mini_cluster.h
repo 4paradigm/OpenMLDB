@@ -152,7 +152,7 @@ class MiniCluster {
             LOG(INFO) << "----- tb " << tb_endpoint;
         }
         SQLRouterOptions sql_opt;
-        sql_opt.zk_cluster = zk_cluster_
+        sql_opt.zk_cluster = zk_cluster_;
         sql_opt.zk_path = zk_path_;
         auto router = NewClusterSQLRouter(sql_opt);
         ::hybridse::sdk::Status status;
