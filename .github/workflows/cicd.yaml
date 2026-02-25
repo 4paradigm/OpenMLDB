@@ -177,7 +177,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '8'
-          distribution: 'temurin'
+          distribution: 'zulu'
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1
         with:
