@@ -54,7 +54,7 @@ jobs:
 
   macos-build:
     name: Build in MacOS
-    runs-on: macos-13
+    runs-on: macos-14
     env:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
