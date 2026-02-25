@@ -69,6 +69,14 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+# LLVM >= 16 forces C++20 via CACHE; override it back to C++17 for Boost compatibility
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "" FORCE)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Ensure AppleClang really uses C++17
+add_compile_options(-std=c++17)
+
 if (LLVM_EXT_ENABLE)
     llvm_map_components_to_libnames(LLVM_LIBS
             support core orcjit nativecodegen
