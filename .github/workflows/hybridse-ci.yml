@@ -54,7 +54,7 @@ jobs:
 
   macos-build:
     name: Build in MacOS
-    runs-on: macos-13
+    runs-on: macos-14
     env:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
@@ -67,7 +67,7 @@ jobs:
       - name: Xcode Select Version
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '14.1.0'
+          xcode-version: '15.1.0'
       - name: Install dependencies
         run: |
           brew install coreutils
