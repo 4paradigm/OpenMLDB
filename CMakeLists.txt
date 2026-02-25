@@ -212,8 +212,6 @@ if (DEFINED ENV{CI})
   set(MAVEN_FLAGS --batch-mode)
 endif()
 
-add_subdirectory(hybridse)
-
 set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
@@ -226,6 +224,12 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core irreader orcjit nativecodegen)
 message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
+
+if (CMAKE_CXX_FLAGS MATCHES "-std=")
+    string(REGEX REPLACE "-std=[^ ]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17" CACHE STRING "" FORCE)
+add_subdirectory(hybridse)
 
 find_package(absl REQUIRED)
 # modify absl::time_zone INTERFACE_LINK_LIBRARIES
