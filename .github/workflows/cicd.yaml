@@ -201,6 +201,7 @@ jobs:
         env:
           SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
           BUILD_BUNDLED: ON
+          BUILD_BUNDLED_ZETASQL: OFF
         run: |
           make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
 
