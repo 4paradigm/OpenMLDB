@@ -67,7 +67,7 @@ jobs:
       - name: Xcode Select Version
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '14.1.0'
+          xcode-version: '15.1.0'
       - name: Install dependencies
         run: |
           brew install coreutils
