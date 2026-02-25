@@ -200,7 +200,7 @@ jobs:
       - name: configure
         env:
           SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
-          BUILD_BUNDLED_BOOST: ON
+          BUILD_BUNDLED: ON
         run: |
           make configure CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
 
