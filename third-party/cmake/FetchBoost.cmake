@@ -12,23 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(BOOST_URL https://boostorg.jfrog.io/artifactory/main/release/1.69.0/source/boost_1_69_0.tar.gz)
+set(BOOST_URL https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.gz)
 
 message(STATUS "build boost from ${BOOST_URL}")
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(BOOST_FLAGS compiler.blacklist clang -with-toolset=clang)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(BOOST_TOOLSET clang)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(BOOST_TOOLSET gcc)
+else()
+    message(FATAL_ERROR "Unsupported compiler for Boost build")
 endif()
 
 # boost require python development package, python-dev on debian or python-devel on redhat
 ExternalProject_Add(
   boost
   URL ${BOOST_URL}
-  URL_HASH SHA256=9a2c2819310839ea373f42d69e733c339b4e9a19deab6bfec448281554aa4dbb
+  URL_HASH SHA256=c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/boost
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   CONFIGURE_COMMAND ./bootstrap.sh ${BOOST_FLAGS}
-  BUILD_COMMAND ./b2 link=static cxxflags=-fPIC cflags=-fPIC --without-python release install --prefix=<INSTALL_DIR>
+  BUILD_COMMAND ./b2 toolset=${BOOST_TOOLSET} link=static cxxstd=17 cxxflags=-fPIC cflags=-fPIC --without-python release install --prefix=<INSTALL_DIR>
   INSTALL_COMMAND "")
