@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(LEVELDB_URL https://github.com/google/leveldb/archive/refs/tags/v1.20.tar.gz)
+set(LEVELDB_URL https://github.com/google/leveldb/archive/refs/tags/1.23.tar.gz)
 
 message(STATUS "build leveldb from ${LEVELDB_URL}")
 
@@ -20,7 +20,7 @@ find_program(MAKE_EXE NAMES gmake nmake make REQUIRED)
 ExternalProject_Add(
   leveldb
   URL ${LEVELDB_URL}
-  URL_HASH SHA256=f5abe8b5b209c2f36560b75f32ce61412f39a2922f7045ae764a2c23335b6664
+  URL_HASH SHA256=9a37f8a6174f09bd622bc723b55881dc541cd50747cbd08831c2a82d620f6d76
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/leveldb
   INSTALL_DIR ${DEPS_INSTALL_DIR}
