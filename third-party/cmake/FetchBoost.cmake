@@ -34,5 +34,5 @@ ExternalProject_Add(
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   BUILD_IN_SOURCE True
   CONFIGURE_COMMAND ./bootstrap.sh ${BOOST_FLAGS}
-  BUILD_COMMAND ./b2 toolset=${BOOST_TOOLSET} link=static cxxstd=17 cxxflags="-std=c++17 -fPIC" cflags=-fPIC --without-python release install --prefix=<INSTALL_DIR>
+  BUILD_COMMAND ./b2 toolset=${BOOST_TOOLSET} link=static cxxstd=17 cxxflags=-fPIC cflags=-fPIC --without-python release install --prefix=<INSTALL_DIR>
   INSTALL_COMMAND "")
