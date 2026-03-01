@@ -84,7 +84,7 @@ object GraphvizUtil {
       case _ => opType.toString
     }
 
-    // No need to use cache because graphviz will merge ndoe with the same name
+    // No need to use cache because graphviz will merge node with the same name
     val nodeNameWithId = "[%s]%s".format(node.GetNodeId().toString, readableNodeName)
     var graphNode = mutNode(nodeNameWithId)
 

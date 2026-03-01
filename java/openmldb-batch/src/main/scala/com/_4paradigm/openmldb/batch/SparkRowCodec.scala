@@ -360,7 +360,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
           case BooleanType =>
             nm.MakeConstNode(row.getBoolean(idx))
           case StringType => {
-            // generally safe, native ConstNode copyed the string
+            // generally safe, native ConstNode copied the string
             val str = row.getString(idx)
             nm.MakeConstNode(str)
           }

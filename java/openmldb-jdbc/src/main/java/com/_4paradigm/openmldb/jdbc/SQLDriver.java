@@ -48,7 +48,7 @@ public class SQLDriver implements Driver {
         if (info == null) {
             info = new Properties();
         }
-        // just url missmatch, don't throw exception
+        // just url mismatch, don't throw exception
         if (!parseAndMergeClusterProps(url, info)) {
             return null;
         }
@@ -62,7 +62,7 @@ public class SQLDriver implements Driver {
     }
 
     /**
-     * parse and verification of URL. If url is just not acceptted, return false.
+     * parse and verification of URL. If url is just not accepted, return false.
      *
      * <p>basic syntax :<br>
      * {@code

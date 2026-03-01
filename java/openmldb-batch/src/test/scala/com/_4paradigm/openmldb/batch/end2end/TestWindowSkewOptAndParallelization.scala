@@ -24,7 +24,7 @@ import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructFi
 
 class TestWindowSkewOptAndParallelization extends SparkTestSuite {
 
-  test("Test end2end window skew optimization and window paralleization with union") {
+  test("Test end2end window skew optimization and window parallelization with union") {
 
     getSparkSession.conf.set("spark.openmldb.window.parallelization", true)
     getSparkSession.conf.set("spark.openmldb.window.skew.opt", true)
