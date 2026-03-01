@@ -36,7 +36,7 @@ class LogAnalyzer:
         return [f"{logs_path}{f}" for f in os.listdir(logs_path) if os.path.isfile(f"{logs_path}{f}")]
 
     def run(self):
-        """anaylsis all servers' log file"""
+        """analysis all servers' log file"""
         # cxx server glog
         def grep_log(server_info: ServerInfo) -> bool:
             files = self.log_files(server_info)
