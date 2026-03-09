@@ -101,7 +101,7 @@ public class FailoverWatcher implements Watcher {
     }
 
     /**
-     * Override this mothod to deal with events for leader election.
+     * Override this method to deal with events for leader election.
      *
      * @param event the ZooKeeper event
      */

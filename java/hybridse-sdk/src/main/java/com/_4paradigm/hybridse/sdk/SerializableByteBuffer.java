@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 /**
  * Serializable ByteBuffer.
  *
- * <p>By default, ByteBuffer instances are not serializable, tihs class implemented
+ * <p>By default, ByteBuffer instances are not serializable, this class implemented
  * serializable wrapper for byte buffer to communicate serialize buffer content.
  */
 public class SerializableByteBuffer implements Serializable {

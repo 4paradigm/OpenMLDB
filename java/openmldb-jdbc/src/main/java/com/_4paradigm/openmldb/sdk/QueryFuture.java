@@ -92,7 +92,7 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
 
     /**
      *
-     * @param l  current timeout set by executeQeuryAsyn, so the param is invalid
+     * @param l  current timeout set by executeQueryAsyn, so the param is invalid
      * @param timeUnit the time unit of the timeout, which is also invalid.
      * @return the result of the query from the database
      * @throws InterruptedException throws when a thread is waiting, sleeping, or otherwise occupied, and the thread is interrupted, either before or during the activity.

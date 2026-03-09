@@ -242,7 +242,7 @@ public class FlinkTunnel {
         // miniCluster.stopWithSavepoint(id, null, true); // can't?
         miniCluster.cancelJob(id); // checkpoint is retain on cancellation, but it's better to wait a while?
 
-        // task record count? == source count or wahtever?
+        // task record count? == source count or whatever?
     }
 
     /** Use first field for buckets. */

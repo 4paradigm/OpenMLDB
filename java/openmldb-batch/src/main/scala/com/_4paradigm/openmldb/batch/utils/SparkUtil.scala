@@ -38,7 +38,7 @@ object SparkUtil {
       logger.info("Has order by column and do not support native last join")
       false
     } else if (joinType != JoinType.kJoinTypeLast && joinType != JoinType.kJoinTypeConcat) {
-      logger.info("Join type is neighter last join or concat join and do not support native last join")
+      logger.info("Join type is neither last join or concat join and do not support native last join")
       false
     } else {
       try {

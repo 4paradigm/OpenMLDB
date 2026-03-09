@@ -50,7 +50,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
   // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
   private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
 
-  // group key comparation
+  // group key comparison
   private var groupKeyComparator = HybridseUtil.createGroupKeyComparator(config.groupIdxs)
 
   private var unsafeGroupKeyComparator = HybridseUtil.createUnsafeGroupKeyComparator(
