@@ -28,7 +28,7 @@ def test_read_yaml():
     dist = YamlConfReader(current_path + "/cluster_dist.yml").conf()
     yaml_asserts(dist)
 
-def hosts_asssert(dist):
+def hosts_assert(dist):
     assert dist.mode == "cluster"
     assert len(dist.server_info_map.map["nameserver"]) == 1
     assert len(dist.server_info_map.map["tablet"]) == 2
@@ -40,13 +40,13 @@ def hosts_asssert(dist):
 def test_read_hosts():
     current_path = os.path.dirname(__file__)
     dist = HostsConfReader(current_path + "/hosts").conf()
-    hosts_asssert(dist)
+    hosts_assert(dist)
 
 
 def test_auto_read():
     current_path = os.path.dirname(__file__)
     # read in yaml style failed, then read in hosts style
     dist = read_conf(current_path + "/hosts")
-    hosts_asssert(dist)
+    hosts_assert(dist)
     dist = read_conf(current_path + "/cluster_dist.yml")
     yaml_asserts(dist)

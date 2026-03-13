@@ -36,7 +36,7 @@ class StatusChecker:
         return self._check_status(components_map)
 
     def check_connection(self):
-        """check all compontents connections"""
+        """check all components connections"""
         component_map = self._get_components(show=False)
         t = PrettyTable()
         t.title = "Connections"
@@ -63,7 +63,7 @@ class StatusChecker:
         return conns
 
     def _get_information(self, endpoint):
-        """get informations from components except taskmanager"""
+        """get information from components except taskmanager"""
         try:
             response = requests.get(f"http://{endpoint}/status", timeout=1)  # the connection timeout is 1 second
             response.raise_for_status()
@@ -79,7 +79,7 @@ class StatusChecker:
         return version, response_time, ex, ""
 
     def _get_information_taskmanager(self, endpoint):
-        """get informations from taskmanager"""
+        """get information from taskmanager"""
         try:
             response = requests.post(f"http://{endpoint}/openmldb.taskmanager.TaskManagerServer/GetVersion", json={})
             response.raise_for_status()

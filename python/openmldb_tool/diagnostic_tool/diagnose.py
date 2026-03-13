@@ -121,7 +121,7 @@ def inspect(args):
     inspect_hint(offlines, hints)
 
 
-def insepct_online(args):
+def inspect_online(args):
     """inspect online"""
     connect = Connector()
     # scan all db include system db
@@ -261,7 +261,7 @@ def rpc(args):
         )
         return
 
-    # use status connction to get version
+    # use status connection to get version
     conns_with_version = {
         endpoint: version
         for endpoint, version, _, _ in status_checker.check_connection()
@@ -338,7 +338,7 @@ def parse_arg(argv):
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
     online = inspect_sub.add_parser("online", help="only inspect online table.")
-    online.set_defaults(command=insepct_online)
+    online.set_defaults(command=inspect_online)
     online.add_argument(
         "--dist", action="store_true", help="Inspect online distribution."
     )
