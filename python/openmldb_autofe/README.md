@@ -32,7 +32,7 @@ OpenMLDB AutoFE steps:
 1. generate time features, translate them to one sql(`OpenMLDBSQLGenerator`)
 1. use the sql to query OpenMLDB(include creating tables,loading data, extracting feature), get extracted features, you can check it in `<offline_feature_path>/first_features`
 1. use `first_features` to train(`AutoXTrain`), get top k features
-1. `OpenMLDBSQLGenerator` traslate the top k features to one sql(`final_sql`)
+1. `OpenMLDBSQLGenerator` translate the top k features to one sql(`final_sql`)
 
 ### Boundary
 
