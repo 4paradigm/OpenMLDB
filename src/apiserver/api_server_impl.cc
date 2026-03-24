@@ -263,7 +263,7 @@ bool APIServerImpl::AppendJsonValue(const Value& v, hybridse::sdk::DataType type
             if (!v.IsInt()) {
                 return false;
             }
-            return row->AppendInt16(boost::lexical_cast<int16_t>(v.GetInt()));
+            return row->AppendInt16(static_cast<int16_t>(v.GetInt()));
         }
         case hybridse::sdk::kTypeInt32: {
             if (!v.IsInt()) {

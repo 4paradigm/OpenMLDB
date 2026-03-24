@@ -17,13 +17,13 @@
 #include "zk/zk_client.h"
 
 #include <algorithm>
+#include <charconv>
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
 #include "absl/strings/str_split.h"
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
-#include "boost/lexical_cast.hpp"
 #include "gflags/gflags.h"
 
 namespace openmldb {
@@ -435,9 +435,8 @@ bool ZkClient::Increment(const std::string& node) {
             continue;
         }
         uint64_t number = 0;
-        try {
-            number = boost::lexical_cast<uint64_t>(value);
-        } catch (const std::exception& e) {
+        auto result = std::from_chars(value.data(), value.data() + value.size(), number);
+        if (result.ec != std::errc{}) {
             return false;
         }
         std::string new_value = std::to_string(number + 1);

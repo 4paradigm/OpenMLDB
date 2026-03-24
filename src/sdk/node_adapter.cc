@@ -686,9 +686,9 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
             case type::kTimestamp:
                 return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int64_t>(str));
             case type::kFloat:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<float>(str));
+                return std::make_shared<hybridse::node::ConstNode>(std::stof(str));
             case type::kDouble:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<double>(str));
+                return std::make_shared<hybridse::node::ConstNode>(std::stod(str));
             case type::kVarchar:
             case type::kString:
                 return std::make_shared<hybridse::node::ConstNode>(str);
