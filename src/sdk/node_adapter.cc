@@ -678,7 +678,7 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
             case type::kBool: {
                 std::string b_val = str;              
                 std::transform(b_val.begin(), b_val.end(), b_val.begin(), ::tolower);
-                if (v_val == "true") {
+                if (b_val == "true") {
                     return std::make_shared<hybridse::node::ConstNode>(true);
                 } else {
                     return std::make_shared<hybridse::node::ConstNode>(false);
@@ -687,7 +687,7 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
             case type::kSmallInt: {
                 int16_t val = 0;
                 if (auto ret = std::from_chars(str.data(), str.data() + str.size(), val); ret.ec != std::errc()) {
-                    return false;
+                    return std::shared_ptr<hybridse::node::ConstNode>();
                 }
                 return std::make_shared<hybridse::node::ConstNode>(val);
             }
@@ -695,7 +695,7 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
             case type::kDate: {
                 int32_t val = 0;
                 if (auto ret = std::from_chars(str.data(), str.data() + str.size(), val); ret.ec != std::errc()) {
-                    return false;
+                    return std::shared_ptr<hybridse::node::ConstNode>();
                 }
                 return std::make_shared<hybridse::node::ConstNode>(val);
             }
@@ -703,7 +703,7 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
             case type::kTimestamp: {
                 int64_t val = 0;
                 if (auto ret = std::from_chars(str.data(), str.data() + str.size(), val); ret.ec != std::errc()) {
-                    return false;
+                    return std::shared_ptr<hybridse::node::ConstNode>();
                 }
                 return std::make_shared<hybridse::node::ConstNode>(val);
             }
