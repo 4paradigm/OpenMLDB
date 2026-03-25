@@ -20,12 +20,12 @@
 #include <string.h>
 
 #include <algorithm>
+#include <charconv>
 #include <string>
 #include <vector>
 
 #include "base/endianconv.h"
 #include "base/strings.h"
-#include "boost/lexical_cast.hpp"
 #include "proto/type.pb.h"
 #include "sdk/base.h"
 
@@ -56,19 +56,31 @@ static bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type
                 return ok;
             }
             case hybridse::sdk::kTypeInt16: {
-                return row->AppendInt16(boost::lexical_cast<int16_t>(v));
+                int16_t val = 0;
+                if (auto ret = std::from_chars(v.data(), v.data() + v.size(), val); ret.ec != std::errc()) {
+                    return false;
+                }
+                return row->AppendInt16(val);
             }
             case hybridse::sdk::kTypeInt32: {
-                return row->AppendInt32(boost::lexical_cast<int32_t>(v));
+                int32_t val = 0;
+                if (auto ret = std::from_chars(v.data(), v.data() + v.size(), val); ret.ec != std::errc()) {
+                    return false;
+                }
+                return row->AppendInt32(val);
             }
             case hybridse::sdk::kTypeInt64: {
-                return row->AppendInt64(boost::lexical_cast<int64_t>(v));
+                int64_t val = 0;
+                if (auto ret = std::from_chars(v.data(), v.data() + v.size(), val); ret.ec != std::errc()) {
+                    return false;
+                }
+                return row->AppendInt64(val);
             }
             case hybridse::sdk::kTypeFloat: {
-                return row->AppendFloat(boost::lexical_cast<float>(v));
+                return row->AppendFloat(std::stof(v));
             }
             case hybridse::sdk::kTypeDouble: {
-                return row->AppendDouble(boost::lexical_cast<double>(v));
+                return row->AppendDouble(std::stod(v));
             }
             case hybridse::sdk::kTypeString: {
                 return row->AppendString(v);
@@ -79,13 +91,29 @@ static bool AppendColumnValue(const std::string& v, hybridse::sdk::DataType type
                 if (parts.size() != 3) {
                     return false;
                 }
-                auto year = boost::lexical_cast<int32_t>(parts[0]);
-                auto mon = boost::lexical_cast<int32_t>(parts[1]);
-                auto day = boost::lexical_cast<int32_t>(parts[2]);
+                int32_t year = 0;
+                int32_t mon = 0;
+                int32_t day = 0;
+                if (auto ret = std::from_chars(parts[0].data(), parts[0].data() + parts[0].size(), year);
+                    ret.ec != std::errc()) {
+                    return false;
+                }
+                if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), mon);
+                    ret.ec != std::errc()) {
+                    return false;
+                }
+                if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), day);
+                    ret.ec != std::errc()) {
+                    return false;
+                }
                 return row->AppendDate(year, mon, day);
             }
             case hybridse::sdk::kTypeTimestamp: {
-                return row->AppendTimestamp(boost::lexical_cast<int64_t>(v));
+                int64_t val = 0;
+                if (auto ret = std::from_chars(v.data(), v.data() + v.size(), val); ret.ec != std::errc()) {
+                    return false;
+                }
+                return row->AppendTimestamp(val);
             }
             default: {
                 return false;

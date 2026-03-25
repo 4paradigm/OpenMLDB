@@ -18,10 +18,10 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <unordered_set>
 
 #include "base/glog_wrapper.h"
-#include "boost/lexical_cast.hpp"
 
 namespace openmldb {
 namespace codec {
@@ -463,23 +463,43 @@ bool RowBuilder::AppendValue(const std::string& val) {
                 }
                 break;
             }
-            case openmldb::type::kSmallInt:
-                ok = AppendInt16(boost::lexical_cast<int16_t>(val));
+            case openmldb::type::kSmallInt: {
+                int16_t v = 0;
+                if (auto ret = std::from_chars(val.data(), val.data() + val.size(), v); ret.ec != std::errc()) {
+                    return false;
+                }
+                ok = AppendInt16(v);
                 break;
-            case openmldb::type::kInt:
-                ok = AppendInt32(boost::lexical_cast<int32_t>(val));
+            }
+            case openmldb::type::kInt: {
+                int32_t v = 0;
+                if (auto ret = std::from_chars(val.data(), val.data() + val.size(), v); ret.ec != std::errc()) {
+                    return false;
+                }
+                ok = AppendInt32(v);
                 break;
-            case openmldb::type::kBigInt:
-                ok = AppendInt64(boost::lexical_cast<int64_t>(val));
+            }
+            case openmldb::type::kBigInt: {
+                int64_t v = 0;
+                if (auto ret = std::from_chars(val.data(), val.data() + val.size(), v); ret.ec != std::errc()) {
+                    return false;
+                }
+                ok = AppendInt64(v);
                 break;
-            case openmldb::type::kTimestamp:
-                ok = AppendTimestamp(boost::lexical_cast<int64_t>(val));
+            }
+            case openmldb::type::kTimestamp: {
+                int64_t v = 0;
+                if (auto ret = std::from_chars(val.data(), val.data() + val.size(), v); ret.ec != std::errc()) {
+                    return false;
+                }
+                ok = AppendTimestamp(v);
                 break;
+            }
             case openmldb::type::kFloat:
-                ok = AppendFloat(boost::lexical_cast<float>(val));
+                ok = AppendFloat(std::stof(val));
                 break;
             case openmldb::type::kDouble:
-                ok = AppendDouble(boost::lexical_cast<double>(val));
+                ok = AppendDouble(std::stod(val));
                 break;
             case openmldb::type::kDate: {
                 std::vector<std::string> parts;
@@ -488,9 +508,18 @@ bool RowBuilder::AppendValue(const std::string& val) {
                     ok = false;
                     break;
                 }
-                uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
-                uint32_t mon = boost::lexical_cast<uint32_t>(parts[1]);
-                uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
+                uint32_t year = 0;
+                uint32_t mon = 0;
+                uint32_t day = 0;
+                if (auto ret = std::from_chars(parts[0].data(), parts[0].data() + parts[0].size(), year); ret.ec != std::errc()) {
+                    return false;
+                }
+                if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), mon); ret.ec != std::errc()) {
+                    return false;
+                }
+                if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), day); ret.ec != std::errc()) {
+                    return false;
+                }
                 ok = AppendDate(year, mon, day);
                 break;
             }

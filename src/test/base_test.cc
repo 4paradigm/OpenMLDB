@@ -15,8 +15,7 @@
  */
 
 #include "test/base_test.h"
-
-#include "boost/lexical_cast.hpp"
+#include <charconv>
 #include "glog/logging.h"
 #include "sdk/base.h"
 #include "sdk/result_set.h"
@@ -255,8 +254,10 @@ const std::vector<hybridse::codec::Row> SQLCaseTest::SortRows(const hybridse::vm
         std::vector<std::pair<int64_t, hybridse::codec::Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
-            row_view.GetAsString(idx);
-            sort_rows.push_back(std::make_pair(boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+            std::string str = row_view.GetAsString(idx);
+            int64_t val = 0;
+            std::from_chars(str.data(), str.data() + str.size(), val);
+            sort_rows.push_back(std::make_pair(val, row));
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
                   [](std::pair<int64_t, hybridse::codec::Row> &a, std::pair<int64_t, hybridse::codec::Row> &b) {

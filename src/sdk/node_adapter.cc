@@ -675,20 +675,42 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
                                                                      openmldb::type::DataType data_type) {
     try {
         switch (data_type) {
-            case type::kBool:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<bool>(str));
-            case type::kSmallInt:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int16_t>(str));
+            case type::kBool: {
+                std::string b_val = str;              
+                std::transform(b_val.begin(), b_val.end(), b_val.begin(), ::tolower);
+                if (b_val == "true") {
+                    return std::make_shared<hybridse::node::ConstNode>(true);
+                } else {
+                    return std::make_shared<hybridse::node::ConstNode>(false);
+                }
+            }
+            case type::kSmallInt: {
+                int16_t val = 0;
+                if (auto ret = std::from_chars(str.data(), str.data() + str.size(), val); ret.ec != std::errc()) {
+                    return std::shared_ptr<hybridse::node::ConstNode>();
+                }
+                return std::make_shared<hybridse::node::ConstNode>(val);
+            }
             case type::kInt:
-            case type::kDate:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int32_t>(str));
+            case type::kDate: {
+                int32_t val = 0;
+                if (auto ret = std::from_chars(str.data(), str.data() + str.size(), val); ret.ec != std::errc()) {
+                    return std::shared_ptr<hybridse::node::ConstNode>();
+                }
+                return std::make_shared<hybridse::node::ConstNode>(val);
+            }
             case type::kBigInt:
-            case type::kTimestamp:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<int64_t>(str));
+            case type::kTimestamp: {
+                int64_t val = 0;
+                if (auto ret = std::from_chars(str.data(), str.data() + str.size(), val); ret.ec != std::errc()) {
+                    return std::shared_ptr<hybridse::node::ConstNode>();
+                }
+                return std::make_shared<hybridse::node::ConstNode>(val);
+            }
             case type::kFloat:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<float>(str));
+                return std::make_shared<hybridse::node::ConstNode>(std::stof(str));
             case type::kDouble:
-                return std::make_shared<hybridse::node::ConstNode>(boost::lexical_cast<double>(str));
+                return std::make_shared<hybridse::node::ConstNode>(std::stod(str));
             case type::kVarchar:
             case type::kString:
                 return std::make_shared<hybridse::node::ConstNode>(str);
