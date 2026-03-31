@@ -143,12 +143,14 @@ int ClusterInfo::Init(std::string& msg) {
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
         return 403;
     }
-    zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
+    zk_client_->WatchNodes([this](const std::vector<std::string>& endpoints) {
+        this->UpdateNSClient(endpoints);
+    });
     zk_client_->WatchNodes();
     if (FLAGS_use_name) {
         UpdateRemoteRealEpMap();
         bool ok = zk_client_->WatchItem(cluster_add_.zk_path() + "/nodes",
-                                        boost::bind(&ClusterInfo::UpdateRemoteRealEpMap, this));
+                                        [this]() { this->UpdateRemoteRealEpMap(); });
         if (!ok) {
             zk_client_->CloseZK();
             msg = "zk watch nodes failed";

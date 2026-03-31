@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include <string>
 
-#include "boost/bind.hpp"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "tablet/tablet_impl.h"
@@ -71,7 +70,7 @@ TEST_F(TabletImplTest, KeepAlive) {
     ASSERT_TRUE(ok);
     ok = zk_client.Mkdir("/rtidb2/nodes");
     ASSERT_TRUE(ok);
-    zk_client.WatchNodes(boost::bind(&WatchCallback, _1));
+    zk_client.WatchNodes(&WatchCallback);
     ok = zk_client.WatchNodes();
     ASSERT_TRUE(ok);
     TabletImpl tablet;

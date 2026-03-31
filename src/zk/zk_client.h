@@ -20,12 +20,11 @@
 #include <atomic>
 #include <condition_variable>  // NOLINT
 #include <cstdio>
+#include <functional>
 #include <map>
 #include <mutex>  // NOLINT
 #include <string>
 #include <vector>
-
-#include "boost/function.hpp"
 
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -34,9 +33,9 @@ extern "C" {
 namespace openmldb {
 namespace zk {
 
-typedef boost::function<void(const std::vector<std::string>& endpoint)> NodesChangedCallback;
+typedef std::function<void(const std::vector<std::string>& endpoint)> NodesChangedCallback;
 
-typedef boost::function<void(void)> ItemChangedCallback;
+typedef std::function<void(void)> ItemChangedCallback;
 
 const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 1024;
 

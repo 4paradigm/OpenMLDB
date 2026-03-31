@@ -1509,7 +1509,9 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
         } else {
             UpdateTablets(endpoints);
         }
-        zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
+        zk_client_->WatchNodes([this](const std::vector<std::string>& endpoints) {
+            this->UpdateTabletsLocked(endpoints);
+        });
         bool ok = zk_client_->WatchNodes();
         if (!ok) {
             PDLOG(WARNING, "fail to watch nodes");
