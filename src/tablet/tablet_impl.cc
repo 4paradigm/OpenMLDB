@@ -405,11 +405,11 @@ bool TabletImpl::RegisterZK() {
             zk_client_->CreateNode(globalvar_changed_notify_path_, "1");
         }
         if (!zk_client_->WatchItem(globalvar_changed_notify_path_,
-                                   boost::bind(&TabletImpl::UpdateGlobalVarTable, this))) {
+                                   [this]() { this->UpdateGlobalVarTable(); })) {
             LOG(WARNING) << "add global var changed watcher failed";
             return false;
         }
-        if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
+        if (!zk_client_->WatchItem(notify_path_, [this]() { this->RefreshTableInfo(); })) {
             LOG(WARNING) << "add notify watcher failed";
             return false;
         }

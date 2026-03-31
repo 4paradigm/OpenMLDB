@@ -18,11 +18,11 @@
 #define SRC_ZK_DIST_LOCK_H_
 
 #include <atomic>
+#include <functional>
 #include <mutex>  // NOLINT
 #include <string>
 #include <vector>
 
-#include "boost/function.hpp"
 #include "common/thread_pool.h"
 #include "zk/zk_client.h"
 
@@ -32,7 +32,7 @@ using ::baidu::common::ThreadPool;
 
 enum LockState { kLocked, kLostLock, kTryLock };
 
-typedef boost::function<void()> NotifyCallback;
+typedef std::function<void()> NotifyCallback;
 class DistLock {
  public:
     DistLock(const std::string& root_path, ZkClient* zk_client, NotifyCallback on_locked_cl,

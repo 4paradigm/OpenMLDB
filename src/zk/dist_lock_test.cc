@@ -20,8 +20,6 @@
 #include <sched.h>
 #include <unistd.h>
 
-#include <boost/bind.hpp>
-
 #include "zk/zk_client.h"
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -46,8 +44,8 @@ TEST_F(DistLockTest, Lock) {
     ZkClient client("127.0.0.1:6181", "", 10000, "127.0.0.1:9527", "/openmldb_lock", "", "");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    DistLock lock("/openmldb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback),
-                  boost::bind(&OnLostCallback), "endpoint1");
+    DistLock lock("/openmldb_lock/nameserver_lock", &client, &OnLockedCallback,
+                 &OnLostCallback, "endpoint1");
     lock.Lock();
     sleep(5);
     if (!call_invoked) {
@@ -65,8 +63,8 @@ TEST_F(DistLockTest, Lock) {
         lock.Stop();
         ASSERT_TRUE(false);
     }
-    DistLock lock2("/openmldb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback),
-                   boost::bind(&OnLostCallback), "endpoint2");
+    DistLock lock2("/openmldb_lock/nameserver_lock", &client2, &OnLockedCallback,
+                   &OnLostCallback, "endpoint2");
     lock2.Lock();
     sleep(5);
     ASSERT_FALSE(call_invoked);

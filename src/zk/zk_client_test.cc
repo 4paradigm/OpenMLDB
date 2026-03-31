@@ -20,8 +20,6 @@
 #include <sched.h>
 #include <unistd.h>
 
-#include <boost/bind.hpp>
-
 #include "base/glog_wrapper.h"  // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -66,7 +64,7 @@ TEST_F(ZkClientTest, Init) {
     uint32_t size = 1;
     ASSERT_EQ(size, endpoints.size());
     ASSERT_EQ("127.0.0.1:9527", endpoints[0]);
-    client.WatchNodes(boost::bind(&WatchCallback, _1));
+    client.WatchNodes(&WatchCallback);
     // trigger watch
     ok = client.WatchNodes();
     ASSERT_TRUE(ok);
