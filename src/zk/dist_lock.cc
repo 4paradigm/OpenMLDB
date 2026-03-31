@@ -16,9 +16,8 @@
 
 #include "zk/dist_lock.h"
 
+#include "absl/strings/str_join.h"
 #include "base/glog_wrapper.h"
-#include "boost/algorithm/string/join.hpp"
-#include "boost/bind.hpp"
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }
@@ -43,7 +42,7 @@ DistLock::DistLock(const std::string& root_path, ZkClient* zk_client, NotifyCall
 
 DistLock::~DistLock() {}
 
-void DistLock::Lock() { pool_.AddTask(boost::bind(&DistLock::InternalLock, this)); }
+void DistLock::Lock() { pool_.AddTask([this]() { this->InternalLock(); }); }
 
 void DistLock::Stop() {
     running_.store(false, std::memory_order_relaxed);
@@ -74,7 +73,9 @@ void DistLock::InternalLock() {
             lock_state_.store(kTryLock, std::memory_order_relaxed);
             client_session_term_ = cur_session_term;
             HandleChildrenChanged(children);
-            zk_client_->WatchChildren(root_path_, boost::bind(&DistLock::HandleChildrenChangedLocked, this, _1));
+            zk_client_->WatchChildren(root_path_, [this](const std::vector<std::string>& children) {
+                this->HandleChildrenChangedLocked(children);
+            });
         }
     }
 }
@@ -117,7 +118,7 @@ void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
     }
     PDLOG(INFO, "my path %s , first child %s , lock value %s", assigned_path_.c_str(), current_lock_node_.c_str(),
           current_lock_value_.c_str());
-    PDLOG(INFO, "all child: %s", boost::algorithm::join(children, ", ").c_str());
+    PDLOG(INFO, "all child: %s", absl::StrJoin(children, ",").c_str());
 }
 
 void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& children) {
