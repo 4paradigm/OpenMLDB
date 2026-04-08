@@ -20,6 +20,7 @@
 #include <google/protobuf/text_format.h>
 #include <unistd.h>
 
+#include <charconv>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -40,7 +41,6 @@
 #endif
 #include "apiserver/api_server_impl.h"
 #include "auth/brpc_authenticator.h"
-#include "boost/lexical_cast.hpp"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "client/tablet_client.h"
@@ -368,33 +368,50 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
 }
 
 int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {  // NOLINT
-    try {
-        if (::openmldb::base::IsNumber(pid_group)) {
-            pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
-        } else if (pid_group.find('-') != std::string::npos) {
-            std::vector<std::string> vec = absl::StrSplit(pid_group, "-");
-            if (vec.size() != 2 || !::openmldb::base::IsNumber(vec[0]) || !::openmldb::base::IsNumber(vec[1])) {
-                return -1;
-            }
-            uint32_t start_index = boost::lexical_cast<uint32_t>(vec[0]);
-            uint32_t end_index = boost::lexical_cast<uint32_t>(vec[1]);
-            while (start_index <= end_index) {
-                pid_set.insert(start_index);
-                start_index++;
-            }
-        } else if (pid_group.find(',') != std::string::npos) {
-            std::vector<std::string> vec = absl::StrSplit(pid_group, ",");
-            for (const auto& pid_str : vec) {
-                if (!::openmldb::base::IsNumber(pid_str)) {
-                    return -1;
-                }
-                pid_set.insert(boost::lexical_cast<uint32_t>(pid_str));
-            }
-        } else {
+    if (::openmldb::base::IsNumber(pid_group)) {
+        uint32_t pid = 0;
+        if (auto ret = std::from_chars(pid_group.data(), pid_group.data() + pid_group.size(), pid);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return -1;
         }
-    } catch (const std::exception& e) {
-        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        pid_set.insert(pid);
+    } else if (pid_group.find('-') != std::string::npos) {
+        std::vector<std::string> vec = absl::StrSplit(pid_group, "-");
+        if (vec.size() != 2 || !::openmldb::base::IsNumber(vec[0]) || !::openmldb::base::IsNumber(vec[1])) {
+            return -1;
+        }
+        uint32_t start_index = 0;
+        if (auto ret = std::from_chars(vec[0].data(), vec[0].data() + vec[0].size(), start_index);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+            return -1;
+        }
+        uint32_t end_index = 0;
+        if (auto ret = std::from_chars(vec[1].data(), vec[1].data() + vec[1].size(), end_index);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+            return -1;
+        }
+        while (start_index <= end_index) {
+            pid_set.insert(start_index);
+            start_index++;
+        }
+    } else if (pid_group.find(',') != std::string::npos) {
+        std::vector<std::string> vec = absl::StrSplit(pid_group, ",");
+        for (const auto& pid_str : vec) {
+            if (!::openmldb::base::IsNumber(pid_str)) {
+                return -1;
+            }
+            uint32_t pid = 0;
+            if (auto ret = std::from_chars(pid_str.data(), pid_str.data() + pid_str.size(), pid);
+                ret.ec != std::errc()) {
+                std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+                return -1;
+            }
+            pid_set.insert(pid);
+        }
+    } else {
         return -1;
     }
     return 0;
@@ -508,20 +525,16 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::openmldb::c
         std::cout << "bad cancelop format, eg cancelop 1002" << std::endl;
         return;
     }
-    try {
-        if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
-            std::cout << "Invalid args. op_id should be large than zero" << std::endl;
-            return;
-        }
-        uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
-        auto st = client->CancelOP(op_id);
-        if (st.OK()) {
-            std::cout << "Cancel op ok" << std::endl;
-        } else {
-            std::cout << "Cancel op failed, error msg: " << st.ToString() << std::endl;
-        }
-    } catch (std::exception const& e) {
+    uint64_t op_id = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), op_id); ret.ec != std::errc()) {
         std::cout << "Invalid args. op_id should be uint64_t" << std::endl;
+        return;
+    }
+    auto st = client->CancelOP(op_id);
+    if (st.OK()) {
+        std::cout << "Cancel op ok" << std::endl;
+    } else {
+        std::cout << "Cancel op failed, error msg: " << st.ToString() << std::endl;
     }
 }
 
@@ -712,18 +725,18 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::openmldb::cli
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        bool ok = client->MakeSnapshot(parts[1], pid, 0, msg);
-        if (!ok) {
-            std::cout << "Fail to makesnapshot. error msg:" << msg << std::endl;
-            return;
-        }
-        std::cout << "MakeSnapshot ok" << std::endl;
-    } catch (std::exception const& e) {
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return;
     }
+    std::string msg;
+    bool ok = client->MakeSnapshot(parts[1], pid, 0, msg);
+    if (!ok) {
+        std::cout << "Fail to makesnapshot. error msg:" << msg << std::endl;
+        return;
+    }
+    std::cout << "MakeSnapshot ok" << std::endl;
 }
 
 void HandleNSAddReplica(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
@@ -935,20 +948,19 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::openmld
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        std::string candidate_leader;
-        if (parts.size() > 3) {
-            candidate_leader = parts[3];
-        }
-        auto st = client->ChangeLeader(parts[1], pid, candidate_leader);
-        if (!st.OK()) {
-            std::cout << "failed to change leader. error msg: " << st.GetMsg() << std::endl;
-            return;
-        }
-    } catch (const std::exception& e) {
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return;
+    }
+    std::string msg;
+    std::string candidate_leader;
+    if (parts.size() > 3) {
+        candidate_leader = parts[3];
+    }
+    auto st = client->ChangeLeader(parts[1], pid, candidate_leader);
+    if (!st.OK()) {
+        std::cout << "failed to change leader. error msg: " << st.GetMsg() << std::endl;
         return;
     }
     std::cout << "change leader ok. If there are writing operations while changing a leader, it may cause data loss."
@@ -1031,14 +1043,9 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::open
     }
     uint32_t concurrency = 0;
     if (parts.size() > 3) {
-        try {
-            if (boost::lexical_cast<int32_t>(parts[3]) <= 0) {
-                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
-                return;
-            }
-            concurrency = boost::lexical_cast<uint32_t>(parts[3]);
-        } catch (const std::exception& e) {
-            std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
+        if (auto ret = std::from_chars(parts[3].data(), parts[3].data() + parts[3].size(), concurrency);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args. concurrency should be uint32" << std::endl;
             return;
         }
     }
@@ -1056,17 +1063,17 @@ void HandleNSClientRecoverTable(const std::vector<std::string>& parts, ::openmld
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        auto st = client->RecoverTable(parts[1], pid, parts[3]);
-        if (!st.OK()) {
-            std::cout << "Fail to recover table. error msg:" << st.GetMsg() << std::endl;
-            return;
-        }
-        std::cout << "recover table ok" << std::endl;
-    } catch (std::exception const& e) {
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return;
     }
+    auto st = client->RecoverTable(parts[1], pid, parts[3]);
+    if (!st.OK()) {
+        std::cout << "Fail to recover table. error msg:" << st.GetMsg() << std::endl;
+        return;
+    }
+    std::cout << "recover table ok" << std::endl;
 }
 
 void HandleNSClientConnectZK(const std::vector<std::string> parts, ::openmldb::client::NsClient* client) {
@@ -1805,14 +1812,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
     }
     uint32_t limit = FLAGS_preview_default_limit;
     if (parts.size() > 2) {
-        try {
-            int64_t tmp = boost::lexical_cast<int64_t>(parts[2]);
-            if (tmp < 0) {
-                printf("preview error. limit should be unsigned int\n");
-                return;
-            }
-            limit = boost::lexical_cast<uint32_t>(parts[2]);
-        } catch (std::exception const& e) {
+        if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), limit);
+            ret.ec != std::errc()) {
             printf("preview error. limit should be unsigned int\n");
             return;
         }
@@ -2656,9 +2657,7 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::op
     }
     std::string name = parts[1];
     uint32_t pid = 0;
-    try {
-        pid = boost::lexical_cast<uint32_t>(parts[2]);
-    } catch (std::exception const& e) {
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
         return;
     }
@@ -2710,14 +2709,7 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::ope
     }
     uint32_t pid = UINT32_MAX;
     if (parts[2] != "*") {
-        try {
-            int pid_tmp = boost::lexical_cast<int32_t>(parts[2]);
-            if (pid_tmp < 0) {
-                std::cout << "Invalid args. pid should be uint32_t" << std::endl;
-                return;
-            }
-            pid = pid_tmp;
-        } catch (std::exception const& e) {
+        if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
             std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return;
         }
@@ -2751,10 +2743,9 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
         name = parts[1];
     }
     if (parts.size() > 2) {
-        try {
-            pid = boost::lexical_cast<uint32_t>(parts[2]);
-        } catch (std::exception const& e) {
-            std::cout << "Invalid args pid should be uint32_t" << std::endl;
+        if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return;
         }
     }
@@ -2835,15 +2826,20 @@ void HandleClientDeleteIndex(const std::vector<std::string>& parts, ::openmldb::
         std::cout << "usage: deleteindex tid pid index_name" << std::endl;
         return;
     }
-    try {
-        std::string msg;
-        if (!client->DeleteIndex(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                 parts[3], &msg)) {
-            std::cout << "Fail to delete index. error msg: " << msg << std::endl;
-            return;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    std::string msg;
+    if (!client->DeleteIndex(tid, pid, parts[3], &msg)) {
+        std::cout << "Fail to delete index. error msg: " << msg << std::endl;
+        return;
     }
     std::cout << "delete index ok" << std::endl;
 }
@@ -2907,15 +2903,21 @@ void HandleClientDropTable(const std::vector<std::string>& parts, ::openmldb::cl
         std::cout << "Bad drop command, you should input like 'drop tid pid' " << std::endl;
         return;
     }
-    try {
-        bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-        if (ok) {
-            std::cout << "Drop table ok" << std::endl;
-        } else {
-            std::cout << "Fail to drop table" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad drop format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->DropTable(tid, pid);
+    if (ok) {
+        std::cout << "Drop table ok" << std::endl;
+    } else {
+        std::cout << "Fail to drop table" << std::endl;
     }
 }
 
@@ -2924,16 +2926,21 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::openmldb::cl
         std::cout << "Bad addreplica format" << std::endl;
         return;
     }
-    try {
-        bool ok = client->AddReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                     parts[3]);
-        if (ok) {
-            std::cout << "AddReplica ok" << std::endl;
-        } else {
-            std::cout << "Fail to Add Replica" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad addreplica format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->AddReplica(tid, pid, parts[3]);
+    if (ok) {
+        std::cout << "AddReplica ok" << std::endl;
+    } else {
+        std::cout << "Fail to Add Replica" << std::endl;
     }
 }
 
@@ -2942,16 +2949,21 @@ void HandleClientDelReplica(const std::vector<std::string> parts, ::openmldb::cl
         std::cout << "Bad delreplica format" << std::endl;
         return;
     }
-    try {
-        bool ok = client->DelReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                     parts[3]);
-        if (ok) {
-            std::cout << "DelReplica ok" << std::endl;
-        } else {
-            std::cout << "Fail to Del Replica" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad delreplica format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->DelReplica(tid, pid, parts[3]);
+    if (ok) {
+        std::cout << "DelReplica ok" << std::endl;
+    } else {
+        std::cout << "Fail to Del Replica" << std::endl;
     }
 }
 
@@ -2960,16 +2972,21 @@ void HandleClientSetExpire(const std::vector<std::string> parts, ::openmldb::cli
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        bool ok = client->SetExpire(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
-                                    parts[3] == "true" ? true : false);
-        if (ok) {
-            std::cout << "setexpire ok" << std::endl;
-        } else {
-            std::cout << "Fail to setexpire" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->SetExpire(tid, pid, parts[3] == "true" ? true : false);
+    if (ok) {
+        std::cout << "setexpire ok" << std::endl;
+    } else {
+        std::cout << "Fail to setexpire" << std::endl;
     }
 }
 
@@ -3135,16 +3152,21 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::openmldb
     std::vector<::openmldb::api::TableStatus> status_vec;
     if (parts.size() == 3) {
         ::openmldb::api::TableStatus table_status;
-        try {
-            if (auto st = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]),
-                                                 boost::lexical_cast<uint32_t>(parts[2]), table_status);
-                st.OK()) {
-                status_vec.push_back(table_status);
-            } else {
-                std::cout << "gettablestatus failed, error msg: " << st.GetMsg() << std::endl;
-            }
-        } catch (boost::bad_lexical_cast& e) {
-            std::cout << "Bad gettablestatus format" << std::endl;
+        uint32_t tid = 0;
+        if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+            std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+            return;
+        }
+        uint32_t pid = 0;
+        if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+            std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+            return;
+        }
+        if (auto st = client->GetTableStatus(tid, pid, table_status);
+            st.OK()) {
+            status_vec.push_back(table_status);
+        } else {
+            std::cout << "gettablestatus failed, error msg: " << st.GetMsg() << std::endl;
         }
     } else if (parts.size() == 1) {
         ::openmldb::api::GetTableStatusResponse response;
@@ -3167,7 +3189,17 @@ void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::openmldb::
         std::cout << "Bad MakeSnapshot format" << std::endl;
         return;
     }
-    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), 0);
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->MakeSnapshot(tid, pid, 0);
     if (ok) {
         std::cout << "MakeSnapshot ok" << std::endl;
     } else {
@@ -3180,16 +3212,21 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::openmldb:
         std::cout << "Bad PauseSnapshot format" << std::endl;
         return;
     }
-    try {
-        bool ok =
-            client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-        if (ok) {
-            std::cout << "PauseSnapshot ok" << std::endl;
-        } else {
-            std::cout << "Fail to PauseSnapshot" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad PauseSnapshot format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->PauseSnapshot(tid, pid);
+    if (ok) {
+        std::cout << "PauseSnapshot ok" << std::endl;
+    } else {
+        std::cout << "Fail to PauseSnapshot" << std::endl;
     }
 }
 
@@ -3198,16 +3235,21 @@ void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::openmld
         std::cout << "Bad RecoverSnapshot format" << std::endl;
         return;
     }
-    try {
-        bool ok =
-            client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-        if (ok) {
-            std::cout << "RecoverSnapshot ok" << std::endl;
-        } else {
-            std::cout << "Fail to RecoverSnapshot" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad RecoverSnapshot format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->RecoverSnapshot(tid, pid);
+    if (ok) {
+        std::cout << "RecoverSnapshot ok" << std::endl;
+    } else {
+        std::cout << "Fail to RecoverSnapshot" << std::endl;
     }
 }
 
@@ -3216,16 +3258,21 @@ void HandleClientSendSnapshot(const std::vector<std::string> parts, ::openmldb::
         std::cout << "Bad SendSnapshot format" << std::endl;
         return;
     }
-    try {
-        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[1]),
-                                       boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
-        if (ok) {
-            std::cout << "SendSnapshot ok" << std::endl;
-        } else {
-            std::cout << "Fail to SendSnapshot" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad SendSnapshot format" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->SendSnapshot(tid, tid, pid, parts[3]);
+    if (ok) {
+        std::cout << "SendSnapshot ok" << std::endl;
+    } else {
+        std::cout << "Fail to SendSnapshot" << std::endl;
     }
 }
 
@@ -3271,32 +3318,39 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::openmldb::cl
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
-    try {
-        uint64_t termid = 0;
-        if (parts.size() > 4) {
-            termid = boost::lexical_cast<uint64_t>(parts[4]);
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    uint64_t termid = 0;
+    if (parts.size() > 4) {
+        if (auto ret = std::from_chars(parts[4].data(), parts[4].data() + parts[4].size(), termid); ret.ec != std::errc()) {
+            std::cout << "Invalid args, termid should be uint64_t" << std::endl;
+            return;
         }
-        if (parts[3].compare("leader") == 0) {
-            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]),
-                                         boost::lexical_cast<uint32_t>(parts[2]), true, termid);
-            if (ok) {
-                std::cout << "ChangeRole ok" << std::endl;
-            } else {
-                std::cout << "Fail to change leader" << std::endl;
-            }
-        } else if (parts[3].compare("follower") == 0) {
-            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]),
-                                         boost::lexical_cast<uint32_t>(parts[2]), false, termid);
-            if (ok) {
-                std::cout << "ChangeRole ok" << std::endl;
-            } else {
-                std::cout << "Fail to change follower" << std::endl;
-            }
+    }
+    if (parts[3].compare("leader") == 0) {
+        bool ok = client->ChangeRole(tid, pid, true, termid);
+        if (ok) {
+            std::cout << "ChangeRole ok" << std::endl;
         } else {
-            std::cout << "role must be leader or follower" << std::endl;
+            std::cout << "Fail to change leader" << std::endl;
         }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad changerole format" << std::endl;
+    } else if (parts[3].compare("follower") == 0) {
+        bool ok = client->ChangeRole(tid, pid, false, termid);
+        if (ok) {
+            std::cout << "ChangeRole ok" << std::endl;
+        } else {
+            std::cout << "Fail to change follower" << std::endl;
+        }
+    } else {
+        std::cout << "role must be leader or follower" << std::endl;
     }
 }
 
@@ -3306,28 +3360,29 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     uint32_t limit = FLAGS_preview_default_limit;
-    uint32_t tid, pid;
-    try {
-        tid = boost::lexical_cast<uint32_t>(parts[1]);
-        pid = boost::lexical_cast<uint32_t>(parts[2]);
-        if (parts.size() > 3) {
-            int64_t tmp = boost::lexical_cast<int64_t>(parts[3]);
-            if (tmp < 0) {
-                printf("preview error. limit should be unsigned int\n");
-                return;
-            }
-            limit = boost::lexical_cast<uint32_t>(parts[3]);
-            if (limit > FLAGS_preview_limit_max_num) {
-                printf("preview error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
-                return;
-            } else if (limit == 0) {
-                printf("preview error. limit must be greater than zero\n");
-                return;
-            }
-        }
-    } catch (std::exception const& e) {
-        printf("Invalid args. tid, pid and limit should be unsigned int\n");
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
         return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    if (parts.size() > 3) {
+        if (auto ret = std::from_chars(parts[3].data(), parts[3].data() + parts[3].size(), limit);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args, limit should be uint32_t" << std::endl;
+            return;
+        }
+        if (limit > FLAGS_preview_limit_max_num) {
+            printf("preview error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
+            return;
+        } else if (limit == 0) {
+            printf("preview error. limit must be greater than zero\n");
+            return;
+        }
     }
     ::openmldb::api::TableStatus table_status;
     if (auto st = client->GetTableStatus(tid, pid, true, table_status); !st.OK()) {
@@ -3411,12 +3466,13 @@ void HandleClientGetFollower(const std::vector<std::string>& parts, ::openmldb::
         return;
     }
     uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
     uint32_t pid = 0;
-    try {
-        tid = boost::lexical_cast<uint32_t>(parts[1]);
-        pid = boost::lexical_cast<uint32_t>(parts[2]);
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args" << std::endl;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
         return;
     }
     std::map<std::string, uint64_t> info_map;
@@ -3474,80 +3530,93 @@ void HandleClientCount(const std::vector<std::string>& parts, ::openmldb::client
     std::string ts_name;
     uint64_t value = 0;
     auto iter = parameter_map.begin();
-    try {
-        if (is_pair_format) {
-            iter = parameter_map.find("tid");
-            if (iter != parameter_map.end()) {
-                tid = boost::lexical_cast<uint32_t>(iter->second);
-            } else {
-                std::cout << "count format error: tid does not exist!" << std::endl;
+    if (is_pair_format) {
+        iter = parameter_map.find("tid");
+        if (iter != parameter_map.end()) {
+            if (auto ret = std::from_chars(iter->second.data(), iter->second.data() + iter->second.size(), tid);
+                ret.ec != std::errc()) {
+                std::cout << "Invalid args, tid should be uint32_t" << std::endl;
                 return;
-            }
-            iter = parameter_map.find("pid");
-            if (iter != parameter_map.end()) {
-                pid = boost::lexical_cast<uint32_t>(iter->second);
-            } else {
-                std::cout << "count format error: pid does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("key");
-            if (iter != parameter_map.end()) {
-                key = iter->second;
-            } else {
-                std::cout << "count format error: key does not exist!" << std::endl;
-                return;
-            }
-            iter = parameter_map.find("index_name");
-            if (iter != parameter_map.end()) {
-                index_name = iter->second;
-            }
-            iter = parameter_map.find("ts_name");
-            if (iter != parameter_map.end()) {
-                ts_name = iter->second;
-            }
-            iter = parameter_map.find("filter_expired_data");
-            if (iter != parameter_map.end()) {
-                std::string temp_str = iter->second;
-                if (temp_str == "true") {
-                    filter_expired_data = true;
-                } else if (temp_str == "false") {
-                    filter_expired_data = false;
-                } else {
-                    printf(
-                        "filter_expired_data parameter should be true or "
-                        "false\n");
-                    return;
-                }
             }
         } else {
-            tid = boost::lexical_cast<uint32_t>(parts[1]);
-            pid = boost::lexical_cast<uint32_t>(parts[2]);
-            key = parts[3];
-            if (parts.size() == 5) {
-                if (parts[4] == "true") {
-                    filter_expired_data = true;
-                } else if (parts[4] == "false") {
-                    filter_expired_data = false;
-                } else {
-                    index_name = parts[4];
-                }
-            } else if (parts.size() > 5) {
-                index_name = parts[4];
-                if (parts[5] == "true") {
-                    filter_expired_data = true;
-                } else if (parts[5] == "false") {
-                    filter_expired_data = false;
-                } else {
-                    printf(
-                        "filter_expired_data parameter should be true or "
-                        "false\n");
-                    return;
-                }
+            std::cout << "count format error: tid does not exist!" << std::endl;
+            return;
+        }
+        iter = parameter_map.find("pid");
+        if (iter != parameter_map.end()) {
+            if (auto ret = std::from_chars(iter->second.data(), iter->second.data() + iter->second.size(), pid);
+                ret.ec != std::errc()) {
+                std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+                return;
+            }
+        } else {
+            std::cout << "count format error: pid does not exist!" << std::endl;
+            return;
+        }
+        iter = parameter_map.find("key");
+        if (iter != parameter_map.end()) {
+            key = iter->second;
+        } else {
+            std::cout << "count format error: key does not exist!" << std::endl;
+            return;
+        }
+        iter = parameter_map.find("index_name");
+        if (iter != parameter_map.end()) {
+            index_name = iter->second;
+        }
+        iter = parameter_map.find("ts_name");
+        if (iter != parameter_map.end()) {
+            ts_name = iter->second;
+        }
+        iter = parameter_map.find("filter_expired_data");
+        if (iter != parameter_map.end()) {
+            std::string temp_str = iter->second;
+            if (temp_str == "true") {
+                filter_expired_data = true;
+            } else if (temp_str == "false") {
+                filter_expired_data = false;
+            } else {
+                printf(
+                    "filter_expired_data parameter should be true or "
+                    "false\n");
+                return;
             }
         }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args. tid and pid should be uint32" << std::endl;
-        return;
+    } else {
+        uint32_t tid = 0;
+        if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+            return;
+        }
+        uint32_t pid = 0;
+        if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid);
+            ret.ec != std::errc()) {
+            std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+            return;
+        }
+        key = parts[3];
+        if (parts.size() == 5) {
+            if (parts[4] == "true") {
+                filter_expired_data = true;
+            } else if (parts[4] == "false") {
+                filter_expired_data = false;
+            } else {
+                index_name = parts[4];
+            }
+        } else if (parts.size() > 5) {
+            index_name = parts[4];
+            if (parts[5] == "true") {
+                filter_expired_data = true;
+            } else if (parts[5] == "false") {
+                filter_expired_data = false;
+            } else {
+                printf(
+                    "filter_expired_data parameter should be true or "
+                    "false\n");
+                return;
+            }
+        }
     }
     std::string msg;
     bool ok = client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
@@ -3564,15 +3633,19 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::openmldb::c
         return;
     }
     ::openmldb::api::TableMeta table_meta;
-    try {
-        bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
-                                         boost::lexical_cast<uint32_t>(parts[2]), table_meta);
-        if (!ok) {
-            std::cout << "ShowSchema failed" << std::endl;
-            return;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    bool ok = client->GetTableSchema(tid, pid, table_meta);
+    if (!ok) {
+        std::cout << "ShowSchema failed" << std::endl;
         return;
     }
     if (table_meta.column_desc_size() > 0) {
@@ -3589,21 +3662,25 @@ void HandleClientDelete(const std::vector<std::string>& parts, ::openmldb::clien
         std::cout << "Bad delete format" << std::endl;
         return;
     }
-    try {
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        std::string idx_name;
-        if (parts.size() > 4) {
-            idx_name = parts[4];
-        }
-        if (client->Delete(tid, pid, parts[3], idx_name, msg)) {
-            std::cout << "Delete ok" << std::endl;
-        } else {
-            std::cout << "Delete failed" << std::endl;
-        }
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args, tid pid should be uint32_t" << std::endl;
+    uint32_t tid = 0;
+    if (auto ret = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), tid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, tid should be uint32_t" << std::endl;
+        return;
+    }
+    uint32_t pid = 0;
+    if (auto ret = std::from_chars(parts[2].data(), parts[2].data() + parts[2].size(), pid); ret.ec != std::errc()) {
+        std::cout << "Invalid args, pid should be uint32_t" << std::endl;
+        return;
+    }
+    std::string msg;
+    std::string idx_name;
+    if (parts.size() > 4) {
+        idx_name = parts[4];
+    }
+    if (client->Delete(tid, pid, parts[3], idx_name, msg)) {
+        std::cout << "Delete ok" << std::endl;
+    } else {
+        std::cout << "Delete failed" << std::endl;
     }
 }
 
@@ -3914,9 +3991,7 @@ void StartAPIServer() {
             exit(1);
         }
         int32_t port = 0;
-        try {
-            port = boost::lexical_cast<uint32_t>(vec[1]);
-        } catch (std::exception const& e) {
+        if (auto ret = std::from_chars(vec[1].data(), vec[1].data() + vec[1].size(), port); ret.ec != std::errc()) {
             PDLOG(WARNING, "Invalid nameserver format");
             exit(1);
         }
