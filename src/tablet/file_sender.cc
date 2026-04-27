@@ -19,9 +19,9 @@
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
-#include "boost/algorithm/string/predicate.hpp"
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "nameserver/system_table.h"
@@ -124,7 +124,7 @@ int FileSender::SendFile(const std::string& file_name, const std::string& full_p
 }
 
 int FileSender::SendFile(const std::string& file_name, const std::string& dir_name, const std::string& full_path) {
-    if (!boost::ends_with(full_path, file_name)) {
+    if (!absl::EndsWith(full_path, file_name)) {
         PDLOG(WARNING, "invalid file[%s] path[%s]", file_name.c_str(), full_path.c_str());
         return -1;
     }
