@@ -157,7 +157,7 @@ We really appreciate the contribution from our community.
   ![wechat](docs/en/about/images/wechat.png)  
 
 ## 12. Publications
-- [FeatInsight: An Online ML Feature Management System on 4Paradigm Sage-Studio Platform](docs/paper/featinsight_sigmod2026.pdf). Xin Tong, Xuanhe Zhou, Bingsheng He, Guoliang Li, Zirui Tang, Wei Zhou, Long Deng, Mian Lu, Yuqiang Chen, Fan Wu. SIGMOD 2026.
+- [FeatInsight: An Online ML Feature Management System on 4Paradigm Sage-Studio Platform](docs/paper/featinsight_sigmod2026.pdf). Xin Tong, Xuanhe Zhou, Bingsheng He, Guoliang Li, Zirui Tang, Wei Zhou, Long Deng, Mian Lu, Yuqiang Chen, Fan Wu. SIGMOD 2026. [[code]](https://github.com/4paradigm/FeatInsight).
 - [OpenMLDB: A Real-Time Relational Data Feature Computation System for Online ML](https://dl.acm.org/doi/10.1145/3722212.3724446). Xuanhe Zhou, Wei Zhou, Liguo Qi, Hao Zhang, Dihao Chen, Bingsheng He, Mian Lu, Guoliang Li, Fan Wu, Yuqiang Chen. SIGMOD 2025.
 - [PECJ: Stream Window Join on Disorder Data Streams with Proactive Error Compensation](https://tonyskyzeng.github.io/downloads/PECJ_TR.pdf). Xianzhi Zeng, Shuhao Zhang, Hongbin Zhong, Hao Zhang, Mian Lu, Zhao Zheng, and Yuqiang Chen. International Conference on Management of Data (SIGMOD/PODS) 2024.
 - [Principles and Practices of Real-Time Feature Computing Platforms for ML](https://cacm.acm.org/magazines/2023/7/274061-principles-and-practices-of-real-time-feature-computing-platforms-for-ml/fulltext). Hao Zhang, Jun Yang, Cheng Chen, Siqi Wang, Jiashu Li, and Mian Lu. 2023. Communications of the ACM 66, 7 (July 2023), 77–78.
