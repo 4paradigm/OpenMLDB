@@ -874,9 +874,9 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
 
             @param str
-            @param pos define the begining of the substring.
+            @param pos define the beginning of the substring.
 
-            - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+            - If `pos` is positive, the beginning of the substring is `pos` characters from the start of string.
             - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
             @since 0.1.0)");
@@ -900,9 +900,9 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
 
             @param str
-            @param pos: define the begining of the substring.
+            @param pos: define the beginning of the substring.
 
-             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+             - If `pos` is positive, the beginning of the substring is `pos` characters from the start of string.
              - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
             @param len length of substring. If len is less than 1, the result is the empty string.
@@ -947,8 +947,8 @@ void DefaultUdfLibrary::InitStringUdf() {
 
             @param substr
             @param str
-            @param pos: define the begining search position of the str.
-             - Negetive value is illegal and will return 0 directly;
+            @param pos: define the beginning search position of the str.
+             - Negative value is illegal and will return 0 directly;
              - If substr is "" and pos less equal len(str) + 1, return pos, other case return 0;
         )");
 

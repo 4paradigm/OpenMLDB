@@ -397,7 +397,7 @@ void bool_to_string(bool v, StringRef *output);
 
 // transform string into integral
 // base is default to 10, 16 if string starts with '0x' or '0X', other base is not considered.
-// for hex string, it's parsed unsigned, add minus('-') to the very begining for negative hex
+// for hex string, it's parsed unsigned, add minus('-') to the very beginning for negative hex
 // returns (status, int64)
 struct StrToIntegral {
     std::pair<absl::Status, int64_t> operator()(absl::string_view in) {
