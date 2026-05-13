@@ -22,8 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
-#include "boost/algorithm/string/predicate.hpp"
 #include "gflags/gflags.h"
 #include "google/protobuf/util/message_differencer.h"
 
@@ -415,7 +415,7 @@ bool DataCollectorImpl::FetchBinlogUnlocked(const std::string& name, const std::
     for (auto& p : fs::directory_iterator(binlog_dir)) {
         if (fs::is_regular_file(p)) {
             auto file_name = p.path().filename().string();
-            if (!boost::ends_with(file_name, ".log")) {
+            if (!absl::EndsWith(file_name, ".log")) {
                 continue;
             }
             auto src = binlog_path + file_name;
