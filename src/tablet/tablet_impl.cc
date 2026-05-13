@@ -45,7 +45,6 @@
 #include "base/strings.h"
 #include "base/sys_info.h"
 #include "boost/bind.hpp"
-#include "boost/container/deque.hpp"
 #include "brpc/controller.h"
 #include "butil/iobuf.h"
 #include "codec/codec.h"

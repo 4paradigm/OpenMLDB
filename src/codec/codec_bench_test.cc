@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <deque>
 #include <iostream>
 
 #include "base/kv_iterator.h"
@@ -35,7 +36,7 @@ class CodecBenchmarkTest : public ::testing::Test {
 };
 
 void RunHasTs(::openmldb::storage::DataBlock* db) {
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
+    std::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
         data.emplace_back(1000, std::move(::openmldb::base::Slice(db->data, db->size)));

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "boost/container/deque.hpp"
 #include "codec/encrypt.h"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
@@ -36,7 +36,7 @@ class CodecTest : public ::testing::Test {
 };
 
 TEST_F(CodecTest, EncodeRows) {
-    boost::container::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
+    std::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;

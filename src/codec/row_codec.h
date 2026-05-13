@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "base/status.h"
-#include "boost/container/deque.hpp"
 #include "butil/iobuf.h"
 #include "codec/codec.h"
 #include "storage/segment.h"
