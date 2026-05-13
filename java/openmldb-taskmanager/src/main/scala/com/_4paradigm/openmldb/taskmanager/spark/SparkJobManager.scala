@@ -41,9 +41,7 @@ object SparkJobManager {
     if (TaskManagerConfig.getHadoopUserName != null && TaskManagerConfig.getHadoopUserName.nonEmpty) {
       env.put("HADOOP_USER_NAME", TaskManagerConfig.getHadoopUserName)
     }
-    logger.info("HADOOP_CONF_DIR = " + env.get("HADOOP_CONF_DIR"))
-    logger.info("PATH exists = " + env.containsKey("PATH"))
-    
+
     val launcher = new SparkLauncher(env)
       .setAppResource(TaskManagerConfig.getBatchjobJarPath)
       .setMainClass(mainClass)
@@ -90,7 +88,7 @@ object SparkJobManager {
     val launcher = createSparkLauncher(mainClass)
 
     if (args.nonEmpty) {
-      launcher.addAppArgs(args: _*)
+      launcher.addAppArgs(args:_*)
     }
 
     if (localSqlFile.nonEmpty) {
