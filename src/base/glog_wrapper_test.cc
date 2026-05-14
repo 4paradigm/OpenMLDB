@@ -16,6 +16,7 @@
 
 #include "base/glog_wrapper.h"
 
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -24,7 +25,7 @@
 namespace openmldb {
 namespace base {
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 class GlogWrapperTest : public ::testing::Test {
  public:
