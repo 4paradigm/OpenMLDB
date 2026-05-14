@@ -34,6 +34,7 @@
 #include <vector>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/strings/match.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "base/file_util.h"
@@ -4185,7 +4186,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         engine_->ClearCacheLocked("");
 
         // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
-        if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
+        if (absl::EqualsIgnoreCase(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
             RefreshAggrCatalog();
         }
     }

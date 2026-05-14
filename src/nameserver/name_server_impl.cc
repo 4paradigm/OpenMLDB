@@ -23,6 +23,7 @@
 #include <set>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -1098,7 +1099,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     std::string nearline_tablet_endpoint;
     for (const auto& endpoint : endpoints) {
         std::string cur_endpoint = endpoint;
-        if (boost::starts_with(cur_endpoint, ::openmldb::base::NEARLINE_PREFIX)) {
+        if (absl::StartsWith(cur_endpoint, ::openmldb::base::NEARLINE_PREFIX)) {
             nearline_tablet_endpoint = endpoint.substr(::openmldb::base::NEARLINE_PREFIX.size());
             cur_endpoint = nearline_tablet_endpoint;
         } else {
@@ -1263,7 +1264,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             offline_endpoint_map_.erase(iter);
             return;
         }
-        if (!boost::starts_with(value, "startup_")) {
+        if (!absl::StartsWith(value, "startup_")) {
             uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
             if (cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
                 PDLOG(INFO,
@@ -1275,7 +1276,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             }
         }
     }
-    if (boost::starts_with(value, "startup_")) {
+    if (absl::StartsWith(value, "startup_")) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
     }
