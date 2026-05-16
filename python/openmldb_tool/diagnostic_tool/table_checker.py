@@ -104,7 +104,7 @@ class TableChecker:
             self._byte2mb(t["dused_dist"])
             self._show_dist(
                 t["dused_dist"],
-                max_width=max_width * get_max(t["dused_dist"]) / max_values["md"],
+                max_width=max_width if max_values["md"] == 0 else max_width * get_max(t["dused_dist"]) / max_values["md"],
             )
 
         print()
