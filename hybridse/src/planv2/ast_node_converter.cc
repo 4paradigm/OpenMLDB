@@ -454,7 +454,7 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             bool is_null;
             if (literal->is_float32()) {
                 float float_value = 0.0;
-                hybridse::codec::StringRef str(literal->image().size() - 1, literal->image().data());
+                hybridse::codec::StringRef str(literal->image().size(), literal->image().data());
                 hybridse::udf::v1::string_to_float(&str, &float_value, &is_null);
                 CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid float literal: ", literal->image());
                 *output = node_manager->MakeConstNode(float_value);
