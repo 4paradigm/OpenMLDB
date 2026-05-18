@@ -312,6 +312,29 @@ TEST_F(SqlCaseTest, ExtractInsertSqlTest) {
             create_sql);
     }
 }
+TEST_F(SqlCaseTest, ExtractScientificFloatInsertTest) {
+    const std::string schema_str =
+        "id:int64, name:string, age:int64, score:float, ts:double, dt:date";
+
+    type::TableDef output_table;
+    ASSERT_TRUE(SqlCase::ExtractSchema(schema_str, output_table));
+
+    std::vector<std::vector<std::string>> rows;
+    rows.push_back({
+        "1",
+        "Alice",
+        "25",
+        "1.1e0",
+        "1712911045",
+        "2024-01-01"
+    });
+
+    std::string create_sql;
+    ASSERT_TRUE(
+        SqlCase::BuildInsertSqlFromRows(output_table, rows, &create_sql));
+
+    ASSERT_NE(std::string::npos, create_sql.find("1.1e0"));
+}
 TEST_F(SqlCaseTest, ExtractRowTest) {
     const std::string schema_str =
         "col0:string, col1:int32, col2:int16, col3:float, col4:double, "
