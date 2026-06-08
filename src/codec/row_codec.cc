@@ -69,7 +69,7 @@ int32_t RowCodec::CalStrLength(const std::vector<std::string>& input_value, cons
     return str_len;
 }
 
-::openmldb::base::Status RowCodec::EncodeRow(const std::vector<std::string> input_value, const Schema& schema,
+::openmldb::base::Status RowCodec::EncodeRow(const std::vector<std::string>& input_value, const Schema& schema,
                                              uint32_t version, std::string& row) {
     if (input_value.empty() || input_value.size() != (uint64_t)schema.size()) {
         return ::openmldb::base::Status(-1, "input error");

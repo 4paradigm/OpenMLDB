@@ -201,7 +201,7 @@ inline int8_t GetAddrSpace(uint32_t size) {
         return 1;
     } else if (size <= UINT16_MAX) {
         return 2;
-    } else if (size <= 1 << 24) {
+    } else if (size <= UINT24_MAX) {
         return 3;
     } else {
         return 4;

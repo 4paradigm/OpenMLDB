@@ -39,7 +39,7 @@ class RowCodec {
 
     static int32_t CalStrLength(const std::vector<std::string>& input_value, const Schema& schema);
 
-    static ::openmldb::base::Status EncodeRow(const std::vector<std::string> input_value, const Schema& schema,
+    static ::openmldb::base::Status EncodeRow(const std::vector<std::string>& input_value, const Schema& schema,
                                                  uint32_t version,
                                                  std::string& row);  // NOLINT
 

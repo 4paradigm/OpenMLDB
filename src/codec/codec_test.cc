@@ -35,6 +35,18 @@ class CodecTest : public ::testing::Test {
     ~CodecTest() {}
 };
 
+TEST_F(CodecTest, GetAddrSpace) {
+    EXPECT_EQ(GetAddrSpace(0), 1);
+    EXPECT_EQ(GetAddrSpace(UINT8_MAX), 1);
+    EXPECT_EQ(GetAddrSpace(UINT8_MAX + 1), 2);
+    EXPECT_EQ(GetAddrSpace(UINT16_MAX), 2);
+    EXPECT_EQ(GetAddrSpace(UINT16_MAX + 1), 3);
+    EXPECT_EQ(GetAddrSpace(UINT24_MAX), 3);
+    EXPECT_EQ(GetAddrSpace(UINT24_MAX + 1), 4);
+    EXPECT_EQ(GetAddrSpace(UINT32_MAX), 4);
+}
+
+
 TEST_F(CodecTest, EncodeRows) {
     std::deque<std::pair<uint64_t, ::openmldb::base::Slice>> data;
     std::string test1 = "value1";
