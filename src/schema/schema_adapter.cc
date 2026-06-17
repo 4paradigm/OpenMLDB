@@ -36,7 +36,6 @@ bool SchemaAdapter::ConvertSchemaAndIndex(const ::hybridse::codec::Schema& sql_s
         return false;
     }
 
-    std::set<std::string> ts_cols;
     // Conver Index
     for (int32_t i = 0; i < index.size(); i++) {
         auto& sql_key = index.Get(i);
@@ -46,7 +45,6 @@ bool SchemaAdapter::ConvertSchemaAndIndex(const ::hybridse::codec::Schema& sql_s
             index->add_col_name(sql_key.first_keys(k));
         }
         index->set_ts_name(sql_key.second_key());
-        ts_cols.insert(sql_key.second_key());
     }
 
     for (int32_t i = 0; i < sql_schema.size(); i++) {

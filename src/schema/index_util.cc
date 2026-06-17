@@ -55,7 +55,7 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
                 if (iter->second.data_type() == ::openmldb::type::kFloat
                         || iter->second.data_type() == ::openmldb::type::kDouble) {
                     return {base::ReturnCode::kError,
-                        "float or double type column can not be index, column is: " + column_key.index_name()};
+                        "float or double type column can not be index, column is: " + column_name};
                 }
             } else {
                 return {base::ReturnCode::kError, "can not find col in schema. col: " + column_name};
