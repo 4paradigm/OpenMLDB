@@ -25,7 +25,7 @@ type driver struct{}
 func parseDsn(dsn string) (host string, db string, mode queryMode, err error) {
 	u, err := url.Parse(dsn)
 	if err != nil {
-		return "", "", "", fmt.Errorf("invlaid URL: %w", err)
+		return "", "", "", fmt.Errorf("invalid URL: %w", err)
 	}
 
 	if u.Scheme != "openmldb" && u.Scheme != "" {
@@ -35,8 +35,9 @@ func parseDsn(dsn string) (host string, db string, mode queryMode, err error) {
 	p := strings.Split(strings.TrimLeft(u.Path, "/"), "/")
 
 	mode = ModeOffsync
-	if u.Query().Has("mode") {
-		m := u.Query().Get("mode")
+	q := u.Query()
+	if q.Has("mode") {
+		m := q.Get("mode")
 		if _, ok := allQueryMode[m]; !ok {
 			return "", "", "", fmt.Errorf("invalid mode: %s", m)
 		}

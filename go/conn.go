@@ -86,7 +86,7 @@ type respDataRows struct {
 // slice. If a particular column name isn't known, an empty
 // string should be returned for that entry.
 func (r respDataRows) Columns() []string {
-	return make([]string, len(r.Schema))
+	return r.Schema
 }
 
 // Close closes the rows iterator.
@@ -220,6 +220,7 @@ func (c *conn) query(ctx context.Context, sql string, parameters ...interfaces.V
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if r, err := parseRespFromJson(resp.Body); err != nil {
 		return nil, err
