@@ -44,7 +44,7 @@ RESET = "\033[0m"
 
 # switch by nocolor flag
 def cr_print(color, obj):
-    if flags.FLAGS.nocolor or color == None:
+    if flags.FLAGS.nocolor or color is None:
         print(obj)
     else:
         print(f"{color}{obj}{RESET}")

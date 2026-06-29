@@ -45,7 +45,8 @@ class LogAnalyzer:
             for f in files:
                 if "warning.log" in f:
                     print(f"find warning log {f}:")
-                    print(open(f, "r").read(), "\n")
+                    with open(f, "r") as s:
+                        print(s.read(), "\n")
         self.dist_conf.server_info_map.for_each(grep_log, CXX_SERVER_ROLES)
         # exception or custom error
         def grep_log(server_info: ServerInfo) -> bool:
@@ -113,6 +114,6 @@ class LogAnalyzer:
                             msg += line + "\n"
                     line = f.readline()
             if print_errlog:
-                log.warn(f"{self.role} {self.endpoint} have error logs in {name}:")
+                log.warning(f"{self.role} {self.endpoint} have error logs in {name}:")
                 log.info(f"error msg: \n{msg}")
         return flag

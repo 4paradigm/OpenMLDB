@@ -147,14 +147,14 @@ class OpenMLDBSdk(object):
         columnTypes = sql_router_sdk.ColumnTypes()
         for col in data:
             col_type = sql_router_sdk.kTypeUnknow
-            if isinstance(col, int):
+            if isinstance(col, bool):
+                col_type = sql_router_sdk.kTypeBool
+            elif isinstance(col, int):
                 col_type = sql_router_sdk.kTypeInt64
             elif isinstance(col, float):
                 col_type = sql_router_sdk.kTypeDouble
             elif isinstance(col, str):
                 col_type = sql_router_sdk.kTypeString
-            elif isinstance(col, bool):
-                col_type = sql_router_sdk.kTypeBool
             elif isinstance(col, datetime):
                 col_type = sql_router_sdk.kTypeTimestamp
             elif isinstance(col, date):
@@ -276,7 +276,7 @@ class OpenMLDBSdk(object):
             return False, "please init sdk first"
 
         if not row_builder:
-            return False, "pealse init parameter row"
+            return False, "please init parameter row"
 
         status = sql_router_sdk.Status()
         rs = self.sdk.ExecuteSQLParameterized(db if db else self.getDatabase(),
@@ -358,7 +358,7 @@ class OpenMLDBSdk(object):
             logging.debug("append date with date item")
             return True, (x.year, x.month, x.day)
         else:
-            return False, "fail to extract date, invallid type {}".format(
+            return False, "fail to extract date, invalid type {}".format(
                 type(x))
 
     def _append_request_row_with_tuple(self, requestRow, schema, data):
@@ -450,7 +450,7 @@ class OpenMLDBSdk(object):
             if name not in data:
                 return False, "col {} data not given".format(name)
             val = data.get(name)
-            if val == None:
+            if val is None:
                 if schema.IsColumnNotNull(i):
                     return False, "column seq {} not allow null".format(i)
                 continue
