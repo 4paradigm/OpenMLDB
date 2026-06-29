@@ -356,9 +356,11 @@ class Cursor(object):
                 builder.AppendString,
             # TODO: align python and java date process, 1900 problem
             sql_router_sdk.kTypeDate:
-                lambda x: len(x.split("-")) == 3 and builder.AppendDate(
-                    int(x.split("-")[0]), int(x.split("-")[1]),
-                    int(x.split("-")[2])),
+                lambda x: (
+                    builder.AppendDate(int(parts[0]), int(parts[1]), int(parts[2]))
+                    if isinstance(x, str) and len(parts := x.split("-")) == 3 and all(p.isdigit() for p in parts)
+                    else None
+                ),
             sql_router_sdk.kTypeTimestamp:
                 builder.AppendTimestamp
         }
@@ -501,6 +503,7 @@ class Cursor(object):
     def getdesc(self):
         return "openmldb cursor"
 
+    @staticmethod
     def checkCmd(cmd: str) -> bool:
         if cmd.find("select cast") == 0:
             return False
@@ -526,7 +529,7 @@ class Cursor(object):
 
     def executeRequest(self, sql, parameter):
         command = sql.strip(' \t\n\r')
-        if selectRE.match(command) == False:
+        if not selectRE.match(command):
             raise Exception("Invalid operation for request")
 
         ok, rs = self.connection._sdk.doRequestQuery(None, sql, parameter)
