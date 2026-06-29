@@ -16,6 +16,8 @@
 
 #include "udf/openmldb_udf.h"
 
+#include <vector>
+
 extern "C"
 void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output) {
     if (input == nullptr || output == nullptr) {
