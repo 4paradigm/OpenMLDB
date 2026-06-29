@@ -44,8 +44,8 @@ struct StringRef {
 
     ~StringRef() {}
 
-    const inline bool IsNull() const { return nullptr == data_; }
-    const std::string ToString() const {
+    inline bool IsNull() const { return nullptr == data_; }
+    std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
 
@@ -81,22 +81,6 @@ struct StringRef {
     uint32_t size_;
     const char* data_;
 };
-
-__attribute__((unused)) static const StringRef operator+(const StringRef& a,
-                                                         const StringRef& b) {
-    StringRef str;
-    str.size_ = a.size_ + b.size_;
-    char* buffer = static_cast<char*>(malloc(str.size_ + 1));
-    str.data_ = buffer;
-    if (a.size_ > 0) {
-        memcpy(buffer, a.data_, a.size_);
-    }
-    if (b.size_ > 0) {
-        memcpy(buffer + a.size_, b.data_, b.size_);
-    }
-    buffer[str.size_] = '\0';
-    return str;
-}
 
 __attribute__((unused)) static std::ostream& operator<<(std::ostream& os,
                                                         const StringRef& a) {

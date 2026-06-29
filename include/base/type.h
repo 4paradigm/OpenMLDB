@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
-#include <vector>
 
 namespace openmldb {
 namespace base {
@@ -109,7 +108,7 @@ struct Date {
     }
 
     // | --- 16 bit -------------------------- | -- 8 bit ------------| --- 8 bit --------- |
-    // | year count since 1990 (starts from 0) | month(starts from 0) | day (starts from 1) |
+    // | year count since 1900 (starts from 0) | month(starts from 0) | day (starts from 1) |
     int32_t date_;
 
     friend std::ostream& operator<<(std::ostream& os, const Date& date) {
