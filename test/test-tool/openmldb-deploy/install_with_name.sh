@@ -21,7 +21,7 @@ if [[ -z ${VERSION} ]]; then
     VERSION=0.7.2
 fi
 echo "version: ${VERSION}"
-curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
+curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux-x86_64.tar.gz"
 mkdir -p "openmldb"
 tar xzf openmldb.tar.gz -C "openmldb" --strip-components 1
 pushd "openmldb"
