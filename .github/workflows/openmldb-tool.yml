@@ -85,7 +85,7 @@ jobs:
       - name: run test
         run: |
           cp -f tools/tool.py test/test-tool/openmldb-deploy/cases/
-          cp -f tools/* openmldb/tools/
+          cp -rf tools/* openmldb/tools/
           python3 -m pytest test/test-tool/openmldb-deploy/cases --junit-xml=pytest.xml
       - name: clear env
         run: |
