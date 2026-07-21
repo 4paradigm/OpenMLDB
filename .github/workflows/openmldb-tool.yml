@@ -70,7 +70,7 @@ jobs:
       - name: prepare env
         run: |
           pip3 install requests openmldb pytest
-          yum install -y rsync
+          apt-get update && apt-get install -y rsync
       - name: install openmldb
         run: |
           git fetch --tags --force
