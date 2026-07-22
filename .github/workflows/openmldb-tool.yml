@@ -16,6 +16,10 @@ on:
       - 'test/test-tool/openmldb-deploy/**'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   DEPLOY_DIR: /mnt/hdd0/openmldb_runner_work/openmldb_env

@@ -19,6 +19,10 @@ on:
       - "test/integration-test/openmldb-test-python/**"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   NPROC: 4 # default Parallel build number for GitHub's Linux runner
