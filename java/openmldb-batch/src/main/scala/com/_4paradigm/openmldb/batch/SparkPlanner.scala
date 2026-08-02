@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.batch
 import com._4paradigm.hybridse.`type`.TypeOuterClass.Database
 import com._4paradigm.hybridse.node.{DataType, JoinType}
 import com._4paradigm.hybridse.sdk.{SqlEngine, UnsupportedHybridSeException}
-import com._4paradigm.hybridse.vm.{CoreAPI, Engine, PhysicalConstProjectNode, PhysicalCreateTableNode,
+import com._4paradigm.hybridse.vm.{CoreAPI, Engine, EngineOptions, PhysicalConstProjectNode, PhysicalCreateTableNode,
   PhysicalDataProviderNode, PhysicalFilterNode, PhysicalGroupAggrerationNode, PhysicalGroupNode, PhysicalInsertNode,
   PhysicalJoinNode, PhysicalLimitNode, PhysicalLoadDataNode, PhysicalOpNode, PhysicalOpType, PhysicalProjectNode,
   PhysicalRenameNode, PhysicalSelectIntoNode, PhysicalSetOperationNode, PhysicalSimpleProjectNode, PhysicalSortNode,
@@ -334,14 +334,7 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
   private def withSQLEngine[T](sql: String, dbs: List[Database],
                                config: OpenmldbBatchConfig)(body: SqlEngine => T): T = {
     var sqlEngine: SqlEngine = null
-    val engineOptions = SqlEngine.createDefaultEngineOptions()
-
-    if (config.enableWindowParallelization) {
-      logger.info("Enable window parallelization optimization")
-      engineOptions.SetEnableBatchWindowParallelization(true)
-    } else {
-      logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
-    }
+    val engineOptions = createEngineOptions(config)
 
     try {
       sqlEngine = new SqlEngine(seqAsJavaList(dbs), engineOptions)
@@ -402,5 +395,26 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
         sqlEngine.close()
       }
     }
+  }
+
+  private[batch] def createEngineOptions(config: OpenmldbBatchConfig): EngineOptions = {
+    val engineOptions = SqlEngine.createDefaultEngineOptions()
+
+    if (config.enableWindowParallelization) {
+      logger.info("Enable window parallelization optimization")
+      engineOptions.SetEnableBatchWindowParallelization(true)
+    } else {
+      logger.info("Disable window parallelization optimization, enable by setting openmldb.window.parallelization")
+    }
+
+    if (config.enableWindowColumnPruning) {
+      logger.info("Enable window column pruning optimization")
+      engineOptions.SetEnableWindowColumnPruning(true)
+    } else {
+      logger.info("Disable window column pruning optimization, " +
+        "enable by setting openmldb.window.column.pruning")
+    }
+
+    engineOptions
   }
 }
