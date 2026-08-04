@@ -46,7 +46,7 @@ class TestScale:
         cmd.append(f"--cmd={scale_cmd}")
         if scale_cmd == "scalein":
             cmd.append(f"--endpoint={endpoint}")
-        status, output = self.executor.RunWithRetuncode(cmd)
+        status, output = self.executor.RunWithReturncode(cmd)
         return status
 
     @pytest.mark.parametrize("replica_num, partition_num", [(2, 8), (1, 10)])

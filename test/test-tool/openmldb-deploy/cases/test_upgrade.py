@@ -46,7 +46,7 @@ class TestUpgrade:
         cmd.append(f"--cmd={upgrade_cmd}")
         cmd.append(f"--endpoint={endpoint}")
         cmd.append(f"--statfile={self.base_dir}/.stat")
-        status, output = self.executor.RunWithRetuncode(cmd)
+        status, output = self.executor.RunWithReturncode(cmd)
         return status
 
     def get_leader_cnt(self, db, table_name, endpoint) -> (Status, int):

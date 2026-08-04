@@ -126,7 +126,7 @@ class Executor:
             return Status()
         return Status(-1, "connect OpenMLDB failed")
 
-    def RunWithRetuncode(self, command,
+    def RunWithReturncode(self, command,
                          universal_newlines = True,
                          useshell = USE_SHELL,
                          env = os.environ) -> tuple([Status, str]):
@@ -146,7 +146,7 @@ class Executor:
     def GetNsLeader(self) -> tuple([Status, str]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showns")
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK():
             result = self.ParseResult(output)
             for record in result:
@@ -157,7 +157,7 @@ class Executor:
     def GetNs(self) -> tuple([Status, list]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showns")
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK():
             result = self.ParseResult(output)
             for record in result:
@@ -185,7 +185,7 @@ class Executor:
     def GetAutofailover(self) -> tuple([Status, bool]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=confget auto_failover")
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         if output.find("true") != -1:
@@ -195,13 +195,13 @@ class Executor:
     def SetAutofailover(self, value) -> Status:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=confset auto_failover " + value)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         return status
 
     def GetAllDatabase(self) -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showdb")
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         dbs = []
@@ -215,7 +215,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showtable " + table_name)
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         result = []
@@ -256,7 +256,7 @@ class Executor:
         cmd = list(self.tablet_base_cmd)
         cmd.append("--endpoint=" + endpoint)
         cmd.append("--cmd=gettablestatus " + tid + " " + pid)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             log.error("gettablestatus failed")
             return status, None
@@ -275,7 +275,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append(f"--cmd=scan {table_name} {key} {index} {st} {et} {limit}")
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         result = []
@@ -289,7 +289,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showschema " + table_name)
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         arr = output.split("#ColumnKey")
@@ -312,7 +312,7 @@ class Executor:
     def ShowTableStatus(self, pattern = '%') -> tuple([Status, list]):
         cmd = list(self.sql_base_cmd)
         cmd.append(f"--cmd=show table status like '{pattern}';")
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             log.error("show table status failed")
             return status, None
@@ -338,7 +338,7 @@ class Executor:
         cmd = list(self.tablet_base_cmd)
         cmd.append("--endpoint=" + endpoint)
         cmd.append("--cmd=loadtable {} {} {} 0 8".format(name, tid, pid))
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("LoadTable ok") != -1:
             if not sync:
                 return Status()
@@ -361,7 +361,7 @@ class Executor:
         cmd = list(self.tablet_base_cmd)
         cmd.append("--endpoint=" + endpoint)
         cmd.append("--cmd=getfollower {} {}".format(tid, pid))
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status
         return Status(), self.ParseResult(output)
@@ -370,7 +370,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=recovertable {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("recover table ok") != -1:
             if sync and not self.WaitingOP(database, name, pid).OK():
                 return Status(-1, "recovertable failed")
@@ -383,7 +383,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=updatetablealive {} {} {} {}".format(name, pid, endpoint, is_alive))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("update ok") != -1:
             return Status()
         return Status(-1, "update table alive failed")
@@ -392,7 +392,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=changeleader {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and sync and not self.WaitingOP(database, name, pid).OK():
             return Status(-1, "changer leader failed")
         return status
@@ -401,7 +401,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showopstatus {} {} ".format(name, pid))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         return Status(), self.ParseResult(output)
@@ -410,7 +410,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=cancelop {}".format(op_id))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         return status
 
     def Migrate(self, database, name, pid, src_endpoint, desc_endpoint, sync = False) -> Status:
@@ -419,7 +419,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=migrate {} {} {} {}".format(src_endpoint, name, pid, desc_endpoint))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("migrate ok") != -1:
             if sync and not self.WaitingOP(database, name, pid).OK():
                 return Status(-1, "migrate failed")
@@ -429,7 +429,7 @@ class Executor:
     def ShowTablet(self) -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showtablet")
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if not status.OK():
             return status, None
         return Status(), self.ParseResult(output)
@@ -438,7 +438,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=addreplica {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("ok") != -1:
             if sync and not self.WaitingOP(database, name, pid).OK():
                 return Status(-1, "addreplica failed")
@@ -449,7 +449,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=delreplica {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("ok") != -1:
             if sync and not self.WaitingOP(database, name, pid).OK():
                 return Status(-1, "delreplica failed")
@@ -460,7 +460,7 @@ class Executor:
         cmd = list(self.ns_base_cmd)
         cmd.append(f"--cmd=makesnapshot {name} {pid}")
         cmd.append("--database=" + database)
-        status, output = self.RunWithRetuncode(cmd)
+        status, output = self.RunWithReturncode(cmd)
         if status.OK() and output.find("ok") != -1:
             if sync and not self.WaitingOP(database, name, pid).OK():
                 return Status(-1, "makesnapshot failed")
