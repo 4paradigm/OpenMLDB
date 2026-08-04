@@ -21,7 +21,7 @@ if [[ -z ${VERSION} ]]; then
     VERSION=0.7.2
 fi
 echo "version: ${VERSION}"
-curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
+curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux-x86_64.tar.gz"
 mkdir -p "openmldb"
 tar xzf openmldb.tar.gz -C "openmldb" --strip-components 1
 pushd "openmldb"
@@ -32,7 +32,7 @@ rm -f bin/*.sh
 
 /bin/cp -f ../test/test-tool/openmldb-deploy/hosts conf/hosts
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" conf/openmldb-env.sh
-sh sbin/deploy-all.sh
+bash sbin/deploy-all.sh
 
 for (( i=0; i<=2; i++ ))
 do
@@ -53,7 +53,7 @@ do
     echo "--use_name=true" >> ${conf_file}
 done
 
-sh sbin/start-all.sh
+bash sbin/start-all.sh
 popd
 
 pushd test/test-tool/openmldb-deploy

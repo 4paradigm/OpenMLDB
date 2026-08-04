@@ -275,7 +275,7 @@ def BalanceInDatabase(executor, endpoints, db):
         is_leader = True if record[4] == "leader" else False
         is_alive = True if record[5] == "yes" else False
         partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6])
-        all_dict.setdefault(partition.GetEndpoint(), []);
+        all_dict.setdefault(partition.GetEndpoint(), [])
         all_dict[partition.GetEndpoint()].append(partition)
         endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
         endpoint_partition_map[partition.GetEndpoint()].add(partition.GetKey())
@@ -283,13 +283,13 @@ def BalanceInDatabase(executor, endpoints, db):
         replica_map[partition.GetKey()] += 1
     for endpoint in endpoints:
         if endpoint not in all_dict:
-            all_dict.setdefault(endpoint, []);
+            all_dict.setdefault(endpoint, [])
             endpoint_partition_map.setdefault(endpoint, set())
 
     start_endpoint = random.choice(endpoints)
     while True:
-        migrate_out_endpoint = start_endpoint;
-        migrate_in_endpoint = start_endpoint;
+        migrate_out_endpoint = start_endpoint
+        migrate_in_endpoint = start_endpoint
         for endpoint in endpoints:
             if len(all_dict[endpoint]) > len(all_dict[migrate_out_endpoint]) : migrate_out_endpoint = endpoint
             if len(all_dict[endpoint]) < len(all_dict[migrate_in_endpoint]) : migrate_in_endpoint = endpoint

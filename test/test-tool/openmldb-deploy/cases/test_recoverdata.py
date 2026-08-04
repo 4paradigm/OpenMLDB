@@ -39,13 +39,13 @@ class TestRecoverData:
     def start_openmldb(self):
         cmd = ["bash"]
         cmd.append(f"{self.openmldb_path}/sbin/start-all.sh")
-        status, output = self.executor.RunWithRetuncode(cmd)
+        status, output = self.executor.RunWithReturncode(cmd)
         return status
 
     def stop_openmldb(self):
         cmd = ["bash"]
         cmd.append(f"{self.openmldb_path}/sbin/stop-all.sh")
-        status, output = self.executor.RunWithRetuncode(cmd)
+        status, output = self.executor.RunWithReturncode(cmd)
         return status
 
     def test_recoverdata(self):
