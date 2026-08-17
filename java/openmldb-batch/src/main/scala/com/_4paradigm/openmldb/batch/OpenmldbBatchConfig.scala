@@ -91,6 +91,9 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.window.parallelization", doc = "Enable window compute parallelization optimization")
   var enableWindowParallelization: Boolean = false
 
+  @ConfigOption(name = "openmldb.window.column.pruning", doc = "Enable window column pruning optimization")
+  var enableWindowColumnPruning: Boolean = false
+
   @ConfigOption(name = "openmldb.window.sampleFilter", doc =
     """
       | Filter condition for window sample, currently only support simple equalities
