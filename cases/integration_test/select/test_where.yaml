@@ -250,3 +250,74 @@ cases:
       order: sum_col1
       rows: 
         - [3, 2, 2, 1, 1.5]
+  - id: null-eq-1
+    desc: indexed equality with NULL matches nothing
+    mode: request-unsupport
+    db: db1
+    inputs:
+      - columns: ["id int", "c1 string", "c2 int", "ts timestamp"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1, NULL, 1, 1590738989000]
+          - [2, "aa", 1, 1590738990000]
+          - [3, "bb", 2, 1590738991000]
+    sql: |
+      SELECT id, c1, c2 FROM {0} where c1 = NULL;
+    expect:
+      columns: ["id int", "c1 string", "c2 int"]
+      count: 0
+      rows: []
+  - id: null-eq-2
+    desc: isnull() still returns NULL rows
+    mode: request-unsupport
+    db: db1
+    inputs:
+      - columns: ["id int", "c1 string", "c2 int", "ts timestamp"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1, NULL, 1, 1590738989000]
+          - [2, "aa", 1, 1590738990000]
+          - [3, NULL, 2, 1590738991000]
+    sql: |
+      SELECT id, c1, c2 FROM {0} where isnull(c1);
+    expect:
+      columns: ["id int", "c1 string", "c2 int"]
+      order: id
+      rows:
+        - [1, null, 1]
+        - [3, null, 2]
+  - id: null-eq-3
+    desc: equality with a value does not return NULL-keyed rows
+    mode: request-unsupport
+    db: db1
+    inputs:
+      - columns: ["id int", "c1 string", "c2 int", "ts timestamp"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1, NULL, 1, 1590738989000]
+          - [2, "aa", 1, 1590738990000]
+          - [3, "aa", 2, 1590738991000]
+    sql: |
+      SELECT id, c1, c2 FROM {0} where c1 = "aa";
+    expect:
+      columns: ["id int", "c1 string", "c2 int"]
+      order: id
+      rows:
+        - [2, "aa", 1]
+        - [3, "aa", 2]
+  - id: null-eq-4
+    desc: NULL equality in an AND filter matches nothing
+    mode: request-unsupport
+    db: db1
+    inputs:
+      - columns: ["id int", "c1 string", "c2 int", "ts timestamp"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1, NULL, 1, 1590738989000]
+          - [2, "aa", 1, 1590738990000]
+    sql: |
+      SELECT id, c1, c2 FROM {0} where c1 = NULL and c2 = 1;
+    expect:
+      columns: ["id int", "c1 string", "c2 int"]
+      count: 0
+      rows: []

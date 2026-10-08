@@ -22,6 +22,32 @@
 namespace hybridse {
 namespace passes {
 
+namespace {
+
+// `expr = NULL` is never TRUE. A cast or bracket around a NULL literal is still
+// that constant. Such a predicate must stay a residual filter: turning it into
+// an index key seeks the NULL bucket and treats NULL as equal to NULL.
+bool IsSqlNullConstant(const node::ExprNode* expr) {
+    if (expr == nullptr) {
+        return false;
+    }
+    if (node::IsNullPrimary(expr)) {
+        return true;
+    }
+    if (expr->GetExprType() == node::kExprCast && expr->GetChildNum() > 0) {
+        return IsSqlNullConstant(expr->GetChild(0));
+    }
+    if (expr->GetExprType() == node::kExprUnary) {
+        const auto* unary = dynamic_cast<const node::UnaryExpr*>(expr);
+        if (unary != nullptr && unary->GetOp() == node::kFnOpBracket && expr->GetChildNum() > 0) {
+            return IsSqlNullConstant(expr->GetChild(0));
+        }
+    }
+    return false;
+}
+
+}  // namespace
+
 using hybridse::vm::PhysicalFilterNode;
 using hybridse::vm::PhysicalJoinNode;
 using hybridse::vm::PhysicalOpType;
@@ -182,6 +208,9 @@ bool ConditionOptimized::TransfromAndConditionList(
 bool ConditionOptimized::MakeConstEqualExprPair(
     const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
     const SchemasContext* right_schemas_ctx, ExprPair* output) {
+    if (IsSqlNullConstant(expr_pair.first) || IsSqlNullConstant(expr_pair.second)) {
+        return false;
+    }
     bool is_first_const = node::ExprIsConst(expr_pair.first);
     bool is_second_const = node::ExprIsConst(expr_pair.second);
     if (is_first_const && is_second_const) {
@@ -255,6 +284,10 @@ bool ConditionOptimized::TransformConstEqualExprPair(
             out_condition_list->AddChild(expr);
             continue;
         }
+        if (IsSqlNullConstant(expr_pair.first) || IsSqlNullConstant(expr_pair.second)) {
+            out_condition_list->AddChild(expr);
+            continue;
+        }
         if (node::ExprIsConst(expr_pair.first)) {
             condition_eq_pair.push_back({expr_pair.first, expr_pair.second});
         } else if (node::ExprIsConst(expr_pair.second)) {
@@ -275,6 +308,10 @@ bool ConditionOptimized::TransformJoinEqualExprPair(
     for (auto expr : and_conditions->children_) {
         std::pair<node::ExprNode*, node::ExprNode*> expr_pair;
         if (!ExtractEqualExprPair(expr, &expr_pair)) {
+            out_condition_list->AddChild(expr);
+            continue;
+        }
+        if (IsSqlNullConstant(expr_pair.first) || IsSqlNullConstant(expr_pair.second)) {
             out_condition_list->AddChild(expr);
             continue;
         }

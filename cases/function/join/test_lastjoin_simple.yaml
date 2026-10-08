@@ -710,7 +710,6 @@ cases:
         - [ "bb",21,31,1590738992000 ]
   - id: 19
     desc: 拼接条件中有null
-    tags: [ "TODO", "@chenjing, @baoxinqi" ]
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
         indexs: [ "index1:c1:c4" ]
@@ -730,7 +729,7 @@ cases:
       columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
       order: c1
       rows:
-        - [ null,2,3,1590738989000 ]
+        - [ null,2,null,null ]
         - [ "bb",21,31,1590738992000 ]
   - id: 20
     desc: 结合limit
@@ -1068,3 +1067,130 @@ cases:
         - [ "aa",2,131,1590738990000 ]
         - [ "bb",21,NULL,NULL ]
         - [ "dd", 41, NULL, NULL ]
+  - id: null-eq-1
+    desc: indexed last join does not treat NULL as equal to NULL
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ NULL,2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ NULL,9,3,1590738989000 ]
+          - [ "bb",22,31,1590738990000 ]
+          - [ "bb",22,32,1590738992000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c2
+      rows:
+        - [ null,2,null,null ]
+        - [ "bb",21,32,1590738992000 ]
+  - id: null-eq-2
+    desc: last join whose key is not the index does not treat NULL as equal to NULL
+    mode: request-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ NULL,2,3,1590738989000 ]
+          - [ "aa",3,4,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ NULL,9,30,1590738989000 ]
+          - [ "aa",8,40,1590738993000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c2
+      rows:
+        - [ null,2,null,null ]
+        - [ "aa",3,40,1590738993000 ]
+  - id: null-eq-3
+    desc: composite last join key is unknown when any component is NULL
+    inputs:
+      - columns: [ "id int","c1 string","c2 int","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ 1,"aa",1,1590738989000 ]
+          - [ 2,"aa",NULL,1590738990000 ]
+          - [ 3,NULL,1,1590738991000 ]
+      - columns: [ "c1 string","c2 int","v int","c4 timestamp" ]
+        indexs: [ "index1:c1|c2:c4" ]
+        rows:
+          - [ "aa",1,100,1590738993000 ]
+          - [ "aa",NULL,200,1590738994000 ]
+          - [ NULL,1,300,1590738995000 ]
+    sql: select {0}.id,{1}.v from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1 and {0}.c2={1}.c2;
+    expect:
+      columns: [ "id int","v int" ]
+      order: id
+      rows:
+        - [ 1,100 ]
+        - [ 2,null ]
+        - [ 3,null ]
+  - id: null-eq-4
+    desc: NULL left key does not match non-NULL right keys
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ NULL,2,3,1590738989000 ]
+          - [ "aa",3,4,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",8,40,1590738993000 ]
+          - [ "bb",9,50,1590738994000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c2
+      rows:
+        - [ null,2,null,null ]
+        - [ "aa",3,40,1590738993000 ]
+  - id: null-eq-5
+    desc: isnull() still matches a NULL column
+    inputs:
+      - columns: [ "c1 string","c2 int","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",1,1590738989000 ]
+          - [ "bb",2,1590738990000 ]
+      - columns: [ "c1 string","c2 int","v int","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",NULL,10,1590738991000 ]
+          - [ "aa",5,20,1590738992000 ]
+          - [ "bb",NULL,30,1590738993000 ]
+    sql: select {0}.c1,{0}.c2,{1}.v from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1 and isnull({1}.c2);
+    expect:
+      columns: [ "c1 string","c2 int","v int" ]
+      order: c1
+      rows:
+        - [ "aa",1,10 ]
+        - [ "bb",2,30 ]
+  - id: null-eq-6
+    desc: equality with a NULL literal matches no right row
+    inputs:
+      - columns: [ "c1 string","c2 int","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",1,1590738989000 ]
+          - [ "bb",2,1590738990000 ]
+      - columns: [ "c1 string","c2 int","v int","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",NULL,10,1590738991000 ]
+          - [ "aa",1,20,1590738992000 ]
+          - [ "bb",2,30,1590738993000 ]
+    sql: select {0}.c1,{0}.c2,{1}.v from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1 and {0}.c2 = NULL;
+    expect:
+      columns: [ "c1 string","c2 int","v int" ]
+      order: c1
+      rows:
+        - [ "aa",1,null ]
+        - [ "bb",2,null ]
