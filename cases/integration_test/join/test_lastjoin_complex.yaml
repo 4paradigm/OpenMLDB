@@ -522,8 +522,6 @@ cases:
 #        - [5,"bb",24,34,1.5,2.4,67,68,68,62,2]
   - id: 10
     desc: t1 join t2 join t3,t2的key产出为null
-    mode: offline-unsupport
-#    tags: ["@chendihao", "这个场景离线的预期不正确，需要迪豪看看"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -563,13 +561,12 @@ cases:
       columns: ["id int","c1 string","c3 int","c3 int","c4 bigint"]
       rows:
         - [1,"aa",20,21,34]
-        - [2,"bb",21,null,32]
+        - [2,"bb",21,null,null]
         - [3,"cc",22,21,34]
         - [4,"dd",23,21,34]
         - [5,"ee",24,24,null]
   - id: 11
     desc: (t1 join t2) join t3
-    mode: offline-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -612,7 +609,7 @@ cases:
       columns: ["id int","c1 string","c3 int","c4 bigint"]
       rows:
         - [1,"aa",21,34]
-        - [2,"bb",null,32]
+        - [2,"bb",null,null]
         - [3,"cc",21,34]
         - [4,"dd",21,34]
         - [5,"ee",24,null]

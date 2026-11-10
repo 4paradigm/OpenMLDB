@@ -26,6 +26,46 @@
 namespace hybridse {
 namespace vm {
 
+namespace {
+
+// SQL `=` is not TRUE when either side is NULL. String equality of the encoded
+// key is not enough: NULL is encoded as NONETOKEN, and two NONETOKEN keys
+// compare equal.
+bool EqualityHolds(const EqualKey& lhs, const EqualKey& rhs) {
+    return !lhs.has_null && !rhs.has_null && lhs.value == rhs.value;
+}
+
+// Index probe key. String concatenation matches the historical `index|left`
+// encoding, including the case where an empty index key is replaced by the
+// left key. A NULL in either part makes the equality unknown.
+EqualKey ProbeEqualKey(KeyGenerator& index_key_gen, KeyGenerator& left_key_gen, const Row& left_row,
+                       const Row& parameter) {
+    EqualKey out;
+    bool has_null = false;
+    if (index_key_gen.Valid()) {
+        EqualKey index_key = index_key_gen.GenEqual(left_row, parameter);
+        out.value = index_key.value;
+        has_null = index_key.has_null;
+    }
+    if (left_key_gen.Valid()) {
+        EqualKey left_key = left_key_gen.GenEqual(left_row, parameter);
+        has_null = has_null || left_key.has_null;
+        out.value = out.value.empty() ? left_key.value : out.value + "|" + left_key.value;
+    }
+    out.has_null = has_null;
+    return out;
+}
+
+std::shared_ptr<TableHandler> EmptySegment(const std::shared_ptr<PartitionHandler>& partition) {
+    auto table = std::make_shared<MemTimeTableHandler>(partition ? partition->GetSchema() : nullptr);
+    if (partition) {
+        table->SetOrderType(partition->GetOrderType());
+    }
+    return table;
+}
+
+}  // namespace
+
 std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
     std::shared_ptr<DataHandler> input, const Row& parameter) {
     switch (input->GetHandlerType()) {
@@ -261,8 +301,11 @@ std::shared_ptr<PartitionHandler> JoinGenerator::LazyJoinOptimized(std::shared_p
 
 std::unique_ptr<RowIterator> JoinGenerator::InitRight(const Row& left_row, std::shared_ptr<PartitionHandler> right,
                                                       const Row& param) {
-    auto partition_key = index_key_gen_.Gen(left_row, param);
-    auto right_seg = right->GetSegment(partition_key);
+    auto partition_key = index_key_gen_.GenEqual(left_row, param);
+    if (partition_key.has_null) {
+        return {};
+    }
+    auto right_seg = right->GetSegment(partition_key.value);
     if (!right_seg) {
         return {};
     }
@@ -307,8 +350,11 @@ Row JoinGenerator::RowLastJoinPartition(
                         "keys is empty";
         return Row();
     }
-    std::string partition_key = index_key_gen_.Gen(left_row, parameter);
-    auto right_table = partition->GetSegment(partition_key);
+    EqualKey partition_key = index_key_gen_.GenEqual(left_row, parameter);
+    if (partition_key.has_null) {
+        return Row(left_slices_, left_row, right_slices_, Row());
+    }
+    auto right_table = partition->GetSegment(partition_key.value);
     return RowLastJoinTable(left_row, right_table, parameter);
 }
 
@@ -335,15 +381,17 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
                    right_iter->GetValue());
     }
 
-    std::string left_key_str = "";
+    EqualKey left_key;
     if (left_key_gen_.Valid()) {
-        left_key_str = left_key_gen_.Gen(left_row, parameter);
+        left_key = left_key_gen_.GenEqual(left_row, parameter);
+        if (left_key.has_null) {
+            return Row(left_slices_, left_row, right_slices_, Row());
+        }
     }
     while (right_iter->Valid()) {
         if (right_group_gen_.Valid()) {
-            auto right_key_str =
-                right_group_gen_.GetKey(right_iter->GetValue(), parameter);
-            if (left_key_gen_.Valid() && left_key_str != right_key_str) {
+            EqualKey right_key = right_group_gen_.GetEqualKey(right_iter->GetValue(), parameter);
+            if (left_key_gen_.Valid() && !EqualityHolds(left_key, right_key)) {
                 right_iter->Next();
                 continue;
             }
@@ -374,14 +422,17 @@ std::pair<Row, bool> JoinGenerator::RowJoinIterator(const Row& left_row,
         return {Row(left_slices_, left_row, right_slices_, right_value), true};
     }
 
-    std::string left_key_str = "";
+    EqualKey left_key;
     if (left_key_gen_.Valid()) {
-        left_key_str = left_key_gen_.Gen(left_row, parameter);
+        left_key = left_key_gen_.GenEqual(left_row, parameter);
+        if (left_key.has_null) {
+            return {Row(left_slices_, left_row, right_slices_, Row()), false};
+        }
     }
     while (right_iter->Valid()) {
         if (right_group_gen_.Valid()) {
-            auto right_key_str = right_group_gen_.GetKey(right_iter->GetValue(), parameter);
-            if (left_key_gen_.Valid() && left_key_str != right_key_str) {
+            EqualKey right_key = right_group_gen_.GetEqualKey(right_iter->GetValue(), parameter);
+            if (left_key_gen_.Valid() && !EqualityHolds(left_key, right_key)) {
                 right_iter->Next();
                 continue;
             }
@@ -436,15 +487,12 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     left_iter->SeekToFirst();
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
-        std::string key_str =
-            index_key_gen_.Valid() ? index_key_gen_.Gen(left_row, parameter) : "";
-        if (left_key_gen_.Valid()) {
-            key_str = key_str.empty()
-                          ? left_key_gen_.Gen(left_row, parameter)
-                          : key_str + "|" + left_key_gen_.Gen(left_row, parameter);
+        EqualKey key = ProbeEqualKey(index_key_gen_, left_key_gen_, left_row, parameter);
+        DLOG(INFO) << "key_str " << key.value;
+        std::shared_ptr<TableHandler> right_table;
+        if (!key.has_null) {
+            right_table = right->GetSegment(key.value);
         }
-        DLOG(INFO) << "key_str " << key_str;
-        auto right_table = right->GetSegment(key_str);
         output->AddRow(left_iter->GetKey(), Runner::RowLastJoinTable(left_slices_, left_row, right_slices_, right_table,
                                                                      parameter, right_sort_gen_, condition_gen_));
         left_iter->Next();
@@ -516,15 +564,11 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
         while (left_iter->Valid()) {
             const Row& left_row = left_iter->GetValue();
 
-            std::string key_str = "";
-            if (index_key_gen_.Valid()) {
-                key_str = index_key_gen_.Gen(left_row, parameter);
+            EqualKey key = ProbeEqualKey(index_key_gen_, left_key_gen_, left_row, parameter);
+            std::shared_ptr<TableHandler> right_table;
+            if (!key.has_null) {
+                right_table = right->GetSegment(key.value);
             }
-            if (left_key_gen_.Valid()) {
-                key_str = key_str.empty() ? left_key_gen_.Gen(left_row, parameter) :
-                                          key_str.append("|").append(left_key_gen_.Gen(left_row, parameter));
-            }
-            auto right_table = right->GetSegment(key_str);
             auto left_key_str = std::string(
                 reinterpret_cast<const char*>(left_key.buf()), left_key.size());
             output->AddRow(left_key_str, left_iter->GetKey(),
@@ -542,44 +586,54 @@ bool JoinGenerator::PartitionJoin(std::shared_ptr<PartitionHandler> left,
  * TODO(chenjing): GenConst key during compile-time
  * @return
  */
-const std::string KeyGenerator::GenConst(const Row& parameter) {
+EqualKey KeyGenerator::GenConstEqual(const Row& parameter) {
+    EqualKey out;
     Row key_row = CoreAPI::RowConstProject(fn_, parameter, true);
     codec::RowView row_view(row_view_);
     if (!row_view.Reset(key_row.buf())) {
         LOG(WARNING) << "fail to gen key: row view reset fail";
-        return "NA";
+        out.value = "NA";
+        return out;
     }
-    std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == hybridse::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key;
+        if (row_view.IsNULL(pos)) {
+            out.has_null = true;
+            key = codec::NONETOKEN;
+        } else if (fn_schema_.Get(pos).type() == hybridse::type::kDate) {
+            key = std::to_string(row_view.GetDateUnsafe(pos));
+        } else {
+            key = row_view.GetAsString(pos);
+        }
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
-        if (!keys.empty()) {
-            keys.append("|");
+        if (!out.value.empty()) {
+            out.value.append("|");
         }
-        keys.append(key);
+        out.value.append(key);
     }
-    return keys;
+    return out;
 }
-const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) {
+const std::string KeyGenerator::GenConst(const Row& parameter) { return GenConstEqual(parameter).value; }
+EqualKey KeyGenerator::GenEqual(const Row& row, const Row& parameter) {
     // TODO(wtz) 避免不必要的row project
+    EqualKey out;
     if (row.size() == 0) {
-        return codec::NONETOKEN;
+        // An empty slice is not a key. Equality must not hit the NULL bucket.
+        // Gen() still returns NONETOKEN, so GROUP BY and PARTITION BY are unchanged.
+        out.value = codec::NONETOKEN;
+        out.has_null = true;
+        return out;
     }
     Row key_row = CoreAPI::RowProject(fn_, row, parameter, true);
-    std::string keys = "";
     for (auto pos : idxs_) {
-        if (!keys.empty()) {
-            keys.append("|");
+        if (!out.value.empty()) {
+            out.value.append("|");
         }
         if (row_view_.IsNULL(key_row.buf(), pos)) {
-            keys.append(codec::NONETOKEN);
+            out.has_null = true;
+            out.value.append(codec::NONETOKEN);
             continue;
         }
         ::hybridse::type::Type type = fn_schema_.Get(pos).type();
@@ -589,52 +643,46 @@ const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) {
                 uint32_t size = 0;
                 if (row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
                     if (size == 0) {
-                        keys.append(codec::EMPTY_STRING.c_str(),
-                                    codec::EMPTY_STRING.size());
+                        out.value.append(codec::EMPTY_STRING.c_str(), codec::EMPTY_STRING.size());
                     } else {
-                        keys.append(buf, size);
+                        out.value.append(buf, size);
                     }
                 }
                 break;
             }
             case hybridse::type::kDate: {
                 int32_t buf = 0;
-                if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0) {
-                    keys.append(std::to_string(buf));
+                if (row_view_.GetValue(key_row.buf(), pos, type, reinterpret_cast<void*>(&buf)) == 0) {
+                    out.value.append(std::to_string(buf));
                 }
                 break;
             }
             case hybridse::type::kBool: {
                 bool buf = false;
-                if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0) {
-                    keys.append(buf ? "true" : "false");
+                if (row_view_.GetValue(key_row.buf(), pos, type, reinterpret_cast<void*>(&buf)) == 0) {
+                    out.value.append(buf ? "true" : "false");
                 }
                 break;
             }
             case hybridse::type::kInt16: {
                 int16_t buf = 0;
-                if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0) {
-                    keys.append(std::to_string(buf));
+                if (row_view_.GetValue(key_row.buf(), pos, type, reinterpret_cast<void*>(&buf)) == 0) {
+                    out.value.append(std::to_string(buf));
                 }
                 break;
             }
             case hybridse::type::kInt32: {
                 int32_t buf = 0;
-                if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0) {
-                    keys.append(std::to_string(buf));
+                if (row_view_.GetValue(key_row.buf(), pos, type, reinterpret_cast<void*>(&buf)) == 0) {
+                    out.value.append(std::to_string(buf));
                 }
                 break;
             }
             case hybridse::type::kInt64:
             case hybridse::type::kTimestamp: {
                 int64_t buf = 0;
-                if (row_view_.GetValue(key_row.buf(), pos, type,
-                                       reinterpret_cast<void*>(&buf)) == 0) {
-                    keys.append(std::to_string(buf));
+                if (row_view_.GetValue(key_row.buf(), pos, type, reinterpret_cast<void*>(&buf)) == 0) {
+                    out.value.append(std::to_string(buf));
                 }
                 break;
             }
@@ -644,8 +692,9 @@ const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) {
             }
         }
     }
-    return keys;
+    return out;
 }
+const std::string KeyGenerator::Gen(const Row& row, const Row& parameter) { return GenEqual(row, parameter).value; }
 
 const int64_t OrderGenerator::Gen(const Row& row) {
     Row order_row = CoreAPI::RowProject(fn_, row, Row(), true);
@@ -708,8 +757,12 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmnetOfConstKey(
     switch (input->GetHandlerType()) {
         case kPartitionHandler: {
             auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
-            auto key = index_key_gen_.GenConst(parameter);
-            return partition->GetSegment(key);
+            auto key = index_key_gen_.GenConstEqual(parameter);
+            if (key.has_null) {
+                // `col = NULL` is never TRUE, including rows whose key is NULL.
+                return EmptySegment(partition);
+            }
+            return partition->GetSegment(key.value);
         }
         default: {
             LOG(WARNING) << "fail to seek segment when input isn't partition";

@@ -184,3 +184,23 @@ cases:
       rows:
         - [ "aa",2, 131, 1590738989000, 13, 1590738990000 ]
         - [ "bb",21,151, 1590738988000, 151,1590738988000 ]
+  - id: 5
+    desc: window partition keeps NULL keys in one group
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 int","c4 timestamp" ]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [ NULL, 1, 10, 1590738990000 ]
+          - [ NULL, 2, 20, 1590738991000 ]
+          - [ "aa", 3, 30, 1590738992000 ]
+    sql: |
+      SELECT c1, c2, count(c3) OVER w1 as cnt
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c4 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW);
+    expect:
+      order: c2
+      columns: [ "c1 string", "c2 int", "cnt bigint" ]
+      rows:
+        - [ null, 1, 1 ]
+        - [ null, 2, 2 ]
+        - [ "aa", 3, 1 ]

@@ -451,3 +451,23 @@ cases:
       data: |
         5, 3, 2
         55, 7, 2
+  - id: 14
+    desc: NULL parameter does not match NULL index keys
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT id, c1 FROM {0} where c1 = ?;
+    inputs:
+      - columns: ["id int", "c1 string", "ts timestamp"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1, NULL, 1590738989000]
+          - [2, "aa", 1590738990000]
+    parameters:
+      columns: ["p1 string"]
+      rows:
+        - [NULL]
+    expect:
+      columns: ["id int", "c1 string"]
+      count: 0
+      rows: []

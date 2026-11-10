@@ -187,7 +187,7 @@ cases:
         1.000000, 2.000000, 3.000000, 4.000000,
         33.000000, 1.000000, 2.000000, 404.000000, 3.000000,
         101, 101, 11, 11, 101, 101, 101, 101, 101, 101, 101,
-        NULL, 3.3, NULL, 1.000000, 1.000000 ]
+        NULL, null, NULL, null, null ]
 - id: 1
   desc: mybug bo_hislabel_fWatchedTimeLen_multi_max_74
   mode: rtidb-batch-unsupport
@@ -309,6 +309,6 @@ cases:
     rows:
       - [ reqId1, reqId1, 1.1,  reqId1, NULL,   NULL, NULL ]
       - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0,  1.0 ]
-      - [ NULL,   NULL,   3.3,  NULL,   NULL,   NULL, NULL]
+      - [ NULL,   NULL,   null, NULL,   NULL,   NULL, NULL]
       - [ reqId2, reqId2, NULL, reqId2, NULL,   NULL, NULL ]
       - [ reqId2, reqId2, NULL, reqId2, 100.0, 1.0,  1.0 ]

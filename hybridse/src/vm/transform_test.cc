@@ -730,6 +730,49 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
     }
 }
 
+// `col = NULL` is never TRUE. It must stay a residual predicate instead of an
+// index equality key, otherwise the runner seeks the NULL bucket.
+TEST_F(TransformTest, NullConstEqualIsNotIndexKey) {
+    vm::SchemasContext left_ctx;
+    vm::SchemasContext right_ctx;
+    type::TableDef t1;
+    type::TableDef t2;
+    BuildTableDef(t1);
+    t1.set_name("t1");
+    left_ctx.BuildTrivial(t1.catalog(), {&t1});
+    BuildTableT2Def(t2);
+    t2.set_name("t2");
+    right_ctx.BuildTrivial(t2.catalog(), {&t2});
+
+    std::string sql = "select t1.col1 = null and t1.col2 = t2.col2 from t1,t2;";
+    boost::to_lower(sql);
+    node::ExprNode* condition = nullptr;
+    ExtractExprFromSimpleSql(&manager, sql, &condition);
+    ASSERT_TRUE(condition != nullptr);
+
+    node::ExprListNode and_conditions;
+    ASSERT_TRUE(ConditionOptimized::TransfromAndConditionList(condition, &and_conditions));
+
+    node::ExprListNode out_conditions;
+    std::vector<ExprPair> pairs;
+    ASSERT_TRUE(ConditionOptimized::TransformJoinEqualExprPair(&left_ctx, &right_ctx, &and_conditions, &out_conditions,
+                                                               pairs));
+    ASSERT_EQ(1u, pairs.size());
+    ASSERT_EQ("t1.col2", node::ExprString(pairs[0].left_expr_));
+    ASSERT_EQ("t2.col2", node::ExprString(pairs[0].right_expr_));
+    ASSERT_EQ(1u, out_conditions.children_.size());
+    ASSERT_EQ("t1.col1 = null", node::ExprString(out_conditions.children_[0]));
+
+    node::ExprListNode const_out;
+    std::vector<ExprPair> const_pairs;
+    node::ExprListNode const_in;
+    const_in.AddChild(out_conditions.children_[0]);
+    ASSERT_FALSE(ConditionOptimized::TransformConstEqualExprPair(&const_in, &const_out, const_pairs));
+    ASSERT_TRUE(const_pairs.empty());
+    ASSERT_EQ(1u, const_out.children_.size());
+    ASSERT_EQ("t1.col1 = null", node::ExprString(const_out.children_[0]));
+}
+
 TEST_P(TransformTest, WindowMergeOptTest) {
     auto& sql_case = GetParam();
     std::string sqlstr = sql_case.sql_str();

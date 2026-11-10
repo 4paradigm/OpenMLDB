@@ -102,12 +102,23 @@ class WindowProjectGenerator : public FnGenerator {
     const Row Gen(const uint64_t key, const Row row, const codec::Row& parameter_row, const bool is_instance,
                   size_t append_slices, Window* window);
 };
+// Projected equality key.
+// `has_null` means at least one component is SQL NULL. `NULL = x` is not TRUE,
+// so an equality probe must not match. GROUP BY and PARTITION BY keep using
+// Gen(), which still buckets those NULLs together.
+struct EqualKey {
+    std::string value;
+    bool has_null = false;
+};
+
 class KeyGenerator : public FnGenerator {
  public:
     explicit KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~KeyGenerator() {}
     const std::string Gen(const Row& row, const Row& parameter);
     const std::string GenConst(const Row& parameter);
+    EqualKey GenEqual(const Row& row, const Row& parameter);
+    EqualKey GenConstEqual(const Row& parameter);
 };
 class OrderGenerator : public FnGenerator {
  public:
@@ -187,6 +198,12 @@ class PartitionGenerator {
     std::shared_ptr<PartitionHandler> Partition(std::shared_ptr<PartitionHandler> table, const Row& parameter);
     std::shared_ptr<PartitionHandler> Partition(std::shared_ptr<TableHandler> table, const Row& parameter);
     const std::string GetKey(const Row& row, const Row& parameter) { return key_gen_.Gen(row, parameter); }
+    EqualKey GetEqualKey(const Row& row, const Row& parameter) {
+        if (!key_gen_.Valid()) {
+            return EqualKey();
+        }
+        return key_gen_.GenEqual(row, parameter);
+    }
 
  private:
     KeyGenerator key_gen_;

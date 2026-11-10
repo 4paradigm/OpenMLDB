@@ -167,7 +167,7 @@ cases:
           101, 101,
           1.000000, 1.000000, 1.000000,
           101, 101, 101,
-          NULL, 3 ]
+          NULL, null ]
 
 - id: 1
   desc: luoji test window flattenRequest_f_requestId_eventTime_0s_604801s without ttl
@@ -257,7 +257,7 @@ cases:
       - [ reqId1, reqId1, 1609894067190, f_requestId1, f_cId1, NULL, f_uId1, 1.000000, 301.000000, 0.66445182724252494, NULL, 301, reqId1, 1 ]
       - [ reqId1, reqId1, 1609894067190, f_requestId1, NULL, f_cSrc1, f_uId1, 1.000000, 301.000000, 0.66666666666666663, 301, NULL, reqId1, 1 ]
       - [ reqId2, reqId2, 1609894067190, f_requestId2, f_cId2, f_cSrc2, f_uId2, 2.000000, 402.000000, 0.49751243781094528, 201, 201, reqId2, NULL ]
-      - [ NULL, NULL, 1609894067190, f_requestIdNull, f_cIdNull, f_cSrcNul, f_uIdNull, 3.000000, 303.000000, 1.000000, 101, 101, NULL, 3 ]
+      - [ NULL, NULL, 1609894067190, f_requestIdNull, f_cIdNull, f_cSrcNul, f_uIdNull, 3.000000, 303.000000, 1.000000, 101, 101, NULL, null ]
 
 
 
