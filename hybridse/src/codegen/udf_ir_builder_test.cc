@@ -1052,9 +1052,27 @@ TEST_F(UdfIRBuilderTest, UnixTimestampTest) {
     CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, 1589904000LL, StringRef("2020-05-20"));
     CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, nullptr, StringRef("1899-05-20"));
     CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, 1589904000LL, StringRef("20200520"));
+    
+    //unix_timestamp("") returns the current time. Comparing it for exact equality with a
+    //separately read std::time is racy (the second can tick over in between), so check
+    //that the result lies within a small window around the call instead.
+    {
+        auto function = udf::UdfFunctionBuilder(func_name)
+                            .args<Nullable<StringRef>>()
+                            .returns<Nullable<int64_t>>()
+                            .library(udf::DefaultUdfLibrary::get())
+                            .build();
+        ASSERT_TRUE(function.valid());
 
-    std::time_t result = std::time(nullptr);
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, static_cast<int64_t>(result), "");
+        const int64_t kDeltaSec = 5;
+        int64_t before = static_cast<int64_t>(std::time(nullptr));
+        auto output = function(StringRef(""));
+        int64_t after = static_cast<int64_t>(std::time(nullptr));
+
+        ASSERT_FALSE(output.is_null());
+        ASSERT_GE(output.value(), before - kDeltaSec);
+        ASSERT_LE(output.value(), after + kDeltaSec);
+    }
 }
 
 TEST_F(UdfIRBuilderTest, TimestampToDateTest0) {
