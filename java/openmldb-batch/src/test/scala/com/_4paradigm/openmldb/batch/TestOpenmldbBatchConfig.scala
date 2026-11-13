@@ -27,22 +27,26 @@ class TestOpenmldbBatchConfig extends FunSuite {
     val sess = SparkSession.builder()
         .config("spark.openmldb.groupby.partitions", 100)
         .config("spark.openmldb.test.print", value=true)
+        .config("spark.openmldb.window.column.pruning", value=true)
         .master("local[1]")
         .getOrCreate()
     val config = OpenmldbBatchConfig.fromSparkSession(sess)
     assert(config.groupbyPartitions == 100)
     assert(config.print)
+    assert(config.enableWindowColumnPruning)
     sess.close()
   }
 
   test("Test make config from dict") {
     val dict = Map(
       "openmldb.groupby.partitions" -> 100,
-      "openmldb.test.print" -> true
+      "openmldb.test.print" -> true,
+      "openmldb.window.column.pruning" -> true
     )
     val config = OpenmldbBatchConfig.fromDict(dict)
     assert(config.groupbyPartitions == 100)
     assert(config.print)
+    assert(config.enableWindowColumnPruning)
   }
 
   test("Test config of openmldb.sparksql") {

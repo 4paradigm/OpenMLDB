@@ -23,6 +23,20 @@ import scala.collection.JavaConverters.seqAsJavaListConverter
 
 class TestSparkPlanner extends SparkTestSuite {
 
+  test("Test window column pruning engine option") {
+    val config = new OpenmldbBatchConfig
+    config.enableWindowColumnPruning = true
+
+    val planner = new SparkPlanner(getSparkSession, config)
+    val engineOptions = planner.createEngineOptions(config)
+
+    try {
+      assert(engineOptions.IsEnableWindowColumnPruning())
+    } finally {
+      engineOptions.delete()
+    }
+  }
+
   test("Test project plan smoke") {
     val sess = getSparkSession
 
