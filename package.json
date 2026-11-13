@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "conventional-changelog-cli": "^2.2.2"
+    "conventional-changelog-cli": "^5.0.0"
   },
   "scripts": {
     "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s"
