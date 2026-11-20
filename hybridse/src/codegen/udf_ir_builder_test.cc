@@ -1532,6 +1532,34 @@ TEST_F(UdfIRBuilderTest, JsonArrayLength) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, JsonInputSizes) {
+    // alternate inputs below and above the size reused across calls by the json functions
+    auto make_array = [](int n) {
+        std::string s = "[";
+        for (int i = 0; i < n; i++) {
+            s.append(i == 0 ? "\"abcdef\"" : ",\"abcdef\"");
+        }
+        s.append("]");
+        return s;
+    };
+    std::string medium = make_array(5000);
+    std::string large = make_array(20000);
+    std::string large_obj;
+    large_obj.append(R"({"a": )").append(large).append(R"(, "b": "x"})");
+    for (int round = 0; round < 2; round++) {
+        CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 20000, StringRef(large));
+        CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 2, "[1,2]");
+        CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 5000, StringRef(medium));
+        CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, "[1,2");
+        CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 0, "[]");
+        CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>("get_json_object", "x",
+                                                                                StringRef(large_obj), "/b");
+        CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>("get_json_object", "1", R"({"a": 1})",
+                                                                                "/a");
+        CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>("get_json_object", nullptr, "{", "");
+    }
+}
+
 TEST_F(UdfIRBuilderTest, GetJsonObject) {
     std::string_view json = R"(
         {
