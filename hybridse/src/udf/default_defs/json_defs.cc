@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <cstring>
+#include <memory>
+#include <new>
+
 #include "simdjson.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
@@ -23,13 +27,52 @@
 namespace hybridse {
 namespace udf {
 
+namespace {
+
+// Inputs up to this size are parsed with a parser and a padded buffer kept by the calling thread,
+// so that rows do not each allocate them. Larger inputs use a parser local to the call.
+constexpr size_t kMaxReusedJsonSize = 64 * 1024;
+
+// Parse `in`. `local_parser` and `local_json` hold the state for large inputs and must outlive `doc`.
+simdjson::error_code IterateJson(const openmldb::base::StringRef* in, simdjson::ondemand::parser* local_parser,
+                                 simdjson::padded_string* local_json, simdjson::ondemand::document* doc) noexcept {
+    const size_t size = in->size_;
+    if (size > kMaxReusedJsonSize) {
+        *local_json = simdjson::padded_string(in->data_, size);
+        if (local_json->data() == nullptr) {
+            return simdjson::MEMALLOC;
+        }
+        return local_parser->iterate(*local_json).get(*doc);
+    }
+
+    thread_local simdjson::ondemand::parser parser;
+    thread_local std::unique_ptr<char[]> buf;
+    thread_local size_t capacity = 0;
+    const size_t needed = size + simdjson::SIMDJSON_PADDING;
+    if (capacity < needed) {
+        buf.reset(new (std::nothrow) char[needed]);
+        capacity = buf ? needed : 0;
+        if (!buf) {
+            return simdjson::MEMALLOC;
+        }
+    }
+    if (size > 0) {
+        memcpy(buf.get(), in->data_, size);
+    }
+    // the parser may read the padding, keep it zeroed as simdjson::padded_string does
+    memset(buf.get() + size, 0, simdjson::SIMDJSON_PADDING);
+    return parser.iterate(simdjson::padded_string_view(buf.get(), size, capacity)).get(*doc);
+}
+
+}  // namespace
+
 void json_array_length(openmldb::base::StringRef* in, int32_t* sz, bool* is_null) noexcept {
     *is_null = true;
 
     simdjson::ondemand::parser parser;
-    simdjson::padded_string json(in->data_, in->size_);
+    simdjson::padded_string json;
     simdjson::ondemand::document doc;
-    auto err = parser.iterate(json).get(doc);
+    auto err = IterateJson(in, &parser, &json, &doc);
     if (err) {
         return;
     }
@@ -53,11 +96,11 @@ void get_json_object(openmldb::base::StringRef* in, openmldb::base::StringRef* j
     *is_null = true;
 
     simdjson::ondemand::parser parser;
-    simdjson::padded_string json(in->data_, in->size_);
+    simdjson::padded_string json;
     simdjson::ondemand::document doc;
     simdjson::error_code err = simdjson::error_code::SUCCESS;
 
-    if (parser.iterate(json).tie(doc, err); err) {
+    if (err = IterateJson(in, &parser, &json, &doc); err) {
         return;
     }
 
